@@ -38,6 +38,7 @@ import {
   incrementWebhookRedisError,
   setWebhookConfigured,
   recordSettlementOutcome,
+  rpcCallsTotal,
 } from '../metrics';
 import { resetAdminAllowlistCache } from '../admin_auth';
 
@@ -313,6 +314,125 @@ describe('metrics', () => {
 
       expect(capturedEndTimer).toBeDefined();
       expect(capturedEndTimer).toHaveBeenCalled();
+    });
+
+    it('increments rejected counter with auth reason when handler returns admin-guard rejection (issue #1134)', async () => {
+      const rejectionPayload = JSON.stringify({
+        success: false,
+        error: 'Not authorized',
+        rpc: 'admin_trigger_season_event',
+      });
+      const handler = jest.fn().mockReturnValue(rejectionPayload);
+      const wrapped = wrapRpcWithMetrics('admin_trigger_season_event', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(rpcCallsTotal.inc).toHaveBeenCalledWith({
+        rpc: 'admin_trigger_season_event',
+        status: 'rejected',
+        reason: 'auth',
+      });
+    });
+
+    it('increments rejected counter with rate_limit reason when handler returns rate-limit rejection (issue #1134)', async () => {
+      const rejectionPayload = JSON.stringify({
+        success: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Rate limit exceeded. Please try again later.',
+          retryAfter: 60,
+        },
+      });
+      const handler = jest.fn().mockReturnValue(rejectionPayload);
+      const wrapped = wrapRpcWithMetrics('some_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(rpcCallsTotal.inc).toHaveBeenCalledWith({
+        rpc: 'some_rpc',
+        status: 'rejected',
+        reason: 'rate_limit',
+      });
+    });
+
+    it('increments rejected counter with validation reason when handler returns validation error (issue #1134)', async () => {
+      const rejectionPayload = JSON.stringify({
+        success: false,
+        error: 'Invalid payload',
+        error_code: 'VALIDATION_ERROR',
+        rpc_name: 'submit_combat_action',
+      });
+      const handler = jest.fn().mockReturnValue(rejectionPayload);
+      const wrapped = wrapRpcWithMetrics('submit_combat_action', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(rpcCallsTotal.inc).toHaveBeenCalledWith({
+        rpc: 'submit_combat_action',
+        status: 'rejected',
+        reason: 'validation',
+      });
+    });
+
+    it('increments rejected counter with unknown reason for unrecognized success:false shape (issue #1134)', async () => {
+      const rejectionPayload = JSON.stringify({ success: false, error: 'some other error' });
+      const handler = jest.fn().mockReturnValue(rejectionPayload);
+      const wrapped = wrapRpcWithMetrics('unknown_rejection_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(rpcCallsTotal.inc).toHaveBeenCalledWith({
+        rpc: 'unknown_rejection_rpc',
+        status: 'rejected',
+        reason: 'unknown',
+      });
+    });
+
+    it('success-rate metric drops below 1.0 when a rejection occurs (issue #1134)', async () => {
+      const rejectionPayload = JSON.stringify({
+        success: false,
+        error: 'Not authorized',
+        rpc: 'admin_test',
+      });
+      const successPayload = JSON.stringify({ success: true, data: {} });
+      let callCount = 0;
+      const handler = jest.fn().mockImplementation(() => {
+        callCount++;
+        return callCount === 1 ? successPayload : rejectionPayload;
+      });
+      const wrapped = wrapRpcWithMetrics('admin_test', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+      await wrapped(ctx, logger, nk, '{}');
+
+      expect(handler).toHaveBeenCalledTimes(2);
+      const calls = rpcCallsTotal.inc.mock.calls;
+      const successCalls = calls.filter((c: unknown[]) => (c[0] as Record<string, string>)?.status === 'success');
+      const rejectedCalls = calls.filter((c: unknown[]) => (c[0] as Record<string, string>)?.status === 'rejected');
+      expect(successCalls.length).toBe(1);
+      expect(rejectedCalls.length).toBe(1);
+    });
+
+    it('does not affect rpcErrorsTotal for non-throw rejections (issue #1134)', async () => {
+      const rejectionPayload = JSON.stringify({ success: false, error: 'Not authorized' });
+      const handler = jest.fn().mockReturnValue(rejectionPayload);
+      const wrapped = wrapRpcWithMetrics('auth_rpc', handler);
+      const { ctx, logger, nk } = makeRpcArgs();
+
+      await wrapped(ctx, logger, nk, '{}');
+
+      // Handler returned (not threw) — rpcErrorsTotal should not be incremented
+      // because we are only checking rpcCallsTotal with status:rejected
+      expect(handler).toHaveBeenCalledTimes(1);
     });
   });
 

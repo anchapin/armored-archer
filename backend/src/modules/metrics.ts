@@ -4,11 +4,11 @@ import { Runtime } from '../types/nakama';
 import * as rateLimiter from '../utils/rateLimiter';
 import { withAdminGuard, setAdminGuardMetricsCallbacks } from './admin_auth';
 import { getDeploymentRegistry } from './deployment_observability';
-import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
 import { getHealthRegistry } from './health_monitor';
+import { initializeNPlusOneDetectionWithMetrics, getNPlusOneReport } from './n_plus_one_detection';
 import { getRolloutRegistry } from './progressive_rollout';
-import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { recordRpcLatency, recordRpcError } from './rpc_latency_tracker';
+import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 const register = new Registry();
 
@@ -26,9 +26,12 @@ if (config.nPlusOne && config.nPlusOne.enabled && config.nPlusOne.metricsEnabled
 const rpcCallsTotal = new Counter({
   name: 'armored_archer_rpc_calls_total',
   help: 'Total number of RPC calls',
-  labelNames: ['rpc', 'status'] as const,
+  labelNames: ['rpc', 'status', 'reason'] as const,
   registers: [register],
 });
+
+// Exported for unit-testing rejection-label behavior (issue #1134).
+export { rpcCallsTotal };
 
 const rpcDurationSeconds = new Histogram({
   name: 'armored_archer_rpc_duration_seconds',
@@ -522,6 +525,33 @@ export type RpcHandler = (
   payload: string
 ) => string | Promise<string>;
 
+/**
+ * Classifies a rejected RPC response (success:false JSON return) into a
+ * rejection-reason bucket so metrics can distinguish auth, rate_limit,
+ * validation, and unknown rejections without relying on throw-based tracking.
+ */
+function classifyRejectionReason(
+  parsed: Record<string, unknown>
+): 'auth' | 'rate_limit' | 'validation' | 'unknown' {
+  // withAdminGuard: { success: false, error: 'Not authorized', rpc: ... }
+  if (parsed.error === 'Not authorized') return 'auth';
+
+  // createValidationErrorResponse: { success: false, error_code: 'VALIDATION_ERROR', ... }
+  if (parsed.error_code === 'VALIDATION_ERROR') return 'validation';
+
+  // createRateLimitedRpcHandler: { success: false, error: { code: 'RATE_LIMIT_EXCEEDED', ... } }
+  const error = parsed.error;
+  if (
+    error &&
+    typeof error === 'object' &&
+    (error as Record<string, unknown>).code === 'RATE_LIMIT_EXCEEDED'
+  ) {
+    return 'rate_limit';
+  }
+
+  return 'unknown';
+}
+
 export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHandler {
   // SYNC on purpose: Nakama 3.21's goja runtime has no promise-job
   // scheduler, so an async handler returns a pending Promise that Nakama
@@ -546,12 +576,27 @@ export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHan
             'unsupported by the Nakama JS runtime (issue #1135)'
         );
       }
-      rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
+      // Detect rejection via JSON return (issue #1134).
+      // Handlers like withAdminGuard, createRateLimitedRpcHandler, and
+      // createValidationErrorResponse return a JSON string with success:false
+      // instead of throwing. Parse and classify to produce correct metrics.
+      let parsedResult: Record<string, unknown> | null = null;
+      try {
+        parsedResult = JSON.parse(result) as Record<string, unknown>;
+      } catch {
+        // Not JSON — treat as success.
+      }
+      if (parsedResult?.success === false) {
+        const reason = classifyRejectionReason(parsedResult);
+        rpcCallsTotal.inc({ rpc: rpcName, status: 'rejected', reason });
+      } else {
+        rpcCallsTotal.inc({ rpc: rpcName, status: 'success' });
+      }
       recordRpcLatency(rpcName, Date.now() - startTime);
       return result;
     } catch (error) {
       const errorType = error instanceof Error ? error.constructor.name : 'unknown';
-      rpcCallsTotal.inc({ rpc: rpcName, status: 'error' });
+      rpcCallsTotal.inc({ rpc: rpcName, status: 'error', reason: 'none' });
       rpcErrorsTotal.inc({ rpc: rpcName, error_type: errorType });
       recordRpcError(rpcName, errorType);
       throw error;
@@ -951,7 +996,7 @@ const stageCompleteTotal = new Counter({
   name: 'armored_archer_stage_complete_total',
   help:
     'Terminal outcomes of the consolidated stage_complete RPC (#1069): ' +
-    "success | duplicate (rejected by the claim-first dedup marker) | " +
+    'success | duplicate (rejected by the claim-first dedup marker) | ' +
     'clamped (out-of-range stars/score were silently bounded — cheat signal, ' +
     'processing continued with safe values) | validation_failed',
   labelNames: ['outcome'] as const,
