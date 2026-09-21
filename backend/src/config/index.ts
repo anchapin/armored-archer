@@ -37,6 +37,11 @@ function loadEnvironment(): void {
     return;
   }
 
+  // Skip if SKIP_ENV_LOADING is set (for testing)
+  if (process.env.SKIP_ENV_LOADING) {
+    return;
+  }
+
   const nodeEnv = process.env.NODE_ENV || 'development';
   const envFiles = [`.env.${nodeEnv}`, '.env', `.env.${nodeEnv}.local`];
 
