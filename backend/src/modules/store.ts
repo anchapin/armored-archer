@@ -1313,6 +1313,7 @@ export async function rpcValidatePurchase(
   const rcValidation = await validatePurchaseWithRevenueCat(ctx, logger, nk, request);
   if (!rcValidation.valid) {
     recordPurchase(request.product_id, false);
+    await addToPendingQueue(nk, ctx.userId, request.product_id, request.platform, request.transaction_receipt);
     return JSON.stringify({ error: rcValidation.error, error_code: rcValidation.errorCode });
   }
   const gemBundle = rcValidation.gemBundle;
@@ -2423,7 +2424,50 @@ interface PendingPurchase {
   timestamp: number;
   retry_count: number;
 }
-const pendingPurchases: Map<string, PendingPurchase[]> = new Map();
+const PENDING_PURCHASES_COLLECTION = 'pending_purchases';
+
+async function getPendingPurchasesFromStorage(
+  nk: Runtime.Nakama,
+  userId: string
+): Promise<PendingPurchase[]> {
+  try {
+    const objects = await nk.storageRead([
+      { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
+    ]);
+    if (objects.length === 0) return [];
+    const rawValue = (objects[0] as Runtime.StorageObject).value;
+    const jsonStr = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue);
+    const parsed = safeParse<PendingPurchase[]>(jsonStr, null, undefined, 'getPendingPurchasesFromStorage');
+    return parsed.success && parsed.data ? parsed.data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function savePendingPurchasesToStorage(
+  nk: Runtime.Nakama,
+  userId: string,
+  purchases: PendingPurchase[]
+): Promise<void> {
+  if (purchases.length === 0) {
+    try {
+      await nk.storageDelete([
+        { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
+      ]);
+    } catch {
+      // Ignore delete errors (collection/key may not exist)
+    }
+  } else {
+    await nk.storageWrite([
+      {
+        collection: PENDING_PURCHASES_COLLECTION,
+        key: userId,
+        userId: userId,
+        value: JSON.stringify(purchases),
+      },
+    ]);
+  }
+}
 
 /**
  * Maximum number of retries for pending purchases.
@@ -2591,20 +2635,16 @@ async function validateWithRevenueCat(
 /**
  * Add a purchase to the pending queue.
  * Called when network validation fails but receipt was received.
+ * Uses Nakama Storage for persistence across Nakama restarts.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function addToPendingQueue(
+async function addToPendingQueue(
+  nk: Runtime.Nakama,
   userId: string,
   productId: string,
   platform: string,
   transactionReceipt: string
-): void {
-  let userPending = pendingPurchases.get(userId);
-  if (!userPending) {
-    userPending = [];
-    pendingPurchases.set(userId, userPending);
-  }
-
+): Promise<void> {
+  const userPending = await getPendingPurchasesFromStorage(nk, userId);
   userPending.push({
     product_id: productId,
     platform: platform,
@@ -2612,28 +2652,24 @@ function addToPendingQueue(
     timestamp: Date.now(),
     retry_count: 0,
   });
-
-  // Clean up old entries
-  cleanupPendingPurchases(userId);
+  await savePendingPurchasesToStorage(nk, userId, userPending);
+  await cleanupPendingPurchases(nk, userId);
 }
 
 /**
  * Remove expired and successfully processed purchases from queue.
+ * Uses Nakama Storage for persistence.
  */
-function cleanupPendingPurchases(userId: string): void {
-  const userPending = pendingPurchases.get(userId);
-  if (!userPending) return;
+async function cleanupPendingPurchases(nk: Runtime.Nakama, userId: string): Promise<void> {
+  const userPending = await getPendingPurchasesFromStorage(nk, userId);
+  if (userPending.length === 0) return;
 
   const now = Date.now();
   const valid = userPending.filter(
     (p) => now - p.timestamp < PENDING_PURCHASE_EXPIRY_MS && p.retry_count < MAX_PENDING_RETRIES
   );
 
-  if (valid.length === 0) {
-    pendingPurchases.delete(userId);
-  } else {
-    pendingPurchases.set(userId, valid);
-  }
+  await savePendingPurchasesToStorage(nk, userId, valid);
 }
 
 /**
@@ -2657,7 +2693,7 @@ export async function rpcProcessPendingPurchases(
     return createValidationErrorResponse('process_pending_purchases', validation.error);
   }
 
-  const userPending = pendingPurchases.get(ctx.userId);
+  const userPending = await getPendingPurchasesFromStorage(nk, ctx.userId);
   if (!userPending || userPending.length === 0) {
     return JSON.stringify({
       success: true,
@@ -2805,7 +2841,7 @@ export async function rpcProcessPendingPurchases(
   }
 
   // Clean up processed purchases
-  cleanupPendingPurchases(ctx.userId);
+  await cleanupPendingPurchases(nk, ctx.userId);
 
   const successful = results.filter((r) => r.success).length;
   return JSON.stringify({
