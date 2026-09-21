@@ -22,7 +22,6 @@ import {
   logDisconnect,
   type HitResolutionEvent,
   type TimeoutEvent,
-<<<<<<< HEAD
 } from './fairness_telemetry';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
