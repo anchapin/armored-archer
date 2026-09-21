@@ -109,10 +109,12 @@ groups:
           description: "Database connection usage is above 90%. Current: {{ $value | printf \"%.1f\" }}%"
 
       # Payment Processing Failure
-      # __planned__: armored_archer_payment_failures_total — payment failure counter
+      # __planned__: armored_archer_purchases_total{status="failure"} — payment
+      #               failure counter (tracks all purchase attempts, filter by
+      #               status="failure").
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with:
-      #                  rate(armored_archer_payment_failures_total[5m]) > 0
+      #                  rate(armored_archer_purchases_total{status="failure"}[5m]) > 0
       - alert: PaymentProcessingFailures
         disabled: true
         expr: vector(0) > 1
@@ -123,7 +125,7 @@ groups:
           component: payments
         annotations:
           summary: "[PLANNED] Payment processing failures detected"
-          description: "Payment failures occurring. This directly impacts revenue. Check payment gateway status. (Awaiting armored_archer_payment_failures_total — see #1093.)"
+          description: "Payment failures occurring. This directly impacts revenue. Check payment gateway status. (Awaiting armored_archer_purchases_total{status=\"failure\"} — see #1093.)"
 
   - name: armored_archer_warning
     interval: 30s
@@ -188,12 +190,12 @@ groups:
           description: "Available disk space is below 15%. Current: {{ $value | printf \"%.1f\" }}%"
 
       # Active Users Spike/Drop
-      # __planned__: armored_archer_active_users — current DAU/CCU gauge
-      # __planned__: armored_archer_active_users_offset_1h — derived recording
-      #               rule (below) for the 1h-ago comparison.
+      # __planned__: armored_archer_player_active_sessions — current active-sessions
+      #               gauge; the recording rule armored_archer_active_users_offset_1h
+      #               (defined in the recording-rules section) provides the 1h offset.
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with the
-      #               original PromQL once armored_archer_active_users exists.
+      #               original PromQL once armored_archer_player_active_sessions exists.
       - alert: ActiveUsersAnomaly
         disabled: true
         expr: vector(0) > 1
@@ -204,7 +206,7 @@ groups:
           component: analytics
         annotations:
           summary: "[PLANNED] Unusual active users pattern"
-          description: "Active users deviation is above 50% from 1 hour ago. Possible login issues or bot attack. (Awaiting armored_archer_active_users — see #1093.)"
+          description: "Active users deviation is above 50% from 1 hour ago. Possible login issues or bot attack. (Awaiting armored_archer_player_active_sessions — see #1093.)"
 
       # Matchmaking Queue Building
       # Active: metric renamed from armored_archer_matchmaking_queue_size to
@@ -244,11 +246,11 @@ groups:
       # ============================================
 
       # Low Revenue
-      # __planned__: armored_archer_revenue_cents_total — cumulative revenue
-      #               counter labelled by product/sku.
+      # __planned__: armored_archer_purchase_revenue_total — cumulative revenue
+      #               counter labelled by currency/product_type.
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with:
-      #                  rate(armored_archer_revenue_cents_total[24h]) < 100
+      #                  rate(armored_archer_purchase_revenue_total[24h]) < 100
       - alert: LowRevenue
         disabled: true
         expr: vector(0) > 1
@@ -259,11 +261,13 @@ groups:
           component: analytics
         annotations:
           summary: "[PLANNED] Revenue below expected threshold"
-          description: "24-hour revenue rate is below $1/hour. Check for payment issues or player engagement. (Awaiting armored_archer_revenue_cents_total — see #1093.)"
+          description: "24-hour revenue rate is below $1/hour. Check for payment issues or player engagement. (Awaiting armored_archer_purchase_revenue_total — see #1093.)"
 
       # Version Mismatch Warning
-      # __planned__: armored_archer_active_users — labelled by client_version
-      #               for this rule's count by (client_version) aggregation.
+      # __planned__: a future active-users gauge labelled by client_version for
+      #               the count by (client_version) aggregation.  The unlabelled
+      #               armored_archer_player_active_sessions exists but cannot
+      #               substitute here.
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with:
       #                  count by (client_version) (armored_archer_active_users) > 10
@@ -277,7 +281,7 @@ groups:
           component: client
         annotations:
           summary: "[PLANNED] Multiple client versions in use"
-          description: "Version {{ $labels.client_version }} has {{ $value }} active users. Consider forcing updates. (Awaiting armored_archer_active_users — see #1093.)"
+          description: "Version {{ $labels.client_version }} has {{ $value }} active users. Consider forcing updates. (Awaiting a client-version-labelled active-users gauge — see #1093.)"
 
   - name: armored_archer_security
     interval: 30s
@@ -287,11 +291,14 @@ groups:
       # ============================================
 
       # Suspicious Login Activity
-      # __planned__: armored_archer_failed_logins_total — failed-login counter
-      #               labelled by reason (bad_password / unknown_user / …).
+      # __planned__: armored_archer_player_login_attempts_total{status="failure"} —
+      #               failed-login counter (tracks all login attempts, filter by
+      #               status="failure").  Note: this metric also counts successes
+      #               when status="success", so a rate on failures is a true
+      #               subset of all attempts.
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with:
-      #                  rate(armored_archer_failed_logins_total[5m]) > 10
+      #                  rate(armored_archer_player_login_attempts_total{status="failure"}[5m]) > 10
       - alert: SuspiciousLoginActivity
         disabled: true
         expr: vector(0) > 1
@@ -302,7 +309,7 @@ groups:
           component: authentication
         annotations:
           summary: "[PLANNED] Suspicious login activity detected"
-          description: "More than 10 failed login attempts per minute. Possible brute force attack. (Awaiting armored_archer_failed_logins_total — see #1093.)"
+          description: "More than 10 failed login attempts per minute. Possible brute force attack. (Awaiting armored_archer_player_login_attempts_total{status=\"failure\"} — see #1093.)"
 
       # Unusual API Call Pattern
       # Active: RPC call-rate denominator renamed from
@@ -320,7 +327,9 @@ groups:
 
       # Anti-Cheat Violation Spike
       # __planned__: armored_archer_anticheat_violations_total — violation
-      #               counter labelled by violation_type.
+      #               counter labelled by violation_type.  No equivalent metric
+      #               exists at present; a future anti-cheat module should emit
+      #               this counter (issue #1093).
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with:
       #                  rate(armored_archer_anticheat_violations_total[5m]) > 5
@@ -369,10 +378,11 @@ groups:
     interval: 60s
     rules:
       # Active users offset for anomaly detection
-      # __planned__: armored_archer_active_users — source gauge is missing.
+      # __planned__: armored_archer_player_active_sessions — source gauge (current
+      #               number of active player sessions).
       # __issue__:    #1093 (umbrella for planned metrics expansion)
       # __restore__:  Set disabled: false and replace expr with:
-      #                  armored_archer_active_users offset 1h
+      #                  armored_archer_player_active_sessions offset 1h
       - record: armored_archer_active_users_offset_1h
         disabled: true
         expr: vector(0)
