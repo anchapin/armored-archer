@@ -9,7 +9,6 @@ required) and protect against regressions in the gate's threshold math
 `.github/workflows/test.yml`'s `godot-coverage-gate` job).
 """
 
-import io
 import json
 import os
 import subprocess
