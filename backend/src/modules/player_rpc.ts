@@ -115,12 +115,12 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
  *   "stats": { ... }
  * }
  */
-export function rpcGetPlayerStats(
+export async function rpcGetPlayerStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   getLogger().info('Getting player stats for user', {
     rpcName: 'armored_archer/get_player_stats',
     userId: ctx.userId,
@@ -132,7 +132,7 @@ export function rpcGetPlayerStats(
   }
 
   const cacheManager = getCacheManager(logger);
-  return getPlayerStatsWithCache(nk, logger, ctx, cacheManager);
+  return await getPlayerStatsWithCache(nk, logger, ctx, cacheManager);
 }
 
 /**

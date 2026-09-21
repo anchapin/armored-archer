@@ -1,3 +1,7 @@
+jest.mock('../../utils/redis', () => ({
+  getRedisClient: jest.fn(() => null),
+}));
+
 import {
   PLAYER_DATA_NOT_FOUND_RESPONSE,
   PLAYER_DATA_READ_ERROR_RESPONSE,
@@ -190,7 +194,7 @@ describe('player-data-helpers', () => {
   });
 
   describe('readPlayerDataWithCache', () => {
-    it('returns cached data on cache hit', () => {
+    it('returns cached data on cache hit', async () => {
       const cachedData = { level: 10, xp: 500, stats: {} };
       const cacheManager = createMockCacheManager({
         get: jest.fn().mockReturnValue(JSON.stringify(cachedData)),
@@ -200,7 +204,7 @@ describe('player-data-helpers', () => {
       const ctx = createMockCtx();
       const parseFn = jest.fn((value: unknown) => value as any);
 
-      const result = readPlayerDataWithCache(
+      const result = await readPlayerDataWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -215,7 +219,7 @@ describe('player-data-helpers', () => {
       expect(nk.storageRead).not.toHaveBeenCalled();
     });
 
-    it('falls through to storage on cache miss', () => {
+    it('falls through to storage on cache miss', async () => {
       const storageData = { level: 5, xp: 100, stats: {} };
       const cacheManager = createMockCacheManager({
         get: jest.fn().mockReturnValue(undefined),
@@ -231,7 +235,7 @@ describe('player-data-helpers', () => {
         return value;
       });
 
-      const result = readPlayerDataWithCache(
+      const result = await readPlayerDataWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -251,7 +255,7 @@ describe('player-data-helpers', () => {
       );
     });
 
-    it('falls through to storage when cache entry is invalid JSON', () => {
+    it('falls through to storage when cache entry is invalid JSON', async () => {
       const cacheManager = createMockCacheManager({
         get: jest.fn().mockReturnValue('not valid json'),
       });
@@ -265,7 +269,7 @@ describe('player-data-helpers', () => {
         return value;
       });
 
-      const result = readPlayerDataWithCache(
+      const result = await readPlayerDataWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -279,7 +283,7 @@ describe('player-data-helpers', () => {
       expect(nk.storageRead).toHaveBeenCalledTimes(1);
     });
 
-    it('reads directly from storage when cacheManager is null', () => {
+    it('reads directly from storage when cacheManager is null', async () => {
       const nk = createMockNk({
         storageRead: jest.fn().mockReturnValue([createStorageObject('{"level":1}')]),
       });
@@ -290,7 +294,7 @@ describe('player-data-helpers', () => {
         return value;
       });
 
-      const result = readPlayerDataWithCache(
+      const result = await readPlayerDataWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -304,7 +308,7 @@ describe('player-data-helpers', () => {
       expect(nk.storageRead).toHaveBeenCalledTimes(1);
     });
 
-    it('reads directly from storage when cacheManager is undefined', () => {
+    it('reads directly from storage when cacheManager is undefined', async () => {
       const nk = createMockNk({
         storageRead: jest.fn().mockReturnValue([createStorageObject('{"level":1}')]),
       });
@@ -315,7 +319,7 @@ describe('player-data-helpers', () => {
         return value;
       });
 
-      const result = readPlayerDataWithCache(
+      const result = await readPlayerDataWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -329,7 +333,7 @@ describe('player-data-helpers', () => {
       expect(nk.storageRead).toHaveBeenCalledTimes(1);
     });
 
-    it('logs error when storage read fails', () => {
+    it('logs error when storage read fails', async () => {
       const nk = createMockNk({
         storageRead: jest.fn().mockImplementation(() => {
           throw new Error('Storage error');
@@ -339,7 +343,7 @@ describe('player-data-helpers', () => {
       const ctx = createMockCtx();
       const parseFn = jest.fn();
 
-      const result = readPlayerDataWithCache(
+      const result = await readPlayerDataWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -401,7 +405,7 @@ describe('player-data-helpers', () => {
   });
 
   describe('getPlayerStatsWithCache', () => {
-    it('returns error response when storage read has error', () => {
+    it('returns error response when storage read has error', async () => {
       const nk = createMockNk({
         storageRead: jest.fn().mockImplementation(() => {
           throw new Error('DB connection lost');
@@ -413,7 +417,7 @@ describe('player-data-helpers', () => {
         get: jest.fn().mockReturnValue(undefined),
       });
 
-      const result = getPlayerStatsWithCache(
+      const result = await getPlayerStatsWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -428,7 +432,7 @@ describe('player-data-helpers', () => {
       );
     });
 
-    it('returns not-found response when data not in storage', () => {
+    it('returns not-found response when data not in storage', async () => {
       const nk = createMockNk({
         storageRead: jest.fn().mockReturnValue([]),
       });
@@ -438,7 +442,7 @@ describe('player-data-helpers', () => {
         get: jest.fn().mockReturnValue(undefined),
       });
 
-      const result = getPlayerStatsWithCache(
+      const result = await getPlayerStatsWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -449,7 +453,7 @@ describe('player-data-helpers', () => {
       expect(parsed).toEqual({ error: 'Player stats not found' });
     });
 
-    it('returns stats JSON when data is found', () => {
+    it('returns stats JSON when data is found', async () => {
       const statsData = { level: 7, xp: 250, stats: { attack: 20 } };
       const nk = createMockNk({
         storageRead: jest.fn().mockReturnValue([createStorageObject(JSON.stringify(statsData))]),
@@ -461,7 +465,7 @@ describe('player-data-helpers', () => {
         set: jest.fn(),
       });
 
-      const result = getPlayerStatsWithCache(
+      const result = await getPlayerStatsWithCache(
         nk as any,
         logger as any,
         ctx as any,
@@ -472,7 +476,7 @@ describe('player-data-helpers', () => {
       expect(parsed).toEqual(statsData);
     });
 
-    it('returns cached stats when available', () => {
+    it('returns cached stats when available', async () => {
       const cachedStats = { level: 10, xp: 500, stats: { defense: 30 } };
       const nk = createMockNk();
       const logger = createMockLogger();
@@ -481,7 +485,7 @@ describe('player-data-helpers', () => {
         get: jest.fn().mockReturnValue(JSON.stringify(cachedStats)),
       });
 
-      const result = getPlayerStatsWithCache(
+      const result = await getPlayerStatsWithCache(
         nk as any,
         logger as any,
         ctx as any,
