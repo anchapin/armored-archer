@@ -1132,24 +1132,18 @@ export function rpcEndSeason(
     }
 
     const rewards = calculateRewards(playerRank, currentSeason.season_number);
-    // Mark rewards as auto-distributed
-    nk.storageWrite([
-      {
-        collection: 'season_rewards_claimed',
-        key: `${currentSeason.season_id}_${record.ownerId}`,
-        userId: record.ownerId,
-        value: toStorageValue({
-          season_id: currentSeason.season_id,
-          user_id: record.ownerId,
-          claimed_at: Date.now(),
-          rank: playerRank,
-          rewards: rewards,
-          auto_distributed: true,
-        }),
-      },
-    ]);
 
     try {
+      // Issue #1132 fix: write the season_rewards_claimed marker INSIDE the
+      // try block, AFTER all reward operations succeed. Previously the marker
+      // was written BEFORE applyCurrencyDelta (outside the try), so if
+      // applyCurrencyDelta threw, the player was already marked as credited
+      // but the generation_token was never written. On retry,
+      // readPlayerCompletionMarker returned completed=false (no token) and the
+      // player was processed again — causing double rewards. By writing the
+      // marker only on full success, a mid-loop failure leaves the player
+      // unmarked so retry is safe (at-least-once, no double-credit).
+      //
       // Auto-grant currency rewards via the unified currency ledger (#860)
       const rewardDelta: CurrencyDelta = {};
       if (rewards.coins) rewardDelta.coins = rewards.coins;
@@ -1161,13 +1155,20 @@ export function rpcEndSeason(
         addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
       }
 
-      // Per-player completion marker (issue #1132). Tagging the existing
-      // season_rewards_claimed write with the current generation token turns
-      // it into the resume key the pre-flight check looks at above. A
-      // crash between credit and this write is at-least-once: a retry
-      // re-credits the same player. There is no portable way to dedupe
-      // applyCurrencyDelta without touching currency.ts, which is out of
-      // scope for this fix.
+      // Update prestige record and grant prestige cosmetics
+      const { new_tiers } = updatePlayerPrestigeRecord(
+        nk,
+        record.ownerId,
+        currentSeason.season_id,
+        playerRank
+      );
+      if (new_tiers.length > 0) {
+        grantPrestigeRewards(nk, record.ownerId, new_tiers);
+      }
+
+      // Per-player completion marker (issue #1132). Written only after all
+      // reward operations succeed. Tagged with the current generation token
+      // so a resumed run can skip this player (matched token = already done).
       nk.storageWrite([
         {
           collection: 'season_rewards_claimed',
@@ -1184,17 +1185,6 @@ export function rpcEndSeason(
           }),
         },
       ]);
-
-      // Update prestige record and grant prestige cosmetics
-      const { new_tiers } = updatePlayerPrestigeRecord(
-        nk,
-        record.ownerId,
-        currentSeason.season_id,
-        playerRank
-      );
-      if (new_tiers.length > 0) {
-        grantPrestigeRewards(nk, record.ownerId, new_tiers);
-      }
     } catch (error) {
       // Mid-loop failure (issue #1132): persist the checkpoint so the next
       // call resumes from this index, then return a partial-failure
