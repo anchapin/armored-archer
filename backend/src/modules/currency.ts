@@ -46,11 +46,7 @@ import { getCacheManager } from '../utils/cache';
 import { safeParse } from '../utils/safeParse';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
-import {
-  recordCurrencySpent,
-  recordCurrencyEarned,
-  recordDatabaseQueryDuration,
-} from './metrics';
+import { recordCurrencySpent, recordCurrencyEarned, recordDatabaseQueryDuration } from './metrics';
 
 /**
  * Storage collection holding the authoritative currency record.
@@ -542,16 +538,7 @@ export function applyCurrencyDelta(
     // real earn/spend traffic (issue #1092 reported zeros for these labels).
     // `source` is the audit identifier the caller already supplies, so label
     // cardinality stays bounded to known earn/spend paths.
-    if (gemsDelta > 0) {
-      recordCurrencyEarned('gems', source, gemsDelta);
-    } else if (gemsDelta < 0) {
-      recordCurrencySpent('gems', source, -gemsDelta);
-    }
-    if (coinsDelta > 0) {
-      recordCurrencyEarned('coins', source, coinsDelta);
-    } else if (coinsDelta < 0) {
-      recordCurrencySpent('coins', source, -coinsDelta);
-    }
+    recordCurrencyDelta(source, gemsDelta, coinsDelta);
 
     logAudit(
       nk,
@@ -584,4 +571,21 @@ export function applyCurrencyDelta(
 
   // Unreachable: the loop either returns or throws.
   throw new Error(`currency: failed to apply delta for ${userId} via ${source}`);
+}
+
+/**
+ * Issue #1093: record currency earn/spend counters for dashboards.
+ * Extracted to reduce cyclomatic complexity of applyCurrencyDelta.
+ */
+function recordCurrencyDelta(source: string, gemsDelta: number, coinsDelta: number): void {
+  if (gemsDelta > 0) {
+    recordCurrencyEarned('gems', source, gemsDelta);
+  } else if (gemsDelta < 0) {
+    recordCurrencySpent('gems', source, -gemsDelta);
+  }
+  if (coinsDelta > 0) {
+    recordCurrencyEarned('coins', source, coinsDelta);
+  } else if (coinsDelta < 0) {
+    recordCurrencySpent('coins', source, -coinsDelta);
+  }
 }

@@ -10,7 +10,7 @@
 # postgres:14-alpine + heroiclabs/nakama:3.21.1.
 #
 # Bundle mount (pass-2 of PR #1126 follow-up): the `backend-integration-test`
-# job in .github/workflows/ci.yml mounts ./backend/data/modules into the
+# job in .github/workflows/ci.yml mounts ${PWD}/backend/data/modules into the
 # nakama container at /nakama/data/modules so the compiled game bundle
 # (combat / loot / season RPCs) is picked up by Nakama's default module path.
 # Mirror that here so the CI stack matches the hosted runner -- otherwise
@@ -60,7 +60,7 @@ services:
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
     volumes:
-      - ./backend/data/modules:/nakama/data/modules:ro
+      - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy

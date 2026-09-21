@@ -863,7 +863,7 @@ jobs:
   # only mocked unit tests ran in CI. Companion to backend-test (which runs
   # `npm run test:coverage` against the unit suite only).
   #
-  # Service-container ports — 5438 (postgres), 7352 (Nakama API), 7353
+  # Docker-compose ports — 5432 (postgres), 7350 (Nakama API), 7351 (console)
   # (console) — are deliberately distinct from 5432/5434/5435/5436/5437 and
   # 7350/7351 used by other jobs and the local dev stack (#858), so this
   # job can run in parallel with backend-test / schema-validation under
@@ -886,40 +886,6 @@ jobs:
       contents: read
       pull-requests: write
       checks: write
-    services:
-      postgres:
-        image: postgres:14-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: nakama
-          POSTGRES_PASSWORD: changeme
-        ports:
-          - 5438:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      nakama:
-        image: heroiclabs/nakama:3.21.1
-        env:
-          NAKAMA_DATABASE_ADDRESS: postgres://postgres:changeme@postgres:5432/nakama
-          NAKAMA_SERVER_KEY: defaultkey
-        ports:
-          - 7352:7350
-          - 7353:7351
-        volumes:
-          # backend/data/modules is gitignored (AGENTS.md §Project Structure).
-          # The `Build Nakama bundle` step below populates it before the
-          # service container starts loading — Nakama's default module path
-          # picks it up automatically.
-          - ./backend/data/modules:/nakama/data/modules:ro
-        options: >-
-          --health-cmd "/nakama/nakama healthcheck"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 30
-          --health-start-period 30s
 
     steps:
       - uses: actions/checkout@v4
@@ -952,9 +918,9 @@ jobs:
             backend-flaky-test-history-
 
       # Builds the Nakama game bundle into backend/data/modules/, which the
-      # `nakama` service container mounts as a volume (see services.nakama
-      # above). Without this, custom RPCs (combat / loot / season) 500 and
-      # every integration test that calls them fails.
+      # docker-compose started Nakama container mounts as a volume (see the
+      # Start Nakama and Postgres step below). Without this, custom RPCs
+      # (combat / loot / season) 500 and every integration test fails.
       - name: Build Nakama bundle
         working-directory: ./backend
         run: npm run build:full
@@ -970,10 +936,29 @@ jobs:
           fi
           psql --version
 
+      # Use docker-compose to start Nakama + Postgres since GitHub Actions
+      # service containers don't support custom entrypoint/command needed to
+      # pass --database.address to Nakama. The .github/docker-compose.yml
+      # has the correct entrypoint scripts for Nakama (like the local dev stack).
+      - name: Start Nakama and Postgres via docker-compose
+        run: |
+          # Start postgres and nakama using the CI docker-compose file
+          docker compose -f .github/docker-compose.yml up -d
+          # Wait for both services to be healthy
+          echo "Waiting for services to be healthy..."
+          for i in {1..60}; do
+            if docker compose -f .github/docker-compose.yml ps | grep -q "healthy"; then
+              echo "Services are healthy"
+              break
+            fi
+            echo "Waiting for services... ($i/60)"
+            sleep 2
+          done
+
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..30}; do
-            if PGPASSWORD=changeme pg_isready -h localhost -p 5438 -U postgres 2>/dev/null; then
+            if PGPASSWORD=changeme pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -988,7 +973,7 @@ jobs:
           # need the HTTP API to respond; the game-bundle load is best-
           # effort because Nakama's healthcheck doesn't reflect it.
           for i in {1..60}; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7352/ 2>/dev/null || echo "000")
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7350/ 2>/dev/null || echo "000")
             if [ "$code" != "000" ] && [ "$code" != "" ]; then
               echo "Nakama API reachable (HTTP $code)"
               break
@@ -1007,7 +992,7 @@ jobs:
           # for re-applied migrations in cache-warm runners.
           for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
             echo "Running migration: $migration"
-            PGPASSWORD=changeme psql -h localhost -p 5438 -U postgres -d nakama -f "$migration" || true
+            PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
           done
 
       # Jest's own exit code is deliberately NOT the job gate (issue #1144):
@@ -1023,10 +1008,10 @@ jobs:
         continue-on-error: true
         env:
           NAKAMA_HOST: localhost
-          NAKAMA_PORT: '7352'
+          NAKAMA_PORT: '7350'
           NAKAMA_SERVER_KEY: defaultkey
           TEST_DB_HOST: localhost
-          TEST_DB_PORT: '5438'
+          TEST_DB_PORT: '5432'
           TEST_DB_USER: postgres
           TEST_DB_PASSWORD: changeme
           TEST_DB_NAME: nakama
