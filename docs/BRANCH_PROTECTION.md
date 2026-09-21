@@ -50,6 +50,54 @@ gh pr view <number> --json headRefOid,mergeCommit       # does the PR head equal
 A merge commit that carries a same-subject commit as its second parent is the
 normal result of merging (not squashing) a PR — not a second landing.
 
+---
+
+## OWNER DECISION REQUIRED — Branch Protection (issue #1060)
+
+Branch protection on `main` cannot be enabled today because this repository is
+**private on GitHub Free**. The owner must choose one of the three options below.
+**Record the chosen option and its date in this file** when a decision is made.
+
+### Option A — Upgrade to a paid plan ✅ Recommended if repo must stay private
+
+- **What:** Upgrade to GitHub Pro (per-user, ~$4/mo) or GitHub Team (per-seat).
+- **Effect:** Keeps the repo private; branch protection becomes available and
+  enforceable immediately after applying the rules in this document.
+- **Action:** Settings → Billing → Upgrade plan; then apply rules via
+  Settings → Branches or the `branch-protection.yml` workflow.
+- **Pros:** Full protection without visibility change.
+- **Cons:** Ongoing cost.
+
+### Option B — Make the repository public ✅ Available on GitHub Free
+
+- **What:** Change repo visibility from private to public.
+- **Effect:** Branch protection is available on public repos with Free plan;
+  apply the rules in this document after making the repo public.
+- **Action:** Settings → Change visibility → Make public; then apply rules.
+  Consider whether game assets / secrets / history are safe to expose.
+- **Pros:** No cost; full protection available immediately.
+- **Cons:** Repository and full commit history become publicly visible.
+
+### Option C — Accept the risk and rely on compensating controls
+
+- **What:** Keep the repo private on Free plan; do not enable branch protection.
+  Accept that direct pushes to `main` remain possible and must be managed
+  through process instead of technical enforcement.
+- **Compensating controls already in place:**
+  - PR-gated AI workflow: the `ai-trailer-check` CI job (`.github/workflows/ci.yml`)
+    validates that every commit follows the `[AI-assisted]` + `AI Model:` / `Task:`
+    trailer convention before merging — see AGENTS.md "AI Agent-Assisted Development".
+  - Commit-window audit: the `ci-check-ai-trailers.sh` script walks commits on the
+    PR branch and rejects merges if trailers are missing (workflow: `ai-trailer-check`).
+  - `make commit-check MSG=<file>` validates commit messages before push.
+- **Action:** Select this option and record the decision date below.
+- **Pros:** No cost, no visibility change.
+- **Cons:** No technical barrier to direct pushes; relies entirely on process.
+- **Decision:** If chosen, add a line like:
+  > **Risk accepted** on `YYYY-MM-DD` by `<owner>` — option C selected.
+
+---
+
 ## Protected Branches
 
 - `main` (default branch)
