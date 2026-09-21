@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS weapon_balance_adjustments (
   adjustment_id TEXT PRIMARY KEY,
-  weapon_id TEXT NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
+  weapon_id UUID NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
   multiplier NUMERIC(5, 2) NOT NULL CHECK (multiplier > 0 AND multiplier <= 10.0),
   reason TEXT NOT NULL,
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -33,7 +33,7 @@ COMMENT ON COLUMN weapon_balance_adjustments.reverted_by IS 'Admin user who reve
 
 -- Weapon usage statistics for balance tuning
 CREATE TABLE IF NOT EXISTS weapon_usage_stats (
-  weapon_id TEXT NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
+  weapon_id UUID NOT NULL REFERENCES catalog(gear_id) ON DELETE CASCADE,
   matches_played INTEGER NOT NULL DEFAULT 0 CHECK (matches_played >= 0),
   wins INTEGER NOT NULL DEFAULT 0 CHECK (wins >= 0),
   losses INTEGER NOT NULL DEFAULT 0 CHECK (losses >= 0),
@@ -67,7 +67,7 @@ COMMENT ON COLUMN weapon_usage_stats.average_rating_diff IS 'Average rating diff
 
 -- Function to increment weapon usage stats
 CREATE OR REPLACE FUNCTION increment_weapon_usage(
-  p_weapon_id TEXT,
+  p_weapon_id UUID,
   p_match_result TEXT,
   p_rating_diff BIGINT
 ) RETURNS VOID AS $$
@@ -93,7 +93,7 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION increment_weapon_usage IS 'Increments weapon usage statistics after a match';
 
 -- Function to get current balance multiplier for a weapon
-CREATE OR REPLACE FUNCTION get_weapon_balance_multiplier(p_weapon_id TEXT) RETURNS NUMERIC(5, 2) AS $$
+CREATE OR REPLACE FUNCTION get_weapon_balance_multiplier(p_weapon_id UUID) RETURNS NUMERIC(5, 2) AS $$
 DECLARE
   v_multiplier NUMERIC(5, 2);
 BEGIN
