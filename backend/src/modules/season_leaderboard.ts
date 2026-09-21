@@ -611,7 +611,10 @@ export async function getPlayersLastActiveBatch(
       }
       let ts = 0;
       try {
-        const data = JSON.parse(entry.value) as Record<string, unknown>;
+        const data = JSON.parse(typeof entry.value === 'string' ? entry.value : '{}') as Record<
+          string,
+          unknown
+        >;
         const lastActive = data.last_active;
         const lastMatchTime = data.last_match_time;
         if (typeof lastActive === 'number') {
