@@ -1,4 +1,8 @@
-# Armored Archer — Mobile Beta Test Plan
+# ARCHIVED — Armored Archer — Mobile Beta Test Plan
+
+> **⚠️ Archived Document — Pre-v4.0.0 Milestone**
+>
+> This test plan was created for the mobile beta that ended in April 2026. The v4.0.0 release has superseded this milestone. This document is retained for historical reference only.
 
 **Version**: 1.0
 **Created**: 2026-04-19

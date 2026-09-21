@@ -1,4 +1,8 @@
-# Armored Archer — Closed-Beta Launch Checklist
+# ARCHIVED — Armored Archer — Closed-Beta Launch Checklist
+
+> **⚠️ Archived Document — Pre-v4.0.0 Milestone**
+>
+> This checklist was used for the closed-beta launch that ended in April 2026. The v4.0.0 release has superseded this milestone. This document is retained for historical reference only and should not be used as a live checklist.
 
 **Version**: 1.1
 **Created**: 2026-04-18

@@ -1,4 +1,8 @@
-# Armored Archer — Release Notes v3.6.0
+# ARCHIVED — Armored Archer — Release Notes v3.6.0
+
+> **⚠️ Archived Document — Pre-v4.0.0 Milestone**
+>
+> This release notes document is from the v3.6.0 soft-launch release candidate (April 2026) and is no longer current. The v4.0.0 release has superseded this milestone. This document is retained for historical reference only.
 
 **Version**: v3.6.0
 **Release Date**: April 2026

@@ -1,4 +1,8 @@
-# Usability Session Plan: First 15 Minutes & First Purchase
+# ARCHIVED — Usability Session Plan: First 15 Minutes & First Purchase
+
+> **⚠️ Archived Document — Pre-v4.0.0 Milestone**
+>
+> This usability session plan was conducted during Sprint 7 (Mobile Beta Readiness, April 2026). The v4.0.0 release has superseded this milestone. This document is retained for historical reference only.
 
 **Sprint:** Sprint 7 - Mobile Beta Readiness
 **Priority:** Stretch
