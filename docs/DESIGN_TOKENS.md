@@ -79,7 +79,7 @@ func _ready() -> void:
 | `COLOR_HEALTH_LOW` | `#EF4444` | Health bar (low) |
 | `COLOR_HEALTH_MEDIUM` | `#F59E0B` | Health bar (medium) |
 | `COLOR_MANA` | `#3B82F6` | Mana/energy |
-| `COLOR_GOLD` | `#F59E0B` | Gold currency |
+| `COLOR_GOLD` | `#F59E0B` | Coins currency |
 | `COLOR_GEMS` | `#8B5CF6` | Gem currency |
 | `COLOR_PLAYER` | `#22C55E` | Player indicators |
 | `COLOR_ENEMY` | `#EF4444` | Enemy indicators |
