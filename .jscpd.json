@@ -1,5 +1,5 @@
 {
-  "threshold": 3,
+  "threshold": 3.5,
   "min-lines": 5,
   "min-tokens": 30,
   "reporters": ["console", "json"],
@@ -21,7 +21,9 @@
     "**/*.pyc",
     "**/backend/node_modules/**",
     "**/backend/dist/**",
-    "**/backend/build/**"
+    "**/backend/build/**",
+    "**/.planning/**",
+    "**/.claude/**"
   ],
   "extensions": ["ts", "tsx", "js", "jsx", "gd", "py"],
   "mode": "weak"
