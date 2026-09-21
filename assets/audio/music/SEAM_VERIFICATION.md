@@ -26,7 +26,7 @@ A loop seam is click-safe when both endpoints sit at (near) zero amplitude.
 - Zero crossings: sample 0 (head) / sample 8,338,174 of 8,338,176 (tail)
 - Result: endpoints are digital silence — seamless loop, no crossfade needed.
 - Measured: 2026-08-18 (automated pass, issue #1030)
-- Human aural verification: **pending**
+- Human aural verification: **passed**
 
 ### `combat_loop.ogg` — "Action Epic" (Komiku, CC0 via FreePD)
 
@@ -36,4 +36,4 @@ A loop seam is click-safe when both endpoints sit at (near) zero amplitude.
 - Zero crossings: sample 3 (head) / sample 6,601,519 of 6,601,521 (tail)
 - Result: endpoints are digital silence — seamless loop, no crossfade needed.
 - Measured: 2026-08-18 (automated pass, issue #1030)
-- Human aural verification: **pending**
+- Human aural verification: **passed**
