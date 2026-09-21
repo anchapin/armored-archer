@@ -409,6 +409,23 @@ jobs:
         if: always() && env.ACT == 'true'
         run: echo "Skipping artifact upload in act environment"
 
+  bundle-size-gate:
+    name: Bundle Size Gate
+    runs-on: ubuntu-latest
+    needs: [bundle-size-check]
+    if: always()
+    steps:
+      - name: Check bundle-size-check result
+        run: |
+          RESULT=${{ needs.bundle-size-check.result }}
+          echo "bundle-size-check result: $RESULT"
+          if [ "$RESULT" != "success" ] && [ "$RESULT" != "skipped" ]; then
+            echo "Bundle size check failed - this PR cannot merge until bundle size is within limits"
+            echo "Run 'npm run build' locally and check bundle-size-limits.json for the budget"
+            exit 1
+          fi
+          echo "Bundle size check passed"
+
   godot-validate:
     name: Godot Project Validation
     runs-on: ubuntu-latest
