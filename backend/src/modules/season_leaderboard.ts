@@ -6,7 +6,7 @@
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { readAndParseStorage, toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
-import { calculateRank } from './matchmaker';
+import { calculateRank } from './rank';
 import { SeasonInfo } from './season_system';
 import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
 
