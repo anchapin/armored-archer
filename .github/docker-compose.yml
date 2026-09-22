@@ -60,6 +60,7 @@ services:
       - "/bin/sh"
       - "-ecx"
       - >
+        ls -la /nakama/data/modules/ &&
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
         exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false --logger.level DEBUG
     ports:
@@ -69,13 +70,8 @@ services:
     # runner). PREREQUISITE: backend/data/modules/index.js must exist; run
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
-    #
-    # TEMPORARILY DISABLED (debug run #1800): the bundle was built (17.41 MB
-    # on host) but /nakama/data/modules/ was EMPTY inside the container —
-    # volume mount silently failed and Nakama crashed before JS init. Testing
-    # whether Nakama starts cleanly WITHOUT the bundle to isolate the crash.
-    # volumes:
-    #   - ${PWD}/backend/data/modules:/nakama/data/modules:ro
+    volumes:
+      - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy
