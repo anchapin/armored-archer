@@ -928,6 +928,8 @@ jobs:
       # (combat / loot / season) 500 and every integration test fails.
       - name: Build Nakama bundle
         working-directory: ./backend
+        env:
+          HMAC_SECRET: ci-test-secret-do-not-use-in-production
         run: npm run build:full
 
       # act's runner image (catthehacker/ubuntu:act-latest) ships without
