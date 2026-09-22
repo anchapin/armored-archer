@@ -1044,31 +1044,39 @@ jobs:
           echo "=== Nakama bundle files ==="
           docker exec ci_nakama sh -c 'ls -la /nakama/data/modules/ 2>/dev/null || echo "No modules dir"' || echo "Cannot list modules"
           echo ""
-          echo "=== curl HTTP API ==="
-          curl -v http://127.0.0.1:7350/ 2>&1 | head -30 || echo "curl failed"
+          echo "=== curl HTTP API (main, with exit code) ==="
+          set +e
+          curl -s -o /dev/null -w "HTTP:%{http_code} exit:%{exit_code}" http://127.0.0.1:7350/
+          curl_exit=$?
+          echo " (curl exit: $curl_exit)"
+          set -e
           echo ""
-          echo "=== curl HTTP API (console) ==="
-          curl -v http://127.0.0.1:7351/ 2>&1 | head -10 || echo "curl failed"
+          echo "=== curl HTTP API (console, with exit code) ==="
+          set +e
+          curl -s -o /dev/null -w "HTTP:%{http_code} exit:%{exit_code}" http://127.0.0.1:7351/
+          curl_exit=$?
+          echo " (curl exit: $curl_exit)"
+          set -e
 
       - name: Wait for Nakama to be ready
         run: |
-          echo "=== Immediate curl test ==="
-          curl -s -o /dev/null -w "HTTP %{http_code} exit:%{exit_code}" http://127.0.0.1:7350/ || echo " -> curl failed"
-          echo "=== End immediate curl test ==="
-          for i in $(seq 1 60); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7350/ 2>/dev/null)
-            if [ "$code" = "200" ]; then
-              echo "Nakama API reachable (HTTP $code)"
+          echo "Checking Nakama readiness via docker exec..."
+          succeeded=0
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60; do
+            # Use docker exec to run nakama healthcheck inside the container
+            if docker exec ci_nakama /nakama/nakama healthcheck >/dev/null 2>&1; then
+              echo "Nakama healthcheck passed"
+              succeeded=1
               break
             fi
             echo "Waiting for Nakama... ($i/60)"
             sleep 2
           done
-          if [ "$i" = "60" ]; then
+          if [ "$succeeded" = "0" ]; then
             echo "ERROR: Nakama did not become ready after 120 seconds"
             exit 1
           fi
-          echo "Nakama healthcheck passed, waiting 30s for JS runtime initialization..."
+          echo "Nakama ready, waiting 30s for JS runtime initialization..."
           sleep 30
 
       - name: Run game schema migrations
