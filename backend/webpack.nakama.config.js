@@ -63,6 +63,10 @@ module.exports = {
     'net': 'commonjs net',
     'tls': 'commonjs tls',
     'child_process': 'commonjs child_process',
+    // Third-party packages not installed in node_modules / not bundled.
+    // These are wrapped in try/catch in the source so Nakama runs without them.
+    'firebase-admin': 'commonjs firebase-admin',
+    '@opentelemetry/winston-transport': 'commonjs @opentelemetry/winston-transport',
   },
   // Use babel-loader to transpile to ES5 during bundling
   module: {
