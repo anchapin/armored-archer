@@ -1060,29 +1060,13 @@ jobs:
 
       - name: Wait for Nakama to be ready
         run: |
-          # Wait for the Docker-level healthcheck to pass. The Nakama container
-          # has a healthcheck: test ["CMD", "/nakama/nakama", "healthcheck"]
-          # (gRPC-based). Once Docker reports healthy, the JS bundle is loaded.
-          echo "Waiting for Nakama Docker healthcheck to pass..."
-          succeeded=0
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
-            health_status=$(docker inspect --format='{{.State.Health.Status}}' ci_nakama 2>/dev/null || echo "none")
-            echo "Attempt $i/30: docker health=$health_status"
-            if [ "$health_status" = "healthy" ]; then
-              echo "Nakama Docker healthcheck passed"
-              succeeded=1
-              break
-            fi
-            sleep 10
-          done
-          if [ "$succeeded" = "0" ]; then
-            echo "ERROR: Nakama Docker healthcheck did not pass after 300s"
-            docker inspect ci_nakama --format='{{json .State}}' | jq .
-            docker logs ci_nakama 2>&1 | tail -20
-            exit 1
-          fi
-          echo "Nakama healthy, giving 30s for JS bundle initialization..."
-          sleep 30
+          # Nakama HTTP server starts quickly but JS bundle initialization takes
+          # ~15-20s. The bundle loads synchronously at startup via InitModule,
+          # after which HTTP 200 confirms full readiness. We verify via step 11's
+          # curl and additionally give 60s for the bundle to finish initializing.
+          echo "Nakama HTTP API was confirmed up in step 11."
+          echo "Giving Nakama 60s for JS bundle initialization..."
+          sleep 60
 
       - name: Run game schema migrations
         working-directory: ./backend/data
