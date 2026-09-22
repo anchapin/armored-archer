@@ -926,10 +926,17 @@ jobs:
       # docker-compose started Nakama container mounts as a volume (see the
       # Start Nakama and Postgres step below). Without this, custom RPCs
       # (combat / loot / season) 500 and every integration test fails.
+      - name: Inject HMAC_SECRET into .env for CI bundle build
+        working-directory: ./backend
+        run: |
+          # transpile-bundle.js snapshots .env at build time (file is the allowlist).
+          # Add HMAC_SECRET here so it gets embedded into the Nakama bundle.
+          if ! grep -q "^HMAC_SECRET=" .env; then
+            echo "HMAC_SECRET=ci-test-secret-do-not-use-in-production" >> .env
+          fi
+
       - name: Build Nakama bundle
         working-directory: ./backend
-        env:
-          HMAC_SECRET: ci-test-secret-do-not-use-in-production
         run: npm run build:full
 
       # act's runner image (catthehacker/ubuntu:act-latest) ships without
