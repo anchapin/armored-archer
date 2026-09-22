@@ -59,24 +59,9 @@ services:
     entrypoint:
       - "/bin/sh"
       - "-ecx"
-      - |
-        ls -la /nakama/data/modules/ &&
+      - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        cat << 'SCRIPT' > /tmp/nakama.sh
-        #!/bin/sh
-        set -x
-        /nakama/nakama \
-          --database.address "postgres://postgres:changeme@postgres:5432/nakama" \
-          --socket.server_key defaultkey \
-          --runtime.js_read_only_globals=false \
-          --logger.level DEBUG \
-          2>&1
-        CODE=$?
-        echo "NAKAMA_EXIT:$CODE"
-        exit $CODE
-        SCRIPT
-        chmod +x /tmp/nakama.sh &&
-        ( /tmp/nakama.sh & echo $! > /tmp/nakama.pid; sleep 3; NAKAMA_PID=$(cat /tmp/nakama.pid 2>/dev/null); kill -0 $NAKAMA_PID 2>/dev/null && echo "NAKAMA_RUNNING" || echo "NAKAMA_STOPPED"; wait $NAKAMA_PID 2>/dev/null; echo "NAKAMA_SUPERVISOR_DONE" )
+        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false
     ports:
       - "7350:7350"
       - "7351:7351"
@@ -96,6 +81,12 @@ services:
       retries: 60
       start_period: 60s
     environment:
+      # NOTE: The JS bundle's process.env is baked at BUILD time from backend/.env.
+      # Nakama runtime env vars (NAKAMA_SERVER_KEY, HMAC_SECRET) do NOT reach
+      # the bundle's static process.env. Both must be in backend/.env before
+      # `npm run build:full` so they are embedded. The values below match what
+      # is injected by the CI workflow's "Inject required env vars into .env"
+      # step so local dev matches CI behavior.
       NAKAMA_SERVER_KEY: defaultkey
       HMAC_SECRET: ci-test-secret-do-not-use-in-production
     networks:
