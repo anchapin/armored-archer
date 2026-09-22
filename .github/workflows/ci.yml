@@ -886,6 +886,11 @@ jobs:
       contents: read
       pull-requests: write
       checks: write
+    env:
+      # HMAC_SECRET is embedded into the Nakama bundle at build time by
+      # transpile-bundle.js (APP_ENV snapshot). The same value must be passed
+      # to the Nakama container at runtime so anti_cheat accepts it.
+      HMAC_SECRET: ci-test-secret-do-not-use-in-production
 
     steps:
       - uses: actions/checkout@v4
