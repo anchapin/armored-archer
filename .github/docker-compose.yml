@@ -76,8 +76,7 @@ services:
         exit $CODE
         SCRIPT
         chmod +x /tmp/nakama.sh &&
-        ( /tmp/nakama.sh & NAKAMA_PID=$!; sleep 3; kill -0 $NAKAMA_PID 2>/dev/null && echo "NAKAMA_RUNNING" || echo "NAKAMA_STOPPED"; wait $NAKAMA_PID )
-        echo "NAKAMA_SUPERVISOR_DONE"
+        ( /tmp/nakama.sh & echo $! > /tmp/nakama.pid; sleep 3; NAKAMA_PID=$(cat /tmp/nakama.pid 2>/dev/null); kill -0 $NAKAMA_PID 2>/dev/null && echo "NAKAMA_RUNNING" || echo "NAKAMA_STOPPED"; wait $NAKAMA_PID 2>/dev/null; echo "NAKAMA_SUPERVISOR_DONE" )
     ports:
       - "7350:7350"
       - "7351:7351"
