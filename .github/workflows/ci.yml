@@ -950,6 +950,21 @@ jobs:
             # not override the baked constant).
             echo "NAKAMA_SERVER_KEY=ci-test-server-key-do-not-use-in-production" >> .env
           fi
+          # Session encryption keys must also be non-default in production.
+          # validateSessionKeys() in src/config/index.ts throws when any of
+          # SESSION_ENCRYPTION_KEY, REFRESH_ENCRYPTION_KEY, or TOKEN_ENCRYPTION_KEY
+          # retains a default value ('default-token-key', 'default-refresh-key')
+          # and config.environment === 'production' (which the bundle is, due to
+          # webpack mode:production baking process.env.NODE_ENV='production').
+          if [ ! -f .env ] || ! grep -q "^SESSION_ENCRYPTION_KEY=" .env; then
+            echo "SESSION_ENCRYPTION_KEY=ci-test-session-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^REFRESH_ENCRYPTION_KEY=" .env; then
+            echo "REFRESH_ENCRYPTION_KEY=ci-test-refresh-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^TOKEN_ENCRYPTION_KEY=" .env; then
+            echo "TOKEN_ENCRYPTION_KEY=ci-test-token-encryption-key-do-not-use-in-production" >> .env
+          fi
 
       - name: Build Nakama bundle
         working-directory: ./backend
