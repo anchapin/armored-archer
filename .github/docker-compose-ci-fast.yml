@@ -62,7 +62,7 @@ services:
       - "7350:7350"
       - "7351:7351"
     environment:
-      NAKAMA_SERVER_KEY: defaultkey
+      NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
       # Connect to PostgreSQL without auth (faster)
       NAKAMA_DATABASE_ADDRESS: postgres://postgres@postgres:5432/nakama
     # Faster health check

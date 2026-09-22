@@ -189,7 +189,7 @@ jobs:
         env:
           NAKAMA_HOST: localhost
           NAKAMA_PORT: 7350
-          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
           TEST_DB_HOST: localhost
           TEST_DB_PORT: 5436
           TEST_DB_USER: postgres

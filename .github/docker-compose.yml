@@ -85,7 +85,7 @@ services:
       # `npm run build:full` so they are embedded. The values below match what
       # is injected by the CI workflow's "Inject required env vars into .env"
       # step so local dev matches CI behavior.
-      NAKAMA_SERVER_KEY: defaultkey
+      NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
       HMAC_SECRET: ci-test-secret-do-not-use-in-production
     networks:
       - ci-network
