@@ -1088,15 +1088,27 @@ jobs:
       # "Summarize integration results" step below, which parses the junit
       # XML and fails the job on any failure — the gate therefore consumes
       # the junit results, not the unconstrained jest exit code.
+      - name: Verify Nakama is reachable before running integration tests
+        run: |
+          echo "Checking Nakama HTTP API reachability before tests..."
+          http_code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7350/ 2>/dev/null || echo "000")
+          echo "HTTP response code: $http_code"
+          if [ "$http_code" != "200" ]; then
+            echo "ERROR: Nakama HTTP API not reachable at http://127.0.0.1:7350/"
+            docker logs ci_nakama --tail 50
+            exit 1
+          fi
+          echo "Nakama HTTP API is reachable, proceeding to tests..."
+
       - name: Run integration tests
         id: integration-tests
         working-directory: ./backend
         continue-on-error: true
         env:
-          NAKAMA_HOST: localhost
+          NAKAMA_HOST: 127.0.0.1
           NAKAMA_PORT: '7350'
           NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
-          TEST_DB_HOST: localhost
+          TEST_DB_HOST: 127.0.0.1
           TEST_DB_PORT: '5432'
           TEST_DB_USER: postgres
           TEST_DB_PASSWORD: changeme
