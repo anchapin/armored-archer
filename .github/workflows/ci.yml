@@ -1052,11 +1052,10 @@ jobs:
 
       - name: Wait for Nakama to be ready
         run: |
-          # /nakama/nakama healthcheck requires its own CLI subcommand and a
-          # reachable :7350 inside the container. From the runner we only
-          # need the HTTP API to respond; the game-bundle load is best-
-          # effort because Nakama's healthcheck doesn't reflect it.
-          for i in {1..60}; do
+          echo "=== Immediate curl test ==="
+          curl -s -o /dev/null -w "HTTP %{http_code} exit:%{exit_code}" http://127.0.0.1:7350/ || echo " -> curl failed"
+          echo "=== End immediate curl test ==="
+          for i in $(seq 1 60); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7350/ 2>/dev/null)
             if [ "$code" = "200" ]; then
               echo "Nakama API reachable (HTTP $code)"
@@ -1065,12 +1064,10 @@ jobs:
             echo "Waiting for Nakama... ($i/60)"
             sleep 2
           done
-          # Exit if Nakama never became ready
           if [ "$i" = "60" ]; then
             echo "ERROR: Nakama did not become ready after 120 seconds"
             exit 1
           fi
-          # Give Nakama additional time to fully initialize the JS runtime
           echo "Nakama healthcheck passed, waiting 30s for JS runtime initialization..."
           sleep 30
 
