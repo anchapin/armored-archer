@@ -44,15 +44,12 @@ services:
   # service the same way backend/docker-compose.yml does it (migrate up, then
   # serve; DSN via the compose-network service hostname).
   #
-  # Flags (issue #1135 / fix/ci-infrastructure):
-  #   --socket.server_key: nakama does NOT read NAKAMA_SERVER_KEY from the
-  #     environment variable; the flag is required (backend/docker-compose.yml
-  #     line 452 notes this explicitly).
-  #   --runtime.js_read_only_globals=false: transpile-bundle.js generates a
-  #     two-phase RPC bridge that overwrites stub globals with real handlers
-  #     at eval-time (phase 2). Without this flag, Nakama's goja runtime
-  #     silently refuses the overwrites → InitModule fails → HTTP server
-  #     never starts → "Connection reset by peer" on port 7350.
+  # Config file (issue #1135 / fix/ci-infrastructure):
+  #   The -c /nakama/nakama.yml uses backend/nakama.ci.yml which sets
+  #   js_entrypoint: "modules/index.js" so Nakama loads the JS bundle.
+  #   Without this, Nakama defaults to js_entrypoint="" and the bundle is
+  #   never loaded → InitModule never runs → HTTP server never starts →
+  #   "ECONNREFUSED" on port 7350.
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: ci_nakama
@@ -61,7 +58,7 @@ services:
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false
+        exec /nakama/nakama -c /nakama/nakama.yml --runtime.js_read_only_globals=false
     ports:
       - "7350:7350"
       - "7351:7351"
@@ -70,6 +67,7 @@ services:
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
     volumes:
+      - ${PWD}/backend/nakama.ci.yml:/nakama/nakama.yml:ro
       - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
