@@ -62,15 +62,17 @@ services:
       - |
         ls -la /nakama/data/modules/ &&
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        ( set +e; /nakama/nakama
-          --database.address "postgres://postgres:changeme@postgres:5432/nakama"
-          --socket.server_key defaultkey
-          --runtime.js_read_only_globals=false
-          --logger.level DEBUG
+        cat << 'SCRIPT' > /tmp/nakama.sh
+        #!/bin/sh
+        set -x
+        exec /nakama/nakama \
+          --database.address "postgres://postgres:changeme@postgres:5432/nakama" \
+          --socket.server_key defaultkey \
+          --runtime.js_read_only_globals=false \
+          --logger.level DEBUG \
           2>&1
-        )
-        NAKAMA_EXIT=$?
-        echo "NAKAMA_EXIT:$NAKAMA_EXIT"
+        SCRIPT
+        chmod +x /tmp/nakama.sh && /tmp/nakama.sh; echo "NAKAMA_EXIT:$?"
     ports:
       - "7350:7350"
       - "7351:7351"
@@ -78,8 +80,12 @@ services:
     # runner). PREREQUISITE: backend/data/modules/index.js must exist; run
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
-    volumes:
-      - ${PWD}/backend/data/modules:/nakama/data/modules:ro
+    #
+    # DISABLED (debug run #1808): Nakama crashes before producing ANY output
+    # with bundle mounted. Test: does Nakama start + stay up WITHOUT bundle
+    # but WITH --logger.level DEBUG flag?
+    # volumes:
+    #   - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy
