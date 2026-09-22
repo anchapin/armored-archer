@@ -65,14 +65,19 @@ services:
         cat << 'SCRIPT' > /tmp/nakama.sh
         #!/bin/sh
         set -x
-        exec /nakama/nakama \
+        /nakama/nakama \
           --database.address "postgres://postgres:changeme@postgres:5432/nakama" \
           --socket.server_key defaultkey \
           --runtime.js_read_only_globals=false \
           --logger.level DEBUG \
           2>&1
+        CODE=$?
+        echo "NAKAMA_EXIT:$CODE"
+        exit $CODE
         SCRIPT
-        chmod +x /tmp/nakama.sh && /tmp/nakama.sh; echo "NAKAMA_EXIT:$?"
+        chmod +x /tmp/nakama.sh &&
+        ( /tmp/nakama.sh & NAKAMA_PID=$!; sleep 3; kill -0 $NAKAMA_PID 2>/dev/null && echo "NAKAMA_RUNNING" || echo "NAKAMA_STOPPED"; wait $NAKAMA_PID )
+        echo "NAKAMA_SUPERVISOR_DONE"
     ports:
       - "7350:7350"
       - "7351:7351"
@@ -80,12 +85,8 @@ services:
     # runner). PREREQUISITE: backend/data/modules/index.js must exist; run
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
-    #
-    # DISABLED (debug run #1808): Nakama crashes before producing ANY output
-    # with bundle mounted. Test: does Nakama start + stay up WITHOUT bundle
-    # but WITH --logger.level DEBUG flag?
-    # volumes:
-    #   - ${PWD}/backend/data/modules:/nakama/data/modules:ro
+    volumes:
+      - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy
