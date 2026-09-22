@@ -1057,7 +1057,7 @@ jobs:
           # need the HTTP API to respond; the game-bundle load is best-
           # effort because Nakama's healthcheck doesn't reflect it.
           for i in {1..60}; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7350/ 2>/dev/null)
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7350/ 2>/dev/null)
             if [ "$code" = "200" ]; then
               echo "Nakama API reachable (HTTP $code)"
               break
