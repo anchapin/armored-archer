@@ -71,8 +71,14 @@ services:
     # runner). PREREQUISITE: backend/data/modules/index.js must exist; run
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
-    volumes:
-      - ${PWD}/backend/data/modules:/nakama/data/modules:ro
+    #
+    # DISABLED (debug run #1803): Nakama binds 7350 (TCP accept) then crashes
+    # mid-HTTP-server-start when the bundle is loaded. The crash is in
+    # nakama's HTTP router initialization triggered by the bundle, not a
+    # missing/bundle-not-found issue (bundle IS present, 18 MB confirmed).
+    # Test: does nakama stay up WITHOUT the bundle mounted?
+    # volumes:
+    #   - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy
