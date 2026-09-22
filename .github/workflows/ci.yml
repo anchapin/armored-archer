@@ -1011,24 +1011,17 @@ jobs:
             sleep 2
           done
 
-      - name: Wait for Nakama to be ready
-        run: |
-          # /nakama/nakama healthcheck requires its own CLI subcommand and a
-          # reachable :7350 inside the container. From the runner we only
-          # need the HTTP API to respond; the game-bundle load is best-
-          # effort because Nakama's healthcheck doesn't reflect it.
-          for i in {1..60}; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7350/ 2>/dev/null || echo "000")
-            if [ "$code" != "000" ] && [ "$code" != "" ]; then
-              echo "Nakama API reachable (HTTP $code)"
-              break
-            fi
-            echo "Waiting for Nakama... ($i/60)"
-            sleep 2
-          done
-
       - name: Debug Nakama startup (container logs + port check)
         run: |
+          echo "=== OOM Killer check (dmesg) ==="
+          sudo dmesg | grep -iE "killed|oom|memory" | tail -10 || echo "Cannot read dmesg"
+          echo ""
+          echo "=== Nakama container resource usage ==="
+          docker stats ci_nakama --no-stream 2>/dev/null || echo "Cannot get container stats"
+          echo ""
+          echo "=== Nakama container memory info ==="
+          docker exec ci_nakama sh -c 'cat /proc/meminfo 2>/dev/null | head -10' || echo "Cannot read meminfo"
+          echo ""
           echo "=== Nakama container logs (combined stdout+stderr) ==="
           docker logs ci_nakama --tail 200 2>&1 || echo "No logs available"
           echo ""
@@ -1056,6 +1049,30 @@ jobs:
           echo ""
           echo "=== curl HTTP API (console) ==="
           curl -v http://127.0.0.1:7351/ 2>&1 | head -10 || echo "curl failed"
+
+      - name: Wait for Nakama to be ready
+        run: |
+          # /nakama/nakama healthcheck requires its own CLI subcommand and a
+          # reachable :7350 inside the container. From the runner we only
+          # need the HTTP API to respond; the game-bundle load is best-
+          # effort because Nakama's healthcheck doesn't reflect it.
+          for i in {1..60}; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7350/ 2>/dev/null)
+            if [ "$code" = "200" ]; then
+              echo "Nakama API reachable (HTTP $code)"
+              break
+            fi
+            echo "Waiting for Nakama... ($i/60)"
+            sleep 2
+          done
+          # Exit if Nakama never became ready
+          if [ "$i" = "60" ]; then
+            echo "ERROR: Nakama did not become ready after 120 seconds"
+            exit 1
+          fi
+          # Give Nakama additional time to fully initialize the JS runtime
+          echo "Nakama healthcheck passed, waiting 30s for JS runtime initialization..."
+          sleep 30
 
       - name: Run game schema migrations
         working-directory: ./backend/data
