@@ -43,6 +43,16 @@ services:
   # Nakama game server - standard heroiclabs image, wired to the postgres
   # service the same way backend/docker-compose.yml does it (migrate up, then
   # serve; DSN via the compose-network service hostname).
+  #
+  # Flags (issue #1135 / fix/ci-infrastructure):
+  #   --socket.server_key: nakama does NOT read NAKAMA_SERVER_KEY from the
+  #     environment variable; the flag is required (backend/docker-compose.yml
+  #     line 452 notes this explicitly).
+  #   --runtime.js_read_only_globals=false: transpile-bundle.js generates a
+  #     two-phase RPC bridge that overwrites stub globals with real handlers
+  #     at eval-time (phase 2). Without this flag, Nakama's goja runtime
+  #     silently refuses the overwrites → InitModule fails → HTTP server
+  #     never starts → "Connection reset by peer" on port 7350.
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: ci_nakama
@@ -51,7 +61,7 @@ services:
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama"
+        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false
     ports:
       - "7350:7350"
       - "7351:7351"
@@ -72,6 +82,7 @@ services:
       start_period: 60s
     environment:
       NAKAMA_SERVER_KEY: defaultkey
+      HMAC_SECRET: ci-test-secret-do-not-use-in-production
     networks:
       - ci-network
 
