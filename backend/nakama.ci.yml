@@ -19,7 +19,7 @@ runtime:
   http_key: "ci-test-server-key-do-not-use-in-production"
 
 socket:
-  server_key: defaultkey
+  server_key: ci-test-server-key-do-not-use-in-production
   port: 7350
   max_message_size_bytes: 4096
   read_buffer_size_bytes: 4096
