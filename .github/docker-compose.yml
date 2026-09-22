@@ -57,6 +57,8 @@ services:
       resources:
         limits:
           memory: 2G
+    ulimits:
+      stack: 134217728
     entrypoint:
       - "/bin/sh"
       - "-ecx"
