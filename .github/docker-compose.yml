@@ -59,20 +59,10 @@ services:
     entrypoint:
       - "/bin/sh"
       - "-ecx"
-      - >
+      - |
         ls -la /nakama/data/modules/ &&
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        bash -c '
-          set +e
-          /nakama/nakama \
-            --database.address "postgres://postgres:changeme@postgres:5432/nakama" \
-            --socket.server_key defaultkey \
-            --runtime.js_read_only_globals=false \
-            --logger.level DEBUG \
-            2>&1
-          CODE=$?
-          echo "NAKAMA_DONE:$CODE"
-        ' || true
+        bash -c 'set +e; /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false --logger.level DEBUG 2>&1; CODE=$?; echo "NAKAMA_DONE:$CODE"' || true
     ports:
       - "7350:7350"
       - "7351:7351"
