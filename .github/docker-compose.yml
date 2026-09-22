@@ -26,19 +26,16 @@ services:
   postgres:
     image: postgres:14-alpine
     container_name: ci_postgres
+    network_mode: host
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: nakama
       POSTGRES_PASSWORD: changeme
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "nakama"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - ci-network
 
   # Nakama game server - standard heroiclabs image, wired to the postgres
   # service the same way backend/docker-compose.yml does it (migrate up, then
@@ -50,9 +47,16 @@ services:
   #   Without this, Nakama defaults to js_entrypoint="" and the bundle is
   #   never loaded → InitModule never runs → HTTP server never starts →
   #   "ECONNREFUSED" on port 7350.
+  #
+  # Network mode (issue #1331):
+  #   bridge networking with port publishing (7350:7350) causes Nakama's HTTP
+  #   server to be unreachable from the runner even though it starts and
+  #   responds to a single curl. Using network_mode: host binds directly to
+  #   the host's network stack, eliminating Docker port-mapping issues.
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: ci_nakama
+    network_mode: host
     deploy:
       resources:
         limits:
@@ -63,11 +67,8 @@ services:
       - "/bin/sh"
       - "-ecx"
       - >
-        /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
+        /nakama/nakama migrate up --database.address "postgres://postgres:changeme@127.0.0.1:5432/nakama" &&
         exec env HMAC_SECRET=ci-test-secret-do-not-use-in-production /nakama/nakama -config /nakama/nakama.yml --runtime.js_read_only_globals=false
-    ports:
-      - "7350:7350"
-      - "7351:7351"
     # Bundle mount: mirrors .github/workflows/ci.yml:888-893 (the hosted
     # runner). PREREQUISITE: backend/data/modules/index.js must exist; run
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
@@ -78,12 +79,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/nakama/nakama", "healthcheck"]
-      interval: 10s
-      timeout: 10s
-      retries: 60
-      start_period: 60s
     environment:
       # NOTE: The JS bundle's process.env is baked at BUILD time from backend/.env.
       # Nakama runtime env vars (NAKAMA_SERVER_KEY, HMAC_SECRET) do NOT reach
@@ -93,9 +88,3 @@ services:
       # step so local dev matches CI behavior.
       NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
       HMAC_SECRET: ci-test-secret-do-not-use-in-production
-    networks:
-      - ci-network
-
-networks:
-  ci-network:
-    driver: bridge
