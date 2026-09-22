@@ -1060,24 +1060,25 @@ jobs:
 
       - name: Wait for Nakama to be ready
         run: |
-          echo "Checking Nakama HTTP API reachability..."
-          succeeded=0
+          # Nakama HTTP gateway starts before the JS bundle finishes loading.
+          # Poll until reachable, then give extra time for bundle init.
+          echo "Waiting for Nakama HTTP API to be reachable..."
+          reachable=0
           for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60; do
-            http_code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7350/ 2>/dev/null)
-            if [ "$http_code" = "200" ]; then
-              echo "Nakama HTTP API reachable (HTTP $http_code)"
-              succeeded=1
+            if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7350/ | grep -q "200"; then
+              echo " HTTP 200 - Nakama reachable"
+              reachable=1
               break
             fi
-            echo "Waiting for Nakama... ($i/60, got HTTP $http_code)"
+            echo " ($i/60)"
             sleep 2
           done
-          if [ "$succeeded" = "0" ]; then
-            echo "ERROR: Nakama did not become reachable after 120 seconds"
+          if [ "$reachable" = "0" ]; then
+            echo "ERROR: Nakama HTTP API never reached 200 after 120s"
             exit 1
           fi
-          echo "Nakama reachable, waiting 30s for JS runtime to finish initializing..."
-          sleep 30
+          echo "Giving Nakama 60s to finish JS bundle initialization..."
+          sleep 60
 
       - name: Run game schema migrations
         working-directory: ./backend/data
