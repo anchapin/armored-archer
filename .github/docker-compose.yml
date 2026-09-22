@@ -51,7 +51,7 @@ services:
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama"
+        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --bind "0.0.0.0"
     ports:
       - "7350:7350"
       - "7351:7351"

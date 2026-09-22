@@ -982,6 +982,36 @@ jobs:
             sleep 2
           done
 
+      - name: Debug Nakama startup (container logs + port check)
+        run: |
+          echo "=== Nakama container logs (combined stdout+stderr) ==="
+          docker logs ci_nakama --tail 200 2>&1 || echo "No logs available"
+          echo ""
+          echo "=== Nakama process list (PIDs) ==="
+          docker exec ci_nakama sh -c 'ls -la /proc/ | grep -E "^d|^l" | head -20' 2>/dev/null || echo "Cannot list /proc"
+          docker exec ci_nakama sh -c 'ls -la /proc/*/exe 2>/dev/null | head -10' 2>/dev/null || echo "Cannot get process executables"
+          echo ""
+          echo "=== Nakama network connections ==="
+          docker exec ci_nakama sh -c 'cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | head -30' || echo "Cannot read /proc/net/tcp"
+          echo ""
+          echo "=== Nakama port binding (ss -tlnp) ==="
+          docker exec ci_nakama ss -tlnp 2>/dev/null || echo "ss not available"
+          echo ""
+          echo "=== Nakama environment (HMAC_SECRET check) ==="
+          docker exec ci_nakama sh -c 'env | grep -i hmac' 2>/dev/null || echo "Cannot get env"
+          echo ""
+          echo "=== Nakama nakama.yaml config ==="
+          docker exec ci_nakama sh -c 'cat /nakama/data/modules/nakama.yml 2>/dev/null || cat /nakama/nakama.yml 2>/dev/null || echo "No nakama.yml found"' || echo "Cannot read config"
+          echo ""
+          echo "=== Nakama bundle files ==="
+          docker exec ci_nakama sh -c 'ls -la /nakama/data/modules/ 2>/dev/null || echo "No modules dir"' || echo "Cannot list modules"
+          echo ""
+          echo "=== curl HTTP API ==="
+          curl -v http://127.0.0.1:7350/ 2>&1 | head -30 || echo "curl failed"
+          echo ""
+          echo "=== curl HTTP API (console) ==="
+          curl -v http://127.0.0.1:7351/ 2>&1 | head -10 || echo "curl failed"
+
       - name: Run game schema migrations
         working-directory: ./backend/data
         run: |

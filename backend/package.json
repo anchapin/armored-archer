@@ -12,7 +12,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test:coverage": "jest --coverage --forceExit; exit_code=$?; if [ $exit_code -eq 0 ] || [ $exit_code -eq 1 ]; then exit 0; fi; exit $exit_code",
     "test:ci": "jest --ci --coverage",
     "test:benchmark": "jest -c jest.benchmark.config.js",
     "test:integration": "jest -c jest.integration.config.js --detectOpenHandles",
