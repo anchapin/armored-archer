@@ -1060,32 +1060,28 @@ jobs:
 
       - name: Wait for Nakama to be ready
         run: |
-          # Nakama binds to 0.0.0.0 inside the container, published to 127.0.0.1:7350
-          # on the host. In GitHub Actions, Docker port-mapping to 127.0.0.1 can be
-          # unreliable. Instead, resolve the container's internal IP and curl that.
-          echo "Waiting for Nakama to start (max 5 minutes)..."
+          # Wait for the Docker-level healthcheck to pass. The Nakama container
+          # has a healthcheck: test ["CMD", "/nakama/nakama", "healthcheck"]
+          # (gRPC-based). Once Docker reports healthy, the JS bundle is loaded.
+          echo "Waiting for Nakama Docker healthcheck to pass..."
           succeeded=0
           for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
-            nakama_ip=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ci_nakama 2>/dev/null || echo "")
-            if [ -n "$nakama_ip" ]; then
-              http_code=$(curl -s -o /dev/null -w '%{http_code}' "http://${nakama_ip}:7350/" 2>/dev/null || echo "000")
-              echo "Attempt $i/30: nakama_ip=$nakama_ip http=$http_code"
-              if [ "$http_code" = "200" ]; then
-                echo "Nakama HTTP API reachable at $nakama_ip:7350"
-                succeeded=1
-                break
-              fi
-            else
-              echo "Attempt $i/30: container not ready yet"
+            health_status=$(docker inspect --format='{{.State.Health.Status}}' ci_nakama 2>/dev/null || echo "none")
+            echo "Attempt $i/30: docker health=$health_status"
+            if [ "$health_status" = "healthy" ]; then
+              echo "Nakama Docker healthcheck passed"
+              succeeded=1
+              break
             fi
             sleep 10
           done
           if [ "$succeeded" = "0" ]; then
-            echo "ERROR: Nakama never became reachable after 300s"
+            echo "ERROR: Nakama Docker healthcheck did not pass after 300s"
             docker inspect ci_nakama --format='{{json .State}}' | jq .
+            docker logs ci_nakama 2>&1 | tail -20
             exit 1
           fi
-          echo "Nakama reachable, giving 30s for JS bundle initialization..."
+          echo "Nakama healthy, giving 30s for JS bundle initialization..."
           sleep 30
 
       - name: Run game schema migrations
