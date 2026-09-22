@@ -10,7 +10,8 @@ console:
   write_timeout: 10
 
 runtime:
-  env: []
+  env:
+    - HMAC_SECRET=ci-test-secret-do-not-use-in-production
   path: /nakama/data
   # Go backend disabled - built with incompatible Go version
   # go_entrypoint: "modules/server.so"

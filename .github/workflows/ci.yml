@@ -935,10 +935,13 @@ jobs:
           # and HMAC_SECRET must be in .env BEFORE the build so they are embedded.
           # (docker-compose --socket.server_key does NOT reach the JS runtime's
           # process.env — the bundle's config reads process.env.NAKAMA_SERVER_KEY.)
-          if ! grep -q "^HMAC_SECRET=" .env; then
+          # Use [ ! -f .env ] || prefix so the grep is only run when .env EXISTS.
+          # Without this, `grep -q "^HMAC_SECRET=" .env` exits 1 when .env is absent,
+          # and `set -e` (shell option) aborts the script before the echo runs.
+          if [ ! -f .env ] || ! grep -q "^HMAC_SECRET=" .env; then
             echo "HMAC_SECRET=ci-test-secret-do-not-use-in-production" >> .env
           fi
-          if ! grep -q "^NAKAMA_SERVER_KEY=" .env; then
+          if [ ! -f .env ] || ! grep -q "^NAKAMA_SERVER_KEY=" .env; then
             # Use a non-default key so validateRequiredConfig() does not throw
             # in the baked-in 'production' environment (webpack mode:production
             # bakes process.env.NODE_ENV || 'development' as 'production' since
