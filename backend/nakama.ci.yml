@@ -15,6 +15,7 @@ runtime:
   # Go backend disabled - built with incompatible Go version
   # go_entrypoint: "modules/server.so"
   js_entrypoint: "modules/index.js"
+  http_key: "ci-test-server-key-do-not-use-in-production"
 
 socket:
   server_key: defaultkey
