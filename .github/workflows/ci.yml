@@ -1046,9 +1046,8 @@ jobs:
           echo ""
           echo "=== curl HTTP API (main, with exit code) ==="
           set +e
-          curl -s -o /dev/null -w "HTTP:%{http_code} exit:%{exit_code}" http://127.0.0.1:7350/
-          curl_exit=$?
-          echo " (curl exit: $curl_exit)"
+          curl -s -o /dev/null -w "HTTP:%{http_code}" http://127.0.0.1:7350/
+          echo ""
           echo "=== Nakama container status ==="
           docker inspect ci_nakama --format='{{.State.Status}} {{.State.Health.Status}} {{.State.Pid}}'
           docker stats ci_nakama --no-stream 2>/dev/null || echo "Cannot get stats"
@@ -1091,18 +1090,6 @@ jobs:
       # "Summarize integration results" step below, which parses the junit
       # XML and fails the job on any failure — the gate therefore consumes
       # the junit results, not the unconstrained jest exit code.
-      - name: Verify Nakama is reachable before running integration tests
-        run: |
-          echo "Checking Nakama HTTP API reachability before tests..."
-          http_code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7350/ 2>/dev/null || echo "000")
-          echo "HTTP response code: $http_code"
-          if [ "$http_code" != "200" ]; then
-            echo "ERROR: Nakama HTTP API not reachable at http://127.0.0.1:7350/"
-            docker logs ci_nakama --tail 50
-            exit 1
-          fi
-          echo "Nakama HTTP API is reachable, proceeding to tests..."
-
       - name: Run integration tests
         id: integration-tests
         working-directory: ./backend
