@@ -61,7 +61,7 @@ services:
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false
+        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama" --socket.server_key defaultkey --runtime.js_read_only_globals=false --logger.level DEBUG
     ports:
       - "7350:7350"
       - "7351:7351"
