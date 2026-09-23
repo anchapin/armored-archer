@@ -965,6 +965,11 @@ jobs:
           if [ ! -f .env ] || ! grep -q "^TOKEN_ENCRYPTION_KEY=" .env; then
             echo "TOKEN_ENCRYPTION_KEY=ci-test-token-encryption-key-do-not-use-in-production" >> .env
           fi
+          # RevenueCat secret key is required by validateRequiredConfig() for the
+          # bundled code to initialize in production mode (webpack mode:production).
+          if [ ! -f .env ] || ! grep -q "^REVENUECAT_SECRET_KEY=" .env; then
+            echo "REVENUECAT_SECRET_KEY=ci-test-revenuecat-secret-key-do-not-use-in-production" >> .env
+          fi
 
       - name: Build Nakama bundle
         working-directory: ./backend
