@@ -1080,24 +1080,31 @@ jobs:
       - name: Wait for Nakama to be ready
         run: |
           # Nakama's JS bundle (17.4 MB) can take 2-4 minutes to initialize
-          # under CI resource pressure. We use Nakama's own `nakama healthcheck`
-          # binary — the same binary that the Docker healthcheck runs — so we're
-          # testing the exact same readiness condition Docker uses. This avoids
-          # false-positives from curl hitting a port that's bound but before the
-          # HTTP API is fully registered.
-          echo "Waiting for Nakama to become ready (using nakama healthcheck binary)..."
+          # under CI resource pressure. It may also crash and restart once during
+          # early init before stabilizing. We require 3 consecutive healthy pings
+          # (45 s apart) before declaring ready — this filters out false positives
+          # from Nakama being briefly up then crashing.
+          echo "Waiting for Nakama to become ready (3 consecutive healthchecks)..."
 
-          MAX_WAIT=300
+          MAX_WAIT=360
           INTERVAL=15
           ELAPSED=0
+          CONSECUTIVE=0
+          NEEDED=3
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
             # Exit code 0 = healthy, 1 = unhealthy, 2 = error
             if docker exec ci_nakama /nakama/nakama healthcheck 2>/dev/null; then
-              echo "Nakama is ready! (after ${ELAPSED}s)"
-              exit 0
+              CONSECUTIVE=$((CONSECUTIVE + 1))
+              echo "  Nakama healthy (${CONSECUTIVE}/${NEEDED}, waited ${ELAPSED}s)..."
+              if [ $CONSECUTIVE -ge $NEEDED ]; then
+                echo "Nakama is ready! (stable after ${ELAPSED}s with ${NEEDED} consecutive healthchecks)"
+                exit 0
+              fi
+            else
+              CONSECUTIVE=0
+              echo "  Nakama not ready (waited ${ELAPSED}s/${MAX_WAIT}s, consecutive: ${CONSECUTIVE}/${NEEDED})..."
             fi
-            echo "  Nakama not ready yet (waited ${ELAPSED}s/${MAX_WAIT}s)..."
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
