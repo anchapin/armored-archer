@@ -1052,23 +1052,24 @@ jobs:
           docker inspect ci_nakama --format='{{.State.Status}} {{.State.Health.Status}} {{.State.Pid}}'
           docker stats ci_nakama --no-stream 2>/dev/null || echo "Cannot get stats"
           set -e
+
           echo ""
           echo "=== curl HTTP API (console, with exit code) ==="
           set +e
-          curl -s -o /dev/null -w "HTTP:%{http_code} exit:%{exit_code}" http://127.0.0.1:7351/
-          curl_exit=$?
-          echo " (curl exit: $curl_exit)"
+          curl -s -o /dev/null -w "HTTP:%{http_code}" http://127.0.0.1:7351/
+          echo ""
           set -e
-
       - name: Wait for Nakama to be ready
         run: |
           # Nakama HTTP server starts quickly but JS bundle initialization takes
           # ~15-20s. The bundle loads synchronously at startup via InitModule,
           # after which HTTP 200 confirms full readiness. We verify via step 11's
-          # curl and additionally give 60s for the bundle to finish initializing.
+          # curl and additionally give 90s for the bundle to finish initializing.
+          # Note: Nakama's Docker healthcheck has start_period:60s, so we must
+          # wait past 60s for the first healthcheck to run.
           echo "Nakama HTTP API was confirmed up in step 11."
-          echo "Giving Nakama 60s for JS bundle initialization..."
-          sleep 60
+          echo "Giving Nakama 90s for JS bundle initialization and healthcheck..."
+          sleep 90
 
       - name: Run game schema migrations
         working-directory: ./backend/data

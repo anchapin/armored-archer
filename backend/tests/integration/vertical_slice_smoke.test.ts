@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { Nakama } from '@heroiclabs/nakama-js';
+import { Client } from '@heroiclabs/nakama-js';
 
 // Test configuration
 const NAKAMA_HOST = process.env.NAKAMA_HOST || 'localhost';
@@ -36,16 +36,16 @@ const TEST_STAGE_ID = '1_1';
 const TEST_BOSS_STAGE_ID = '1_5';
 
 describe('Vertical Slice Smoke Test - Backend RPCs', () => {
-  let nakama: Nakama;
+  let nakama: Client;
   let userId: string;
   let sessionToken: string;
 
   beforeAll(async () => {
     // Initialize Nakama client
-    nakama = new Nakama(SERVER_KEY, NAKAMA_HOST, NAKAMA_PORT, 'http');
+    nakama = new Client(SERVER_KEY, NAKAMA_HOST, NAKAMA_PORT, false, 10000, false);
 
     // Authenticate with test device ID
-    const authResult = await nakama.authenticateDevice(TEST_DEVICE_ID, TEST_USERNAME, true);
+    const authResult = await nakama.authenticateDevice(TEST_DEVICE_ID, true, TEST_USERNAME);
 
     if (!authResult || !authResult.token || !authResult.user_id) {
       throw new Error(`Failed to authenticate: ${JSON.stringify(authResult)}`);
