@@ -193,13 +193,18 @@ function runMigrations(): void {
 export default async function globalSetup(): Promise<void> {
   // Set test environment
   process.env.NODE_ENV = 'test';
-  process.env.NAKAMA_HOST = 'localhost';
-  process.env.NAKAMA_PORT = '7350';
-  process.env.NAKAMA_SERVER_KEY = 'defaultkey';
-  process.env.DATABASE_ADDRESS = 'postgres://postgres:changeme@localhost:5432/nakama';
 
-  if (!isLocalTest) {
-    console.log('🌐 Running in CI mode - assuming services are managed externally');
+  if (isLocalTest) {
+    // For local testing: use localhost (Docker Compose network)
+    process.env.NAKAMA_HOST = 'localhost';
+    process.env.NAKAMA_PORT = '7350';
+    process.env.NAKAMA_SERVER_KEY = 'defaultkey';
+    process.env.DATABASE_ADDRESS = 'postgres://postgres:changeme@localhost:5432/nakama';
+  } else {
+    // CI mode: services are managed externally — preserve CI workflow's
+    // explicit env vars (NAKAMA_HOST, NAKAMA_PORT, NAKAMA_SERVER_KEY, etc.)
+    // which are already set by the GitHub Actions workflow.
+    console.log('🌐 Running in CI mode - using workflow environment variables');
     return;
   }
 
