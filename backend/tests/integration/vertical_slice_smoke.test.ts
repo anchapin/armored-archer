@@ -98,7 +98,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       // In a real scenario, another client would try to use the same username
       const secondDeviceId = `test_device_${Date.now()}`;
       try {
-        const result = await nakama.authenticateDevice(secondDeviceId, TEST_USERNAME, true);
+        const result = await nakama.authenticateDevice(secondDeviceId, true, TEST_USERNAME);
         // Nakama allows duplicate device IDs with different accounts,
         // so we just verify the flow doesn't crash
         expect(result).toBeDefined();
