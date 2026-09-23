@@ -970,6 +970,19 @@ jobs:
           if [ ! -f .env ] || ! grep -q "^REVENUECAT_SECRET_KEY=" .env; then
             echo "REVENUECAT_SECRET_KEY=ci-test-revenuecat-secret-key-do-not-use-in-production" >> .env
           fi
+          # RevenueCat webhook secret (required by validateRequiredConfig).
+          if [ ! -f .env ] || ! grep -q "^REVENUECAT_WEBHOOK_SECRET=" .env; then
+            echo "REVENUECAT_WEBHOOK_SECRET=ci-test-revenuecat-webhook-secret-do-not-use-in-production" >> .env
+          fi
+          # Database address (process.env.DATABASE_ADDRESS is read by the bundled
+          # config; --database.address flag reaches Nakama binary but not JS bundle).
+          if [ ! -f .env ] || ! grep -q "^DATABASE_ADDRESS=" .env; then
+            echo "DATABASE_ADDRESS=postgres://postgres:changeme@postgres:5432/nakama" >> .env
+          fi
+          # Disable Firebase in CI (no Firebase credentials needed).
+          if [ ! -f .env ] || ! grep -q "^FIREBASE_ENABLED=" .env; then
+            echo "FIREBASE_ENABLED=false" >> .env
+          fi
 
       - name: Build Nakama bundle
         working-directory: ./backend
