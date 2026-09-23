@@ -1022,7 +1022,7 @@ jobs:
           echo "=== Nakama container memory info ==="
           docker exec ci_nakama sh -c 'cat /proc/meminfo 2>/dev/null | head -10' || echo "Cannot read meminfo"
           echo ""
-          echo "=== Nakama container logs (combined stdout+stderr) ==="
+          echo "=== Nakama container logs (combined stdout+stderr, last 200 lines) ==="
           docker logs ci_nakama --tail 200 2>&1 || echo "No logs available"
           echo ""
           echo "=== Nakama process list (PIDs) ==="
@@ -1063,13 +1063,41 @@ jobs:
         run: |
           # Nakama HTTP server starts quickly but JS bundle initialization takes
           # ~15-20s. The bundle loads synchronously at startup via InitModule,
-          # after which HTTP 200 confirms full readiness. We verify via step 11's
-          # curl and additionally give 90s for the bundle to finish initializing.
-          # Note: Nakama's Docker healthcheck has start_period:60s, so we must
-          # wait past 60s for the first healthcheck to run.
-          echo "Nakama HTTP API was confirmed up in step 11."
-          echo "Giving Nakama 90s for JS bundle initialization and healthcheck..."
-          sleep 90
+          # after which HTTP 200 confirms full readiness. We poll until Nakama
+          # is responding OR a timeout fires (at which point we force a restart
+          # and check the bundle for issues).
+          echo "Waiting for Nakama to become ready (polling HTTP API)..."
+
+          MAX_WAIT=180
+          INTERVAL=5
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://127.0.0.1:7350/ 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Nakama is ready! (after ${ELAPSED}s)"
+              exit 0
+            fi
+            echo "  Nakama not ready yet (HTTP: $HTTP_CODE, waited ${ELAPSED}s/${MAX_WAIT}s)..."
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+
+            # If Nakama has been "starting" for >60s with no HTTP response, check
+            # if the container is still running and grab fresh logs for diagnostics.
+            if [ $((ELAPSED % 60)) -eq 0 ] && [ "$HTTP_CODE" != "200" ]; then
+              echo "  [${ELAPSED}s] Still no HTTP 200 — grabbing Nakama container state..."
+              docker inspect ci_nakama --format='{{.State.Status}} {{.State.Health.Status}} {{.State.ExitCode}}' 2>/dev/null || echo "cannot inspect"
+              docker logs ci_nakama --tail 50 2>&1 | tail -20
+            fi
+          done
+
+          echo "WARNING: Nakama did not become ready within ${MAX_WAIT}s."
+          echo "Container status:"
+          docker inspect ci_nakama --format='{{.State.Status}} health:{{.State.Health.Status}} exit:{{.State.ExitCode}} pid:{{.State.Pid}}' 2>/dev/null || echo "cannot inspect"
+          echo "Full Nakama logs since startup:"
+          docker logs ci_nakama --tail 500 2>&1 | tail -50
+          echo ""
+          echo "##vso[task.logissue type=error]Nakama failed to become ready within ${MAX_WAIT}s — see container logs above."
 
       - name: Run game schema migrations
         working-directory: ./backend/data
