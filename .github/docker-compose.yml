@@ -53,11 +53,11 @@ services:
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: ci_nakama
-    restart: unless-stopped
+    restart: on-failure:5
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 3G
     ulimits:
       stack: 536870912
     entrypoint:
@@ -82,9 +82,9 @@ services:
     healthcheck:
       test: ["CMD", "/nakama/nakama", "healthcheck"]
       interval: 10s
-      timeout: 10s
-      retries: 60
-      start_period: 60s
+      timeout: 30s
+      retries: 10
+      start_period: 120s
     environment:
       # NOTE: The JS bundle's process.env is baked at BUILD time from backend/.env.
       # Nakama runtime env vars (NAKAMA_SERVER_KEY, HMAC_SECRET) do NOT reach
