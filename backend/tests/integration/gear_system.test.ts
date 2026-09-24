@@ -54,6 +54,16 @@ describe('Gear System Integration Tests', () => {
   }
 
   describe('rpcGenerateGear', () => {
+    // Clean inventory_items before each test so generated gear state doesn't pollute
+    // subsequent tests (gear is added to inventory on generate, so each test needs a fresh DB).
+    beforeEach(async () => {
+      if (player?.userId) {
+        await testHelper.cleanupDatabaseForUser(player.userId, {
+          tablesToClean: ['inventory_items'],
+        });
+      }
+    });
+
     test('should generate gear with valid stage_id', async () => {
       const payload = { stage_id: 'stage_1', boss_defeated: false };
       const result = await rpcCall(player, 'armored_archer/generate_gear', payload);
@@ -519,6 +529,16 @@ describe('Gear System Integration Tests', () => {
   });
 
   describe('rpcUnlockModifierPool', () => {
+    // Clean unlocked_modifier_pools after each test so modifier pool state doesn't pollute
+    // subsequent tests (each test should start with a clean slate).
+    afterEach(async () => {
+      if (player?.userId) {
+        await testHelper.cleanupDatabaseForUser(player.userId, {
+          tablesToClean: ['unlocked_modifier_pools'],
+        });
+      }
+    });
+
     test('should unlock a modifier pool', async () => {
       const result = await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
         modifier_id: 'piercing_arrow',
