@@ -15,9 +15,6 @@ import { recordStageAttempt, recordDrop } from './balance_analytics';
 import {
   insertGearItem,
   getPlayerGearFromDB,
-  getPlayerLoadoutFromDB,
-  equipItemInDB,
-  unequipItemInDB,
   getFullInventoryFromDB,
   recordBossDefeatInDB,
   getDefeatedBossesFromDB,
@@ -823,10 +820,17 @@ export function rpcGenerateGear(
   let inventory: PlayerInventory;
 
   if (inventoryObjects.length === 0) {
+    // Initialize with null values for all slots to match rpcGetInventory behavior
     inventory = {
       user_id: ctx.userId,
       gear: [],
-      equipped_gear: {},
+      equipped_gear: {
+        helm: null,
+        armor: null,
+        bow: null,
+        arrow: null,
+        amulet: null,
+      },
       unlocked_modifier_pools: [],
     };
   } else {
@@ -854,10 +858,17 @@ export function rpcGenerateGear(
       }
       inventory = parseResult.data;
     } else {
+      // Initialize with null values for all slots to match rpcGetInventory behavior
       inventory = {
         user_id: ctx.userId,
         gear: [],
-        equipped_gear: {},
+        equipped_gear: {
+          helm: null,
+          armor: null,
+          bow: null,
+          arrow: null,
+          amulet: null,
+        },
         unlocked_modifier_pools: [],
       };
     }
@@ -1037,11 +1048,17 @@ export function rpcEquipGear(
 
   let inventory: PlayerInventory;
   if (equipStorageObjects.length === 0) {
-    // Create new inventory if none exists
+    // Create new inventory if none exists - initialize with null values for all slots
     inventory = {
       user_id: ctx.userId,
       gear: [],
-      equipped_gear: {},
+      equipped_gear: {
+        helm: null,
+        armor: null,
+        bow: null,
+        arrow: null,
+        amulet: null,
+      },
       unlocked_modifier_pools: [],
     };
   } else {
@@ -1059,10 +1076,17 @@ export function rpcEquipGear(
       }
       inventory = parseResult.data;
     } else {
+      // Initialize with null values for all slots
       inventory = {
         user_id: ctx.userId,
         gear: [],
-        equipped_gear: {},
+        equipped_gear: {
+          helm: null,
+          armor: null,
+          bow: null,
+          arrow: null,
+          amulet: null,
+        },
         unlocked_modifier_pools: [],
       };
     }

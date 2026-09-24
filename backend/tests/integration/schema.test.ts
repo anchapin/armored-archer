@@ -16,7 +16,7 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 const TEST_DB_HOST = process.env.TEST_DB_HOST || 'localhost';
 const TEST_DB_PORT = parseInt(process.env.TEST_DB_PORT || '5432');
 const TEST_DB_USER = process.env.TEST_DB_USER || 'postgres';
-const TEST_DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'localdbpassword';
+const TEST_DB_PASSWORD = process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'localdbpassword';
 const TEST_DB_NAME = process.env.TEST_DB_NAME || 'nakama';
 
 // Test pool - shared across tests

@@ -10,8 +10,10 @@ module.exports = {
   coverageDirectory: 'coverage/integration',
   testTimeout: 60000,
   verbose: true,
-  // Use detectOpenHandles to properly wait for async cleanup instead of forceExit
+  // detectOpenHandles can cause Jest to hang on nakama-js HTTP connections that don't close
+  // forceExit ensures Jest exits even with open handles (common with nakama-js)
   detectOpenHandles: true,
+  forceExit: true,
   detectLeaks: false,
   clearMocks: true,
   resetModules: false,

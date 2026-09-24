@@ -15,6 +15,12 @@ module.exports = {
     // Disable chunking and code splitting
     chunkLoading: false,
     chunkLoadingGlobal: undefined,
+    // Generate ES5-compatible bootstrap code (avoids webpack 5's
+    // default arrow-function IIFE that breaks Nakama's Goja runtime).
+    environment: {
+      arrowFunction: false,
+      const: false,
+    },
   },
   // Don't minimize to avoid introducing ES6 syntax
   optimization: {
@@ -43,6 +49,9 @@ module.exports = {
       'url': false,
       'net': false,
       'tls': false,
+      // Goja does not provide the Web Performance API — provide a no-op
+      // so any remaining references resolve without a ReferenceError at eval time.
+      'performance': false,
     },
   },
   externals: {
@@ -95,9 +104,22 @@ module.exports = {
             // Only transpile specific packages that use ES6+
             presets: [
               ['@babel/preset-env', {
-                targets: { esmodules: false },
+                // Target IE 11 (ES5) to force ALL modern syntax down to ES5.1.
+                // Without an actual browser/engine target, preset-env is too
+                // conservative and leaves ES6+ patterns untouched. This was
+                // causing Nakama's Goja runtime to throw "performance is not
+                // defined" / ES6 parse errors (issue #1331).
+                targets: { ie: '11' },
                 modules: 'commonjs',
+                forceAllTransforms: true,
               }],
+            ],
+            // Explicitly add the async-to-generator plugin since preset-env may
+            // skip it when it only sees the signature (async function calls
+            // inner async helper) without a clear "needs transformation" signal.
+            plugins: [
+              '@babel/plugin-transform-async-to-generator',
+              '@babel/plugin-transform-async-generator-functions',
             ],
             // Babel 8 removed the preset-level `loose` option — mirror the
             // granular `assumptions` block from babel.config.js instead

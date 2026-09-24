@@ -578,6 +578,11 @@ var performance = {
   },
 };
 
+// Expose the performance polyfill on globalThis so bundled libraries that
+// access "globalThis.performance" (e.g. @opentelemetry/api's otperformance
+// module) resolve it rather than getting undefined.
+globalThis.performance = performance;
+
 // Polyfill for the "console" global. Nakama's goja runtime does not expose
 // a bare "console" to module code, but bundled libraries capture it at
 // module-eval time (e.g. Sentry: "var logger=console.error.bind(console)"
@@ -601,6 +606,10 @@ var console = {
   group: function() {},
   groupEnd: function() {},
 };
+
+// Expose the console polyfill on globalThis so bundled libraries that
+// access "globalThis.console" resolve it rather than getting undefined.
+globalThis.console = console;
 
 // Minimal Node "Buffer" global shim. Nakama's goja runtime provides no
 // Buffer, but bundled libraries touch it at module-eval time:

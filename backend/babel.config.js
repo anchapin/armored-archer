@@ -1,8 +1,8 @@
 /**
  * Babel configuration for Nakama runtime compatibility
- * Transpiles ES6+ JavaScript to ES2020 for Nakama's Goja runtime.
- * Goja (Nakama 3.21) supports ES2020 natively, but we need to
- * transform the ??= operator and other ES2020+ syntax.
+ * Transpiles ES6+ JavaScript to ES5.1 for Nakama's Goja runtime.
+ * Goja (Nakama 3.21) does NOT support ES2015+ syntax natively —
+ * output must be ES5.1-compatible (var, function expressions, ES5 classes).
  *
  * IMPORTANT — ES2018+ regex lookbehind (issue #958):
  * Nakama's Goja runtime cannot parse ES2018 regex lookbehind
@@ -10,6 +10,14 @@
  * 7.29 does NOT ship a transformation that downlevels them, regardless of
  * the browserslist target. We additionally rewrite any surviving lookbehind
  * regex literals at bundle post-processing time — see `scripts/transpile-bundle.js`.
+ *
+ * IMPORTANT — ES2020 operators (issue #1331):
+ * Goja supports ES2020 syntax (arrow fns, async/await, destructuring) but
+ * does NOT support nullish coalescing (??/?=) or optional chaining (?.).
+ * We target IE 11 to force ALL modern syntax to ES5.1, including these.
+ * This also ensures the transpile-bundle.js CLI step produces Goja-compatible
+ * output (transpile-bundle.js uses babel.config.js directly).
+ * Reference: issue #1331.
  */
 module.exports = {
   presets: [
@@ -17,16 +25,20 @@ module.exports = {
       '@babel/preset-env',
       {
         targets: {
-          // Goja supports ES2020, but the ??= operator and nullish
-          // coalescing need transpilation. Target es2020 to handle ??=
-          // while avoiding the hang that ie 11 causes on large bundles.
-          // Reference: issue #958, PR #920.
-          esmodules: true,
+          // Target IE 11 to force ALL modern syntax to ES5.1. This ensures:
+          // 1. async/await → generator functions (regenerator)
+          // 2. ?? / ??= / ?.(?. ) → ES5 alternatives
+          // 3. const/let → var
+          // 4. arrow functions → function expressions
+          // 5. classes → constructor functions
+          // Reference: issue #1331.
+          ie: '11',
         },
         modules: 'commonjs',
         // Babel 8 removed the top-level `loose` and `spec` options —
         // replaced by the granular `assumptions` block below.
-        forceAllTransforms: false,
+        // NOTE: forceAllTransforms is intentionally omitted so preset-env
+        // uses its normal intelligent transform selection per target.
       },
     ],
   ],

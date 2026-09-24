@@ -147,6 +147,7 @@ import {
   rpcGetBundleCatalog,
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
+import { registerTestCleanupRpc } from './modules/test_cleanup';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
@@ -448,6 +449,8 @@ const InitModule: InitModule = function (
     registerRpcUnlockModifierPool(initializer);
     registerRpcStageComplete(initializer);
     registerRpcGetUnlockedModifiers(initializer);
+    // Test-only RPC for cleaning user storage in integration tests
+    registerTestCleanupRpc(initializer);
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/generate_gear',
