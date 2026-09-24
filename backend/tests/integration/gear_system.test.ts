@@ -13,16 +13,15 @@ describe('Gear System Integration Tests', () => {
   // Note: storage delete API doesn't work with admin client in Nakama 3.21
   // Using player's own session for cleanup instead
 
-  // afterEach: clean PostgreSQL only — do NOT clean Nakama storage here,
-  // that breaks intra-describe-block test dependencies (e.g. rpcGenerateGear
-  // populates inventory that rpcGetInventory/rpcEquipGear describe blocks read).
-  afterEach(async () => {
+  // beforeEach: clean loadout and player_stats before each test to prevent
+  // cross-block state pollution (e.g. equipped gear or stats from a prior block
+  // leaking into the next). inventory_items, boss_defeats, and unlocked_modifier_pools
+  // are preserved so that within-block gear/modifier state persists between tests.
+  beforeEach(async () => {
     if (player?.userId) {
-      // Fire-and-forget PostgreSQL cleanup — do NOT await to avoid test-thread block.
-      // The pool's async cleanup runs in background; Jest won't wait for it.
-      // NOTE: We do NOT disconnect the Nakama socket here because disconnectAsync
-      // can race with the next test's RPC call, causing hangs (socket closed mid-flight).
-      testHelper.cleanupDatabaseForUser(player.userId).catch(() => {});
+      await testHelper.cleanupDatabaseForUser(player.userId, {
+        tablesToClean: ['loadout', 'player_stats'],
+      });
     }
   });
 
@@ -31,15 +30,12 @@ describe('Gear System Integration Tests', () => {
   // the Nakama JS client to hang (open handle) due to session/HTTP issues.
   // The player's Nakama storage persists but since each test file uses a
   // unique userId (via timestamp+random), this does not cause pollution.
-  afterAll(async () => {
-    // Note: cleanup is handled by beforeAll's cleanAllTestData() which runs
-    // at the start of each test file, and by afterEach in each nested describe.
+  afterAll(() => {
     // NOTE: We do NOT disconnect the Nakama socket here since disconnectAsync
     // can cause open-handle issues with Jest. The socket will be closed when the
     // test process exits. Nakama server has a TTL for abandoned sessions.
-    await cleanAllTestData();
-    await helper.close();
-    await testHelper.cleanup();
+    // Database cleanup happens in beforeAll (at file start) for cross-suite hygiene.
+    // testHelper's module-level afterAll handles adminClient cleanup.
   });
 
   // Helper to call RPC and parse JSON

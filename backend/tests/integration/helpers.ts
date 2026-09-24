@@ -324,7 +324,7 @@ export class IntegrationTestHelper {
    * AND Nakama's storage table.
    * Nakama storage is stored in the 'storage' table in PostgreSQL.
    */
-  async cleanupDatabaseForUser(userId: string): Promise<void> {
+  async cleanupDatabaseForUser(userId: string, opts?: { tablesToClean?: string[] }): Promise<void> {
     const dbHost = process.env.TEST_DB_HOST || 'localhost';
     const dbPort = parseInt(process.env.TEST_DB_PORT || '5433');
     const dbUser = process.env.TEST_DB_USER || 'postgres';
@@ -346,15 +346,19 @@ export class IntegrationTestHelper {
     try {
       const client = await pool.connect();
       try {
+        const tablesToClean = opts?.tablesToClean;
+        const clean = (table: string) => tablesToClean ? tablesToClean.includes(table) : true;
+
         // Clean Nakama storage table (core game data stored by JS modules)
-        await client.query('DELETE FROM storage WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('storage')) await client.query('DELETE FROM storage WHERE user_id = $1', [userId]).catch(() => {});
 
         // Clean PostgreSQL game tables (if they exist after migrations)
-        await client.query('DELETE FROM unlocked_modifier_pools WHERE user_id = $1', [userId]).catch(() => {});
-        await client.query('DELETE FROM boss_defeats WHERE user_id = $1', [userId]).catch(() => {});
-        await client.query('DELETE FROM inventory WHERE user_id = $1', [userId]).catch(() => {});
-        await client.query('DELETE FROM loadout WHERE user_id = $1', [userId]).catch(() => {});
-        await client.query('DELETE FROM player_stats WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('unlocked_modifier_pools')) await client.query('DELETE FROM unlocked_modifier_pools WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('boss_defeats')) await client.query('DELETE FROM boss_defeats WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('inventory_items')) await client.query('DELETE FROM inventory_items WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('inventory')) await client.query('DELETE FROM inventory WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('loadout')) await client.query('DELETE FROM loadout WHERE user_id = $1', [userId]).catch(() => {});
+        if (clean('player_stats')) await client.query('DELETE FROM player_stats WHERE user_id = $1', [userId]).catch(() => {});
       } finally {
         client.release();
       }
