@@ -1,18 +1,15 @@
 /**
  * Babel configuration for Nakama runtime compatibility
- * Transpiles ES6+ JavaScript to ES5 for Nakama's Duktape/QuickJS runtime.
- * Uses loose mode to inline helpers instead of requiring @babel/runtime.
+ * Transpiles ES6+ JavaScript to ES2020 for Nakama's Goja runtime.
+ * Goja (Nakama 3.21) supports ES2020 natively, but we need to
+ * transform the ??= operator and other ES2020+ syntax.
  *
  * IMPORTANT — ES2018+ regex lookbehind (issue #958):
- * Nakama's Duktape/QuickJS runtime cannot parse ES2018 regex lookbehind
+ * Nakama's Goja runtime cannot parse ES2018 regex lookbehind
  * assertions (`(?<=...)` / `(?<!...)`) at evaluation time. babel-preset-env
  * 7.29 does NOT ship a transformation that downlevels them, regardless of
- * the browserslist target (even `ie 11` leaves lookbehind literals intact —
- * verified against @babel/preset-env 7.29.3). We therefore tighten the
- * browserslist target to `ie 11` to maximise downleveling of everything
- * else (the previous `esmodules: false` target was too permissive), and
- * additionally rewrite any surviving lookbehind regex literals at bundle
- * post-processing time — see `scripts/transpile-bundle.js`.
+ * the browserslist target. We additionally rewrite any surviving lookbehind
+ * regex literals at bundle post-processing time — see `scripts/transpile-bundle.js`.
  */
 module.exports = {
   presets: [
@@ -20,19 +17,16 @@ module.exports = {
       '@babel/preset-env',
       {
         targets: {
-          // Target Duktape/QuickJS in Nakama 3.21 (≈ ES5.1 + limited ES2015).
-          // `ie 11` is the closest browserslist analog for an ES5.1 runtime
-          // and is the lowest-cost target that forces preset-env to
-          // downlevel arrow fns / async-await / template literals, etc.
-          // `not supports js-regexp-lookbehind` (caniuse feature id) is
-          // included so future preset-env versions that gain a lookbehind
-          // transform will engage it. Reference: issue #958, PR #920.
-          browsers: ['ie 11', 'not supports js-regexp-lookbehind'],
+          // Goja supports ES2020, but the ??= operator and nullish
+          // coalescing need transpilation. Target es2020 to handle ??=
+          // while avoiding the hang that ie 11 causes on large bundles.
+          // Reference: issue #958, PR #920.
+          esmodules: true,
         },
         modules: 'commonjs',
         // Babel 8 removed the top-level `loose` and `spec` options —
         // replaced by the granular `assumptions` block below.
-        forceAllTransforms: true,
+        forceAllTransforms: false,
       },
     ],
   ],

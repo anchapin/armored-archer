@@ -440,6 +440,14 @@ const InitModule: InitModule = function (
       'query_audit_logs',
       rpcQueryAuditLogs
     );
+    // Gear system RPCs (not rate-limited)
+    registerRpcGenerateGear(initializer);
+    registerRpcEquipGear(initializer);
+    registerRpcUnequipGear(initializer);
+    registerRpcGetInventory(initializer);
+    registerRpcUnlockModifierPool(initializer);
+    registerRpcStageComplete(initializer);
+    registerRpcGetUnlockedModifiers(initializer);
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/generate_gear',
@@ -467,12 +475,10 @@ const InitModule: InitModule = function (
       'get_campaign_progress',
       rpcGetCampaignProgressWrapper
     );
-    registerRpcWithRateLimit(
-      initializer,
-      'armored_archer/get_campaign_progress',
-      'get_campaign_progress',
-      rpcGetCampaignProgressWrapper
-    );
+    // get_completed_stages is NOT rate-limited but must be registered when
+    // rate limiting is enabled (issue #1193): the else-branch only runs when
+    // rate limiting is disabled, so add it here too.
+    registerRpcGetCompletedStages(initializer);
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/report_player',

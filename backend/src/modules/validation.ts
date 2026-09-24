@@ -71,7 +71,7 @@ export const ValibotSchemas = {
   }),
 
   gain_xp: object({
-    xp_amount: pipe(number(), integer(), minValue(1), maxValue(1000000)),
+    xp_amount: pipe(number(), integer(), minValue(0), maxValue(1000000)),
     source: createEnum(['pve', 'pvp']),
   }),
 
@@ -120,9 +120,9 @@ export const ValibotSchemas = {
     stage_id: pipe(string(), minLength(1), maxLength(100)),
     boss_defeated: boolean(),
     difficulty: createEnum(['easy', 'medium', 'hard', 'nightmare', 'normal']),
-    boss_id: optional(pipe(string(), minLength(1), maxLength(100))),
-    enemy_type: optional(pipe(string(), minLength(1), maxLength(100))),
-    stage_prefix: optional(pipe(string(), minLength(1), maxLength(50))),
+    boss_id: optional(pipe(string(), minLength(0), maxLength(100))),
+    enemy_type: optional(pipe(string(), minLength(0), maxLength(100))),
+    stage_prefix: optional(pipe(string(), minLength(0), maxLength(50))),
     stars_earned: optional(pipe(number(), integer(), minValue(0), maxValue(3))),
     score: optional(pipe(number(), integer(), minValue(0), maxValue(MAX_STAGE_SCORE))),
   }),

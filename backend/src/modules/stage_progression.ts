@@ -309,6 +309,26 @@ export interface StageCompletionResult {
  * @param logger - Nakama logger instance
  * @returns Whether this was new/improved/no-improvement plus previous best
  */
+const MAX_STAGE_COMPLETION_RETRIES = 3;
+
+/**
+ * Applies a (clamped) completion to the best-of record storage.
+ *
+ * Allows stage replay: only updates the stored record when the new
+ * completion improves on the existing stars/score. The write is versioned
+ * (OCC) against the version observed on read.
+ *
+ * Implements retry logic for storage version conflicts (concurrent calls).
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param stageId - ID of the completed stage
+ * @param stagePrefix - Campaign prefix of the stage
+ * @param starsEarned - Clamped star count to record
+ * @param score - Clamped score to record
+ * @param logger - Nakama logger instance
+ * @returns Whether this was new/improved/no-improvement plus previous best
+ */
 export function applyStageCompletion(
   nk: Runtime.Nakama,
   userId: string,
@@ -318,86 +338,126 @@ export function applyStageCompletion(
   score: number,
   logger: Runtime.Logger
 ): StageCompletionResult {
-  const { data: storageData, version } = readStageCompletionStorage(nk, userId, logger);
+  for (let attempt = 1; attempt <= MAX_STAGE_COMPLETION_RETRIES; attempt++) {
+    const { data: storageData, version } = readStageCompletionStorage(nk, userId, logger);
 
-  const existingCompletion = storageData.completions[stageId];
-  const result: StageCompletionResult = {
-    isNewCompletion: true,
-    noImprovement: false,
+    const existingCompletion = storageData.completions[stageId];
+    const result: StageCompletionResult = {
+      isNewCompletion: true,
+      noImprovement: false,
+      previousBest: undefined,
+      existingCompletion: undefined,
+    };
+
+    if (existingCompletion) {
+      result.isNewCompletion = false;
+      result.previousBest = {
+        stars_earned: existingCompletion.stars_earned,
+        score: existingCompletion.score,
+      };
+
+      // Only update if new completion is better
+      if (
+        !isBetterCompletion(
+          starsEarned,
+          score,
+          existingCompletion.stars_earned,
+          existingCompletion.score
+        )
+      ) {
+        logger.info(
+          'Stage replay did not improve: stage=%s new_stars=%d existing_stars=%d new_score=%d existing_score=%d',
+          stageId,
+          starsEarned,
+          existingCompletion.stars_earned,
+          score,
+          existingCompletion.score
+        );
+
+        result.noImprovement = true;
+        result.existingCompletion = existingCompletion;
+        return result;
+      }
+
+      storageData.completions[stageId] = updateCompletionRecord(
+        stageId,
+        stagePrefix,
+        starsEarned,
+        score,
+        existingCompletion
+      );
+
+      logger.info(
+        'Updated stage completion: stage=%s stars=%d score=%d',
+        stageId,
+        starsEarned,
+        score
+      );
+    } else {
+      storageData.completions[stageId] = createCompletionRecord(
+        stageId,
+        stagePrefix,
+        starsEarned,
+        score
+      );
+
+      logger.info(
+        'Created new stage completion: stage=%s stars=%d score=%d',
+        stageId,
+        starsEarned,
+        score
+      );
+    }
+
+    // Write updated completions to storage (versioned for concurrency safety)
+    try {
+      nk.storageWrite([
+        {
+          collection: STAGE_COMPLETION_COLLECTION,
+          key: userId,
+          userId,
+          value: toStorageValue(storageData),
+          version,
+        },
+      ]);
+      return result;
+    } catch (error) {
+      const errorStr = String(error);
+      // Check if this is a version conflict error
+      if (
+        (errorStr.includes('version check failed') ||
+          errorStr.includes('Storage write rejected')) &&
+        attempt < MAX_STAGE_COMPLETION_RETRIES
+      ) {
+        logger.warn(
+          'Stage completion storage version conflict (attempt %d/%d), retrying: stage=%s',
+          attempt,
+          MAX_STAGE_COMPLETION_RETRIES,
+          stageId
+        );
+        continue; // Retry with fresh read
+      }
+      // Non-retryable error or max retries exceeded - log and return no-improvement
+      logger.error(
+        'Failed to write stage completion after %d attempts: stage=%s error=%s',
+        MAX_STAGE_COMPLETION_RETRIES,
+        stageId,
+        errorStr
+      );
+      // Return a "no-improvement" result to avoid double-granting loot/XP
+      return {
+        isNewCompletion: false,
+        noImprovement: true,
+        previousBest: result.previousBest,
+        existingCompletion: existingCompletion,
+      };
+    }
+  }
+  // Should not reach here, but safety fallback
+  return {
+    isNewCompletion: false,
+    noImprovement: true,
     previousBest: undefined,
     existingCompletion: undefined,
   };
-
-  if (existingCompletion) {
-    result.isNewCompletion = false;
-    result.previousBest = {
-      stars_earned: existingCompletion.stars_earned,
-      score: existingCompletion.score,
-    };
-
-    // Only update if new completion is better
-    if (
-      !isBetterCompletion(
-        starsEarned,
-        score,
-        existingCompletion.stars_earned,
-        existingCompletion.score
-      )
-    ) {
-      logger.info(
-        'Stage replay did not improve: stage=%s new_stars=%d existing_stars=%d new_score=%d existing_score=%d',
-        stageId,
-        starsEarned,
-        existingCompletion.stars_earned,
-        score,
-        existingCompletion.score
-      );
-
-      result.noImprovement = true;
-      result.existingCompletion = existingCompletion;
-      return result;
-    }
-
-    storageData.completions[stageId] = updateCompletionRecord(
-      stageId,
-      stagePrefix,
-      starsEarned,
-      score,
-      existingCompletion
-    );
-
-    logger.info(
-      'Updated stage completion: stage=%s stars=%d score=%d',
-      stageId,
-      starsEarned,
-      score
-    );
-  } else {
-    storageData.completions[stageId] = createCompletionRecord(
-      stageId,
-      stagePrefix,
-      starsEarned,
-      score
-    );
-
-    logger.info(
-      'Created new stage completion: stage=%s stars=%d score=%d',
-      stageId,
-      starsEarned,
-      score
-    );
-  }
-
-  // Write updated completions to storage (versioned for concurrency safety)
-  nk.storageWrite([
-    {
-      collection: STAGE_COMPLETION_COLLECTION,
-      key: userId,
-      userId,
-      value: toStorageValue(storageData),
-      version,
-    },
-  ]);
-
-  return result;
 }

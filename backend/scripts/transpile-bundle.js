@@ -1675,11 +1675,11 @@ var __safeCtx = new Proxy({ env: {}, node: 'nakama', version: '0.0.0-eval', exec
 var __safeLogger = new Proxy({}, { get: function() { return function() {}; } });
 var __safeNk = new Proxy({}, { get: function() { return function() { return undefined; }; } });
 
-function __nakamaPublishHandlers(ctx, logger, nk) {
+function __nakamaPublishHandlers(ctx, logger, nk, initializer) {
   var __captured = [];
   var __capture = {};
   __capture.registerRpc = function(id, fn) { __captured.push([id, fn]); };
-  __realInitModule(ctx, logger, nk, __capture);
+  __realInitModule(ctx, logger, nk, initializer !== undefined ? initializer : __capture);
   for (var i = 0; i < __captured.length; i++) {
     var __gname = __rpcIdToGlobal[__captured[i][0]];
     if (__gname) { globalThis[__gname] = __captured[i][1]; }
@@ -1693,7 +1693,10 @@ function __nakamaPublishHandlers(ctx, logger, nk) {
 // are rebuilt with proper context.
 function InitModule(ctx, logger, nk, initializer) {
   if (!__realInitModule) { throw new Error('Nakama bridge: entry module exports no InitModule'); }
-  __nakamaPublishHandlers(ctx, logger, nk);
+  // Pass initializer so the for-loop assigns real handlers to globalThis.
+  // Phase 2 (3 args): uses __capture → real handlers assigned to globalThis.
+  // Phase 3 (4 args): uses real initializer → real handlers also registered with Nakama.
+  __nakamaPublishHandlers(ctx, logger, nk, initializer);
 ${rpcDirectLines}
 }
 `;

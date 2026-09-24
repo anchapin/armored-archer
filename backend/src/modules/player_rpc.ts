@@ -6,6 +6,8 @@
 import { getStructuredLogger } from '../index';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
+import { toStorageValue } from '../utils/storage-helpers';
+import { PlayerStats } from './rpg_system';
 import { submitPlayerReport, getReportsForUser } from './anti_cheat';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
@@ -132,7 +134,35 @@ export function rpcGetPlayerStats(
   }
 
   const cacheManager = getCacheManager(logger);
-  return getPlayerStatsWithCache(nk, logger, ctx, cacheManager);
+  const result = getPlayerStatsWithCache(nk, logger, ctx, cacheManager);
+
+  // If not found, bootstrap default stats and persist them
+  if (result.includes('not found')) {
+    const defaultStats: PlayerStats = {
+      user_id: ctx.userId,
+      level: 1,
+      xp: 0,
+      ability_points: 0,
+      stats: {
+        attack: 10,
+        defense: 10,
+        dodge: 10,
+        crit_rate: 5,
+      },
+    };
+    // Persist default stats
+    nk.storageWrite([
+      {
+        collection: 'player_stats',
+        key: ctx.userId,
+        userId: ctx.userId,
+        value: toStorageValue(defaultStats),
+      },
+    ]);
+    return JSON.stringify(defaultStats);
+  }
+
+  return result;
 }
 
 /**

@@ -176,6 +176,11 @@ export class IntegrationTestHelper {
         'player_currency',
         'season_rewards_claimed',
         'store_purchases',
+        // Stage progression collections
+        'stage_completion',
+        'stage_completion_claims',
+        'boss_defeats',
+        'unlocked_modifier_pools',
       ];
 
       // Clean storage objects with keys that start with 'test_' or are from test users

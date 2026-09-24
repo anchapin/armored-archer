@@ -3,6 +3,8 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/tests/integration/**/*.test.ts'],
+  // Load .env file before tests run (each worker process)
+  setupFiles: ['<rootDir>/jest.integration.setup.env.js'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverage: false,
   coverageDirectory: 'coverage/integration',

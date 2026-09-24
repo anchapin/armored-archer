@@ -3,6 +3,7 @@
  * Optimized for ES5 compatibility with Nakama's Duktape/QuickJS runtime
  */
 const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
   mode: 'production',
@@ -125,4 +126,10 @@ module.exports = {
   experiments: {
     topLevelAwait: false,
   },
+  plugins: [
+    // Note: Nakama Goja runtime doesn't provide __dirname natively.
+    // We don't use DefinePlugin for __dirname anymore - instead, the code in
+    // gear_system.ts uses process.cwd() directly for runtime path resolution.
+    // This avoids webpack replacement issues.
+  ],
 };

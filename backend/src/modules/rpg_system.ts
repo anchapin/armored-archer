@@ -455,6 +455,7 @@ export function rpcAllocateStats(
       'Player stats not found'
     );
     return JSON.stringify({
+      success: false,
       error: 'Player stats not found',
     });
   }
@@ -497,6 +498,7 @@ export function rpcAllocateStats(
       'Not enough ability points'
     );
     return JSON.stringify({
+      success: false,
       error: 'Not enough ability points',
     });
   }
