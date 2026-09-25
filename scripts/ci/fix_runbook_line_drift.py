@@ -17,13 +17,10 @@ followed by `NAME(`, then the first reference. When no candidate resolves
 to a unique new line, the citation is left untouched for human review.
 """
 
-from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNBOOK_DIR = REPO_ROOT / "docs" / "runbooks"
@@ -37,7 +34,7 @@ CAMEL_RE = re.compile(r"[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*")
 SNAKE_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
 
 
-def resolve(frag: str) -> Optional[Path]:
+def resolve(frag: str) -> Path | None:
     """Resolve a backend/ fragment to an absolute file path."""
     base = (BACKEND_SRC / frag).resolve()
     if base.is_file():
@@ -65,15 +62,15 @@ def candidates(line: str, frag: str) -> set[str]:
     return {c for c in cands if IDENT_RE.fullmatch(c)}
 
 
-def find_new_line(path: Path, symbols: set[str]) -> Optional[int]:
+def find_new_line(path: Path, symbols: set[str]) -> int | None:
     """Find the best 1-based line number where any of `symbols` appears in `path`.
 
     Prefers function/method definition style lines so the citation points
     to the symbol's declaration rather than a passing reference.
     """
     text = path.read_text()
-    declaration: Optional[int] = None
-    reference: Optional[int] = None
+    declaration: int | None = None
+    reference: int | None = None
     for i, line in enumerate(text.splitlines(), 1):
         hit = next((s for s in symbols if s in line), None)
         if hit is None:
