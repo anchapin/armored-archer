@@ -13,11 +13,11 @@ describe('Gear System Integration Tests', () => {
   // Note: storage delete API doesn't work with admin client in Nakama 3.21
   // Using player's own session for cleanup instead
 
-  // beforeEach: clean loadout and player_stats before each test to prevent
+  // afterEach: clean loadout and player_stats after each test to prevent
   // cross-block state pollution (e.g. equipped gear or stats from a prior block
   // leaking into the next). inventory_items, boss_defeats, and unlocked_modifier_pools
   // are preserved so that within-block gear/modifier state persists between tests.
-  beforeEach(async () => {
+  afterEach(async () => {
     if (player?.userId) {
       await testHelper.cleanupDatabaseForUser(player.userId, {
         tablesToClean: ['loadout', 'player_stats'],
@@ -25,17 +25,21 @@ describe('Gear System Integration Tests', () => {
     }
   });
 
-  // afterAll: clean Nakama storage ONCE after all tests finish.
+  // afterAll: clean Nakama storage and DB after all tests finish.
   // Note: We do NOT call test.cleanup_user_storage RPC here — it causes
   // the Nakama JS client to hang (open handle) due to session/HTTP issues.
   // The player's Nakama storage persists but since each test file uses a
   // unique userId (via timestamp+random), this does not cause pollution.
-  afterAll(() => {
+  afterAll(async () => {
     // NOTE: We do NOT disconnect the Nakama socket here since disconnectAsync
     // can cause open-handle issues with Jest. The socket will be closed when the
     // test process exits. Nakama server has a TTL for abandoned sessions.
     // Database cleanup happens in beforeAll (at file start) for cross-suite hygiene.
-    // testHelper's module-level afterAll handles adminClient cleanup.
+    if (player?.userId) {
+      await testHelper.cleanupDatabaseForUser(player.userId);
+    }
+    await testHelper.cleanAllTestData();
+    await testHelper.cleanup();
   });
 
   // Helper to call RPC and parse JSON
@@ -54,16 +58,6 @@ describe('Gear System Integration Tests', () => {
   }
 
   describe('rpcGenerateGear', () => {
-    // Clean inventory_items before each test so generated gear state doesn't pollute
-    // subsequent tests (gear is added to inventory on generate, so each test needs a fresh DB).
-    beforeEach(async () => {
-      if (player?.userId) {
-        await testHelper.cleanupDatabaseForUser(player.userId, {
-          tablesToClean: ['inventory_items'],
-        });
-      }
-    });
-
     test('should generate gear with valid stage_id', async () => {
       const payload = { stage_id: 'stage_1', boss_defeated: false };
       const result = await rpcCall(player, 'armored_archer/generate_gear', payload);
@@ -425,17 +419,6 @@ describe('Gear System Integration Tests', () => {
   });
 
   describe('rpcUnequipGear', () => {
-    // Clean loadout, player_stats, and inventory_items before each test so gear state from prior
-    // test blocks (rpcGenerateGear, rpcGetInventory, rpcEquipGear) does not pollute this block's
-    // inventory reads and equip/unequip assertions.
-    beforeEach(async () => {
-      if (player?.userId) {
-        await testHelper.cleanupDatabaseForUser(player.userId, {
-          tablesToClean: ['loadout', 'player_stats', 'inventory_items'],
-        });
-      }
-    });
-
     test('should unequip gear from slot', async () => {
       // Generate and equip weapon
       let weaponGear: any = null;
