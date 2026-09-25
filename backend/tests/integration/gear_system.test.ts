@@ -20,7 +20,7 @@ describe('Gear System Integration Tests', () => {
   afterEach(async () => {
     if (player?.userId) {
       await testHelper.cleanupDatabaseForUser(player.userId, {
-        tablesToClean: ['loadout', 'player_stats'],
+        tablesToClean: ['loadout', 'player_stats', 'inventory_items'],
       });
     }
   });
@@ -298,7 +298,7 @@ describe('Gear System Integration Tests', () => {
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.bow).toBe(weaponGear.id);
+      expect(result.equipped_gear.bow).toBe(bowGear.id);
     });
 
     test('should equip armor to correct slot', async () => {
@@ -610,6 +610,15 @@ describe('Gear System Integration Tests', () => {
       expect(result.boss_defeats).toEqual({});
     });
   });
+
+  afterEach(async () => {
+    if (player?.userId) {
+      await testHelper.cleanupDatabaseForUser(player.userId, {
+        tablesToClean: ['unlocked_modifier_pools'],
+      });
+    }
+  });
+});
 
   describe('rpcStageComplete - Boss Defeat Tracking', () => {
     // Note: Boss defeat tracking data (boss_defeats PostgreSQL table) is cleaned
