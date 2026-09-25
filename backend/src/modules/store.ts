@@ -7,6 +7,7 @@
 import { createHash } from 'crypto';
 import { Runtime } from '../types/nakama';
 import { getRedisClient } from '../utils/redis';
+import type Redis from 'ioredis';
 import { getCacheManager } from '../utils/cache';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse, safeParsePayload } from '../utils/safeParse';
@@ -3474,6 +3475,43 @@ const WEBHOOK_EVENT_REDIS_PREFIX = 'rc_webhook_event';
 /** Redis TTL for webhook event fast-path markers (30 days). */
 const WEBHOOK_EVENT_TTL_SECONDS = 30 * 24 * 60 * 60;
 
+/** Redis key prefix for distributed webhook processing lock (issue #1299). */
+const WEBHOOK_EVENT_LOCK_PREFIX = 'rc_webhook_lock';
+
+/** Redis TTL for webhook processing lock (30 seconds — enough for one handler call). */
+const WEBHOOK_EVENT_LOCK_TTL_SECONDS = 30;
+
+/**
+ * Try to acquire a distributed processing lock for a webhook event.
+ * Uses Redis SETNX so only one concurrent webhook for a given event_id can hold
+ * the lock; others receive false and must return "duplicate" immediately.
+ *
+ * @returns true if lock acquired; false if another instance is already processing
+ */
+async function tryAcquireWebhookEventLock(
+  redis: Redis | null,
+  eventId: string,
+  logger: Runtime.Logger
+): Promise<boolean> {
+  if (!redis) {
+    return true; // No Redis — fall through to storage dedup only (legacy behavior)
+  }
+  try {
+    // SET key NX EX ttl — atomic set-if-not-exists with expiry
+    const result = await redis.set(
+      `${WEBHOOK_EVENT_LOCK_PREFIX}:${eventId}`,
+      '1',
+      'EX',
+      WEBHOOK_EVENT_LOCK_TTL_SECONDS,
+      'NX'
+    );
+    return result === 'OK';
+  } catch (e) {
+    logger.error('Redis error acquiring webhook event lock: %s', e);
+    return true; // Fail open — let storage dedup be the authoritative guard
+  }
+}
+
 /**
  * Storage collection for paid awards queued at the MAX_GEM_BALANCE cap
  * (issue #1067): the remainder of a purchase that could not be applied
@@ -4333,6 +4371,19 @@ export async function rpcRevenueCatWebhook(
       );
       recordWebhookEvent(normalizedEventType, 'duplicate');
       return recorded;
+    }
+    // Distributed lock: prevent concurrent duplicate webhooks from both entering
+    // the handler. Only one instance can hold the lock; others return "duplicate".
+    const redis = getRedisClient(logger);
+    const lockAcquired = await tryAcquireWebhookEventLock(redis, eventId, logger);
+    if (!lockAcquired) {
+      logger.warn(
+        'Could not acquire processing lock for webhook event %s (%s) — another instance is processing',
+        eventId,
+        normalizedEventType
+      );
+      recordWebhookEvent(normalizedEventType, 'duplicate');
+      return JSON.stringify({ success: true, message: 'Event already being processed' });
     }
   }
 
