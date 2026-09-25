@@ -37,12 +37,17 @@ describe('alerting', () => {
     // Create a fresh mock for each test, preserving the jest.setup.js fallback behavior
     setupFetchMock = jest.fn((url: string | Request, _options?: RequestInit) => {
       const urlString = typeof url === 'string' ? url : (url as Request).url;
-      if (urlString.includes('revenuecat.com')) {
-        return Promise.resolve({
-          ok: true,
-          text: () => Promise.resolve(JSON.stringify({ status: 'active', valid: true })),
-          json: () => Promise.resolve({ status: 'active', valid: true }),
-        });
+      try {
+        const hostname = new URL(urlString).hostname;
+        if (hostname === 'revenuecat.com' || hostname.endsWith('.revenuecat.com')) {
+          return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify({ status: 'active', valid: true })),
+            json: () => Promise.resolve({ status: 'active', valid: true }),
+          });
+        }
+      } catch {
+        // Not a valid URL, fall through to default handler
       }
       // Default success for other URLs (slack, pagerduty, etc.) for tests that check fetch was called
       return Promise.resolve({
