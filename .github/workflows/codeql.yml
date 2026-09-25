@@ -32,6 +32,9 @@ jobs:
           paths-ignore:
             - templates
             - '**/templates/**'
+            - '**/__tests__/**'
+            - '**/*.test.ts'
+            - '**/*.test.gd'
 
     - name: Autobuild
       uses: github/codeql-action/autobuild@3b1a19a80ab047f35cbb237b5bd9bdc1e14f166c # v3

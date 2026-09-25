@@ -37,6 +37,7 @@ describe('alerting', () => {
     // Create a fresh mock for each test, preserving the jest.setup.js fallback behavior
     setupFetchMock = jest.fn((url: string | Request, _options?: RequestInit) => {
       const urlString = typeof url === 'string' ? url : (url as Request).url;
+      // CodeQL [js/incomplete-url-substring-sanitization] test fixture intentionally matches URL substrings to simulate different fetch responses
       if (urlString.includes('revenuecat.com')) {
         return Promise.resolve({
           ok: true,
