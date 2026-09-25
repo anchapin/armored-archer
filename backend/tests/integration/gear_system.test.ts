@@ -425,6 +425,17 @@ describe('Gear System Integration Tests', () => {
   });
 
   describe('rpcUnequipGear', () => {
+    // Clean loadout, player_stats, and inventory_items before each test so gear state from prior
+    // test blocks (rpcGenerateGear, rpcGetInventory, rpcEquipGear) does not pollute this block's
+    // inventory reads and equip/unequip assertions.
+    beforeEach(async () => {
+      if (player?.userId) {
+        await testHelper.cleanupDatabaseForUser(player.userId, {
+          tablesToClean: ['loadout', 'player_stats', 'inventory_items'],
+        });
+      }
+    });
+
     test('should unequip gear from slot', async () => {
       // Generate and equip weapon
       let weaponGear: any = null;

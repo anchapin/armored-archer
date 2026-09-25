@@ -150,6 +150,8 @@ export class IntegrationTestHelper {
   /**
    * Clean Nakama storage for a specific user via direct PostgreSQL access.
    * This is needed because admin client cannot see other users' storage in Nakama 3.21.
+   * NOTE: Uses a fresh Pool per call to avoid connection-state issues. This is
+   * intentionally NOT reused to prevent lingering connections between tests.
    */
   async cleanupUserStorage(userId: string): Promise<void> {
     const dbHost = process.env.TEST_DB_HOST || 'localhost';
@@ -174,6 +176,42 @@ export class IntegrationTestHelper {
       try {
         // Delete all storage records for this user
         await client.query('DELETE FROM storage WHERE user_id = $1', [userId]).catch(() => {});
+      } finally {
+        client.release();
+      }
+    } finally {
+      await pool.end();
+    }
+  }
+
+  /**
+   * Clean a specific Nakama storage collection for a user via direct PostgreSQL access.
+   * Uses a fresh Pool per call. Safe for use in beforeEach hooks (no Nakama JS client).
+   */
+  async cleanupStorageCollection(userId: string, collection: string): Promise<void> {
+    const dbHost = process.env.TEST_DB_HOST || 'localhost';
+    const dbPort = parseInt(process.env.TEST_DB_PORT || '5433');
+    const dbUser = process.env.TEST_DB_USER || 'postgres';
+    const dbPassword = process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'armoredarcher';
+    const dbName = process.env.TEST_DB_NAME || 'nakama';
+
+    const pool = new Pool({
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
+      password: dbPassword,
+      database: dbName,
+      max: 1,
+      idleTimeoutMillis: 5000,
+      connectionTimeoutMillis: 5000,
+    });
+
+    try {
+      const client = await pool.connect();
+      try {
+        await client
+          .query('DELETE FROM storage WHERE user_id = $1 AND collection = $2', [userId, collection])
+          .catch(() => {});
       } finally {
         client.release();
       }
