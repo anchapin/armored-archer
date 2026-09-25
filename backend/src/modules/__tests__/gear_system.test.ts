@@ -38,17 +38,6 @@ describe('gear_system', () => {
     jest.spyOn(Math, 'random').mockReturnValue(0.5);
     testStorage.clear(); // Clear storage before each test
     resetRateLimiting();
-    // Reset specific metric counters instead of clearing the whole registry,
-    // which can cause metrics to not be found by getSingleMetric/getMetricsAsJSON.
-    try {
-      const reg = getMetricsRegistry();
-      const pveMetric = reg.getSingleMetric('armored_archer_pve_stages_completed_total');
-      if (pveMetric && typeof (pveMetric as any).reset === 'function') (pveMetric as any).reset();
-      const gearMetric = reg.getSingleMetric('armored_archer_gear_unlocks_total');
-      if (gearMetric && typeof (gearMetric as any).reset === 'function') (gearMetric as any).reset();
-    } catch {
-      // Metrics may not exist yet, ignore
-    }
   });
 
   afterEach(() => {
@@ -1723,25 +1712,21 @@ describe('gear_system', () => {
   // Issue #1093 — gear progression metric recorders
   // ==========================================
 
-  // Use getSingleMetric like metrics_issue_1093.test.ts does, rather than
-  // getMetricsAsJSON which can miss metrics that were re-registered after clear().
+  type MetricSample = { labels: Record<string, string>; value: number };
+  type RegisteredMetric = { name: string; type: string; values?: MetricSample[] };
+
   async function counterTotal(
     name: string,
     labels?: Record<string, string>
   ): Promise<number> {
-    try {
-      const metric = getMetricsRegistry().getSingleMetric(name) as any;
-      if (!metric) return 0;
-      const result = await metric.get();
-      if (!result?.values?.length) return 0;
-      return result.values
-        .filter((s: any) =>
-          labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true
-        )
-        .reduce((sum: number, s: any) => sum + s.value, 0);
-    } catch {
-      return 0;
-    }
+    const metrics = (await getMetricsRegistry().getMetricsAsJSON()) as RegisteredMetric[];
+    const metric = metrics.find((m) => m.name === name);
+    if (!metric) return 0;
+    return (metric.values ?? [])
+      .filter((s) =>
+        labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true
+      )
+      .reduce((sum, s) => sum + s.value, 0);
   }
 
   describe('gear metric recorders (issue #1093)', () => {

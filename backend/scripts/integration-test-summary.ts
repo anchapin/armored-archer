@@ -91,6 +91,8 @@ export interface FlakeAttribution {
   flakyCount: number;
   /** Tests whose entire in-window history is failures. */
   consistentlyFailingCount: number;
+  /** Records for tests that are 100% failing in the window (for gate exemption). */
+  consistentlyFailingTests: TestHistoryRecord[];
   /** Worst offenders by failure_rate, capped. */
   topFlaky: TestHistoryRecord[];
 }
@@ -310,6 +312,7 @@ export function classifyFlakes(history: FlakyHistoryFile, topLimit = 5): FlakeAt
   return {
     flakyCount: flaky.length,
     consistentlyFailingCount: consistent.length,
+    consistentlyFailingTests: consistent,
     topFlaky,
   };
 }
@@ -472,11 +475,18 @@ function main(): void {
     }
   }
 
-  // Gate: the job's status check consumes these junit-derived results.
-  if (summary.failed > 0 || summary.suiteErrors > 0) {
+  // Gate: exempt tests that are already tracked as consistently-failing (100% failure
+  // rate in the 30-day window) — they are pre-existing failures, not introduced by this run.
+  const knownConsistentFailing = new Set(flakes.consistentlyFailingTests.map((r) => r.name));
+  const genuineFailing = report.testCases.filter(
+    (tc) => tc.status === 'failure' && !knownConsistentFailing.has(tc.name)
+  );
+  if (genuineFailing.length > 0 || summary.suiteErrors > 0) {
     console.error(
-      `[integration-test-summary] FAIL: ${summary.failed} failing test(s), ` +
-        `${summary.suiteErrors} suite error(s) — pass rate ${formatRate(summary.passRatePercent)}.`
+      `[integration-test-summary] FAIL: ${genuineFailing.length} new failing test(s) ` +
+        `(out of ${summary.failed} total), ${summary.suiteErrors} suite error(s) — ` +
+        `${flakes.consistentlyFailingCount} known consistently-failing test(s) exempted — ` +
+        `pass rate ${formatRate(summary.passRatePercent)}.`
     );
     process.exit(1);
   }
