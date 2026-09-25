@@ -106,6 +106,13 @@ jobs:
           mv Godot_v4.6-stable_linux.x86_64 godot4
 
       - name: Run GUT with real coverage instrumentation (issue #1097)
+        env:
+          # local-godot-tests.sh defaults GODOT_BINARY to 'godot4' from
+          # PATH; the Setup Godot step above downloads the binary to
+          # ./godot4 in the workspace, not /usr/local/bin, so point the
+          # env var at it explicitly. Without this the script logs
+          # "Godot binary 'godot4' not found in PATH" and exits 1.
+          GODOT_BINARY: ${{ github.workspace }}/godot4
         run: |
           # Phase-13 coverage plugin: coverage_pre_run.gd instruments the
           # tracked autoloads via CoverageTracker.track_execution() calls in
