@@ -33,15 +33,13 @@ jobs:
 
       nakama:
         image: heroiclabs/nakama:3.19.0
-        env:
-          # Nakama 3.x reads CLI flags as env vars prefixed with NAKAMA_.
-          # The flag --database.address corresponds to NAKAMA_DATABASE_ADDRESS
-          # (NOT DATABASE_ADDRESS, which the container does not read).
-          # Without this, Nakama logs "Database connections: root@localhost:26257"
-          # (its cockroachdb default) and crashes on
-          # "dial tcp [::1]:26257: connection refused" when run against the
-          # sidecar postgres service.
-          NAKAMA_DATABASE_ADDRESS: postgres://postgres:localdbpassword@postgres:5432/nakama
+        # Pass --database.address as a CMD override because the env var
+        # form (NAKAMA_DATABASE_ADDRESS, DATABASE_ADDRESS, DB_HOST, ...)
+        # was not being read by the container — Nakama kept logging
+        # "Database connections: root@localhost:26257" (its cockroachdb
+        # default) and crashing on "dial tcp [::1]:26257: connection refused".
+        # The bare double-dash form is what Nakama's --help documents.
+        command: ["--database.address", "postgres://postgres:localdbpassword@postgres:5432/nakama"]
         ports:
           - 7350:7350
         # curl -f returns non-zero on any HTTP error, which docker treats
