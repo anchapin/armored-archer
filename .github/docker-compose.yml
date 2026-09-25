@@ -65,7 +65,12 @@ services:
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        exec env HMAC_SECRET=ci-test-secret-do-not-use-in-production /nakama/nakama -config /nakama/nakama.yml --runtime.js_read_only_globals=false
+        exec env HMAC_SECRET=ci-test-secret-do-not-use-in-production
+        NAKAMA_SERVER_KEY="${NAKAMA_SERVER_KEY:-defaultkey}"
+        /nakama/nakama
+        -config /nakama/nakama.yml
+        --socket.server_key "${NAKAMA_SERVER_KEY:-defaultkey}"
+        --runtime.js_read_only_globals=false
     ports:
       - "7350:7350"
       - "7351:7351"
