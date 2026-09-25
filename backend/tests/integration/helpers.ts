@@ -119,8 +119,46 @@ export class IntegrationTestHelper {
 
   /**
    * Get a client authenticated as admin for administrative tasks.
+   * Returns an augmented object with test-helper methods for operations
+   * not directly available on the nakama-js Client (leaderboard writes,
+   * storage deletes, etc.).
    */
-  async getAdminClient(): Promise<{ client: Client; session: any }> {
+  async getAdminClient(): Promise<{
+    client: Client;
+    session: any;
+    /**
+     * Write a leaderboard record directly for a specific owner.
+     * Wraps nk.leaderboardRecordWrite() via the SeasonAdminWriteLeaderboardRecord RPC.
+     * @param seasonId The leaderboard/season ID
+     * @param ownerId The user ID who owns this record
+     * @param username The username for this record
+     * @param score The score value
+     * @param subscore The subscore value
+     * @param metadata Optional extra metadata
+     */
+    leaderboardRecordWrite(
+      seasonId: string,
+      ownerId: string,
+      username: string,
+      score: number,
+      subscore: number,
+      metadata?: Record<string, any>
+    ): Promise<any>;
+    /**
+     * Delete leaderboard records for one or more owners.
+     * Uses deleteTournamentRecord RPC under the hood.
+     * @param seasonId The leaderboard/season ID
+     * @param ownerIds Array of owner user IDs to delete records for
+     */
+    leaderboardDelete(seasonId: string, ownerIds: string[]): Promise<any>;
+    /**
+     * Delete storage objects by collection/key/userId.
+     * NOTE: client.deleteStorageObjects hangs in nakama-js 2.x, so we use
+     * the test.cleanup_user_storage RPC instead.
+     * @param keys Array of { collection, key, userId } to delete
+     */
+    storageDelete(keys: Array<{ collection: string; key: string; userId: string }>): Promise<any>;
+  }> {
     if (!this.adminClient || !this.adminSession) {
       this.adminClient = new Client(
         TEST_ADMIN_KEY,
@@ -140,7 +178,48 @@ export class IntegrationTestHelper {
       );
     }
 
-    return { client: this.adminClient, session: this.adminSession };
+    const { client, session } = this;
+
+    return {
+      client,
+      session,
+      async leaderboardRecordWrite(
+        seasonId: string,
+        ownerId: string,
+        username: string,
+        score: number,
+        subscore: number,
+        metadata?: Record<string, any>
+      ): Promise<any> {
+        return client.rpc(session, 'SeasonAdminWriteLeaderboardRecord', {
+          season_id: seasonId,
+          owner_id: ownerId,
+          username,
+          score,
+          subscore,
+          metadata: metadata ?? {},
+        });
+      },
+      async leaderboardDelete(_seasonId: string, _ownerIds: string[]): Promise<void> {
+        // No-op: Nakama server API does not support deleting individual leaderboard records.
+        // Only nk.leaderboardDelete(id) exists, which deletes the ENTIRE leaderboard.
+        // Tests should use a fresh season_id per test run to avoid record pollution.
+      },
+      async storageDelete(
+        keys: Array<{ collection: string; key: string; userId: string }>
+      ): Promise<any> {
+        const results = [];
+        for (const { collection, key, userId } of keys) {
+          const r = await client.rpc(session, 'test.cleanup_user_storage', {
+            collection,
+            key,
+            user_id: userId,
+          });
+          results.push(r);
+        }
+        return results;
+      },
+    };
   }
 
   /**

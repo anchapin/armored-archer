@@ -832,6 +832,20 @@ export const ValibotSchemas = {
     confirmation_token: optional(pipe(string(), minLength(1), maxLength(128))),
   }),
 
+  admin_write_leaderboard_record: object({
+    season_id: pipe(string(), minLength(1), maxLength(50)),
+    owner_id: pipe(string(), minLength(1), maxLength(128)),
+    username: pipe(string(), minLength(1), maxLength(50)),
+    score: pipe(number(), integer(), minValue(0)),
+    subscore: pipe(number(), integer(), minValue(0)),
+    metadata: optional(record(string(), unknown())),
+  }),
+
+  admin_delete_leaderboard_record: object({
+    season_id: pipe(string(), minLength(1), maxLength(50)),
+    owner_id: pipe(string(), minLength(1), maxLength(128)),
+  }),
+
   submit_survey: object({
     survey_type: createEnum(['post_match', 'post_purchase']),
     survey_data: object({

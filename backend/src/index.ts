@@ -94,6 +94,8 @@ import {
   registerRpcAdminGetPlayerSeason,
   registerRpcAdminValidateSeason,
   registerRpcAdminTriggerSeasonEvent,
+  registerRpcAdminWriteLeaderboardRecord,
+  registerRpcAdminDeleteLeaderboardRecord,
 } from './modules/season_admin';
 import {
   registerRpcGetSeasonHistory,
@@ -631,6 +633,8 @@ const InitModule: InitModule = function (
   registerRpcAdminGetPlayerSeason(initializer);
   registerRpcAdminValidateSeason(initializer);
   registerRpcAdminTriggerSeasonEvent(initializer);
+  registerRpcAdminWriteLeaderboardRecord(initializer);
+  registerRpcAdminDeleteLeaderboardRecord(initializer);
 
   logSystemEvent('info', 'Armored Archer server module initialized');
 
