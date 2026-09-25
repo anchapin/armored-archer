@@ -618,7 +618,6 @@ describe('Gear System Integration Tests', () => {
       });
     }
   });
-});
 
   describe('rpcStageComplete - Boss Defeat Tracking', () => {
     // Note: Boss defeat tracking data (boss_defeats PostgreSQL table) is cleaned
