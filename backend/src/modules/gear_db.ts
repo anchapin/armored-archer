@@ -9,8 +9,8 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
-import { GearItem } from './gear_system';
 import { getStorageRawValue, toStorageValue } from '../utils/storage-helpers';
+import { GearItem } from './gear_system';
 
 /**
  * Database row interface for gear items.
@@ -89,6 +89,7 @@ interface PlayerInventoryStorage {
  * @param maxRetries - Maximum number of retries on version conflict (default: 3)
  * @returns Result with item_id or error
  */
+// eslint-disable-next-line complexity
 export function insertGearItem(
   nk: Runtime.Nakama,
   userId: string,
@@ -195,7 +196,10 @@ export function insertGearItem(
         }
       } catch (dbError) {
         // Database write failed, but storage write succeeded - log warning and continue
-        logger.warn('Failed to persist gear to database (storage write succeeded): %s', String(dbError));
+        logger.warn(
+          'Failed to persist gear to database (storage write succeeded): %s',
+          String(dbError)
+        );
       }
 
       return {
@@ -205,7 +209,10 @@ export function insertGearItem(
     } catch (error) {
       const errorStr = String(error);
       // Check if this is a version conflict error
-      if (errorStr.includes('version check failed') || errorStr.includes('Storage write rejected')) {
+      if (
+        errorStr.includes('version check failed') ||
+        errorStr.includes('Storage write rejected')
+      ) {
         if (attempt < maxRetries) {
           // Retry with fresh read
           continue;
@@ -595,7 +602,10 @@ export function recordBossDefeatInDB(
     } catch (error) {
       const errorStr = String(error);
       // Check if this is a version conflict error
-      if (errorStr.includes('version check failed') || errorStr.includes('Storage write rejected')) {
+      if (
+        errorStr.includes('version check failed') ||
+        errorStr.includes('Storage write rejected')
+      ) {
         if (attempt < maxRetries) {
           // Retry with fresh read
           continue;
@@ -774,7 +784,10 @@ export function unlockModifierPoolInDB(
     } catch (error) {
       const errorStr = String(error);
       // Check if this is a version conflict error
-      if (errorStr.includes('version check failed') || errorStr.includes('Storage write rejected')) {
+      if (
+        errorStr.includes('version check failed') ||
+        errorStr.includes('Storage write rejected')
+      ) {
         if (attempt < maxRetries) {
           // Retry with fresh read
           continue;

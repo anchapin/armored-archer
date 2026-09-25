@@ -7,6 +7,7 @@ import { initializeSentry } from './config/errorTracking';
 import { logSystemEvent } from './config/logger';
 import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
 import { initializeTracing } from './config/tracing';
+import { getAdminUserIds } from './modules/admin_auth';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
 import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
@@ -58,7 +59,6 @@ import {
   registerRpcGetMatchDetails,
   registerRpcAdminQueryMatches,
 } from './modules/matchmaker';
-import { getAdminUserIds } from './modules/admin_auth';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
   registerRpcJoinPool,

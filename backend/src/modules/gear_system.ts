@@ -915,12 +915,118 @@ export function rpcGenerateGear(
 }
 
 /**
+ * Finds a gear item by ID, checking Nakama Storage first then falling back to the database.
+ * eslint-disable-next-line complexity
+ */
+function findGearInStorageOrDB(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  gearId: string
+): any {
+  const storageObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+  if (storageObjects.length > 0) {
+    const value = storageObjects[0].value;
+    if (value) {
+      const parseResult = safeParse<PlayerInventory>(
+        getStorageRawValue(value) ?? '',
+        null,
+        logger,
+        'storage_data'
+      );
+      if (parseResult.success && parseResult.data) {
+        const found = parseResult.data.gear.find((g) => g.id === gearId);
+        if (found) return found;
+      }
+    }
+  }
+
+  // Fallback: also check database (for gear from stage_complete which writes to inventory_items)
+  const dbGear = getPlayerGearFromDB(nk, ctx.userId).find((g) => g.id === gearId);
+  if (dbGear) {
+    return {
+      id: dbGear.id,
+      type: dbGear.type,
+      name: dbGear.name,
+      rarity: dbGear.rarity,
+      level: dbGear.level,
+      stats: dbGear.stats,
+      modifiers: dbGear.modifiers,
+      timestamp: dbGear.timestamp,
+    };
+  }
+  return null;
+}
+
+/**
+ * Reads player inventory from Nakama Storage, returning empty if not found.
+ * eslint-disable-next-line complexity
+ */
+function readInventoryFromStorage(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): { gear: any[]; equipped_gear: { [slot: string]: string | null } } {
+  const storageObjects = nk.storageRead([
+    {
+      collection: 'player_inventory',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+  if (storageObjects.length === 0) {
+    return { gear: [], equipped_gear: {} };
+  }
+  const value = storageObjects[0].value;
+  if (!value) {
+    return { gear: [], equipped_gear: {} };
+  }
+  const parseResult = safeParse<PlayerInventory>(
+    getStorageRawValue(value) ?? '',
+    null,
+    logger,
+    'storage_data'
+  );
+  if (!parseResult.success || !parseResult.data) {
+    return { gear: [], equipped_gear: {} };
+  }
+  return { gear: parseResult.data.gear, equipped_gear: parseResult.data.equipped_gear ?? {} };
+}
+
+/**
+ * Merges gear from storage and database, with DB taking precedence for duplicates.
+ * eslint-disable-next-line complexity
+ */
+function mergeGearFromBothSources(storageGear: any[], dbGear: any[]): any[] {
+  const gearMap = new Map<string, any>();
+  for (const g of storageGear) {
+    gearMap.set(g.id, g);
+  }
+  for (const g of dbGear) {
+    gearMap.set(g.id, g);
+  }
+  return Array.from(gearMap.values());
+}
+
+/**
  * Registers the equip gear RPC endpoint.
  *
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/equip_gear', rpcEquipGear);
+  initializer.registerRpc(
+    'armored_archer/equip_gear',
+    createTracedRpcHandler<Runtime.Context, Runtime.Nakama>(
+      'equip_gear',
+      (ctx, logger, nk, payload) => rpcEquipGear(ctx, logger as Runtime.Logger, nk, payload)
+    )
+  );
 }
 
 /**
@@ -960,47 +1066,7 @@ export function rpcEquipGear(
 
   // Get gear from Nakama Storage (where generate_gear writes)
   // Fall back to database for gear created via stage_complete
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let gear: any = null;
-  const storageObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-  if (storageObjects.length > 0) {
-    const value = storageObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(
-        getStorageRawValue(value) ?? '',
-        null,
-        logger,
-        'storage_data'
-      );
-      if (parseResult.success && parseResult.data) {
-        gear = parseResult.data.gear.find((g) => g.id === request.gear_id) ?? null;
-      }
-    }
-  }
-
-  // Fallback: also check database (for gear from stage_complete which writes to inventory_items)
-  if (!gear) {
-    const dbGear = getPlayerGearFromDB(nk, ctx.userId).find((g) => g.id === request.gear_id);
-    if (dbGear) {
-      // Convert DB gear format to storage gear format for consistent handling
-      gear = {
-        id: dbGear.id,
-        type: dbGear.type,
-        name: dbGear.name,
-        rarity: dbGear.rarity,
-        level: dbGear.level,
-        stats: dbGear.stats,
-        modifiers: dbGear.modifiers,
-        timestamp: dbGear.timestamp,
-      };
-    }
-  }
+  const gear = findGearInStorageOrDB(nk, ctx, logger, request.gear_id);
 
   if (!gear) {
     logAudit(
@@ -1038,16 +1104,13 @@ export function rpcEquipGear(
 
   // Equip item via Nakama Storage (avoids nk.dbQuery which isn't available for writes in Nakama 3.21 JS runtime)
   // Read current inventory from Nakama Storage
-  const equipStorageObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
+  const { gear: currentGear, equipped_gear: currentEquipped } = readInventoryFromStorage(
+    nk,
+    ctx.userId,
+    logger
+  );
   let inventory: PlayerInventory;
-  if (equipStorageObjects.length === 0) {
+  if (currentGear.length === 0 && Object.keys(currentEquipped).length === 0) {
     // Create new inventory if none exists - initialize with null values for all slots
     inventory = {
       user_id: ctx.userId,
@@ -1062,34 +1125,13 @@ export function rpcEquipGear(
       unlocked_modifier_pools: [],
     };
   } else {
-    const value = equipStorageObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(
-        getStorageRawValue(value) ?? '',
-        null,
-        logger,
-        'storage_data'
-      );
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse inventory data for equip');
-        return createErrorResponse('INVALID_DATA', 'Failed to parse inventory data');
-      }
-      inventory = parseResult.data;
-    } else {
-      // Initialize with null values for all slots
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {
-          helm: null,
-          armor: null,
-          bow: null,
-          arrow: null,
-          amulet: null,
-        },
-        unlocked_modifier_pools: [],
-      };
-    }
+    // Re-use data from storage
+    inventory = {
+      user_id: ctx.userId,
+      gear: currentGear,
+      equipped_gear: currentEquipped,
+      unlocked_modifier_pools: [],
+    };
   }
 
   // Update equipped_gear in storage
@@ -1373,40 +1415,14 @@ export function rpcGetInventory(
   const dbInventory = getFullInventoryFromDB(nk, ctx.userId);
 
   // Also read from Nakama Storage (where generate_gear, equip_gear, unequip_gear write)
-  const storageGear: any[] = [];
-  let storageEquippedGear: { [slot: string]: string | null } = {};
-  const storageObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-  if (storageObjects.length > 0) {
-    const value = storageObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(
-        getStorageRawValue(value) ?? '',
-        null,
-        logger,
-        'storage_data'
-      );
-      if (parseResult.success && parseResult.data) {
-        storageGear.push(...parseResult.data.gear);
-        storageEquippedGear = parseResult.data.equipped_gear ?? {};
-      }
-    }
-  }
+  const { gear: storageGear, equipped_gear: storageEquippedGear } = readInventoryFromStorage(
+    nk,
+    ctx.userId,
+    logger
+  );
 
   // Merge gear from both sources, deduplicate by ID (DB gear takes precedence if duplicate)
-  const gearMap = new Map<string, any>();
-  for (const g of storageGear) {
-    gearMap.set(g.id, g);
-  }
-  for (const g of dbInventory.gear) {
-    gearMap.set(g.id, g);
-  }
-  const combinedGear = Array.from(gearMap.values());
+  const combinedGear = mergeGearFromBothSources(storageGear, dbInventory.gear);
 
   // Use equipped_gear from Nakama Storage (where equip_gear/unequip_gear write)
   // Falls back to DB loadout if storage is empty
