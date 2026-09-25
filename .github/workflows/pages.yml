@@ -30,7 +30,6 @@ jobs:
     # Pages configuration must be done at the repo or org level (Settings
     # → Pages → Build and deployment → GitHub Actions) before this
     # workflow can succeed. See issue tracking the Pages follow-up.
-    if: ${{ vars.PAGES_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,3 +46,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+# --- CI Fixes Wave C ---
+# REMOVED vars.PAGES_DEPLOY_ENABLED skip-gate on 2026-09-25 (issue #1198).
+
