@@ -145,7 +145,7 @@ describe('storage-helpers', () => {
           collection: 'player_stats',
           key: 'user123',
           userId: 'user123',
-          value: JSON.stringify(stats),
+          value: stats,
         },
       ]);
     });
@@ -200,14 +200,14 @@ describe('storage-helpers', () => {
       expect(mockNk.storageWrite).not.toHaveBeenCalled();
     });
 
-    it('should stringify object values', () => {
+    it('should pass object values directly to storageWrite', () => {
       const mockNk = { storageWrite: jest.fn() };
       const writes: StorageWriteOptions[] = [
         { collection: 'col', key: 'key', userId: 'user', value: { foo: 'bar' } },
       ];
       batchStorageWrite(mockNk as any, writes);
       const callArg = mockNk.storageWrite.mock.calls[0][0];
-      expect(callArg[0].value).toBe('{"foo":"bar"}');
+      expect(callArg[0].value).toEqual({ foo: 'bar' });
     });
 
     it('should keep string values as-is', () => {

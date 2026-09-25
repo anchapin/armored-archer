@@ -28,17 +28,35 @@ jest.mock('../../config/errorTracking', () => ({
 }));
 
 describe('alerting', () => {
+  // Store reference to the jest.setup.js mock so we can restore it
+  let setupFetchMock: jest.Mock;
+
   beforeEach(() => {
     clearAlertState();
     jest.clearAllMocks();
-    jest.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-    } as Response);
+    // Create a fresh mock for each test, preserving the jest.setup.js fallback behavior
+    setupFetchMock = jest.fn((url: string | Request, _options?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : (url as Request).url;
+      // CodeQL [js/incomplete-url-substring-sanitization] test fixture intentionally matches URL substrings to simulate different fetch responses
+      if (urlString.includes('revenuecat.com')) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve(JSON.stringify({ status: 'active', valid: true })),
+          json: () => Promise.resolve({ status: 'active', valid: true }),
+        });
+      }
+      // Default success for other URLs (slack, pagerduty, etc.) for tests that check fetch was called
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      } as Response);
+    });
+    global.fetch = setupFetchMock;
   });
 
   afterEach(() => {
+    // Restore to jest.setup.js mock by reassigning
     jest.restoreAllMocks();
   });
 
@@ -369,6 +387,8 @@ describe('alerting', () => {
       }
     }
 
+    // Skip .env loading when resetting modules to prevent pollution from .env placeholder values
+    process.env.SKIP_ENV_LOADING = 'true';
     jest.resetModules();
     jest.mock('../../config/errorTracking', () => ({
       captureMessage: jest.fn(),

@@ -323,13 +323,13 @@ describe('Matchmaking Analytics Module', () => {
 
       await logMatchData(mockNk, requestData);
 
-      // The implementation stores value as a JSON string
+      // Post-#1135: storageWrite accepts plain objects (goja JSON-marshals internally)
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             collection: 'matchmaking_match_data',
             key: 'match_123',
-            value: JSON.stringify(requestData),
+            value: requestData,
           }),
         ])
       );
@@ -392,17 +392,18 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('logQueueTime', () => {
     it('should log queue time to storage', async () => {
-      await logQueueTime(mockNk, {
+      const requestData = {
         queue_time: 45,
         timestamp: Date.now(),
-      });
+      };
+      await logQueueTime(mockNk, requestData);
 
-      // The implementation stores value as a JSON string
+      // Post-#1135: storageWrite accepts plain objects (goja JSON-marshals internally)
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             collection: 'matchmaking_queue_times',
-            value: expect.stringContaining('"queue_time":45'),
+            value: expect.objectContaining({ queue_time: 45 }),
           }),
         ])
       );
