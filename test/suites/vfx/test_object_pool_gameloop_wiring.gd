@@ -119,7 +119,10 @@ func test_ready_does_not_construct_pools() -> void:
 		"arrow pool must be empty until prewarm"
 	)
 	assert_eq(
-		(pool._enemy_pool as Array).size(), 0,
+		(pool._enemy_pools.get(
+			pool._DEFAULT_ENEMY_SCENE_PATH, {"available": []}
+		)["available"] as Array).size(),
+		0,
 		"enemy pool must be empty until prewarm"
 	)
 	assert_eq(
@@ -140,7 +143,9 @@ func test_prewarm_pools_constructs_tier_budget() -> void:
 		"arrow pool must prewarm to the tier budget"
 	)
 	assert_eq(
-		(pool._enemy_pool as Array).size(),
+		(pool._enemy_pools.get(
+			pool._DEFAULT_ENEMY_SCENE_PATH, {"available": []}
+		)["available"] as Array).size(),
 		maxi(int(ENEMY_POOL_BASE * multiplier), ENEMY_POOL_FLOOR),
 		"enemy pool must prewarm to the tier budget"
 	)
@@ -260,7 +265,9 @@ func test_scene_exit_returns_active_objects_to_pools() -> void:
 		"arrow must be back in its pool after the transition"
 	)
 	assert_true(
-		(pool._enemy_pool as Array).has(enemy),
+		(pool._enemy_pools.get(
+			pool._DEFAULT_ENEMY_SCENE_PATH, {"available": []}
+		)["available"] as Array).has(enemy),
 		"enemy must be back in its pool after the transition"
 	)
 
