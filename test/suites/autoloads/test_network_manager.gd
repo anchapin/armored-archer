@@ -292,6 +292,11 @@ func test_send_rpc_timeout():
 	# This test verifies the error path exists
 	# For full timeout testing, we'd need to mock Timer and simulate timeout
 	# Actual timeout testing requires async setup with Timer
+	# Marked pending (issue #1361) — body has no assertions; GUT reports
+	# "Risky: Did not assert". Real timeout test requires Timer injection
+	# into send_rpc() — see #1082.
+	pending("Stub: needs Timer injection into send_rpc() — issue #1082")
+	return
 
 func test_send_rpc_auth_error():
 	# Test 401/403 response handling
@@ -303,6 +308,11 @@ func test_send_rpc_auth_error():
 	# This test verifies the error path exists in send_rpc()
 	# For full auth error testing, we'd need to mock HTTPRequest with response_code parameter
 	# Auth error testing requires HTTPRequest response mocking
+	# Marked pending (issue #1361) — body has no assertions; GUT reports
+	# "Risky: Did not assert". Real auth-error test needs HTTPRequest
+	# response_code injection — see #1082.
+	pending("Stub: needs HTTPRequest response_code injection — issue #1082")
+	return
 
 func test_send_rpc_async_fire_and_forget():
 	# Test async RPC doesn't wait for response

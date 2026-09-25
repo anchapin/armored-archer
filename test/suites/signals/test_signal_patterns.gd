@@ -12,13 +12,19 @@ func before_each():
 
 func test_watch_signals_basic():
 	# Stub: Will demonstrate watch_signals() usage
-	watch_signals(test_object)
-	pass
+	# Marked pending (issue #1361) — body only calls watch_signals() which
+	# is not an assertion; GUT reports "Risky: Did not assert" without one.
+	pending("Stub: signal-testing patterns not yet implemented — issue #1361")
+	return
 
 func test_wait_for_signal_async():
 	# Stub: Will demonstrate wait_for_signal() for async signals
-	pass
+	# Marked pending (issue #1361) — body is bare pass; GUT reports "Risky".
+	pending("Stub: signal-testing patterns not yet implemented — issue #1361")
+	return
 
 func test_signal_emission_with_parameters():
 	# Stub: Will demonstrate assert_signal_emitted_with_parameters()
-	pass
+	# Marked pending (issue #1361) — body is bare pass; GUT reports "Risky".
+	pending("Stub: signal-testing patterns not yet implemented — issue #1361")
+	return
