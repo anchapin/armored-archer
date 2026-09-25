@@ -632,10 +632,10 @@ export function registerRpcWithRateLimit(
     rateLimiter.setEndpointRateLimit(rpcName, endpointConfig);
   }
 
-  const wrappedWithRateLimit = rateLimiter.createRateLimitedRpcHandler(rpcName, handler);
-  const wrappedWithMetrics = wrapRpcWithMetrics(rpcName, wrappedWithRateLimit);
-
-  initializer.registerRpc(rpcId, wrappedWithMetrics);
+  rateLimiter.createRateLimitedRpcHandler(rpcName, handler).then((wrappedWithRateLimit) => {
+    const wrappedWithMetrics = wrapRpcWithMetrics(rpcName, wrappedWithRateLimit);
+    initializer.registerRpc(rpcId, wrappedWithMetrics);
+  });
 }
 
 export function getMetricsRegistry(): Registry {

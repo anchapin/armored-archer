@@ -1,5 +1,6 @@
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { getRedisClient } from './redis';
 
 let recordRateLimitViolation: (endpoint: string) => void = () => {};
 let updateActiveUsersCount: (count: number) => void = () => {};
@@ -46,6 +47,10 @@ function getKey(userId: string, endpoint: string): string {
   return `${userId}:${endpoint}`;
 }
 
+function getRedisKey(userId: string, endpoint: string): string {
+  return `ratelimit:${endpoint}:${userId}`;
+}
+
 function getCurrentWindowResetTime(windowMs: number): number {
   return Date.now() + windowMs;
 }
@@ -58,13 +63,38 @@ export function getEndpointRateLimit(endpoint: string): RateLimitConfig {
   return endpointConfigs.get(endpoint) || defaultConfig;
 }
 
-export function checkRateLimit(userId: string, endpoint: string): RateLimitResult {
+export async function checkRateLimit(userId: string, endpoint: string): Promise<RateLimitResult> {
   const config = getEndpointRateLimit(endpoint);
   const key = getKey(userId, endpoint);
+  const redisKey = getRedisKey(userId, endpoint);
   const now = Date.now();
 
-  let state = rateLimitStore.get(key);
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const windowSecs = Math.ceil(config.windowMs / 1000);
+      const multi = redis.multi();
+      multi.incr(redisKey);
+      multi.expire(redisKey, windowSecs);
+      const results = await multi.exec();
+      const count = results?.[0]?.[1] as number;
+      const ttl = await redis.ttl(redisKey);
+      const resetTime = ttl > 0 ? Date.now() + ttl * 1000 : now + config.windowMs;
 
+      if (count !== null && count !== undefined) {
+        const remaining = Math.max(0, config.maxRequests - count);
+        if (count > config.maxRequests) {
+          const retryAfter = Math.ceil((resetTime - now) / 1000);
+          return { allowed: false, remaining: 0, resetTime, retryAfter };
+        }
+        return { allowed: true, remaining: remaining - 1, resetTime };
+      }
+    } catch (err) {
+      logger.warn('Redis rate limit check failed, falling back to in-memory: %s', String(err));
+    }
+  }
+
+  let state = rateLimitStore.get(key);
   if (!state || now >= state.resetTime) {
     state = {
       count: 0,
@@ -74,25 +104,13 @@ export function checkRateLimit(userId: string, endpoint: string): RateLimitResul
   }
 
   const remaining = Math.max(0, config.maxRequests - state.count);
-
   if (state.count >= config.maxRequests) {
     const retryAfter = Math.ceil((state.resetTime - now) / 1000);
-
-    return {
-      allowed: false,
-      remaining: 0,
-      resetTime: state.resetTime,
-      retryAfter,
-    };
+    return { allowed: false, remaining: 0, resetTime: state.resetTime, retryAfter };
   }
 
   state.count++;
-
-  return {
-    allowed: true,
-    remaining: remaining - 1,
-    resetTime: state.resetTime,
-  };
+  return { allowed: true, remaining: remaining - 1, resetTime: state.resetTime };
 }
 
 export function logRateLimitViolation(endpoint: string, userId: string, retryAfter: number): void {
@@ -109,6 +127,11 @@ export function logRateLimitViolation(endpoint: string, userId: string, retryAft
 export function resetUserRateLimit(userId: string, endpoint: string): void {
   const key = getKey(userId, endpoint);
   rateLimitStore.delete(key);
+  const redisKey = getRedisKey(userId, endpoint);
+  const redis = getRedisClient();
+  if (redis) {
+    redis.del(redisKey).catch(() => {});
+  }
 }
 
 export function cleanupExpiredEntries(): void {
@@ -122,11 +145,9 @@ export function cleanupExpiredEntries(): void {
   });
 
   entriesToDelete.forEach((key) => rateLimitStore.delete(key));
-
   updateActiveUsersCount(rateLimitStore.size);
 }
 
-// Only create cleanup interval in production, not during tests
 if (process.env.NODE_ENV !== 'test') {
   setInterval(cleanupExpiredEntries, 60000);
 }
@@ -138,8 +159,9 @@ export function getRateLimitStats(): {
   const endpointStats = new Map<string, Set<string>>();
 
   rateLimitStore.forEach((_, key) => {
-    const [, endpoint] = key.split(':');
-    const userId = key.split(':')[0];
+    const parts = key.split(':');
+    const userId = parts[0];
+    const endpoint = parts.slice(1).join(':');
 
     if (!endpointStats.has(endpoint)) {
       endpointStats.set(endpoint, new Set());
@@ -156,7 +178,7 @@ export function getRateLimitStats(): {
   };
 }
 
-export function createRateLimitedRpcHandler(
+export async function createRateLimitedRpcHandler(
   endpoint: string,
   handler: (
     ctx: Runtime.Context,
@@ -164,25 +186,21 @@ export function createRateLimitedRpcHandler(
     nk: Runtime.Nakama,
     payload: string
   ) => string | Promise<string>
-): (
+): Promise<(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-) => string | Promise<string> {
-  // SYNC on purpose: Nakama 3.21's goja runtime has no promise-job
-  // scheduler, so an async handler returns a pending Promise that Nakama
-  // rejects ('Runtime function returned invalid data'). The wrap adds no
-  // awaits — keep the registered handler synchronous (issue #1135).
-  return function (
+) => Promise<string>> {
+  return async function (
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): string {
+  ): Promise<string> {
     const userId = ctx.userId || 'anonymous';
 
-    const rateLimitResult = checkRateLimit(userId, endpoint);
+    const rateLimitResult = await checkRateLimit(userId, endpoint);
 
     if (!rateLimitResult.allowed) {
       logRateLimitViolation(endpoint, userId, rateLimitResult.retryAfter || 0);
@@ -198,11 +216,10 @@ export function createRateLimitedRpcHandler(
       });
     }
 
-    const result = handler(ctx, loggerParam, nk, payload);
+    const result = await handler(ctx, loggerParam, nk, payload);
     if (typeof result !== 'string') {
       throw new Error(
-        `RPC ${endpoint} returned a non-string result; async handlers are ` +
-          'unsupported by the Nakama JS runtime (issue #1135)'
+        `RPC ${endpoint} returned a non-string result`
       );
     }
     return result;
