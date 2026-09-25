@@ -40,15 +40,15 @@ jobs:
           POSTGRES_HOST: postgres
         ports:
           - 7350:7350
-        # Note: `curl -f` already exits non-zero on any HTTP error; docker
-        # marks the container unhealthy on a non-zero exit, so the trailing
-        # `|| exit 1` is redundant. The previous combined form
-        # (`curl -f ... || exit 1`) tripped docker's arg parser, which
-        # interprets the whole string as docker flags rather than a shell
-        # command. Invoking `sh -c` explicitly here keeps the wrapper in
-        # bash where `||` is valid.
+        # curl -f returns non-zero on any HTTP error, which docker treats
+        # as unhealthy — no shell operator needed. The previous
+        # `curl -f http://localhost:7350/ || exit 1` tripped docker's arg
+        # parser (`||` is bash-only, not a docker flag). Wrapping in
+        # `sh -c` also failed because docker's per-token parser treats the
+        # second token as the value of --health-cmd and then misinterprets
+        # the embedded `-c` as --cpu-shares.
         options: >-
-          --health-cmd sh -c "curl -fsS http://localhost:7350/"
+          --health-cmd "curl -f http://localhost:7350/"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
