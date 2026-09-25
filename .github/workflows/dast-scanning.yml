@@ -19,7 +19,6 @@ jobs:
     # made this job red on every push. Configure the workflow with a
     # real staging URL via vars.STAGING_URL (or repo/org Variables) to
     # re-enable the scan. See issue tracking the staging infra follow-up.
-    if: ${{ vars.STAGING_URL != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,3 +41,7 @@ jobs:
           name: zap-report
           path: zap_report.html
           retention-days: 30
+
+# --- CI Fixes Wave C ---
+# REMOVED vars.STAGING_URL skip-gate on 2026-09-25 (issue #1088).
+

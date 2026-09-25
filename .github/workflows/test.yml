@@ -101,7 +101,6 @@ jobs:
     # tests added since the baseline was captured, 5 of which fail).
     # The gut_baseline_gate.py ratchet-down rule fails on every PR.
     # Set vars.GUT_BASELINE_FIXED=true once the baseline is reconciled.
-    if: ${{ vars.GUT_BASELINE_FIXED == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -486,3 +485,7 @@ jobs:
       - name: Skip upload (act detected)
         if: env.ACT == 'true'
         run: echo "Skipping artifact upload in act environment"
+
+# --- CI Fixes Wave C ---
+# REMOVED vars.GUT_BASELINE_FIXED skip-gate on 2026-09-25 (issue #894, godot-coverage-gate job).
+

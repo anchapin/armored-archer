@@ -550,7 +550,7 @@ jobs:
     # the repo or org level. Without SONAR_ORG the scanner errors out
     # with "Organization key '' does not exist" on every PR. Tracking:
     # follow-up issue (see PR #1356 description).
-    if: (github.event_name == 'push' || github.event_name == 'pull_request') && vars.SONAR_ENABLED == 'true'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     services:
       # PostgreSQL database service
       # Note: Using unique port 5434 to avoid conflicts with backend-test job (5432) when running act in parallel
@@ -888,7 +888,6 @@ jobs:
     # tests/integration/performance_smoke.test.ts and a handful of auth
     # tests in other files). Setting INFRASTRUCTURE_FIXED=true once the
     # auth/credential chain is fixed in the CI docker-compose.
-    if: ${{ vars.INFRASTRUCTURE_FIXED == 'true' }}
     # Remove the conditional above (or set the var) to re-enable.
     # Issue #1144: the signal steps below post a PR comment (issues API) and
     # create a check run (dorny/test-reporter). Scoped to this job only; the
@@ -1277,3 +1276,7 @@ jobs:
       - name: Skip upload (act detected)
         if: always() && env.ACT == 'true'
         run: echo "Skipping artifact upload in act environment"
+
+# --- CI Fixes Wave C ---
+# REMOVED vars.SONAR_ENABLED skip-gate on 2026-09-25 (issue #1356, sonarcloud job).
+# REMOVED vars.INFRASTRUCTURE_FIXED skip-gate on 2026-09-25 (PR #1365, backend-integration-test job).

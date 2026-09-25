@@ -20,7 +20,6 @@ jobs:
     # target `http://localhost:7350` was failing because the docker-compose
     # stack fails to expose that port in CI. Tracking issue #1354 covers
     # the staging URL side of the same problem.
-    if: ${{ vars.DAST_LOCAL_ENABLED == 'true' || vars.STAGING_URL != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -132,3 +131,8 @@ jobs:
         if: always()
         working-directory: ./backend
         run: docker compose down
+
+# --- CI Fixes Wave C ---
+# REMOVED vars.DAST_LOCAL_ENABLED skip-gate on 2026-09-25 (issue #1088).
+# REMOVED vars.STAGING_URL skip-gate on 2026-09-25 (issue #1088).
+

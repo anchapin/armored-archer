@@ -101,7 +101,6 @@ jobs:
     # current GUT suite (~582 tests, ~54 failing). Without updating the
     # baseline — which violates the ratchet-down design — the gate will
     # keep blocking PRs. Skip until the baseline is reconciled.
-    if: ${{ vars.GUT_BASELINE_FIXED == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -229,3 +228,7 @@ jobs:
           fi
 
           echo "All coverage checks passed"
+
+# --- CI Fixes Wave C ---
+# REMOVED vars.GUT_BASELINE_FIXED skip-gate on 2026-09-25 (issue #894, godot-coverage job).
+
