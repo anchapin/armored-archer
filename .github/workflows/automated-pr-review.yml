@@ -212,13 +212,20 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const prNum = '${{ needs.pre-review-checks.outputs.pr_number }}';
-            const prTitle = '${{ needs.pre-review-checks.outputs.pr_title }}';
-            const prBody = '${{ needs.pre-review-checks.outputs.pr_body }}';
-            const author = '${{ needs.pre-review-checks.outputs.pr_author }}';
-            const isAiAssisted = '${{ needs.pre-review-checks.outputs.is_ai_assisted }}' === 'true';
-            const riskLevel = '${{ needs.analyze-changes.outputs.risk_level }}';
-            const fileCount = '${{ needs.pre-review-checks.outputs.file_count }}';
+            // Substitute values via ${{ toJson(...) }} so any embedded
+            // quotes, backslashes, or newlines (PR titles / bodies can
+            // contain all three) are JSON-escaped by GitHub Actions into
+            // a safe double-quoted JS string literal. The previous form
+            // (`'${{ ... }}'`) was unsafe because single-quoted JS strings
+            // cannot contain raw newlines, which a long PR body
+            // inevitably has.
+            const prNum = ${{ toJson(needs.pre-review-checks.outputs.pr_number) }};
+            const prTitle = ${{ toJson(needs.pre-review-checks.outputs.pr_title) }};
+            const prBody = ${{ toJson(needs.pre-review-checks.outputs.pr_body) }};
+            const author = ${{ toJson(needs.pre-review-checks.outputs.pr_author) }};
+            const isAiAssisted = ${{ toJson(needs.pre-review-checks.outputs.is_ai_assisted) }} === 'true';
+            const riskLevel = ${{ toJson(needs.analyze-changes.outputs.risk_level) }};
+            const fileCount = ${{ toJson(needs.pre-review-checks.outputs.file_count) }};
 
             let reviewBody = '## Automated Code Review\n\n';
             reviewBody += '### Summary\n';
@@ -227,9 +234,9 @@ jobs:
             reviewBody += '- AI-assisted: ' + (isAiAssisted ? 'Yes' : 'No') + '\n\n';
 
             reviewBody += '### Analysis\n';
-            reviewBody += '- Backend changes: ${{ needs.analyze-changes.outputs.has_backend_changes }}\n';
-            reviewBody += '- Frontend changes: ${{ needs.analyze-changes.outputs.has_frontend_changes }}\n';
-            reviewBody += '- Security changes: ${{ needs.analyze-changes.outputs.has_security_changes }}\n\n';
+            reviewBody += '- Backend changes: ' + ${{ toJson(needs.analyze-changes.outputs.has_backend_changes) }} + '\n';
+            reviewBody += '- Frontend changes: ' + ${{ toJson(needs.analyze-changes.outputs.has_frontend_changes) }} + '\n';
+            reviewBody += '- Security changes: ' + ${{ toJson(needs.analyze-changes.outputs.has_security_changes) }} + '\n\n';
 
             if (isAiAssisted) {
               reviewBody += '### AI-Assisted PR Requirements\n';
@@ -282,9 +289,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const prNum = '${{ needs.pre-review-checks.outputs.pr_number }}';
-            const riskLevel = '${{ needs.analyze-changes.outputs.risk_level }}';
-            const isAiAssisted = '${{ needs.pre-review-checks.outputs.is_ai_assisted }}' === 'true';
+            // toJson() encodes the value as a JSON string literal so quotes,
+            // backslashes, or newlines in the output value don't break JS
+            // parsing. See comment in the generate-review job for details.
+            const prNum = ${{ toJson(needs.pre-review-checks.outputs.pr_number) }};
+            const riskLevel = ${{ toJson(needs.analyze-changes.outputs.risk_level) }};
+            const isAiAssisted = ${{ toJson(needs.pre-review-checks.outputs.is_ai_assisted) }} === 'true';
 
             const labels = ['automated-review'];
             if (riskLevel === 'high') labels.push('security-review');

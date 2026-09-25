@@ -546,8 +546,11 @@ jobs:
   sonarcloud:
     name: SonarCloud Code Quality
     runs-on: ubuntu-latest
-    # Only run on push/PR events to avoid duplicate scans
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    # Skip until the SONAR_TOKEN and SONAR_ORG secrets are configured at
+    # the repo or org level. Without SONAR_ORG the scanner errors out
+    # with "Organization key '' does not exist" on every PR. Tracking:
+    # follow-up issue (see PR #1356 description).
+    if: (github.event_name == 'push' || github.event_name == 'pull_request') && vars.SONAR_ENABLED == 'true'
     services:
       # PostgreSQL database service
       # Note: Using unique port 5434 to avoid conflicts with backend-test job (5432) when running act in parallel
