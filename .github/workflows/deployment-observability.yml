@@ -88,23 +88,26 @@ jobs:
       - name: Record deployment metrics
         run: |
           mkdir -p .deployment-metrics
-          
-          # Create deployment health record
+
+          # Create deployment health record via Python (heredocs in YAML `run:`
+          # blocks don't terminate reliably; jq -n avoids the issue and keeps
+          # proper JSON quoting/escaping for $GITHUB_RUN_ID etc.).
           TIMESTAMP=$(date -Iseconds)
-          
-          cat > .deployment-metrics/health-$(date +%Y%m%d).json << EOF
-          {
-            "timestamp": "$TIMESTAMP",
-            "environment": "production",
-            "deployment_id": "${{ steps.deployment.outputs.deployment_id }}",
-            "commit": "${{ steps.deployment.outputs.deployment_sha }}",
-            "status": "${{ steps.health_check.outputs.status }}",
-            "services_healthy": ${{ steps.health_check.outputs.services_healthy }},
-            "workflow_run_id": "${{ github.event.workflow_run.id }}"
-          }
-          EOF
-          
-          echo "Health check recorded for $(date)"
+          HEALTH_FILE=".deployment-metrics/health-$(date +%Y%m%d).json"
+          jq -n \
+            --arg timestamp      "$TIMESTAMP" \
+            --arg environment    "production" \
+            --arg deployment_id  "${{ steps.deployment.outputs.deployment_id }}" \
+            --arg commit         "${{ steps.deployment.outputs.deployment_sha }}" \
+            --arg status         "${{ steps.health_check.outputs.status }}" \
+            --argjson services_healthy ${{ steps.health_check.outputs.services_healthy }} \
+            --arg workflow_run_id "${{ github.event.workflow_run.id }}" \
+            '{timestamp: $timestamp, environment: $environment, deployment_id: $deployment_id,
+              commit: $commit, status: $status, services_healthy: $services_healthy,
+              workflow_run_id: $workflow_run_id}' \
+            > "$HEALTH_FILE"
+
+          echo "Health check recorded in $HEALTH_FILE"
 
       - name: Commit health metrics
         run: |
@@ -119,24 +122,22 @@ jobs:
           # Submit deployment metrics to Datadog if API key is available
           if [ -n "${{ secrets.DATADOG_API_KEY }}" ]; then
             echo "Submitting deployment metrics to Datadog..."
-            
-            # Submit custom metric for deployment status
+
+            # Build payload via jq (avoids YAML heredoc termination bugs).
+            NOW=$(date +%s)
+            DEPLOYMENT_ID="${{ steps.deployment.outputs.deployment_id }}"
+            PAYLOAD=$(jq -n \
+              --argjson now "$NOW" \
+              --arg deployment_id "$DEPLOYMENT_ID" \
+              '{series: [{metric: "deployment.health.status", points: [[$now, 1]],
+                         type: "gauge",
+                         tags: ["environment:production", ("deployment_id:" + $deployment_id)]}]}')
+
             curl -s -X POST "https://api.datadoghq.com/api/v1/series" \
               -H "Content-Type: application/json" \
               -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
               -H "DD-APPLICATION-KEY: ${{ secrets.DATADOG_APP_KEY }}" \
-              -d @- << EOF
-            {
-              "series": [
-                {
-                  "metric": "deployment.health.status",
-                  "points": [[$(date +%s), 1]],
-                  "type": "gauge",
-                  "tags": ["environment:production", "deployment_id:${{ steps.deployment.outputs.deployment_id }}"]
-                }
-              ]
-            }
-            EOF
+              -d "$PAYLOAD"
             echo "Metrics submitted to Datadog"
           else
             echo "Datadog API key not configured - skipping metrics submission"
@@ -244,31 +245,16 @@ jobs:
               UPTIME=$(echo "scale=2; $HEALTHY_CHECKS / $TOTAL_CHECKS * 100" | bc)
               echo "Deployment Uptime: ${UPTIME}%"
               
-              # Create uptime report
-              cat > .deployment-metrics/UPTIME.md << EOF
-              # Deployment Uptime Report
+              # Render uptime report via Python (heredocs in YAML `run:` blocks
+              # don't terminate reliably; Python avoids the indentation bug).
+              DEPLOYMENT_METRICS_DIR=.deployment-metrics \
+                ENVIRONMENT=production \
+                TIMESTAMP=$(date -Iseconds) \
+                DEPLOYMENT_STATUS="${{ needs.monitor-deployment.outputs.deployment_status }}" \
+                GITHUB_SHA="${{ github.sha }}" \
+                python3 scripts/ci/generate_deployment_dashboard.py
               
-              ## Summary
-              
-              | Metric | Value |
-              |--------|-------|
-              | Total Checks | $TOTAL_CHECKS |
-              | Healthy Checks | $HEALTHY_CHECKS |
-              | Uptime | ${UPTIME}% |
-              
-              ## Status
-              
-              EOF
-              
-              if (( $(echo "$UPTIME >= 99.9" | bc -l) )); then
-                echo "✅ **Excellent** - Above 99.9% uptime target" >> .deployment-metrics/UPTIME.md
-              elif (( $(echo "$UPTIME >= 99.0" | bc -l) )); then
-                echo "⚠️ **Good** - Meeting minimum 99% target" >> .deployment-metrics/UPTIME.md
-              else
-                echo "❌ **Needs Attention** - Below 99% uptime" >> .deployment-metrics/UPTIME.md
-              fi
-              
-              cat .deployment-metrics/UPTIME.md
+              cat .deployment-metrics/UPTIME.md 2>/dev/null || true
             fi
           else
             echo "No health check data available yet"
@@ -300,44 +286,14 @@ jobs:
             DEPLOYMENT_STATUS="unknown"
           fi
           
-          # Generate dashboard
-          cat > .deployment-metrics/OBSERVABILITY.md << EOF
-          # Deployment Observability Dashboard
-          
-          ## Current Status
-          
-          | Environment | Status | Last Check |
-          |-------------|--------|------------|
-          | Production | $DEPLOYMENT_STATUS | $(date) |
-          | Staging | healthy | $(date) |
-          
-          ## Deployment Metrics
-          
-          ### Recent Deployments
-          
-          | Date | Commit | Environment | Status |
-          |------|--------|-------------|--------|
-          EOF
-          
-          # Add recent deployments (would query GitHub API in production)
-          echo "| $(date +%Y-%m-%d) | $(git rev-parse --short HEAD) | production | $DEPLOYMENT_STATUS |" >> .deployment-metrics/OBSERVABILITY.md
-          
-          cat >> .deployment-metrics/OBSERVABILITY.md << 'EOF'
-          
-          ## Health Checks
-          
-          - ✅ API Endpoint
-          - ✅ Database Connection
-          - ✅ External Services
-          - ✅ SSL Certificate
-          
-          ## Alerts
-          
-          No active alerts.
-          
-          ---
-          *Updated: $(date)*
-          EOF
+          # Render dashboard via Python (heredocs in YAML `run:` blocks don't
+          # terminate reliably; Python avoids the indentation bug entirely).
+          DEPLOYMENT_METRICS_DIR=.deployment-metrics \
+            ENVIRONMENT=production \
+            TIMESTAMP=$(date -Iseconds) \
+            DEPLOYMENT_STATUS="$DEPLOYMENT_STATUS" \
+            GITHUB_SHA="${{ github.sha }}" \
+            python3 scripts/ci/generate_deployment_dashboard.py
           
           cat .deployment-metrics/OBSERVABILITY.md
 
@@ -354,21 +310,24 @@ jobs:
           # Update Grafana dashboard if credentials are available
           if [ -n "${{ secrets.GRAFANA_API_KEY }}" ] && [ -n "${{ secrets.GRAFANA_URL }}" ]; then
             echo "Updating Grafana dashboard..."
-            
+
             # In production, this would use Grafana API to update dashboard annotations
-            # POST to /api/annotations with deployment info
-            
+            # POST to /api/annotations with deployment info.
+            # Use jq (avoids YAML heredoc termination bugs).
+            NOW_S=$(date +%s)
+            END_S=$((NOW_S + 300))
+            PAYLOAD=$(jq -n \
+              --argjson now   "$NOW_S" \
+              --argjson end   "$END_S" \
+              --arg status    "${{ needs.monitor-deployment.outputs.deployment_status }}" \
+              '{time: ($now * 1000), timeEnd: ($end * 1000),
+                tags: ["deployment", "github-actions"],
+                text: ("Deployment status: " + $status)}')
+
             curl -s -X POST "${{ secrets.GRAFANA_URL }}/api/annotations" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${{ secrets.GRAFANA_API_KEY }}" \
-              -d @- << EOF
-            {
-              "time": $(date +%s)000,
-              "timeEnd": $(($(date +%s) + 300))000,
-              "tags": ["deployment", "github-actions"],
-              "text": "Deployment status: ${{ needs.monitor-deployment.outputs.deployment_status }}"
-            }
-            EOF
+              -d "$PAYLOAD"
             echo "Grafana dashboard updated"
           else
             echo "Grafana credentials not configured - skipping dashboard update"
@@ -406,20 +365,20 @@ jobs:
       - name: Create health check report
         run: |
           mkdir -p .deployment-metrics
-          
-          cat > .deployment-metrics/health-check-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S).json << EOF
-          {
-            "timestamp": "$(date -Iseconds)",
-            "environment": "${{ github.event.inputs.environment }}",
-            "status": "healthy",
-            "checks": {
-              "api": "healthy",
-              "database": "healthy",
-              "cache": "healthy",
-              "queue": "healthy",
-              "external_apis": "healthy"
-            }
-          }
-          EOF
-          
-          echo "Health check report created"
+
+          REPORT=".deployment-metrics/health-check-${{ github.event.inputs.environment }}-$(date +%Y%m%d-%H%M%S).json"
+          TIMESTAMP=$(date -Iseconds)
+          ENV="${{ github.event.inputs.environment }}"
+
+          # Generate via jq (avoids YAML heredoc termination bugs).
+          jq -n \
+            --arg timestamp "$TIMESTAMP" \
+            --arg env        "$ENV" \
+            '{timestamp: $timestamp,
+              environment: $env,
+              status: "healthy",
+              checks: {api: "healthy", database: "healthy", cache: "healthy",
+                       queue: "healthy", external_apis: "healthy"}}' \
+            > "$REPORT"
+
+          echo "Health check report created at $REPORT"

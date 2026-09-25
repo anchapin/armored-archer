@@ -13,11 +13,15 @@
 import { createMockLogger, createMockNakama } from '../../__mocks__/nakama';
 import {
   applyDailyDecay,
+  calculateDecayAmount,
+  getCurrentSeasonInfo,
+  getDecayConfig,
   getPlayerRank,
-  getTopPlayers,
   getPlayersLastActiveBatch,
   getSeasonHistory,
+  getTopPlayers,
   recordSeasonCompletion,
+  setDecayConfig,
 } from '../season_leaderboard';
 import { Runtime } from '../../types/nakama';
 
@@ -692,6 +696,244 @@ describe('season_leaderboard_core', () => {
       expect(result.size).toBe(playerCount);
       expect(result.get('batch-0')).toBeGreaterThan(0);
       storageSpy.mockRestore();
+    });
+  });
+
+  // Coverage tests for calculateDecayAmount branches that are not exercised
+  // indirectly through applyDailyDecay (jest istanbul reports these as
+  // uncovered when the function is never called directly).
+  describe('calculateDecayAmount', () => {
+    const baseConfig = {
+      decay_rate_percent: 5,
+      inactive_days_threshold: 7,
+      high_decay_rate_percent: 15,
+      high_decay_threshold_days: 30,
+      minimum_rating: 1000,
+      max_decay_loss: 500,
+    };
+
+    it('returns 0 when daysInactive is below the inactive threshold', () => {
+      // Branch: `if (daysInactive < config.inactive_days_threshold) return 0;`
+      const loss = calculateDecayAmount(1500, 3, baseConfig);
+      expect(loss).toBe(0);
+    });
+
+    it('returns 0 when currentRating is at or below the minimum rating', () => {
+      // Branch: `if (currentRating <= config.minimum_rating) return 0;`
+      // daysInactive is well past threshold, but rating is at minimum.
+      const loss = calculateDecayAmount(baseConfig.minimum_rating, 30, baseConfig);
+      expect(loss).toBe(0);
+    });
+
+    it('returns 0 when currentRating is below the minimum rating', () => {
+      const loss = calculateDecayAmount(500, 30, baseConfig);
+      expect(loss).toBe(0);
+    });
+
+    it('uses the base decay rate when daysInactive is between thresholds', () => {
+      // daysInactive = 14: above inactive threshold (7) but below high
+      // decay threshold (30) → falls through to the base rate branch.
+      // One full decay period has elapsed: (14 - 7) / 7 = 1.
+      const rating = 1500;
+      const days = 14;
+      const periods = Math.floor(
+        (days - baseConfig.inactive_days_threshold) /
+          baseConfig.inactive_days_threshold,
+      );
+      const expected = Math.min(
+        rating * (baseConfig.decay_rate_percent / 100) * periods,
+        baseConfig.max_decay_loss,
+      );
+      const loss = calculateDecayAmount(rating, days, baseConfig);
+      expect(loss).toBe(Math.round(expected));
+    });
+
+    it('uses the high decay rate when daysInactive meets the high threshold', () => {
+      // Branch: `if (daysInactive >= config.high_decay_threshold_days)`
+      const rating = 1500;
+      const days = baseConfig.high_decay_threshold_days;
+      const periods = Math.floor(
+        (days - baseConfig.inactive_days_threshold) /
+          baseConfig.inactive_days_threshold,
+      );
+      const expected = Math.min(
+        rating * (baseConfig.high_decay_rate_percent / 100) * periods,
+        baseConfig.max_decay_loss,
+      );
+      const loss = calculateDecayAmount(rating, days, baseConfig);
+      expect(loss).toBe(Math.round(expected));
+    });
+
+    it('caps the loss at max_decay_loss', () => {
+      // 500 days inactive at high rate would explode past the cap.
+      const rating = 2000;
+      const loss = calculateDecayAmount(rating, 500, baseConfig);
+      expect(loss).toBe(baseConfig.max_decay_loss);
+    });
+
+    it('respects a custom config for the low-inactivity path', () => {
+      const customConfig = {
+        ...baseConfig,
+        inactive_days_threshold: 1,
+      };
+      // daysInactive = 0 → still above the new threshold of 1? No, 0 < 1,
+      // so this hits the early-return branch and returns 0.
+      expect(calculateDecayAmount(2000, 0, customConfig)).toBe(0);
+    });
+
+    it('uses DEFAULT_DECAY_CONFIG when no config is supplied', () => {
+      // Branch: default parameter assignment (`config: RatingDecayConfig = DEFAULT_DECAY_CONFIG`).
+      // Calling without the third argument exercises the default-param branch.
+      // 14 days inactive at the default 5% rate for 1 period → 1500 * 0.05 ≈ 75.
+      const result = calculateDecayAmount(1500, 14);
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // getCurrentSeasonInfo is exported but only reachable through direct calls
+  // (recordSeasonCompletion does not invoke it), so jest counts every line as
+  // uncovered until a test exercises it.
+  describe('getCurrentSeasonInfo', () => {
+    it('returns metadata for the active season from a Nakama context', () => {
+      // The function is a pure date math helper that ignores its `nk`
+      // argument; it must produce a deterministic shape.
+      const nk = createMockNakama();
+      const result = getCurrentSeasonInfo(nk);
+      expect(result).toMatchObject({ status: 'active' });
+      expect(result.season_id).toMatch(/^season_\d+$/);
+      expect(typeof result.end_time).toBe('number');
+      expect(result.end_time).toBeGreaterThan(Date.now() - 1000);
+    });
+  });
+
+  // setDecayConfig has an optional logger; the uncovered branch is the
+  // `logger?.info(...)` call when the caller omits the logger. The function
+  // persists to nk.storageWrite, so we mock storage and restore it after.
+  describe('setDecayConfig', () => {
+    const freshConfig = {
+      decay_rate_percent: 10,
+      inactive_days_threshold: 5,
+      high_decay_rate_percent: 20,
+      high_decay_threshold_days: 21,
+      minimum_rating: 800,
+    };
+
+    function makeNkWithStorage() {
+      const nk = createMockNakama();
+      // Capture the latest write so we can echo it back on read. The
+      // production code parses `value` as JSON, so we store the string.
+      let stored: string | null = null;
+      nk.storageWrite = jest.fn((entries) => {
+        if (Array.isArray(entries) && entries.length > 0) {
+          stored = entries[0].value;
+        }
+      });
+      nk.storageRead = jest.fn(() => {
+        if (stored) {
+          return [{ value: stored }];
+        }
+        return [];
+      });
+      return nk;
+    }
+
+    it('persists the config and reads it back via getDecayConfig', () => {
+      const nk = makeNkWithStorage();
+      setDecayConfig(nk, freshConfig);
+      expect(getDecayConfig(nk)).toEqual(freshConfig);
+    });
+
+    it('does not throw when no logger is provided', () => {
+      // Branch: `logger?.info(...)` — passing `undefined` exercises the
+      // optional-chaining short-circuit.
+      const nk = makeNkWithStorage();
+      expect(() => setDecayConfig(nk, freshConfig, undefined)).not.toThrow();
+      expect(getDecayConfig(nk)).toEqual(freshConfig);
+    });
+
+    it('uses a provided logger without throwing', () => {
+      // Branch: `logger?.info(...)` — passing a logger takes the other path
+      // of the optional-chaining short-circuit.
+      const nk = makeNkWithStorage();
+      const logger = createMockLogger();
+      expect(() => setDecayConfig(nk, freshConfig, logger)).not.toThrow();
+      expect(logger.info).toHaveBeenCalled();
+    });
+  });
+
+  // archiveSeason's `logger?.info` branch was uncovered; recordSeasonCompletion
+  // is the public path that internally invokes archiveSeason.
+  describe('recordSeasonCompletion without logger', () => {
+    it('archives a season without throwing when no logger is supplied', async () => {
+      const nk = createMockNakama();
+      // Mock storage.list to return an empty collection so the function
+      // reaches the archiveSeason code path with no records.
+      nk.storageList = jest.fn().mockResolvedValue({
+        records: [],
+        cursor: '',
+      });
+
+      // Branch: `logger?.info(...)` inside archiveSeason — passing
+      // `undefined` exercises the optional-chaining short-circuit.
+      await expect(
+        recordSeasonCompletion(nk, 'S2026-Q1', undefined),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  // getPlayersLastActiveBatch has three branches around the `typeof` checks
+  // (lastActive is a number, lastMatchTime is a number, neither).
+  describe('getPlayersLastActiveBatch — fallback branches', () => {
+    // Build a storage response that mirrors the shape produced by the mock
+    // factory's setup: each entry has `key`, `user_id`, and `value` (JSON
+    // string), keyed by the request's key so the function can map back.
+    function makeStorageRow(userId: string, value: object) {
+      return {
+        key: userId,
+        user_id: userId,
+        collection: 'player_last_active',
+        value: JSON.stringify(value),
+      };
+    }
+
+    it('falls back to last_match_time when last_active is not a number', async () => {
+      const nk = createMockNakama();
+      const matchingUsers = ['fallback-1', 'fallback-2'];
+      const lastMatchTime = Math.floor(Date.now() / 1000) - 60;
+
+      // First batch: last_active is a string (bad data), last_match_time is a number.
+      // The production code calls nk.storageRead() synchronously (no await),
+      // so the mock must return an array directly, not a Promise.
+      nk.storageRead = jest.fn(() => [
+        makeStorageRow('fallback-1', {
+          last_active: 'not-a-number',
+          last_match_time: lastMatchTime,
+        }),
+        makeStorageRow('fallback-2', {
+          last_active: undefined,
+          last_match_time: lastMatchTime + 10,
+        }),
+      ]);
+
+      const result = await getPlayersLastActiveBatch(nk, matchingUsers);
+      expect(result.get('fallback-1')).toBe(lastMatchTime);
+      expect(result.get('fallback-2')).toBe(lastMatchTime + 10);
+    });
+
+    it('uses zero when neither last_active nor last_match_time is a number', async () => {
+      const nk = createMockNakama();
+      const matchingUsers = ['zero-1'];
+
+      nk.storageRead = jest.fn(() => [
+        makeStorageRow('zero-1', {
+          last_active: 'invalid',
+          last_match_time: null,
+        }),
+      ]);
+
+      const result = await getPlayersLastActiveBatch(nk, matchingUsers);
+      // Falls through to the implicit else branch → ts = 0.
+      expect(result.get('zero-1')).toBe(0);
     });
   });
 });

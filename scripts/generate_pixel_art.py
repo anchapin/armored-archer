@@ -89,8 +89,14 @@ class PixelArtGenerator:
         self.generated_files = []
         self.failed_files = []
 
-    def create_pixel_image(self, width: int, height: int, palette: list[tuple], color_index: int = 0) -> Image.Image:
-        """Create a new pixel art image with transparent background"""
+    def create_pixel_image(self, width: int, height: int, palette: list[tuple]) -> Image.Image:
+        """Create a new pixel art image with transparent background.
+
+        `palette` is accepted for API stability with previous callers; the
+        per-pixel palette selection happens in `set_pixel` instead, so the
+        image is initialized fully transparent here.
+        """
+        _ = palette  # accepted for caller compatibility; unused at this layer
         img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         return img
 

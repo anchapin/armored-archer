@@ -333,9 +333,9 @@ show_help() {
     echo "  --quick      Run quick validation (no Godot required)"
     echo "  --tests      Run the legacy test suite (test/run_all_tests.gd)"
     echo "  --gut        Run the GUT suite (test/suites via gut_cmdln)"
-    echo "  --coverage   Run the GUT suite with the Phase-13 coverage plugin wired"
-    echo "               (-gpre_run_script/-gpost_run_script) and enforce the"
-    echo "               real-instrumentation coverage gate (issue #1097)"
+    echo "  --coverage   Run the GUT suite with the Phase-13 coverage plugin wired
+                 (-gpre_run_script/-gpost_run_script) and enforce the
+                 real-instrumentation coverage gate (issue #1097)"
     echo "  --all        Run all checks (default)"
     echo "  --help       Show this help message"
     echo ""
@@ -363,6 +363,7 @@ main() {
     local run_syntax_flag=false
     local run_tests_flag=false
     local run_gut_flag=false
+    local run_coverage_flag=false
     local run_quick_flag=false
     local run_all_flag=true
 
@@ -385,6 +386,15 @@ main() {
                 shift
                 ;;
             --gut)
+                run_gut_flag=true
+                run_all_flag=false
+                shift
+                ;;
+            --coverage)
+                # Run GUT with the Phase-13 coverage instrumentation
+                # (issue #1097) and enforce the tracked-autoload line-
+                # coverage gate. --coverage implies --gut.
+                run_coverage_flag=true
                 run_gut_flag=true
                 run_all_flag=false
                 shift
@@ -464,6 +474,15 @@ main() {
     if [ "$run_gut_flag" = true ]; then
         echo "=== GUT Suite (test/suites) ==="
         run_gut_tests || exit_code=1
+        echo ""
+    fi
+
+    if [ "$run_coverage_flag" = true ]; then
+        # Phase-13 coverage gate (issue #1097): runs GUT with the GUT
+        # coverage addon, captures per-file line coverage, and enforces
+        # the tracked-autoload threshold via gut_coverage_gate.py.
+        echo "=== GUT Suite with Coverage Gate ==="
+        run_coverage_tests || exit_code=1
         echo ""
     fi
     

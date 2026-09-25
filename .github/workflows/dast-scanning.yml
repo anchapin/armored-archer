@@ -14,21 +14,27 @@ permissions:
 jobs:
   zap-scan:
     name: OWASP ZAP Scan
+    # Skip when no real staging hostname is configured. The earlier default
+    # of `https://staging.armored-archer.example.com` does not resolve and
+    # made this job red on every push. Configure the workflow with a
+    # real staging URL via vars.STAGING_URL (or repo/org Variables) to
+    # re-enable the scan. See issue tracking the staging infra follow-up.
+    if: ${{ vars.STAGING_URL != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@a418de766254e096fa7d9e30f8dc9662b58df224 # v0.9.0
         with:
-          target: 'https://staging.armored-archer.example.com'
+          target: ${{ vars.STAGING_URL }}
       
       - name: Run OWASP ZAP Full Scan
         if: github.ref == 'refs/heads/main'
         uses: zaproxy/action-full-scan@a34710cc692896d035e7bf89bbcf5d40ea422110 # v0.9.0
         with:
-          target: 'https://armored-archer.example.com'
+          target: ${{ vars.PRODUCTION_URL }}
       
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4

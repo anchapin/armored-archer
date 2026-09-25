@@ -24,6 +24,13 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    # Skip until GitHub Pages is properly configured to build from this
+    # repo via Actions. The "Get Pages site failed" error means Pages is
+    # not yet enabled / not yet wired to the GitHub Actions source. The
+    # Pages configuration must be done at the repo or org level (Settings
+    # → Pages → Build and deployment → GitHub Actions) before this
+    # workflow can succeed. See issue tracking the Pages follow-up.
+    if: ${{ vars.PAGES_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

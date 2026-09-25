@@ -152,24 +152,25 @@ jobs:
           if [ -z "$WORKFLOW_NAME" ]; then
             WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
           fi
-          
-          # Create new entry
-          NEW_ENTRY=$(cat <<EOF
-          {
-            "date": "$(date -Iseconds)",
-            "workflow": "$WORKFLOW_NAME",
-            "build_time": ${{ steps.extract.outputs.build_time }},
-            "test_time": ${{ steps.extract.outputs.test_time }},
-            "deploy_time": ${{ steps.extract.outputs.deploy_time }},
-            "total_time": ${{ steps.extract.outputs.total_time }},
-            "jobs_count": ${{ steps.extract.outputs.jobs_count }},
-            "workflow_id": "${{ github.event.workflow_run.id }}",
-            "workflow_run_url": "${{ github.event.workflow_run.html_url }}",
-            "commit": "${{ github.sha }}",
-            "conclusion": "${{ github.event.workflow_run.conclusion }}"
-          }
-          EOF
-          )
+
+          # Build the new entry via jq (heredocs in YAML `run:` blocks don't
+          # terminate reliably; jq -n avoids the issue entirely).
+          NEW_ENTRY=$(jq -n \
+            --arg        date              "$(date -Iseconds)" \
+            --arg        workflow          "$WORKFLOW_NAME" \
+            --argjson    build_time        "${{ steps.extract.outputs.build_time }}" \
+            --argjson    test_time         "${{ steps.extract.outputs.test_time }}" \
+            --argjson    deploy_time       "${{ steps.extract.outputs.deploy_time }}" \
+            --argjson    total_time        "${{ steps.extract.outputs.total_time }}" \
+            --argjson    jobs_count        "${{ steps.extract.outputs.jobs_count }}" \
+            --arg        workflow_id       "${{ github.event.workflow_run.id }}" \
+            --arg        workflow_run_url  "${{ github.event.workflow_run.html_url }}" \
+            --arg        commit            "${{ github.sha }}" \
+            --arg        conclusion        "${{ github.event.workflow_run.conclusion }}" \
+            '{date: $date, workflow: $workflow, build_time: $build_time,
+              test_time: $test_time, deploy_time: $deploy_time, total_time: $total_time,
+              jobs_count: $jobs_count, workflow_id: $workflow_id,
+              workflow_run_url: $workflow_run_url, commit: $commit, conclusion: $conclusion}')
           
           # Update history JSON (keep last 60 entries)
           if [ -f .build-metrics/history.json ]; then
@@ -203,18 +204,20 @@ jobs:
             echo "Max (last 30): Build=${MAX_BUILD}min, Test=${MAX_TEST}min"
             echo "Latest: Build=${LATEST_BUILD}min"
             
-            # Create statistics object
-            cat > .build-metrics/latest-stats.json << EOF
-            {
-              "avg_build_time": $AVG_BUILD,
-              "avg_test_time": $AVG_TEST,
-              "avg_total_time": $AVG_TOTAL,
-              "max_build_time": $MAX_BUILD,
-              "max_test_time": $MAX_TEST,
-              "latest_build_time": $LATEST_BUILD,
-              "updated_at": "$(date -Iseconds)"
-            }
-            EOF
+            # Create statistics object via jq (avoids YAML heredoc bugs).
+            jq -n \
+              --argjson avg_build   "$AVG_BUILD" \
+              --argjson avg_test    "$AVG_TEST" \
+              --argjson avg_total   "$AVG_TOTAL" \
+              --argjson max_build   "$MAX_BUILD" \
+              --argjson max_test    "$MAX_TEST" \
+              --argjson latest      "$LATEST_BUILD" \
+              --arg     updated_at  "$(date -Iseconds)" \
+              '{avg_build_time: $avg_build, avg_test_time: $avg_test,
+                avg_total_time: $avg_total, max_build_time: $max_build,
+                max_test_time: $max_test, latest_build_time: $latest,
+                updated_at: $updated_at}' \
+              > .build-metrics/latest-stats.json
           fi
 
       - name: Commit metrics
@@ -280,16 +283,16 @@ jobs:
             cat backend/coverage/coverage-summary.json | jq '.total'
           fi
           
-          # Save to metrics
-          cat > .build-metrics/repo-stats.json << EOF
-          {
-            "typescript_files": $TS_COUNT,
-            "javascript_files": $JS_COUNT,
-            "gdscript_files": $GD_COUNT,
-            "python_files": $PY_COUNT,
-            "collected_at": "$(date -Iseconds)"
-          }
-          EOF
+          # Save to metrics via jq (avoids YAML heredoc bugs).
+          jq -n \
+            --argjson ts "$TS_COUNT" \
+            --argjson js "$JS_COUNT" \
+            --argjson gd "$GD_COUNT" \
+            --argjson py "$PY_COUNT" \
+            --arg    collected_at "$(date -Iseconds)" \
+            '{typescript_files: $ts, javascript_files: $js,
+              gdscript_files: $gd, python_files: $py, collected_at: $collected_at}' \
+            > .build-metrics/repo-stats.json
 
       - name: Generate performance insights
         run: |
@@ -310,14 +313,14 @@ jobs:
             
             echo "Build time trend: $TREND%"
             
-            # Create insights
-            cat > .build-metrics/insights.json << EOF
-            {
-              "trend_percentage": $TREND,
-              "trend_direction": $(if [ "$TREND" -gt 5 ]; then echo "degrading"; elif [ "$TREND" -lt -5 ]; then echo "improving"; else echo "stable"; fi),
-              "analyzed_at": "$(date -Iseconds)"
-            }
-            EOF
+            # Create insights via jq (avoids YAML heredoc bugs).
+            if [ "$TREND" -gt 5 ]; then DIRECTION=degrading; elif [ "$TREND" -lt -5 ]; then DIRECTION=improving; else DIRECTION=stable; fi
+            jq -n \
+              --argjson trend_pct "$TREND" \
+              --arg     direction "$DIRECTION" \
+              --arg     analyzed_at "$(date -Iseconds)" \
+              '{trend_percentage: $trend_pct, trend_direction: $direction, analyzed_at: $analyzed_at}' \
+              > .build-metrics/insights.json
           fi
 
       - name: Commit detailed metrics
@@ -340,53 +343,24 @@ jobs:
           
           # Get stats
           if [ -f .build-metrics/latest-stats.json ]; then
-            AVG_BUILD=$(cat .build-metrics/latest-stats.json | jq -r '.avg_build_time')
-            AVG_TEST=$(cat .build-metrics/latest-stats.json | jq -r '.avg_test_time')
-            MAX_BUILD=$(cat .build-metrics/latest-stats.json | jq -r '.max_build_time')
+            AVG_BUILD=$(cat .build-metrics/latest-stats.json | jq -r '.avg_build_time // "N/A"')
+            AVG_TEST=$(cat .build-metrics/latest-stats.json | jq -r '.avg_test_time // "N/A"')
+            MAX_BUILD=$(cat .build-metrics/latest-stats.json | jq -r '.max_build_time // "N/A"')
           else
             AVG_BUILD="N/A"
             AVG_TEST="N/A"
             MAX_BUILD="N/A"
           fi
           
-          # Generate markdown report
-          cat > .build-metrics/PERFORMANCE.md << EOF
-          # Build Performance Dashboard
-          
-          ## Summary Statistics (Last 30 Builds)
-          
-          | Metric | Value |
-          |--------|-------|
-          | Average Build Time | ${AVG_BUILD} minutes |
-          | Average Test Time | ${AVG_TEST} minutes |
-          | Max Build Time | ${MAX_BUILD} minutes |
-          
-          ## Recent Builds
-          
-          | Date | Build | Test | Total | Workflow | Status |
-          |------|-------|------|-------|----------|--------|
-          EOF
-          
-          if [ -f .build-metrics/history.json ]; then
-            cat .build-metrics/history.json | jq -r '.[:10][] | "| \(.date[0:10]) | \(.build_time) min | \(.test_time) min | \(.total_time) min | \(.workflow) | \(.conclusion) |"' >> .build-metrics/PERFORMANCE.md
-          fi
-          
-          cat >> .build-metrics/PERFORMANCE.md << 'EOF'
-          
-          ## Performance Trends
-          
-          ![Build Time Trend](build-time-trend.png)
-          
-          ## Jobs Breakdown
-          
-          Latest workflow ran ${{ needs.collect-build-metrics.outputs.jobs_count }} jobs:
-          - Build: ${{ needs.collect-build-metrics.outputs.build_time }} min
-          - Test: ${{ needs.collect-build-metrics.outputs.test_time }} min
-          - Deploy: ${{ needs.collect-build-metrics.outputs.deploy_time }} min
-          
-          ---
-          *Updated: $(date)*
-          EOF
+          # Generate PERFORMANCE.md via Python (heredocs in YAML `run:` blocks
+          # don't terminate reliably because the indent inside the YAML scalar
+          # is preserved in the resulting shell script).
+          BUILD_METRICS_DIR=.build-metrics \
+            JOBS_COUNT=${{ needs.collect-build-metrics.outputs.jobs_count }} \
+            BUILD_TIME="${{ needs.collect-build-metrics.outputs.build_time }}" \
+            TEST_TIME="${{ needs.collect-build-metrics.outputs.test_time }}" \
+            DEPLOY_TIME="${{ needs.collect-build-metrics.outputs.deploy_time }}" \
+            python3 scripts/ci/generate_build_performance.py
           
           cat .build-metrics/PERFORMANCE.md
 

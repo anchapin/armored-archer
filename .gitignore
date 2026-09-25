@@ -87,6 +87,8 @@ backend/docker-compose.override.yml
 .continue-*
 *.continue-here*
 *-handoff.md
+.handoffs-archive/
+handoffs/
 pause-work*
 wip-*.md
 
