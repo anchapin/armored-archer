@@ -13,14 +13,14 @@ describe('Gear System Integration Tests', () => {
   // Note: storage delete API doesn't work with admin client in Nakama 3.21
   // Using player's own session for cleanup instead
 
-  // afterEach: clean loadout and player_stats after each test to prevent
-  // cross-block state pollution (e.g. equipped gear or stats from a prior block
-  // leaking into the next). inventory_items, boss_defeats, and unlocked_modifier_pools
-  // are preserved so that within-block gear/modifier state persists between tests.
+  // afterEach: clean loadout, player_stats, inventory_items, and storage after each test
+  // to prevent cross-block state pollution (e.g. equipped gear or stats from a prior block
+  // leaking into the next). boss_defeats and unlocked_modifier_pools are preserved
+  // so that within-block modifier state persists between tests.
   afterEach(async () => {
     if (player?.userId) {
       await testHelper.cleanupDatabaseForUser(player.userId, {
-        tablesToClean: ['loadout', 'player_stats', 'inventory_items'],
+        tablesToClean: ['loadout', 'player_stats', 'inventory_items', 'storage'],
       });
     }
   });
