@@ -1056,3 +1056,96 @@ export function recordStageClaim(result: StageClaimResult): void {
 export function observeStageClaimSeconds(seconds: number): void {
   stageClaimSeconds.observe(seconds);
 }
+
+// ==========================================
+// Alert-Driven Metrics
+// These are emitted alongside the source-of-truth counters above so
+// runbook queries (e.g. armed_archer_failed_logins_total, the alert
+// expressions in alerting/prometheus/alerts.yml) can graph a stable
+// series without depending on label cardinality from the upstream
+// counters. See docs/runbooks/ for the corresponding alert owners.
+// ==========================================
+
+const failedLoginsTotal = new Counter({
+  name: 'armored_archer_failed_logins_total',
+  help: 'Total number of failed player login attempts',
+  labelNames: ['reason'] as const,
+  registers: [register],
+});
+
+const revenueCentsTotal = new Counter({
+  name: 'armored_archer_revenue_cents_total',
+  help: 'Total purchase revenue in cents (canonical for billing alerts)',
+  labelNames: ['currency', 'product_type'] as const,
+  registers: [register],
+});
+
+const paymentFailuresTotal = new Counter({
+  name: 'armored_archer_payment_failures_total',
+  help: 'Total payment failures by reason',
+  labelNames: ['reason', 'provider'] as const,
+  registers: [register],
+});
+
+const rpcRequestDurationSeconds = new Histogram({
+  name: 'armored_archer_rpc_request_duration_seconds',
+  help: 'RPC request latency distribution (canonical for SLO alerts)',
+  labelNames: ['rpc', 'status'] as const,
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+  registers: [register],
+});
+
+/**
+ * Records a failed login attempt. Emitted from the auth flow whenever a
+ * credential check fails or a session token is rejected.
+ *
+ * @param reason - Short machine-readable cause ("invalid_credentials",
+ *   "expired_token", "rate_limited", ...)
+ */
+export function recordFailedLogin(reason: string): void {
+  failedLoginsTotal.inc({ reason });
+}
+
+/**
+ * Records a payment/revenue contribution. Wire once the purchase webhook
+ * is finalized so the runbook's billing alert has a real signal.
+ *
+ * @param cents - Amount of revenue in cents (must be a positive integer)
+ * @param currency - ISO 4217 currency code
+ * @param productType - Product category for label-based slicing
+ */
+export function recordRevenueCents(
+  cents: number,
+  currency: string,
+  productType: string,
+): void {
+  if (cents <= 0 || !Number.isFinite(cents)) return;
+  revenueCentsTotal.inc({ currency, product_type: productType }, cents);
+}
+
+/**
+ * Records a payment failure for downstream alerting. Emitted from the
+ * purchase handler before any retry/recovery path.
+ *
+ * @param reason - Machine-readable failure cause
+ * @param provider - Payment processor identifier ("stripe", "iap", ...)
+ */
+export function recordPaymentFailure(reason: string, provider: string): void {
+  paymentFailuresTotal.inc({ reason, provider });
+}
+
+/**
+ * Observes the wall-clock latency of an RPC request. Emit from the
+ * shared RPC dispatcher wrapper so every RPC contributes a sample.
+ *
+ * @param rpc - Logical RPC name
+ * @param status - "success" | "error" | "timeout"
+ * @param seconds - Wall-clock duration in seconds
+ */
+export function observeRpcRequestSeconds(
+  rpc: string,
+  status: string,
+  seconds: number,
+): void {
+  rpcRequestDurationSeconds.observe({ rpc, status }, seconds);
+}

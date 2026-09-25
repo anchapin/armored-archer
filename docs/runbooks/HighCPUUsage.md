@@ -184,7 +184,7 @@ curl -s 'http://prometheus:9090/api/v1/query' \
 
 # 2. Latency normalised
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[0].value[1]'
 
 # 3. Alert cleared

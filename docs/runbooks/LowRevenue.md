@@ -48,7 +48,7 @@ curl -s 'http://prometheus:9090/api/v1/query_range' \
 ### 2. Inspect the Revenue Pipeline
 
 ```bash
-# Counter definition is in metrics.ts:162 (armored_archer_purchase_revenue_total)
+# Counter definition is in metrics.ts:165 (armored_archer_purchase_revenue_total)
 grep -n "revenue\|purchase" backend/src/modules/metrics.ts | head -10
 
 # Update calls — confirm the metric is actually being incremented

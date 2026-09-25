@@ -8,7 +8,7 @@
 
 ## ⚠️ Alert Definition
 
-**Expression**: `histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m])) > 0.5`  
+**Expression**: `histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m])) > 0.5`  
 **Duration**: 10 minutes  
 **Impact**: Degraded user experience with slow game responses, delayed combat actions, and laggy UI interactions.
 
@@ -29,16 +29,16 @@
 ```bash
 # Check current P95 latency
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[0].value[1]'
 
 # Check all latency percentiles
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.50, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.50, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[0].value[1]'  # P50
 
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.99, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.99, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[0].value[1]'  # P99
 ```
 
@@ -47,12 +47,12 @@ curl -s 'http://prometheus:9090/api/v1/query' \
 ```bash
 # Latency by endpoint (P95)
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=topk(5, histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m])))' \
+  -G --data-urlencode 'query=topk(5, histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m])))' \
   | jq '.data.result[]'
 
 # Find endpoints with P95 > 500ms
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[] | select(.value[1] | tonumber > 0.5)'
 ```
 
@@ -150,7 +150,7 @@ docker exec postgres psql -U postgres -c \
 # (Work with backend team to optimize slow queries)
 
 # 4. Monitor improvement
-watch -n 10 'curl -s "http://prometheus:9090/api/v1/query?query=histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))" | jq ".data.result[0].value[1]"'
+watch -n 10 'curl -s "http://prometheus:9090/api/v1/query?query=histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m]))" | jq ".data.result[0].value[1]"'
 ```
 
 ### Scenario 2: Resource Constraints
@@ -214,12 +214,12 @@ After resolution, verify:
 ```bash
 # 1. P95 latency below threshold
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[0].value[1] | tonumber < 0.5'
 
 # 2. All endpoints performing well
 curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_request_duration_seconds_bucket[5m]))' \
+  -G --data-urlencode 'query=histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[5m]))' \
   | jq '.data.result[] | select(.value[1] | tonumber > 0.5)'
 
 # 3. Alert resolved

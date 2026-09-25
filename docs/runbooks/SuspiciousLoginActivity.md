@@ -45,7 +45,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Canonical counter: recordLoginAttempt in metrics.ts:620
+# Canonical counter: recordLoginAttempt in metrics.ts:665
 grep -n "recordLoginAttempt\|playerLoginAttempts\|armored_archer_player_login_attempts_total" \
   backend/src/modules/metrics.ts | head -20
 

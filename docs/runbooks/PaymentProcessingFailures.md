@@ -183,7 +183,7 @@ gh issue create --repo anchapin/armored-archer \
   --body "Triggered by PaymentProcessingFailures. Status page: <link>"
 
 # 3. Disable the strict fail-closed fallback if it is harming UX
-# backend/src/modules/store.ts:1025 — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
+# backend/src/modules/store.ts:1111 — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
 # (its fail-closed fallback sits at store.ts:2480); temporarily
 # return success on an open circuit *only* for one-off IAPs you have manually validated.
 # (Default is to fail closed. Flip only after product sign-off.)
@@ -233,8 +233,8 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Duplicate webhook deliveries are expected; check that recordWebhookOutcome is being
-# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4062; the duplicate
-# read-back via getRecordedWebhookOutcome sits at store.ts:3414).
+# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4164; the duplicate
+# read-back via getRecordedWebhookOutcome sits at store.ts:3516).
 # PromQL first (issue #1140): the duplicate outcome rate on the ledger counter
 curl -s 'http://prometheus:9090/api/v1/query' \
   -G --data-urlencode 'query=sum by (event_type) (rate(armored_archer_webhook_events_total{outcome="duplicate"}[1h]))' \
