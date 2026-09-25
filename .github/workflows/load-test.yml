@@ -34,10 +34,16 @@ jobs:
       nakama:
         image: heroiclabs/nakama:3.19.0
         env:
-          POSTGRES_DB: nakama
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: localdbpassword
-          POSTGRES_HOST: postgres
+          # Nakama 3.x reads DB_* env vars (NOT the POSTGRES_* ones,
+          # which are the postgres docker image's own env vars). Without
+          # these the container falls back to its cockroachdb-on-localhost
+          # default and fails to connect when run against the sidecar
+          # postgres service.
+          DB_HOST: postgres
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: localdbpassword
+          DB_NAME: nakama
         ports:
           - 7350:7350
         # curl -f returns non-zero on any HTTP error, which docker treats
