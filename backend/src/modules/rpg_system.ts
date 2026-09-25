@@ -546,12 +546,12 @@ export function registerRpcGetPlayerStats(initializer: Runtime.Initializer): voi
  *   "stats": { ... }
  * }
  */
-export function rpcGetPlayerStats(
+export async function rpcGetPlayerStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): string {
+): Promise<string> {
   logger.info('Get player stats called for user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.get_player_stats, payload, 'get_player_stats');
@@ -560,7 +560,7 @@ export function rpcGetPlayerStats(
   }
 
   const cache = getCacheManager(logger);
-  return getPlayerStatsWithCache(nk, logger, ctx, cache);
+  return await getPlayerStatsWithCache(nk, logger, ctx, cache);
 }
 
 /**
