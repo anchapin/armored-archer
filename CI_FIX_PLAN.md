@@ -26,7 +26,7 @@ This document outlines the CI issues found during local testing and their resolu
 **Location**:
 - `.claude/skills/godot-task/tools/godot_api_converter.py:152:5` - Function complexity (45 > 15)
 - `.claude/skills/godot-task/tools/godot_api_converter.py:356:32` - Unused loop variable `cvalue`
-- `.planning/milestones/v3.2.0-phases/08-equipment-ui-sprites/generate_equipment_spriteframes.py:64:9` - Unused variable `sprite_name`
+- `.planning/milestones/v3.2.0-phases/8-equipment-ui-sprites/generate_equipment_spriteframes.py:64:9` - Unused variable `sprite_name`
 
 **Status**: Left for future refactoring (low priority - in .claude and .planning directories)
 
