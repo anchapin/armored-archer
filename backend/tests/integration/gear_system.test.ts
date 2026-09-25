@@ -576,6 +576,13 @@ describe('Gear System Integration Tests', () => {
     });
   });
 
+  afterEach(async () => {
+    if (player?.userId) {
+      await testHelper.cleanupDatabaseForUser(player.userId, {
+        tablesToClean: ['unlocked_modifier_pools'],
+      });
+    }
+  });
   describe('rpcStageComplete - Boss Defeat Tracking', () => {
     afterEach(async () => {
       // Clean up boss defeat tracking data
@@ -653,4 +660,11 @@ describe('Gear System Integration Tests', () => {
       expect(piercingCount).toBe(1);
     });
   });
+});
+});
+});
+});
+});
+});
+});
 });
