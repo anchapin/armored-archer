@@ -34,16 +34,15 @@ jobs:
       nakama:
         image: heroiclabs/nakama:3.19.0
         env:
-          # Nakama 3.x reads DB_* env vars (NOT the POSTGRES_* ones,
-          # which are the postgres docker image's own env vars). Without
-          # these the container falls back to its cockroachdb-on-localhost
-          # default and fails to connect when run against the sidecar
-          # postgres service.
-          DB_HOST: postgres
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: localdbpassword
-          DB_NAME: nakama
+          # Nakama 3.x reads DATABASE_ADDRESS as a single Postgres
+          # connection string (matching the project's config in
+          # backend/src/config/index.ts). The DB_HOST/DB_USER/...
+          # separate vars aren't recognized, and the POSTGRES_* vars
+          # only configure the sidecar postgres image — without
+          # DATABASE_ADDRESS the container falls back to its
+          # cockroachdb-on-localhost default and crashes on
+          # `dial tcp [::1]:26257: connection refused`.
+          DATABASE_ADDRESS: postgres://postgres:localdbpassword@postgres:5432/nakama
         ports:
           - 7350:7350
         # curl -f returns non-zero on any HTTP error, which docker treats
