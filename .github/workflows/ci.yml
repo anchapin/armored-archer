@@ -192,7 +192,7 @@ jobs:
         env:
           NAKAMA_HOST: localhost
           NAKAMA_PORT: 7350
-          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
           TEST_DB_HOST: localhost
           TEST_DB_PORT: 5432
           TEST_DB_USER: postgres
@@ -625,7 +625,7 @@ jobs:
         env:
           NAKAMA_HOST: localhost
           NAKAMA_PORT: 7351
-          NAKAMA_SERVER_KEY: defaultkey
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
           TEST_DB_HOST: localhost
           TEST_DB_PORT: 5434
           TEST_DB_USER: postgres
@@ -886,6 +886,11 @@ jobs:
       contents: read
       pull-requests: write
       checks: write
+    env:
+      # HMAC_SECRET is embedded into the Nakama bundle at build time by
+      # transpile-bundle.js (APP_ENV snapshot). The same value must be passed
+      # to the Nakama container at runtime so anti_cheat accepts it.
+      HMAC_SECRET: ci-test-secret-do-not-use-in-production
 
     steps:
       - uses: actions/checkout@v4
@@ -921,6 +926,64 @@ jobs:
       # docker-compose started Nakama container mounts as a volume (see the
       # Start Nakama and Postgres step below). Without this, custom RPCs
       # (combat / loot / season) 500 and every integration test fails.
+      - name: Inject required env vars into .env for CI bundle build
+        working-directory: ./backend
+        run: |
+          # transpile-bundle.js snapshots .env at build time (file is the allowlist).
+          # The bundle's process.env is STATIC and baked at build time — Nakama's JS
+          # runtime does NOT read runtime env vars for config. Both NAKAMA_SERVER_KEY
+          # and HMAC_SECRET must be in .env BEFORE the build so they are embedded.
+          # (docker-compose --socket.server_key does NOT reach the JS runtime's
+          # process.env — the bundle's config reads process.env.NAKAMA_SERVER_KEY.)
+          # Use [ ! -f .env ] || prefix so the grep is only run when .env EXISTS.
+          # Without this, `grep -q "^HMAC_SECRET=" .env` exits 1 when .env is absent,
+          # and `set -e` (shell option) aborts the script before the echo runs.
+          if [ ! -f .env ] || ! grep -q "^HMAC_SECRET=" .env; then
+            echo "HMAC_SECRET=ci-test-secret-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^NAKAMA_SERVER_KEY=" .env; then
+            # Use a non-default key so validateRequiredConfig() does not throw
+            # in the baked-in 'production' environment (webpack mode:production
+            # bakes process.env.NODE_ENV || 'development' as 'production' since
+            # the shell NODE_ENV is unset at build time; transpile-bundle.js
+            # excludes NODE_ENV from the embedded env so the runtime value does
+            # not override the baked constant).
+            echo "NAKAMA_SERVER_KEY=ci-test-server-key-do-not-use-in-production" >> .env
+          fi
+          # Session encryption keys must also be non-default in production.
+          # validateSessionKeys() in src/config/index.ts throws when any of
+          # SESSION_ENCRYPTION_KEY, REFRESH_ENCRYPTION_KEY, or TOKEN_ENCRYPTION_KEY
+          # retains a default value ('default-token-key', 'default-refresh-key')
+          # and config.environment === 'production' (which the bundle is, due to
+          # webpack mode:production baking process.env.NODE_ENV='production').
+          if [ ! -f .env ] || ! grep -q "^SESSION_ENCRYPTION_KEY=" .env; then
+            echo "SESSION_ENCRYPTION_KEY=ci-test-session-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^REFRESH_ENCRYPTION_KEY=" .env; then
+            echo "REFRESH_ENCRYPTION_KEY=ci-test-refresh-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^TOKEN_ENCRYPTION_KEY=" .env; then
+            echo "TOKEN_ENCRYPTION_KEY=ci-test-token-encryption-key-do-not-use-in-production" >> .env
+          fi
+          # RevenueCat secret key is required by validateRequiredConfig() for the
+          # bundled code to initialize in production mode (webpack mode:production).
+          if [ ! -f .env ] || ! grep -q "^REVENUECAT_SECRET_KEY=" .env; then
+            echo "REVENUECAT_SECRET_KEY=ci-test-revenuecat-secret-key-do-not-use-in-production" >> .env
+          fi
+          # RevenueCat webhook secret (required by validateRequiredConfig).
+          if [ ! -f .env ] || ! grep -q "^REVENUECAT_WEBHOOK_SECRET=" .env; then
+            echo "REVENUECAT_WEBHOOK_SECRET=ci-test-revenuecat-webhook-secret-do-not-use-in-production" >> .env
+          fi
+          # Database address (process.env.DATABASE_ADDRESS is read by the bundled
+          # config; --database.address flag reaches Nakama binary but not JS bundle).
+          if [ ! -f .env ] || ! grep -q "^DATABASE_ADDRESS=" .env; then
+            echo "DATABASE_ADDRESS=postgres://postgres:changeme@postgres:5432/nakama" >> .env
+          fi
+          # Disable Firebase in CI (no Firebase credentials needed).
+          if [ ! -f .env ] || ! grep -q "^FIREBASE_ENABLED=" .env; then
+            echo "FIREBASE_ENABLED=false" >> .env
+          fi
+
       - name: Build Nakama bundle
         working-directory: ./backend
         run: npm run build:full
@@ -966,21 +1029,94 @@ jobs:
             sleep 2
           done
 
+      - name: Debug Nakama startup (container logs + port check)
+        run: |
+          echo "=== OOM Killer check (dmesg) ==="
+          sudo dmesg | grep -iE "killed|oom|memory" | tail -10 || echo "Cannot read dmesg"
+          echo ""
+          echo "=== Nakama container resource usage ==="
+          docker stats ci_nakama --no-stream 2>/dev/null || echo "Cannot get container stats"
+          echo ""
+          echo "=== Nakama container memory info ==="
+          docker exec ci_nakama sh -c 'cat /proc/meminfo 2>/dev/null | head -10' || echo "Cannot read meminfo"
+          echo ""
+          echo "=== Nakama container logs (combined stdout+stderr, last 200 lines) ==="
+          docker logs ci_nakama --tail 200 2>&1 || echo "No logs available"
+          echo ""
+          echo "=== Nakama process list (PIDs) ==="
+          docker exec ci_nakama sh -c 'ls -la /proc/ | grep -E "^d|^l" | head -20' 2>/dev/null || echo "Cannot list /proc"
+          docker exec ci_nakama sh -c 'ls -la /proc/*/exe 2>/dev/null | head -10' 2>/dev/null || echo "Cannot get process executables"
+          echo ""
+          echo "=== Nakama network connections ==="
+          docker exec ci_nakama sh -c 'cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | head -30' || echo "Cannot read /proc/net/tcp"
+          echo ""
+          echo "=== Nakama port binding (ss -tlnp) ==="
+          docker exec ci_nakama ss -tlnp 2>/dev/null || echo "ss not available"
+          echo ""
+          echo "=== Nakama environment (HMAC_SECRET check) ==="
+          docker exec ci_nakama sh -c 'env | grep -i hmac' 2>/dev/null || echo "Cannot get env"
+          echo ""
+          echo "=== Nakama nakama.yaml config ==="
+          docker exec ci_nakama sh -c 'cat /nakama/data/modules/nakama.yml 2>/dev/null || cat /nakama/nakama.yml 2>/dev/null || echo "No nakama.yml found"' || echo "Cannot read config"
+          echo ""
+          echo "=== Nakama bundle files ==="
+          docker exec ci_nakama sh -c 'ls -la /nakama/data/modules/ 2>/dev/null || echo "No modules dir"' || echo "Cannot list modules"
+          echo ""
+          echo "=== curl HTTP API (main, with exit code) ==="
+          set +e
+          curl -s -o /dev/null -w "HTTP:%{http_code}" http://127.0.0.1:7350/
+          echo ""
+          echo "=== Nakama container status ==="
+          docker inspect ci_nakama --format='{{.State.Status}} {{.State.Health.Status}} {{.State.Pid}}'
+          docker stats ci_nakama --no-stream 2>/dev/null || echo "Cannot get stats"
+          set -e
+
+          echo ""
+          echo "=== curl HTTP API (console, with exit code) ==="
+          set +e
+          curl -s -o /dev/null -w "HTTP:%{http_code}" http://127.0.0.1:7351/
+          echo ""
+          set -e
       - name: Wait for Nakama to be ready
         run: |
-          # /nakama/nakama healthcheck requires its own CLI subcommand and a
-          # reachable :7350 inside the container. From the runner we only
-          # need the HTTP API to respond; the game-bundle load is best-
-          # effort because Nakama's healthcheck doesn't reflect it.
-          for i in {1..60}; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7350/ 2>/dev/null || echo "000")
-            if [ "$code" != "000" ] && [ "$code" != "" ]; then
-              echo "Nakama API reachable (HTTP $code)"
-              break
+          # Nakama's JS bundle (17.4 MB) can take 2-4 minutes to initialize
+          # under CI resource pressure. It may also crash and restart once during
+          # early init before stabilizing. We require 3 consecutive healthy pings
+          # (45 s apart) before declaring ready — this filters out false positives
+          # from Nakama being briefly up then crashing.
+          echo "Waiting for Nakama to become ready (3 consecutive healthchecks)..."
+
+          MAX_WAIT=360
+          INTERVAL=15
+          ELAPSED=0
+          CONSECUTIVE=0
+          NEEDED=3
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            # Exit code 0 = healthy, 1 = unhealthy, 2 = error
+            if docker exec ci_nakama /nakama/nakama healthcheck 2>/dev/null; then
+              CONSECUTIVE=$((CONSECUTIVE + 1))
+              echo "  Nakama healthy (${CONSECUTIVE}/${NEEDED}, waited ${ELAPSED}s)..."
+              if [ $CONSECUTIVE -ge $NEEDED ]; then
+                echo "Nakama is ready! (stable after ${ELAPSED}s with ${NEEDED} consecutive healthchecks)"
+                exit 0
+              fi
+            else
+              CONSECUTIVE=0
+              echo "  Nakama not ready (waited ${ELAPSED}s/${MAX_WAIT}s, consecutive: ${CONSECUTIVE}/${NEEDED})..."
             fi
-            echo "Waiting for Nakama... ($i/60)"
-            sleep 2
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
           done
+
+          echo "ERROR: Nakama did not become ready within ${MAX_WAIT}s."
+          echo "Container status:"
+          docker inspect ci_nakama --format='{{.State.Status}} health:{{.State.Health.Status}} exit:{{.State.ExitCode}} pid:{{.State.Pid}}' 2>/dev/null || echo "cannot inspect"
+          echo "Nakama logs (last 100 lines):"
+          docker logs ci_nakama --tail 100 2>&1 | tail -50
+          echo ""
+          echo "##vso[task.logissue type=error]Nakama failed to become ready within ${MAX_WAIT}s — see container logs above."
+          exit 1
 
       - name: Run game schema migrations
         working-directory: ./backend/data
@@ -1007,10 +1143,10 @@ jobs:
         working-directory: ./backend
         continue-on-error: true
         env:
-          NAKAMA_HOST: localhost
+          NAKAMA_HOST: 127.0.0.1
           NAKAMA_PORT: '7350'
-          NAKAMA_SERVER_KEY: defaultkey
-          TEST_DB_HOST: localhost
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+          TEST_DB_HOST: 127.0.0.1
           TEST_DB_PORT: '5432'
           TEST_DB_USER: postgres
           TEST_DB_PASSWORD: changeme

@@ -43,15 +43,29 @@ services:
   # Nakama game server - standard heroiclabs image, wired to the postgres
   # service the same way backend/docker-compose.yml does it (migrate up, then
   # serve; DSN via the compose-network service hostname).
+  #
+  # Config file (issue #1135 / fix/ci-infrastructure):
+  #   The -config /nakama/nakama.yml uses backend/nakama.ci.yml which sets
+  #   js_entrypoint: "modules/index.js" so Nakama loads the JS bundle.
+  #   Without this, Nakama defaults to js_entrypoint="" and the bundle is
+  #   never loaded → InitModule never runs → HTTP server never starts →
+  #   "ECONNREFUSED" on port 7350.
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: ci_nakama
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+    ulimits:
+      stack: 536870912
     entrypoint:
       - "/bin/sh"
       - "-ecx"
       - >
         /nakama/nakama migrate up --database.address "postgres://postgres:changeme@postgres:5432/nakama" &&
-        exec /nakama/nakama --database.address "postgres://postgres:changeme@postgres:5432/nakama"
+        exec env HMAC_SECRET=ci-test-secret-do-not-use-in-production /nakama/nakama -config /nakama/nakama.yml --runtime.js_read_only_globals=false
     ports:
       - "7350:7350"
       - "7351:7351"
@@ -60,18 +74,26 @@ services:
     # `cd backend && npm run build:full` first, or `make ci-services-preflight`
     # will refuse to bring the stack up.
     volumes:
+      - ${PWD}/backend/nakama.ci.yml:/nakama/nakama.yml:ro
       - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/nakama/nakama", "healthcheck"]
-      interval: 10s
-      timeout: 10s
-      retries: 60
-      start_period: 60s
+      interval: 30s
+      timeout: 30s
+      retries: 20
+      start_period: 240s
     environment:
-      NAKAMA_SERVER_KEY: defaultkey
+      # NOTE: The JS bundle's process.env is baked at BUILD time from backend/.env.
+      # Nakama runtime env vars (NAKAMA_SERVER_KEY, HMAC_SECRET) do NOT reach
+      # the bundle's static process.env. Both must be in backend/.env before
+      # `npm run build:full` so they are embedded. The values below match what
+      # is injected by the CI workflow's "Inject required env vars into .env"
+      # step so local dev matches CI behavior.
+      NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+      HMAC_SECRET: ci-test-secret-do-not-use-in-production
     networks:
       - ci-network
 

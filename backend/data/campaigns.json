@@ -1,0 +1,419 @@
+{
+  "difficulty_tiers": {
+    "1": {"name": "Starter", "color": "#4ADE80"},
+    "2": {"name": "Challenging", "color": "#FACC15"},
+    "3": {"name": "Endgame", "color": "#EF4444"}
+  },
+  "biomes": ["forest", "cavern", "mountain"],
+  "chapter_unlock_requirements": {
+    "chapter_1": {
+      "type": "default",
+      "description": "Starting chapter"
+    },
+    "chapter_2": {
+      "type": "chapter_completion",
+      "required_chapter": "chapter_1",
+      "required_stage": "1_4",
+      "description": "Complete Chapter 1: The Awakening"
+    },
+    "chapter_3": {
+      "type": "chapter_completion",
+      "required_chapter": "chapter_2",
+      "required_stage": "2_4",
+      "description": "Complete Chapter 2: The Fortress"
+    },
+    "chapter_4": {
+      "type": "chapter_completion",
+      "required_chapter": "chapter_3",
+      "required_stage": "3_4",
+      "description": "Complete Chapter 3: The Dark Forest"
+    }
+  },
+  "campaigns": [
+    {
+      "id": "chapter_1",
+      "name": "The Awakening",
+      "level_requirement": 1,
+      "stages": [
+        {
+          "id": "1_1",
+          "name": "Forest Edge",
+          "waves": 4,
+          "boss": null,
+          "level_requirement": 1,
+          "difficulty": 1,
+          "biome": "forest",
+          "enemy": {
+            "type": "Goblin Scout",
+            "health": 30,
+            "attack": 8,
+            "defense": 2,
+            "speed": 10
+          },
+          "loot": {
+            "xp": 50,
+            "gold": 25,
+            "rarity_weights": {"common": 100, "rare": 0, "epic": 0, "legendary": 0}
+          }
+        },
+        {
+          "id": "1_2",
+          "name": "Ambush",
+          "waves": 4,
+          "boss": null,
+          "level_requirement": 1,
+          "difficulty": 1,
+          "biome": "forest",
+          "enemy": {
+            "type": "Wolf Pack",
+            "health": 35,
+            "attack": 10,
+            "defense": 3,
+            "speed": 12
+          },
+          "loot": {
+            "xp": 65,
+            "gold": 35,
+            "rarity_weights": {"common": 90, "rare": 8, "epic": 2, "legendary": 0}
+          }
+        },
+        {
+          "id": "1_3",
+          "name": "First Blood",
+          "waves": 5,
+          "boss": "boss_basic",
+          "level_requirement": 2,
+          "difficulty": 1,
+          "biome": "forest",
+          "enemy": {
+            "type": "Forest Guardian",
+            "health": 50,
+            "attack": 14,
+            "defense": 4,
+            "speed": 9
+          },
+          "loot": {
+            "xp": 90,
+            "gold": 55,
+            "rarity_weights": {"common": 85, "rare": 12, "epic": 2, "legendary": 1}
+          }
+        },
+        {
+          "id": "1_4",
+          "name": "Wind Passage",
+          "waves": 4,
+          "boss": "boss_wind",
+          "level_requirement": 3,
+          "difficulty": 1,
+          "biome": "forest",
+          "enemy": {
+            "type": "Wind Elemental",
+            "health": 40,
+            "attack": 12,
+            "defense": 3,
+            "speed": 14
+          },
+          "loot": {
+            "xp": 85,
+            "gold": 50,
+            "rarity_weights": {"common": 88, "rare": 10, "epic": 2, "legendary": 0}
+          }
+        }
+      ]
+    },
+    {
+      "id": "chapter_2",
+      "name": "The Fortress",
+      "level_requirement": 3,
+      "stages": [
+        {
+          "id": "2_1",
+          "name": "Outer Walls",
+          "waves": 5,
+          "boss": null,
+          "level_requirement": 3,
+          "difficulty": 2,
+          "biome": "cavern",
+          "enemy": {
+            "type": "Stone Golem",
+            "health": 50,
+            "attack": 16,
+            "defense": 5,
+            "speed": 8
+          },
+          "loot": {
+            "xp": 120,
+            "gold": 70,
+            "rarity_weights": {"common": 70, "rare": 25, "epic": 4, "legendary": 1}
+          }
+        },
+        {
+          "id": "2_2",
+          "name": "The Courtyard",
+          "waves": 5,
+          "boss": null,
+          "level_requirement": 3,
+          "difficulty": 2,
+          "biome": "cavern",
+          "enemy": {
+            "type": "Armored Knight",
+            "health": 60,
+            "attack": 18,
+            "defense": 7,
+            "speed": 7
+          },
+          "loot": {
+            "xp": 140,
+            "gold": 85,
+            "rarity_weights": {"common": 60, "rare": 30, "epic": 8, "legendary": 2}
+          }
+        },
+        {
+          "id": "2_3",
+          "name": "The Armory",
+          "waves": 5,
+          "boss": "boss_fire",
+          "level_requirement": 4,
+          "difficulty": 2,
+          "biome": "cavern",
+          "enemy": {
+            "type": "Fire Imps",
+            "health": 55,
+            "attack": 20,
+            "defense": 4,
+            "speed": 10
+          },
+          "loot": {
+            "xp": 160,
+            "gold": 100,
+            "rarity_weights": {"common": 50, "rare": 35, "epic": 12, "legendary": 3}
+          }
+        },
+        {
+          "id": "2_4",
+          "name": "Throne Room",
+          "waves": 6,
+          "boss": "boss_ice",
+          "level_requirement": 5,
+          "difficulty": 2,
+          "biome": "cavern",
+          "enemy": {
+            "type": "Frost Warden",
+            "health": 65,
+            "attack": 19,
+            "defense": 8,
+            "speed": 6
+          },
+          "loot": {
+            "xp": 180,
+            "gold": 115,
+            "rarity_weights": {"common": 40, "rare": 40, "epic": 15, "legendary": 5}
+          }
+        }
+      ]
+    },
+    {
+      "id": "chapter_3",
+      "name": "The Dark Forest",
+      "level_requirement": 5,
+      "stages": [
+        {
+          "id": "3_1",
+          "name": "Twisted Paths",
+          "waves": 4,
+          "boss": null,
+          "level_requirement": 5,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Shadow Beast",
+            "health": 85,
+            "attack": 26,
+            "defense": 12,
+            "speed": 6
+          },
+          "loot": {
+            "xp": 220,
+            "gold": 140,
+            "rarity_weights": {"common": 25, "rare": 50, "epic": 20, "legendary": 5}
+          }
+        },
+        {
+          "id": "3_2",
+          "name": "The Hollow",
+          "waves": 5,
+          "boss": null,
+          "level_requirement": 6,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Cultist Priest",
+            "health": 100,
+            "attack": 28,
+            "defense": 14,
+            "speed": 5
+          },
+          "loot": {
+            "xp": 275,
+            "gold": 170,
+            "rarity_weights": {"common": 15, "rare": 55, "epic": 25, "legendary": 5}
+          }
+        },
+        {
+          "id": "3_3",
+          "name": "Cursed Grove",
+          "waves": 5,
+          "boss": "boss_electric",
+          "level_requirement": 7,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Lightning Guardian",
+            "health": 110,
+            "attack": 30,
+            "defense": 15,
+            "speed": 5
+          },
+          "loot": {
+            "xp": 330,
+            "gold": 200,
+            "rarity_weights": {"common": 10, "rare": 50, "epic": 30, "legendary": 10}
+          }
+        },
+        {
+          "id": "3_4",
+          "name": "Ancient Shrine",
+          "waves": 6,
+          "boss": "boss_king",
+          "level_requirement": 8,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Elder King",
+            "health": 120,
+            "attack": 35,
+            "defense": 16,
+            "speed": 4
+          },
+          "loot": {
+            "xp": 400,
+            "gold": 230,
+            "rarity_weights": {"common": 5, "rare": 40, "epic": 35, "legendary": 20}
+          }
+        }
+      ]
+    },
+    {
+      "id": "chapter_4",
+      "name": "The Void",
+      "level_requirement": 8,
+      "stages": [
+        {
+          "id": "4_1",
+          "name": "Cracked Earth",
+          "waves": 4,
+          "boss": null,
+          "level_requirement": 8,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Earth Golem",
+            "health": 130,
+            "attack": 38,
+            "defense": 18,
+            "speed": 4
+          },
+          "loot": {
+            "xp": 450,
+            "gold": 260,
+            "rarity_weights": {"common": 5, "rare": 35, "epic": 40, "legendary": 20}
+          }
+        },
+        {
+          "id": "4_2",
+          "name": "Iron Fortress",
+          "waves": 6,
+          "boss": "boss_earth",
+          "level_requirement": 9,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Titan Guardian",
+            "health": 140,
+            "attack": 40,
+            "defense": 20,
+            "speed": 4
+          },
+          "loot": {
+            "xp": 500,
+            "gold": 290,
+            "rarity_weights": {"common": 3, "rare": 30, "epic": 42, "legendary": 25}
+          }
+        },
+        {
+          "id": "4_3",
+          "name": "Shadow Realm",
+          "waves": 6,
+          "boss": "boss_iron",
+          "level_requirement": 10,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Shadow Knight",
+            "health": 150,
+            "attack": 45,
+            "defense": 22,
+            "speed": 5
+          },
+          "loot": {
+            "xp": 550,
+            "gold": 320,
+            "rarity_weights": {"common": 2, "rare": 25, "epic": 45, "legendary": 28}
+          }
+        },
+        {
+          "id": "4_4",
+          "name": "Nightmare's End",
+          "waves": 6,
+          "boss": "boss_nightmare",
+          "level_requirement": 11,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Nightmare Walker",
+            "health": 160,
+            "attack": 50,
+            "defense": 25,
+            "speed": 5
+          },
+          "loot": {
+            "xp": 600,
+            "gold": 350,
+            "rarity_weights": {"common": 0, "rare": 20, "epic": 50, "legendary": 30}
+          }
+        },
+        {
+          "id": "4_5",
+          "name": "Shadow Ascension",
+          "waves": 8,
+          "boss": "boss_shadow",
+          "level_requirement": 12,
+          "difficulty": 3,
+          "biome": "mountain",
+          "enemy": {
+            "type": "Shadow Lord",
+            "health": 180,
+            "attack": 55,
+            "defense": 28,
+            "speed": 6
+          },
+          "loot": {
+            "xp": 700,
+            "gold": 400,
+            "rarity_weights": {"common": 0, "rare": 15, "epic": 45, "legendary": 40}
+          }
+        }
+      ]
+    }
+  ]
+}

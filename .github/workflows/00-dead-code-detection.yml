@@ -52,10 +52,9 @@ jobs:
 
       - name: Run Python dead code detection
         run: |
-          # Find Python files
-          find . -name "*.py" -type f > python_files.txt
           # Run vulture on Python files - fail if issues found
-          vulture --min-confidence 80 python_files.txt
+          # Use xargs to avoid shell argument length limits with large file sets
+          find . -name "*.py" -type f | xargs vulture --min-confidence 80
 
       - name: Run TypeScript/JavaScript dead code detection
         working-directory: ./backend

@@ -34,7 +34,6 @@ Exit codes:
 import argparse
 import json
 import os
-import re
 import sys
 
 # Lines starting with this prefix parse as a documentation comment
