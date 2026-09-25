@@ -23,6 +23,7 @@ import {
   type HitResolutionEvent,
   type TimeoutEvent,
 } from './fairness_telemetry';
+import { wrapStorageRead } from './n_plus_one_detection';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { PvPMatch } from './matchmaker';
@@ -966,13 +967,17 @@ function calculateCrit(critRate: number): boolean {
  * @returns Player stats with gear modifier bonuses applied
  */
 function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerStats {
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: userId,
-      userId: userId,
-    },
-  ]);
+  const objects = wrapStorageRead(
+    nk,
+    [
+      {
+        collection: 'player_stats',
+        key: userId,
+        userId: userId,
+      },
+    ],
+    'getPlayerStats'
+  );
 
   let baseStats: PlayerStats;
 
