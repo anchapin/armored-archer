@@ -135,12 +135,13 @@ func test_user_facing_error_messages() -> void:
 
 func test_purchase_blocked_during_outage() -> void:
 	var sm = _create_store_manager()
-	var failed_signal_received: bool = false
-	var failure_reason: String = ""
+	# GDScript lambdas capture primitive locals by value, not by reference.
+	# Use an Array container so the lambda can mutate state visible outside.
+	var signal_state: Array = [false, ""]
 
 	sm.purchase_failed.connect(func(_pid, error):
-		failed_signal_received = true
-		failure_reason = error
+		signal_state[0] = true
+		signal_state[1] = error
 	)
 
 	sm._record_failure("network")
@@ -150,7 +151,7 @@ func test_purchase_blocked_during_outage() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if failed_signal_received and not failure_reason.is_empty():
+	if signal_state[0] and not signal_state[1].is_empty():
 		_pass("test_purchase_blocked_during_outage")
 	else:
 		_fail("test_purchase_blocked_during_outage", "Purchase should fail with outage message")
@@ -159,14 +160,14 @@ func test_purchase_blocked_during_outage() -> void:
 
 func test_availability_signal_emitted() -> void:
 	var sm = _create_store_manager()
-	var signal_received: bool = false
-	var signal_available: bool = true
-	var signal_message: String = ""
+	# GDScript lambdas capture primitive locals by value, not by reference.
+	# Use an Array container so the lambda can mutate state visible outside.
+	var signal_state: Array = [false, true, ""]
 
 	sm.store_availability_changed.connect(func(is_available, message):
-		signal_received = true
-		signal_available = is_available
-		signal_message = message
+		signal_state[0] = true
+		signal_state[1] = is_available
+		signal_state[2] = message
 	)
 
 	sm._record_failure("network")
@@ -174,7 +175,7 @@ func test_availability_signal_emitted() -> void:
 
 	await get_tree().create_timer(0.1).timeout
 
-	if signal_received and not signal_available and not signal_message.is_empty():
+	if signal_state[0] and not signal_state[1] and not signal_state[2].is_empty():
 		_pass("test_outage_signal_emitted")
 	else:
 		_fail("test_outage_signal_emitted", "Outage signal should fire with message")
