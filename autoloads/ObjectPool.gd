@@ -1056,10 +1056,13 @@ func prepare_for_scene_change() -> void:
 			_arrow_pool.append(arrow)
 	_active_arrows.clear()
 
-	# Return all active enemies to their per-type pools (issue #1091)
+	# Return all active enemies to their per-type pools (issue #1091).
+	# pool_data["active"] is a plain Array (declared in _get_or_create_enemy_pool),
+	# so iterate over a duplicate instead of typing the local — typed Array[Node]
+	# would reject the untyped source and abort scene transitions (#1339 regression).
 	for scene_path in _enemy_pools:
 		var pool_data: Dictionary = _enemy_pools[scene_path]
-		var to_return: Array[Node] = pool_data["active"].duplicate()
+		var to_return: Array = pool_data["active"].duplicate()
 		for enemy in to_return:
 			if is_instance_valid(enemy):
 				_disconnect_node_signals(enemy)
