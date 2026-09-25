@@ -1,15 +1,11 @@
 /**
  * Gear Database Operations module.
  * @fileoverview Manages database operations for gear inventory and loadout.
- * Provides functions to insert, query, and update gear data in Nakama Storage.
- *
- * Issue #XXXX: nk.dbQuery does not exist in Nakama 3.21 Goja runtime.
- * All functions have been converted to use Nakama's Storage API (nk.storageRead/nk.storageWrite).
+ * Provides functions to insert, query, and update gear data in PostgreSQL.
  */
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
-import { getStorageRawValue, toStorageValue } from '../utils/storage-helpers';
 import { GearItem } from './gear_system';
 
 /**
@@ -62,7 +58,7 @@ interface UnlockedModifierPoolRow {
 }
 
 /**
- * Result of inserting a gear item into storage.
+ * Result of inserting a gear item into the database.
  */
 export interface InsertGearResult {
   item_id?: string;
@@ -71,165 +67,71 @@ export interface InsertGearResult {
 }
 
 /**
- * Storage structure for player inventory.
- */
-interface PlayerInventoryStorage {
-  gear: GearItem[];
-  equipped_gear: { [slot: string]: string | null };
-  unlocked_modifier_pools: string[];
-}
-
-/**
- * Inserts a gear item into Nakama Storage (player_inventory collection).
- * Implements retry logic for version conflicts.
+ * Inserts a gear item into the inventory_items table.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
  * @param gear - Gear item to insert
- * @param maxRetries - Maximum number of retries on version conflict (default: 3)
  * @returns Result with item_id or error
  */
-// eslint-disable-next-line complexity
 export function insertGearItem(
   nk: Runtime.Nakama,
   userId: string,
-  gear: GearItem,
-  maxRetries: number = 3
+  gear: GearItem
 ): InsertGearResult {
-  const COLLECTION = 'player_inventory';
+  const query = `
+    INSERT INTO inventory_items (
+      user_id,
+      gear_type,
+      name,
+      rarity,
+      level,
+      stats,
+      modifiers
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING item_id
+  `;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Read existing inventory from storage
-      const storageObjects = nk.storageRead([
-        {
-          collection: COLLECTION,
-          key: userId,
-          userId: userId,
-        },
-      ]);
+  try {
+    // Convert stats array to JSONB
+    const statsJson = JSON.stringify(
+      gear.stats.map((stat) => ({
+        name: stat.name,
+        base_value: stat.base_value,
+        value: stat.value,
+      }))
+    );
 
-      // Parse existing inventory or create new
-      let inventory: PlayerInventoryStorage = {
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      };
-      let version: string | undefined;
+    // Convert modifiers array to JSONB
+    const modifiersJson = JSON.stringify(gear.modifiers);
 
-      if (storageObjects.length > 0 && storageObjects[0].value) {
-        version = storageObjects[0].version;
-        const raw = getStorageRawValue(storageObjects[0].value);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === 'object') {
-              inventory = {
-                gear: Array.isArray(parsed.gear) ? parsed.gear : [],
-                equipped_gear: typeof parsed.equipped_gear === 'object' ? parsed.equipped_gear : {},
-                unlocked_modifier_pools: Array.isArray(parsed.unlocked_modifier_pools)
-                  ? parsed.unlocked_modifier_pools
-                  : [],
-              };
-            }
-          } catch {
-            // Use default empty inventory
-          }
-        }
-      }
+    const result = nk.dbQuery(query, [
+      userId,
+      gear.type,
+      gear.name,
+      gear.rarity,
+      gear.level,
+      statsJson,
+      modifiersJson,
+    ]) as any[];
 
-      // Check if gear with same ID already exists (idempotency)
-      if (gear.id) {
-        const existingGear = inventory.gear.find((g) => g.id === gear.id);
-        if (existingGear) {
-          return {
-            item_id: gear.id,
-            success: true,
-          };
-        }
-      }
-
-      // Generate a unique ID for the new gear item
-      const itemId = gear.id || `gear_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const gearWithId: GearItem = {
-        ...gear,
-        id: itemId,
-        timestamp: Date.now(),
-      };
-
-      // Append the new gear item to storage inventory
-      inventory.gear.push(gearWithId);
-
-      // Write back to Nakama Storage
-      nk.storageWrite([
-        {
-          collection: COLLECTION,
-          key: userId,
-          userId: userId,
-          value: toStorageValue(inventory),
-          version: version,
-        },
-      ]);
-
-      // Also write to database inventory_items table so equip_gear DB fallback can find it
-      const insertQuery = `
-        INSERT INTO inventory_items (item_id, user_id, gear_type, name, rarity, level, stats, modifiers, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-        ON CONFLICT (item_id, user_id) DO NOTHING
-        RETURNING item_id
-      `;
-      try {
-        const dbResult = nk.dbQuery(insertQuery, [
-          itemId,
-          userId,
-          gearWithId.type,
-          gearWithId.name,
-          gearWithId.rarity,
-          gearWithId.level,
-          JSON.stringify(gearWithId.stats),
-          JSON.stringify(gearWithId.modifiers),
-        ]) as { item_id: string }[];
-        // If the INSERT was rejected by ON CONFLICT DO NOTHING, dbResult could be empty
-        // but that's fine - it means the item already exists
-        if (dbResult && dbResult.length > 0) {
-          logger.info('Persisted gear to database: %s', dbResult[0].item_id);
-        }
-      } catch (dbError) {
-        // Database write failed, but storage write succeeded - log warning and continue
-        logger.warn(
-          'Failed to persist gear to database (storage write succeeded): %s',
-          String(dbError)
-        );
-      }
-
+    if (result && result.length > 0) {
       return {
-        item_id: itemId,
+        item_id: result[0].item_id,
         success: true,
       };
-    } catch (error) {
-      const errorStr = String(error);
-      // Check if this is a version conflict error
-      if (
-        errorStr.includes('version check failed') ||
-        errorStr.includes('Storage write rejected')
-      ) {
-        if (attempt < maxRetries) {
-          // Retry with fresh read
-          continue;
-        }
-      }
-      // Non-retryable error or max retries exceeded
-      return {
-        success: false,
-        error: `Failed to insert gear item: ${errorStr}`,
-      };
     }
-  }
 
-  return {
-    success: false,
-    error: 'Failed to insert gear item: max retries exceeded',
-  };
+    return {
+      success: false,
+      error: 'Failed to insert gear item - no rows returned',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to insert gear item: ${String(error)}`,
+    };
+  }
 }
 
 /**
@@ -496,7 +398,7 @@ export function getFullInventoryFromDB(nk: Runtime.Nakama, userId: string): Full
 }
 
 /**
- * Records a boss defeat for a player in Nakama Storage.
+ * Records a boss defeat for a player in the database.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
@@ -510,123 +412,58 @@ export interface RecordBossDefeatResult {
   error?: string;
 }
 
-/**
- * Storage structure for boss defeats.
- */
-interface BossDefeatsStorage {
-  defeats: {
-    [bossId: string]: {
-      count: number;
-      firstDefeatedAt: string;
-      lastDefeatedAt: string;
-    };
-  };
-}
-
 export function recordBossDefeatInDB(
   nk: Runtime.Nakama,
   userId: string,
-  bossId: string,
-  maxRetries: number = 3
+  bossId: string
 ): RecordBossDefeatResult {
-  const COLLECTION = 'boss_defeats';
+  // Check if this is the first defeat
+  const checkQuery = `
+    SELECT defeat_count FROM boss_defeats
+    WHERE user_id = $1 AND boss_id = $2
+  `;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Read existing boss defeats from storage
-      const storageObjects = nk.storageRead([
-        {
-          collection: COLLECTION,
-          key: userId,
-          userId: userId,
-        },
-      ]);
+  let isFirstDefeat = false;
+  let defeatCount = 1;
 
-      // Parse existing data or create new
-      let storageData: BossDefeatsStorage = { defeats: {} };
-      let version: string | undefined;
+  try {
+    const checkResult = nk.dbQuery(checkQuery, [userId, bossId]) as any[];
 
-      if (storageObjects.length > 0 && storageObjects[0].value) {
-        version = storageObjects[0].version;
-        const raw = getStorageRawValue(storageObjects[0].value);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.defeats && typeof parsed.defeats === 'object') {
-              storageData = parsed as BossDefeatsStorage;
-            }
-          } catch {
-            // Use default empty defeats
-          }
-        }
-      }
-
-      // Check if this is the first defeat
-      const existingDefeat = storageData.defeats[bossId];
-      const isFirstDefeat = !existingDefeat;
-      const now = new Date().toISOString();
-
-      // Update or create the defeat record
-      if (existingDefeat) {
-        storageData.defeats[bossId] = {
-          count: existingDefeat.count + 1,
-          firstDefeatedAt: existingDefeat.firstDefeatedAt,
-          lastDefeatedAt: now,
-        };
-      } else {
-        storageData.defeats[bossId] = {
-          count: 1,
-          firstDefeatedAt: now,
-          lastDefeatedAt: now,
-        };
-      }
-
-      const defeatCount = storageData.defeats[bossId].count;
-
-      // Write back to storage
-      nk.storageWrite([
-        {
-          collection: COLLECTION,
-          key: userId,
-          userId: userId,
-          value: toStorageValue(storageData),
-          version: version,
-        },
-      ]);
-
-      return {
-        success: true,
-        defeat_count: defeatCount,
-        first_defeat: isFirstDefeat,
-      };
-    } catch (error) {
-      const errorStr = String(error);
-      // Check if this is a version conflict error
-      if (
-        errorStr.includes('version check failed') ||
-        errorStr.includes('Storage write rejected')
-      ) {
-        if (attempt < maxRetries) {
-          // Retry with fresh read
-          continue;
-        }
-      }
-      // Non-retryable error or max retries exceeded
-      return {
-        success: false,
-        defeat_count: 0,
-        first_defeat: false,
-        error: `Failed to record boss defeat: ${errorStr}`,
-      };
+    if (checkResult && checkResult.length > 0) {
+      defeatCount = checkResult[0].defeat_count + 1;
+    } else {
+      isFirstDefeat = true;
     }
-  }
 
-  return {
-    success: false,
-    defeat_count: 0,
-    first_defeat: false,
-    error: 'Failed to record boss defeat: max retries exceeded',
-  };
+    // Upsert the boss defeat record
+    const upsertQuery = `
+      INSERT INTO boss_defeats (user_id, boss_id, defeat_count, first_defeated_at, last_defeated_at)
+      VALUES ($1, $2, 1, NOW(), NOW())
+      ON CONFLICT (user_id, boss_id) DO UPDATE
+      SET defeat_count = boss_defeats.defeat_count + 1,
+          last_defeated_at = NOW(),
+          updated_at = NOW()
+      RETURNING defeat_count
+    `;
+
+    const upsertResult = nk.dbQuery(upsertQuery, [userId, bossId]) as any[];
+    if (upsertResult && upsertResult.length > 0) {
+      defeatCount = upsertResult[0].defeat_count;
+    }
+
+    return {
+      success: true,
+      defeat_count: defeatCount,
+      first_defeat: isFirstDefeat,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      defeat_count: 0,
+      first_defeat: false,
+      error: `Failed to record boss defeat: ${String(error)}`,
+    };
+  }
 }
 
 /**
@@ -682,7 +519,7 @@ export function getBossDefeatCount(nk: Runtime.Nakama, userId: string, bossId: s
 }
 
 /**
- * Unlocks a modifier pool for a player in Nakama Storage.
+ * Unlocks a modifier pool for a player in the database.
  *
  * @param nk - Nakama server interface
  * @param userId - ID of the player
@@ -697,116 +534,48 @@ export interface UnlockModifierPoolResult {
   error?: string;
 }
 
-/**
- * Storage structure for unlocked modifier pools.
- */
-interface UnlockedModifierPoolsStorage {
-  pools: Array<{
-    modifierId: string;
-    reason: string;
-    sourceBossId?: string;
-    unlockedAt: string;
-  }>;
-}
-
 export function unlockModifierPoolInDB(
   nk: Runtime.Nakama,
   userId: string,
   modifierId: string,
   unlockReason: string = 'boss_defeat',
-  sourceBossId?: string,
-  maxRetries: number = 3
+  sourceBossId?: string
 ): UnlockModifierPoolResult {
-  const COLLECTION = 'unlocked_modifier_pools';
+  // Check if already unlocked
+  const checkQuery = `
+    SELECT modifier_id FROM unlocked_modifier_pools
+    WHERE user_id = $1 AND modifier_id = $2
+  `;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Read existing unlocked pools from storage
-      const storageObjects = nk.storageRead([
-        {
-          collection: COLLECTION,
-          key: userId,
-          userId: userId,
-        },
-      ]);
+  try {
+    const checkResult = nk.dbQuery(checkQuery, [userId, modifierId]) as any[];
 
-      // Parse existing data or create new
-      let storageData: UnlockedModifierPoolsStorage = { pools: [] };
-      let version: string | undefined;
-
-      if (storageObjects.length > 0 && storageObjects[0].value) {
-        version = storageObjects[0].version;
-        const raw = getStorageRawValue(storageObjects[0].value);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && Array.isArray(parsed.pools)) {
-              storageData = parsed as UnlockedModifierPoolsStorage;
-            }
-          } catch {
-            // Use default empty pools
-          }
-        }
-      }
-
-      // Check if already unlocked
-      const alreadyUnlocked = storageData.pools.some((p) => p.modifierId === modifierId);
-      if (alreadyUnlocked) {
-        return {
-          success: true,
-          newly_unlocked: false,
-        };
-      }
-
-      // Add new unlock record
-      storageData.pools.push({
-        modifierId,
-        reason: unlockReason,
-        sourceBossId,
-        unlockedAt: new Date().toISOString(),
-      });
-
-      // Write back to storage
-      nk.storageWrite([
-        {
-          collection: COLLECTION,
-          key: userId,
-          userId: userId,
-          value: toStorageValue(storageData),
-          version: version,
-        },
-      ]);
-
+    if (checkResult && checkResult.length > 0) {
       return {
         success: true,
-        newly_unlocked: true,
-      };
-    } catch (error) {
-      const errorStr = String(error);
-      // Check if this is a version conflict error
-      if (
-        errorStr.includes('version check failed') ||
-        errorStr.includes('Storage write rejected')
-      ) {
-        if (attempt < maxRetries) {
-          // Retry with fresh read
-          continue;
-        }
-      }
-      // Non-retryable error or max retries exceeded
-      return {
-        success: false,
         newly_unlocked: false,
-        error: `Failed to unlock modifier pool: ${errorStr}`,
       };
     }
-  }
 
-  return {
-    success: false,
-    newly_unlocked: false,
-    error: 'Failed to unlock modifier pool: max retries exceeded',
-  };
+    // Insert new unlock record
+    const insertQuery = `
+      INSERT INTO unlocked_modifier_pools (user_id, modifier_id, unlock_reason, source_boss_id)
+      VALUES ($1, $2, $3, $4)
+    `;
+
+    nk.dbQuery(insertQuery, [userId, modifierId, unlockReason, sourceBossId || null]);
+
+    return {
+      success: true,
+      newly_unlocked: true,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      newly_unlocked: false,
+      error: `Failed to unlock modifier pool: ${String(error)}`,
+    };
+  }
 }
 
 /**

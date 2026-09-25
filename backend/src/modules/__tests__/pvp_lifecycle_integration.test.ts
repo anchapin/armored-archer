@@ -67,9 +67,7 @@ describe('PvP lifecycle integration', () => {
 
     mockNk.storageWrite = jest.fn((objects: any[]) => {
       objects.forEach((obj: any) => {
-        const normalized =
-          typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-        mockStorage.set(`${obj.collection}:${obj.key}`, normalized);
+        mockStorage.set(`${obj.collection}:${obj.key}`, obj.value);
       });
     });
   });

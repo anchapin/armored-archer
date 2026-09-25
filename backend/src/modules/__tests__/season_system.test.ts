@@ -1464,12 +1464,7 @@ describe('season_system', () => {
           counts[key] = (counts[key] || 0) + 1;
           // Mirror the default mock behavior so storageRead can see the
           // writes the test wants to assert against later.
-          // Nakama's goja storageWrite accepts a plain object (it stringifies
-          // internally); normalize to the JSON string the old string-based
-          // map/reads expect (issue #1135).
-          const normalized =
-            typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
-          testStorage.set(key, normalized);
+          testStorage.set(key, w.value);
         }
         return [];
       });
@@ -1490,9 +1485,7 @@ describe('season_system', () => {
       mockNk.storageWrite = jest.fn((objs: any[]) => {
         for (const obj of objs) {
           writes.push(obj);
-          const normalized =
-            typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-          testStorage.set(`${obj.collection}:${obj.key}`, normalized);
+          testStorage.set(`${obj.collection}:${obj.key}`, obj.value);
         }
         return [];
       });
@@ -1581,8 +1574,7 @@ describe('season_system', () => {
         for (const w of objs) {
           const key = `${w.collection}:${w.key}`;
           retryCounts[key] = (retryCounts[key] || 0) + 1;
-          const normalized = typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
-          testStorage.set(key, normalized);
+          testStorage.set(key, w.value);
         }
         return [];
       });
@@ -1672,8 +1664,7 @@ describe('season_system', () => {
         for (const w of objs) {
           const key = `${w.collection}:${w.key}`;
           counts[key] = (counts[key] || 0) + 1;
-          const normalized = typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
-          testStorage.set(key, normalized);
+          testStorage.set(key, w.value);
         }
         return [];
       });
@@ -1706,8 +1697,7 @@ describe('season_system', () => {
         for (const w of objs) {
           const key = `${w.collection}:${w.key}`;
           counts[key] = (counts[key] || 0) + 1;
-          const normalized = typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
-          testStorage.set(key, normalized);
+          testStorage.set(key, w.value);
         }
         return [];
       });

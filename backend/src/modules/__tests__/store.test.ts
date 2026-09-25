@@ -809,20 +809,14 @@ describe('store', () => {
         return writeCalls
           .flatMap((call: any) => call[0] as any[])
           .filter((obj: any) => obj.collection === 'audit_logs')
-          .map((obj: any) => {
-            const value = typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-            return JSON.parse(value);
-          });
+          .map((obj: any) => JSON.parse(obj.value));
       };
 
       const getAuditLogsFrom = (mock: jest.Mock): Array<Record<string, unknown>> =>
         mock.mock.calls
           .flatMap((call: any) => call[0] as any[])
           .filter((obj: any) => obj.collection === 'audit_logs')
-          .map((obj: any) => {
-            const value = typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-            return JSON.parse(value);
-          });
+          .map((obj: any) => JSON.parse(obj.value));
 
       it('rolls back the deduction and returns PERSISTENCE_FAILED when the marker write fails', async () => {
         const nk = createMockNakama();

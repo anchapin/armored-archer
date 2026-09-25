@@ -7,7 +7,6 @@ import { initializeSentry } from './config/errorTracking';
 import { logSystemEvent } from './config/logger';
 import { createStructuredLogger, StructuredLogger } from './config/structuredLogger';
 import { initializeTracing } from './config/tracing';
-import { getAdminUserIds } from './modules/admin_auth';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
 import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
@@ -59,6 +58,7 @@ import {
   registerRpcGetMatchDetails,
   registerRpcAdminQueryMatches,
 } from './modules/matchmaker';
+import { getAdminUserIds } from './modules/admin_auth';
 import { registerMatchmakingAnalyticsEndpoints } from './modules/matchmaking_analytics';
 import {
   registerRpcJoinPool,
@@ -94,8 +94,6 @@ import {
   registerRpcAdminGetPlayerSeason,
   registerRpcAdminValidateSeason,
   registerRpcAdminTriggerSeasonEvent,
-  registerRpcAdminWriteLeaderboardRecord,
-  registerRpcAdminDeleteLeaderboardRecord,
 } from './modules/season_admin';
 import {
   registerRpcGetSeasonHistory,
@@ -149,7 +147,6 @@ import {
   rpcGetBundleCatalog,
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
-import { registerTestCleanupRpc } from './modules/test_cleanup';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
@@ -443,16 +440,6 @@ const InitModule: InitModule = function (
       'query_audit_logs',
       rpcQueryAuditLogs
     );
-    // Gear system RPCs (not rate-limited)
-    registerRpcGenerateGear(initializer);
-    registerRpcEquipGear(initializer);
-    registerRpcUnequipGear(initializer);
-    registerRpcGetInventory(initializer);
-    registerRpcUnlockModifierPool(initializer);
-    registerRpcStageComplete(initializer);
-    registerRpcGetUnlockedModifiers(initializer);
-    // Test-only RPC for cleaning user storage in integration tests
-    registerTestCleanupRpc(initializer);
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/generate_gear',
@@ -480,10 +467,12 @@ const InitModule: InitModule = function (
       'get_campaign_progress',
       rpcGetCampaignProgressWrapper
     );
-    // get_completed_stages is NOT rate-limited but must be registered when
-    // rate limiting is enabled (issue #1193): the else-branch only runs when
-    // rate limiting is disabled, so add it here too.
-    registerRpcGetCompletedStages(initializer);
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_campaign_progress',
+      'get_campaign_progress',
+      rpcGetCampaignProgressWrapper
+    );
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/report_player',
@@ -633,8 +622,6 @@ const InitModule: InitModule = function (
   registerRpcAdminGetPlayerSeason(initializer);
   registerRpcAdminValidateSeason(initializer);
   registerRpcAdminTriggerSeasonEvent(initializer);
-  registerRpcAdminWriteLeaderboardRecord(initializer);
-  registerRpcAdminDeleteLeaderboardRecord(initializer);
 
   logSystemEvent('info', 'Armored Archer server module initialized');
 

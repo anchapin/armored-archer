@@ -1211,74 +1211,6 @@ export function rpcAdminTriggerSeasonEvent(
   });
 }
 
-/**
- * Admin RPC: write a leaderboard record directly.
- * Used by integration tests to seed leaderboard state without going through
- * the full game flow. Wraps nk.leaderboardRecordWrite().
- */
-export function rpcAdminWriteLeaderboardRecord(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Admin write leaderboard record called by: %s', ctx.userId);
-
-  const validation = validatePayload(
-    ZodSchemas.admin_write_leaderboard_record,
-    payload,
-    'admin_write_leaderboard_record'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('admin_write_leaderboard_record', validation.error);
-  }
-
-  const request = validation.data;
-  nk.leaderboardRecordWrite(
-    request.season_id,
-    request.owner_id,
-    request.username,
-    request.score,
-    request.subscore,
-    request.metadata ?? {}
-  );
-
-  return JSON.stringify({ success: true });
-}
-
-/**
- * Admin RPC: delete a leaderboard record.
- * NOTE: Nakama server API does not support deleting individual leaderboard records.
- * Only nk.leaderboardDelete(id) exists, which deletes the entire leaderboard.
- * This RPC is a placeholder that returns an error indicating the operation is not supported.
- */
-export function rpcAdminDeleteLeaderboardRecord(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  _nk: Runtime.Nakama,
-  payload: string
-): string {
-  logger.info('Admin delete leaderboard record called by: %s (no-op)', ctx.userId);
-
-  const validation = validatePayload(
-    ZodSchemas.admin_delete_leaderboard_record,
-    payload,
-    'admin_delete_leaderboard_record'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('admin_delete_leaderboard_record', validation.error);
-  }
-
-  // Nakama does not support deleting individual leaderboard records.
-  // The entire leaderboard must be deleted with nk.leaderboardDelete(id).
-  return JSON.stringify({
-    success: false,
-    error:
-      'Nakama server does not support deleting individual leaderboard records. ' +
-      'Use nk.leaderboardDelete(id) to delete the entire leaderboard instead.',
-  });
-}
-
 // --- Registration ---
 
 // All season admin RPCs are wrapped in the shared admin gate (issue #1075):
@@ -1311,19 +1243,5 @@ export function registerRpcAdminTriggerSeasonEvent(initializer: Runtime.Initiali
   initializer.registerRpc(
     'armored_archer/admin_trigger_season_event',
     withAdminGuard('armored_archer/admin_trigger_season_event', rpcAdminTriggerSeasonEvent)
-  );
-}
-
-export function registerRpcAdminWriteLeaderboardRecord(initializer: Runtime.Initializer): void {
-  initializer.registerRpc(
-    'SeasonAdminWriteLeaderboardRecord',
-    withAdminGuard('SeasonAdminWriteLeaderboardRecord', rpcAdminWriteLeaderboardRecord)
-  );
-}
-
-export function registerRpcAdminDeleteLeaderboardRecord(initializer: Runtime.Initializer): void {
-  initializer.registerRpc(
-    'SeasonAdminDeleteLeaderboardRecord',
-    withAdminGuard('SeasonAdminDeleteLeaderboardRecord', rpcAdminDeleteLeaderboardRecord)
   );
 }

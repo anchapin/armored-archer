@@ -111,9 +111,7 @@ describe('casual rewards guard (issue #872)', () => {
     );
     mockNk.storageWrite = jest.fn((writes: any[]) => {
       writes.forEach((w) => {
-        const normalized =
-          typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
-        stored[`${w.collection}:${w.key}`] = normalized;
+        stored[`${w.collection}:${w.key}`] = w.value;
       });
       return writes.map((w) => ({ key: w.key, version: '2' }));
     });

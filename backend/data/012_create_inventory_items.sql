@@ -2,17 +2,8 @@
 -- Stores unique gear instances generated for players
 -- Each instance has its own stats, modifiers, and unique ID
 
-DO $$ BEGIN
-  CREATE TYPE gear_type AS ENUM ('helm', 'armor', 'bow', 'arrow', 'amulet');
-EXCEPTION
-  WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  CREATE TYPE gear_rarity AS ENUM ('common', 'rare', 'epic', 'legendary');
-EXCEPTION
-  WHEN duplicate_object THEN NULL;
-END $$;
+CREATE TYPE IF NOT EXISTS gear_type AS ENUM ('helm', 'armor', 'bow', 'arrow', 'amulet');
+CREATE TYPE IF NOT EXISTS gear_rarity AS ENUM ('common', 'rare', 'epic', 'legendary');
 
 -- Create inventory_items table for unique gear instances
 CREATE TABLE IF NOT EXISTS inventory_items (

@@ -86,27 +86,17 @@ interface EloInputs {
 
 function buildSymmetricMatch(): EloInputs {
   const r = rng();
-  // Generate rating pairs with a gap that ensures non-trivial Elo changes.
-  // Extreme mismatches (gap > ~1000) can produce expectedWinner ≈ 1,
-  // causing K*(1-expectedWinner) to round to 0 — violating monotonicity.
-  const maxGap = 900;
   if (r < 0.5) {
-    // Normal match: narrow to moderate gap
-    const winnerOldElo = randomInt(1000, 2400);
-    const loserOldElo = Math.max(800, winnerOldElo - randomInt(50, maxGap));
     return {
-      winnerOldElo,
-      loserOldElo,
+      winnerOldElo: randomInt(800, 2400),
+      loserOldElo: randomInt(800, 2400),
       isPunchUp: false,
       loserIsUnderdog: false,
     };
   }
-  // Punch-up match: loser is NOT underdog, so symmetric K applies
-  const loserOldElo = randomInt(1000, 2400);
-  const winnerOldElo = loserOldElo + randomInt(50, maxGap);
   return {
-    winnerOldElo: Math.min(winnerOldElo, 2400),
-    loserOldElo,
+    winnerOldElo: randomInt(800, 2400),
+    loserOldElo: randomInt(800, 2400),
     isPunchUp: true,
     // `loserIsUnderdog === false` ensures both sides use PUNCH_UP_K_FACTOR
     // (no asymmetric amplification), so the conservation invariant holds.
@@ -206,9 +196,8 @@ describe('Property-Based Elo Rating Invariants (issue #1099)', () => {
             null,
             inputs.loserIsUnderdog
           );
-          // Allow 0 gain/loss in rounding edge cases (K * delta < 0.5 rounds to 0)
-          expect(result.winnerNewElo).toBeGreaterThanOrEqual(inputs.winnerOldElo);
-          expect(result.loserNewElo).toBeLessThanOrEqual(inputs.loserOldElo);
+          expect(result.winnerNewElo).toBeGreaterThan(inputs.winnerOldElo);
+          expect(result.loserNewElo).toBeLessThan(inputs.loserOldElo);
         }
       }
     );
@@ -270,9 +259,8 @@ describe('Property-Based Elo Rating Invariants (issue #1099)', () => {
       'asymmetric K extracts more Elo from the underdog than it grants the favorite — sum delta < 0',
       () => {
         for (let iter = 0; iter < ITERATIONS; iter++) {
-          // Ensure winner (favorite) has higher initial rating for valid punch-up scenario
-          const loserOldElo = randomInt(800, 2200);
-          const winnerOldElo = loserOldElo + randomInt(50, 900);
+          const winnerOldElo = randomInt(800, 2400);
+          const loserOldElo = randomInt(800, 2400);
           // The whole point of the punch-up amplification (issue #864) is
           // that this scenario produces a strictly negative total delta
           // — the system extracts Elo from the underdog.
@@ -292,9 +280,9 @@ describe('Property-Based Elo Rating Invariants (issue #1099)', () => {
           const totalDelta =
             result.winnerNewElo - winnerOldElo + (result.loserNewElo - loserOldElo);
           expect(totalDelta).toBeLessThanOrEqual(0);
-          // The loser's loss should be >= the winner's gain (amplified K-factor
-          // means loser's loss is typically larger, but rounding can make them equal).
-          expect(loserOldElo - result.loserNewElo).toBeGreaterThanOrEqual(
+          // The loser's loss is strictly larger than the winner's gain
+          // (that's what the 2x amplification buys — the wager has teeth).
+          expect(loserOldElo - result.loserNewElo).toBeGreaterThan(
             result.winnerNewElo - winnerOldElo
           );
         }
@@ -305,9 +293,8 @@ describe('Property-Based Elo Rating Invariants (issue #1099)', () => {
       'asymmetric-K: ordering still holds — winner post-match Elo > loser post-match Elo',
       () => {
         for (let iter = 0; iter < ITERATIONS; iter++) {
-          // Ensure winner has higher initial rating
-          const loserOldElo = randomInt(800, 2200);
-          const winnerOldElo = loserOldElo + randomInt(50, 900);
+          const winnerOldElo = randomInt(800, 2400);
+          const loserOldElo = randomInt(800, 2400);
           const result = applyEloUpdates(
             mockNk,
             mockCtx,
@@ -363,9 +350,9 @@ describe('Property-Based Elo Rating Invariants (issue #1099)', () => {
       'large rating gap: winner gains almost nothing, loser loses almost nothing (close to 0)',
       () => {
         // 400-Elo gap corresponds to an expected score of ~0.9099 for
-        // the higher-rated player, so the favorite winner gains
-        // `K * (1 - 0.9099) ≈ 0.09 * K` ≈ 3 (with BASE_K=32).
-        // Conversely the underdog loser loses the same amount.
+        // the higher-rated player, so the underdog's win (upset) moves
+        // them by `K * (1 - 0.09) ≈ 0.91 * K`. Conversely the higher-rated
+        // winner (favorite) gains `K * (1 - 0.9099) ≈ 0.09 * K`.
         for (let iter = 0; iter < ITERATIONS; iter++) {
           const winnerOldElo = 2000;
           const loserOldElo = 1600; // 400 lower — favorite wins
@@ -382,10 +369,10 @@ describe('Property-Based Elo Rating Invariants (issue #1099)', () => {
             null,
             false
           );
-          // Favorite winner: gain is small (~3 with BASE_K=32).
+          // Favorite winner: gain is small (well below K).
           expect(result.winnerNewElo - winnerOldElo).toBeLessThan(BASE_K_FACTOR / 2);
-          // Underdog loser: loss is also small (~3).
-          expect(loserOldElo - result.loserNewElo).toBeLessThan(BASE_K_FACTOR / 2);
+          // Underdog loser: loss is close to K.
+          expect(loserOldElo - result.loserNewElo).toBeGreaterThan(BASE_K_FACTOR / 2);
         }
       }
     );

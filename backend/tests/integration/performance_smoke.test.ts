@@ -78,7 +78,7 @@ const STAGE_PERF_DB = {
   host: process.env.TEST_DB_HOST || 'localhost',
   port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
   user: process.env.TEST_DB_USER || 'postgres',
-  password: process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'changeme',
+  password: process.env.TEST_DB_PASSWORD || 'changeme',
   database: process.env.TEST_DB_NAME || 'nakama',
 };
 

@@ -2,11 +2,6 @@
  * Tests for config re-exports
  */
 
-// Capture original env BEFORE any describe blocks run
-// This is critical because describe('config re-exports') loads the config module
-// which sets DATABASE_ADDRESS from .env, polluting the environment for subsequent tests
-const originalEnv = { ...process.env };
-
 describe('config re-exports', () => {
   it('re-exports config as named export', () => {
     const { config } = require('../config');
@@ -39,14 +34,10 @@ describe('config re-exports', () => {
 });
 
 describe('config module', () => {
+  const originalEnv = { ...process.env };
+
   beforeEach(() => {
     jest.resetModules();
-    process.env = { ...originalEnv };
-    // Skip .env loading when resetting modules to prevent pollution from .env placeholder values
-    process.env.SKIP_ENV_LOADING = 'true';
-  });
-
-  afterEach(() => {
     process.env = { ...originalEnv };
   });
 

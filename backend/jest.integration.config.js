@@ -3,17 +3,13 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/tests/integration/**/*.test.ts'],
-  // Load .env file before tests run (each worker process)
-  setupFiles: ['<rootDir>/jest.integration.setup.env.js'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverage: false,
   coverageDirectory: 'coverage/integration',
   testTimeout: 60000,
   verbose: true,
-  // detectOpenHandles can cause Jest to hang on nakama-js HTTP connections that don't close
-  // forceExit ensures Jest exits even with open handles (common with nakama-js)
+  // Use detectOpenHandles to properly wait for async cleanup instead of forceExit
   detectOpenHandles: true,
-  forceExit: true,
   detectLeaks: false,
   clearMocks: true,
   resetModules: false,

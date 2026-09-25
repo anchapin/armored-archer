@@ -179,9 +179,9 @@ function readSeasonEndSentinel(
     if (stored.length === 0 || !stored[0].value) {
       return null;
     }
-    const parsed = typeof stored[0].value === 'string'
-      ? (JSON.parse(stored[0].value) as SeasonInfo & { end_distribution?: SeasonEndDistribution; })
-      : (stored[0].value as unknown as SeasonInfo & { end_distribution?: SeasonEndDistribution; });
+    const parsed = JSON.parse(stored[0].value) as SeasonInfo & {
+      end_distribution?: SeasonEndDistribution;
+    };
     if (!parsed.end_distribution) {
       return null;
     }
@@ -238,9 +238,9 @@ function readPlayerCompletionMarker(
     if (stored.length === 0 || !stored[0].value) {
       return { completed: false };
     }
-    const parsed = typeof stored[0].value === 'string'
-      ? (JSON.parse(stored[0].value) as { generation_token?: string; })
-      : (stored[0].value as unknown as { generation_token?: string; });
+    const parsed = JSON.parse(stored[0].value) as {
+      generation_token?: string;
+    };
     return { token: parsed.generation_token, completed: !!parsed.generation_token };
   } catch {
     return { completed: false };

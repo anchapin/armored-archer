@@ -1,5 +1,4 @@
 import { Client } from '@heroiclabs/nakama-js';
-import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
 // Test configuration
@@ -119,46 +118,8 @@ export class IntegrationTestHelper {
 
   /**
    * Get a client authenticated as admin for administrative tasks.
-   * Returns an augmented object with test-helper methods for operations
-   * not directly available on the nakama-js Client (leaderboard writes,
-   * storage deletes, etc.).
    */
-  async getAdminClient(): Promise<{
-    client: Client;
-    session: any;
-    /**
-     * Write a leaderboard record directly for a specific owner.
-     * Wraps nk.leaderboardRecordWrite() via the SeasonAdminWriteLeaderboardRecord RPC.
-     * @param seasonId The leaderboard/season ID
-     * @param ownerId The user ID who owns this record
-     * @param username The username for this record
-     * @param score The score value
-     * @param subscore The subscore value
-     * @param metadata Optional extra metadata
-     */
-    leaderboardRecordWrite(
-      seasonId: string,
-      ownerId: string,
-      username: string,
-      score: number,
-      subscore: number,
-      metadata?: Record<string, any>
-    ): Promise<any>;
-    /**
-     * Delete leaderboard records for one or more owners.
-     * Uses deleteTournamentRecord RPC under the hood.
-     * @param seasonId The leaderboard/season ID
-     * @param ownerIds Array of owner user IDs to delete records for
-     */
-    leaderboardDelete(seasonId: string, ownerIds: string[]): Promise<any>;
-    /**
-     * Delete storage objects by collection/key/userId.
-     * NOTE: client.deleteStorageObjects hangs in nakama-js 2.x, so we use
-     * the test.cleanup_user_storage RPC instead.
-     * @param keys Array of { collection, key, userId } to delete
-     */
-    storageDelete(keys: Array<{ collection: string; key: string; userId: string }>): Promise<any>;
-  }> {
+  async getAdminClient(): Promise<{ client: Client; session: any }> {
     if (!this.adminClient || !this.adminSession) {
       this.adminClient = new Client(
         TEST_ADMIN_KEY,
@@ -178,163 +139,84 @@ export class IntegrationTestHelper {
       );
     }
 
-    const { client, session } = this;
-
-    return {
-      client,
-      session,
-      async leaderboardRecordWrite(
-        seasonId: string,
-        ownerId: string,
-        username: string,
-        score: number,
-        subscore: number,
-        metadata?: Record<string, any>
-      ): Promise<any> {
-        return client.rpc(session, 'SeasonAdminWriteLeaderboardRecord', {
-          season_id: seasonId,
-          owner_id: ownerId,
-          username,
-          score,
-          subscore,
-          metadata: metadata ?? {},
-        });
-      },
-      async leaderboardDelete(_seasonId: string, _ownerIds: string[]): Promise<void> {
-        // No-op: Nakama server API does not support deleting individual leaderboard records.
-        // Only nk.leaderboardDelete(id) exists, which deletes the ENTIRE leaderboard.
-        // Tests should use a fresh season_id per test run to avoid record pollution.
-      },
-      async storageDelete(
-        keys: Array<{ collection: string; key: string; userId: string }>
-      ): Promise<any> {
-        const results = [];
-        for (const { collection, key, userId } of keys) {
-          const r = await client.rpc(session, 'test.cleanup_user_storage', {
-            collection,
-            key,
-            user_id: userId,
-          });
-          results.push(r);
-        }
-        return results;
-      },
-    };
+    return { client: this.adminClient, session: this.adminSession };
   }
 
   /**
    * Clean all test data from storage collections.
    * This should be called between test runs to ensure isolation.
    */
-  /**
-   * Clean Nakama storage for a specific user via direct PostgreSQL access.
-   * This is needed because admin client cannot see other users' storage in Nakama 3.21.
-   * NOTE: Uses a fresh Pool per call to avoid connection-state issues. This is
-   * intentionally NOT reused to prevent lingering connections between tests.
-   */
-  async cleanupUserStorage(userId: string): Promise<void> {
-    const dbHost = process.env.TEST_DB_HOST || 'localhost';
-    const dbPort = parseInt(process.env.TEST_DB_PORT || '5433');
-    const dbUser = process.env.TEST_DB_USER || 'postgres';
-    const dbPassword = process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'armoredarcher';
-    const dbName = process.env.TEST_DB_NAME || 'nakama';
-
-    const pool = new Pool({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName,
-      max: 1,
-      idleTimeoutMillis: 5000,
-      connectionTimeoutMillis: 5000,
-    });
-
-    try {
-      const client = await pool.connect();
-      try {
-        // Delete all storage records for this user
-        await client.query('DELETE FROM storage WHERE user_id = $1', [userId]).catch(() => {});
-      } finally {
-        client.release();
-      }
-    } finally {
-      await pool.end();
-    }
-  }
-
-  /**
-   * Clean a specific Nakama storage collection for a user via direct PostgreSQL access.
-   * Uses a fresh Pool per call. Safe for use in beforeEach hooks (no Nakama JS client).
-   */
-  async cleanupStorageCollection(userId: string, collection: string): Promise<void> {
-    const dbHost = process.env.TEST_DB_HOST || 'localhost';
-    const dbPort = parseInt(process.env.TEST_DB_PORT || '5433');
-    const dbUser = process.env.TEST_DB_USER || 'postgres';
-    const dbPassword = process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'armoredarcher';
-    const dbName = process.env.TEST_DB_NAME || 'nakama';
-
-    const pool = new Pool({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName,
-      max: 1,
-      idleTimeoutMillis: 5000,
-      connectionTimeoutMillis: 5000,
-    });
-
-    try {
-      const client = await pool.connect();
-      try {
-        await client
-          .query('DELETE FROM storage WHERE user_id = $1 AND collection = $2', [userId, collection])
-          .catch(() => {});
-      } finally {
-        client.release();
-      }
-    } finally {
-      await pool.end();
-    }
-  }
-
   async cleanAllTestData(): Promise<void> {
-    const dbHost = process.env.TEST_DB_HOST || 'localhost';
-    const dbPort = parseInt(process.env.TEST_DB_PORT || '5433');
-    const dbUser = process.env.TEST_DB_USER || 'postgres';
-    const dbPassword = process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'armoredarcher';
-    const dbName = process.env.TEST_DB_NAME || 'nakama';
-
-    const pool = new Pool({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName,
-      max: 1,
-      idleTimeoutMillis: 5000,
-      connectionTimeoutMillis: 5000,
-    });
+    let adminClient: Client | null = null;
+    let adminSession: any = null;
 
     try {
-      const client = await pool.connect();
+      // Get admin client, but don't fail if unavailable
       try {
-        // Clean all Nakama storage records (game data from JS modules)
-        await client.query('DELETE FROM storage').catch(() => {});
-
-        // Clean PostgreSQL game tables (if they exist after migrations)
-        await client.query('DELETE FROM unlocked_modifier_pools').catch(() => {});
-        await client.query('DELETE FROM boss_defeats').catch(() => {});
-        await client.query('DELETE FROM player_stats').catch(() => {});
-        await client.query('DELETE FROM catalog').catch(() => {});
-        await client.query('DELETE FROM inventory').catch(() => {});
-        await client.query('DELETE FROM loadout').catch(() => {});
-      } finally {
-        client.release();
+        const admin = await this.getAdminClient();
+        adminClient = admin.client;
+        adminSession = admin.session;
+      } catch (error) {
+        // Admin client not available, skip cleanup
+        return;
       }
-    } finally {
-      await pool.end();
+
+      if (!adminClient || !adminSession) {
+        return;
+      }
+
+      // List of collections used in tests (including potential matches)
+      const collections = [
+        'player_stats',
+        'pvp_matches',
+        'pvp_match_states',
+        'player_inventory',
+        'season_progress',
+        'leaderboards',
+        'player_currency',
+        'season_rewards_claimed',
+        'store_purchases',
+      ];
+
+      // Clean storage objects with keys that start with 'test_' or are from test users
+      for (const collection of collections) {
+        try {
+          const listResult = await adminClient.listStorageObjects(
+            adminSession,
+            collection,
+            undefined, // userId undefined to list all
+            1000, // limit
+            undefined // cursor
+          );
+
+          if (listResult && listResult.objects && listResult.objects.length > 0) {
+            // Build request for deleteStorageObjects
+            const objectsToDelete = listResult.objects.map((obj) => ({
+              collection: obj.collection,
+              key: obj.key,
+              user_id: obj.user_id || '',
+              version: obj.version || '',
+            }));
+            const request = { object_ids: objectsToDelete };
+            await adminClient.deleteStorageObjects(adminSession, request as any);
+          }
+        } catch (error) {
+          // Some collections may not exist or be empty - only log unexpected errors
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          // Ignore "not found" errors as they're expected for empty collections
+          if (!errorMessage.includes('not found') && !errorMessage.includes('does not exist')) {
+            // Log at debug level instead of polluting test output
+            // console.debug(`Cleanup for collection ${collection}: ${errorMessage}`);
+          }
+        }
+      }
+    } catch (error) {
+      // Final catch-all for unexpected cleanup errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('not found') && !errorMessage.includes('does not exist')) {
+        // Only log non-expected errors
+        // console.debug(`Cleanup error: ${errorMessage}`);
+      }
     }
   }
 
@@ -374,40 +256,12 @@ export class IntegrationTestHelper {
   }
 
   /**
-   * Delete a specific storage object using the user's own session.
-   * This is the preferred method for cleanup as admin client cannot delete user storage.
-   *
-   * Note: Nakama 3.21's storage delete HTTP API may return 400 "not found" if the object
-   * doesn't exist, which is expected during cleanup. We catch and ignore this error.
+   * Delete a specific storage object.
    */
-  async deleteStorageObject(collection: string, key: string, user_id: string, session: any): Promise<void> {
-    if (!session) {
-      console.warn('No session provided for deleteStorageObject, skipping cleanup');
-      return;
-    }
-    try {
-      // Use the session's associated client - we need to get it from somewhere
-      // For now, try to get admin client but this won't work for user storage
-      const { client } = await this.getAdminClient();
-      // Actually, we need the client that matches the session. Let's create one.
-      const userClient = new Client(
-        TEST_ADMIN_KEY,
-        TEST_HOST,
-        TEST_PORT.toString(),
-        false,
-        10000,
-        false
-      );
-      const request = { object_ids: [{ collection, key }] };
-      await userClient.deleteStorageObjects(session, request as any);
-    } catch (error: any) {
-      // Ignore "not found" errors during cleanup - they're expected when object doesn't exist
-      if (error.status === 400) {
-        return;
-      }
-      // Re-throw other errors
-      throw error;
-    }
+  async deleteStorageObject(collection: string, key: string, user_id: string): Promise<void> {
+    const { client, session } = await this.getAdminClient();
+    const request = { object_ids: [{ collection, key, user_id, version: '' }] };
+    await client.deleteStorageObjects(session, request as any);
   }
 
   /**
@@ -434,54 +288,6 @@ export class IntegrationTestHelper {
     const objectValue = typeof value === 'string' ? JSON.parse(value) : value;
     const objects = [{ collection, key, value: objectValue, version: '', user_id }];
     await client.writeStorageObjects(session, objects as any);
-  }
-
-  /**
-   * Clean up PostgreSQL tables for a user (boss_defeats, unlocked_modifier_pools)
-   * AND Nakama's storage table.
-   * Nakama storage is stored in the 'storage' table in PostgreSQL.
-   */
-  async cleanupDatabaseForUser(userId: string, opts?: { tablesToClean?: string[] }): Promise<void> {
-    const dbHost = process.env.TEST_DB_HOST || 'localhost';
-    const dbPort = parseInt(process.env.TEST_DB_PORT || '5433');
-    const dbUser = process.env.TEST_DB_USER || 'postgres';
-    // Use POSTGRES_PASSWORD from .env (loaded by jest.integration.setup.env.js) as fallback
-    const dbPassword = process.env.TEST_DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'armoredarcher';
-    const dbName = process.env.TEST_DB_NAME || 'nakama';
-
-    const pool = new Pool({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName,
-      max: 1,
-      idleTimeoutMillis: 5000,
-      connectionTimeoutMillis: 5000,
-    });
-
-    try {
-      const client = await pool.connect();
-      try {
-        const tablesToClean = opts?.tablesToClean;
-        const clean = (table: string) => tablesToClean ? tablesToClean.includes(table) : true;
-
-        // Clean Nakama storage table (core game data stored by JS modules)
-        if (clean('storage')) await client.query('DELETE FROM storage WHERE user_id = $1', [userId]).catch(() => {});
-
-        // Clean PostgreSQL game tables (if they exist after migrations)
-        if (clean('unlocked_modifier_pools')) await client.query('DELETE FROM unlocked_modifier_pools WHERE user_id = $1', [userId]).catch(() => {});
-        if (clean('boss_defeats')) await client.query('DELETE FROM boss_defeats WHERE user_id = $1', [userId]).catch(() => {});
-        if (clean('inventory_items')) await client.query('DELETE FROM inventory_items WHERE user_id = $1', [userId]).catch(() => {});
-        if (clean('inventory')) await client.query('DELETE FROM inventory WHERE user_id = $1', [userId]).catch(() => {});
-        if (clean('loadout')) await client.query('DELETE FROM loadout WHERE user_id = $1', [userId]).catch(() => {});
-        if (clean('player_stats')) await client.query('DELETE FROM player_stats WHERE user_id = $1', [userId]).catch(() => {});
-      } finally {
-        client.release();
-      }
-    } finally {
-      await pool.end();
-    }
   }
 }
 

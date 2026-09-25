@@ -10,34 +10,12 @@ describe('Gear System Integration Tests', () => {
     player = await testHelper.createTestAccount('gear_player');
   }, 120000);
 
-  // Note: storage delete API doesn't work with admin client in Nakama 3.21
-  // Using player's own session for cleanup instead
-
-  // afterEach: clean loadout, player_stats, inventory_items, and storage after each test
-  // to prevent cross-block state pollution (e.g. equipped gear or stats from a prior block
-  // leaking into the next). boss_defeats and unlocked_modifier_pools are preserved
-  // so that within-block modifier state persists between tests.
   afterEach(async () => {
-    if (player?.userId) {
-      await testHelper.cleanupDatabaseForUser(player.userId, {
-        tablesToClean: ['loadout', 'player_stats', 'inventory_items', 'storage'],
-      });
-    }
+    // Clean up inventory after each test
+    await testHelper.deleteStorageObject('player_inventory', player.userId, player.userId);
   });
 
-  // afterAll: clean Nakama storage and DB after all tests finish.
-  // Note: We do NOT call test.cleanup_user_storage RPC here — it causes
-  // the Nakama JS client to hang (open handle) due to session/HTTP issues.
-  // The player's Nakama storage persists but since each test file uses a
-  // unique userId (via timestamp+random), this does not cause pollution.
   afterAll(async () => {
-    // NOTE: We do NOT disconnect the Nakama socket here since disconnectAsync
-    // can cause open-handle issues with Jest. The socket will be closed when the
-    // test process exits. Nakama server has a TTL for abandoned sessions.
-    // Database cleanup happens in beforeAll (at file start) for cross-suite hygiene.
-    if (player?.userId) {
-      await testHelper.cleanupDatabaseForUser(player.userId);
-    }
     await testHelper.cleanAllTestData();
     await testHelper.cleanup();
   });
@@ -141,17 +119,15 @@ describe('Gear System Integration Tests', () => {
         }
       }
 
-      // Should have generated at least 2 different types (among helm, armor, bow, arrow, amulet)
+      // Should have generated at least 2 different types (among weapon, armor, accessory)
       expect(generatedTypes.size).toBeGreaterThanOrEqual(2);
-      expect(['helm', 'armor', 'bow', 'arrow', 'amulet']).toContain(Array.from(generatedTypes)[0]);
+      expect(['weapon', 'armor', 'accessory']).toContain(Array.from(generatedTypes)[0]);
     });
 
     test('should generate gear with appropriate rarities', async () => {
       const generatedRarities: string[] = [];
 
-      // Increased from 50 to 200 iterations for statistical significance
-      // With 25% rare rate, probability of 0 rare in 200 is (0.75)^200 ≈ 10^-27
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 50; i++) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_test',
           boss_defeated: false,
@@ -161,9 +137,9 @@ describe('Gear System Integration Tests', () => {
         }
       }
 
-      // Should have at least some common items (99.999% confidence with 200 iterations)
+      // Should have at least some common items (70% chance)
       expect(generatedRarities.filter((r) => r === 'common').length).toBeGreaterThan(0);
-      // Should have some rare items (25% rate, statistically robust with 200 iterations)
+      // Should have some rare items (25% chance)
       expect(generatedRarities.filter((r) => r === 'rare').length).toBeGreaterThan(0);
       // Legendary is rare (5% chance) but should be possible with 50 tries
       // This might fail occasionally but 50 tries gives ~92% chance of at least one legendary
@@ -205,8 +181,8 @@ describe('Gear System Integration Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.inventory.gear.length).toBe(1);
-      expect(result.inventory.equipped_gear).toEqual({ amulet: null, armor: null, arrow: null, bow: null, helm: null });
-      // Note: rpcGenerateGear does not return unlocked_modifier_pools - use rpcGetInventory for that
+      expect(result.inventory.equipped_gear).toEqual({});
+      expect(result.inventory.unlocked_modifier_pools).toEqual([]);
     });
   });
 
@@ -217,8 +193,7 @@ describe('Gear System Integration Tests', () => {
       const result = await rpcCall(freshPlayer, 'armored_archer/get_inventory', {});
 
       expect(result.gear).toEqual([]);
-      // Server initializes all slots to null for new players, not empty object
-      expect(result.equipped_gear).toEqual({ amulet: null, armor: null, arrow: null, bow: null, helm: null });
+      expect(result.equipped_gear).toEqual({});
       expect(result.unlocked_modifier_pools).toEqual([]);
     });
 
@@ -267,38 +242,38 @@ describe('Gear System Integration Tests', () => {
       // Equip first gear as weapon
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: gear1.gear.id,
-        slot: 'bow',
+        slot: 'weapon',
       });
 
       // Check inventory
       const inventory = await getInventory(player);
-      expect(inventory.equipped_gear.bow).toBe(gear1.gear.id);
+      expect(inventory.equipped_gear.weapon).toBe(gear1.gear.id);
     });
   });
 
   describe('rpcEquipGear', () => {
     test('should equip gear to correct slot', async () => {
-      // Generate bow-type gear (stage_weapon determines rarity weights)
-      // May need multiple attempts since gear type is random
-      let bowGear: any = null;
+      // Generate weapon gear
+      // We need to ensure we get a weapon; may need multiple attempts
+      let weaponGear: any = null;
       let attempts = 0;
-      while (!bowGear && attempts < 20) {
+      while (!weaponGear && attempts < 20) {
         const result = await rpcCall(player, 'armored_archer/generate_gear', {
           stage_id: 'stage_weapon',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'bow') {
-          bowGear = result.gear;
+        if (result.success && result.gear.type === 'weapon') {
+          weaponGear = result.gear;
         }
         attempts++;
       }
-      expect(bowGear).not.toBeNull();
+      expect(weaponGear).not.toBeNull();
 
-      const payload = { gear_id: bowGear.id, slot: 'bow' };
+      const payload = { gear_id: weaponGear.id, slot: 'weapon' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.bow).toBe(bowGear.id);
+      expect(result.equipped_gear.weapon).toBe(weaponGear.id);
     });
 
     test('should equip armor to correct slot', async () => {
@@ -346,7 +321,7 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should return error when gear not in inventory', async () => {
-      const payload = { gear_id: 'nonexistent_gear_id', slot: 'bow' };
+      const payload = { gear_id: 'nonexistent_gear_id', slot: 'weapon' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.error).toBe('Gear not found in inventory');
@@ -376,7 +351,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_w1',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'bow') {
+        if (result.success && result.gear.type === 'weapon') {
           weapon1 = result.gear;
         }
         attempts++;
@@ -390,7 +365,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_w2',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'bow' && result.gear.id !== weapon1.id) {
+        if (result.success && result.gear.type === 'weapon' && result.gear.id !== weapon1.id) {
           weapon2 = result.gear;
         }
         attempts++;
@@ -401,20 +376,20 @@ describe('Gear System Integration Tests', () => {
       // Equip first weapon
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weapon1.id,
-        slot: 'bow',
+        slot: 'weapon',
       });
 
       // Equip second weapon (should replace first)
       const result = await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weapon2.id,
-        slot: 'bow',
+        slot: 'weapon',
       });
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.bow).toBe(weapon2.id);
+      expect(result.equipped_gear.weapon).toBe(weapon2.id);
 
       // Verify first weapon is no longer equipped
       const inventory = await getInventory(player);
-      expect(inventory.equipped_gear.bow).toBe(weapon2.id);
+      expect(inventory.equipped_gear.weapon).toBe(weapon2.id);
     });
   });
 
@@ -428,7 +403,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_eq_uneq',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'bow') {
+        if (result.success && result.gear.type === 'weapon') {
           weaponGear = result.gear;
         }
         attempts++;
@@ -437,27 +412,27 @@ describe('Gear System Integration Tests', () => {
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weaponGear.id,
-        slot: 'bow',
+        slot: 'weapon',
       });
 
       // Verify equipped
       let inventory = await getInventory(player);
-      expect(inventory.equipped_gear.bow).toBe(weaponGear.id);
+      expect(inventory.equipped_gear.weapon).toBe(weaponGear.id);
 
       // Unequip
       const result = await rpcCall(player, 'armored_archer/unequip_gear', {
-        slot: 'bow',
+        slot: 'weapon',
       });
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.bow).toBeUndefined();
+      expect(result.equipped_gear.weapon).toBeUndefined();
 
       // Verify unequipped
       inventory = await getInventory(player);
-      expect(inventory.equipped_gear.bow).toBeUndefined();
+      expect(inventory.equipped_gear.weapon).toBeUndefined();
     });
 
     test('should return error when no gear equipped in slot', async () => {
-      const payload = { slot: 'bow' };
+      const payload = { slot: 'weapon' };
       const result = await rpcCall(player, 'armored_archer/unequip_gear', payload);
 
       expect(result.error).toBe('No gear equipped in this slot');
@@ -523,16 +498,6 @@ describe('Gear System Integration Tests', () => {
   });
 
   describe('rpcUnlockModifierPool', () => {
-    // Clean unlocked_modifier_pools after each test so modifier pool state doesn't pollute
-    // subsequent tests (each test should start with a clean slate).
-    afterEach(async () => {
-      if (player?.userId) {
-        await testHelper.cleanupDatabaseForUser(player.userId, {
-          tablesToClean: ['unlocked_modifier_pools'],
-        });
-      }
-    });
-
     test('should unlock a modifier pool', async () => {
       const result = await rpcCall(player, 'armored_archer/unlock_modifier_pool', {
         modifier_id: 'piercing_arrow',
@@ -611,19 +576,11 @@ describe('Gear System Integration Tests', () => {
     });
   });
 
-  afterEach(async () => {
-    if (player?.userId) {
-      await testHelper.cleanupDatabaseForUser(player.userId, {
-        tablesToClean: ['unlocked_modifier_pools'],
-      });
-    }
-  });
-
   describe('rpcStageComplete - Boss Defeat Tracking', () => {
-    // Note: Boss defeat tracking data (boss_defeats PostgreSQL table) is cleaned
-    // by cleanupDatabaseForUser() in the main afterEach. The Nakama storage
-    // (player_inventory, unlocked_modifier_pools) is cleaned by test.cleanup_user_storage RPC.
-    // No additional cleanup needed here.
+    afterEach(async () => {
+      // Clean up boss defeat tracking data
+      await testHelper.deleteStorageObject('boss_defeat_tracking', player.userId, player.userId);
+    });
 
     test('should track boss defeat and unlock modifiers', async () => {
       // Complete a stage with boss defeated

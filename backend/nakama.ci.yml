@@ -10,17 +10,14 @@ console:
   write_timeout: 10
 
 runtime:
-  env:
-    - HMAC_SECRET=ci-test-secret-do-not-use-in-production
+  env: []
   path: /nakama/data
   # Go backend disabled - built with incompatible Go version
   # go_entrypoint: "modules/server.so"
   js_entrypoint: "modules/index.js"
-  js_call_stack_size: 4096
-  http_key: "ci-test-server-key-do-not-use-in-production"
 
 socket:
-  server_key: ci-test-server-key-do-not-use-in-production
+  server_key: defaultkey
   port: 7350
   max_message_size_bytes: 4096
   read_buffer_size_bytes: 4096
@@ -31,9 +28,8 @@ socket:
 
 session:
   expiry_sec: 7200
-  encryption_key: ci-test-session-encryption-key-do-not-use-in-production
-  refresh_encryption_key: ci-test-refresh-encryption-key-do-not-use-in-production
-  token_encryption_key: ci-test-token-encryption-key-do-not-use-in-production
+  refresh_encryption_key: default-refresh-key
+  token_encryption_key: default-token-key
 
 database:
   address:

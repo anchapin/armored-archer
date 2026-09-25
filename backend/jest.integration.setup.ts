@@ -4,46 +4,11 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 
 const isLocalTest = process.env.LOCAL_TEST === 'true' || process.env.CI !== 'true';
 const composeProject = 'armored_archer_test';
-
-/**
- * Load .env file into environment variables (simplified dotenv)
- */
-function loadEnvFile(): void {
-  const envPath = join(__dirname, '..', '.env');
-  if (!existsSync(envPath)) {
-    console.warn('⚠️  .env file not found at', envPath);
-    return;
-  }
-
-  try {
-    const envContent = readFileSync(envPath, 'utf8');
-    envContent.split('\n').forEach((line) => {
-      const trimmed = line.trim();
-      // Skip comments and empty lines
-      if (!trimmed || trimmed.startsWith('#')) return;
-      const equalIndex = trimmed.indexOf('=');
-      if (equalIndex === -1) return;
-      const key = trimmed.substring(0, equalIndex).trim();
-      let value = trimmed.substring(equalIndex + 1).trim();
-      // Remove surrounding quotes if present
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      // Only set if not already defined (allow shell env vars to override)
-      if (!process.env[key]) {
-        process.env[key] = value;
-      }
-    });
-    console.log('✅ Loaded environment from .env file');
-  } catch (error) {
-    console.warn('⚠️  Failed to load .env file:', error);
-  }
-}
 
 /**
  * Check if Docker Compose is available
@@ -228,23 +193,13 @@ function runMigrations(): void {
 export default async function globalSetup(): Promise<void> {
   // Set test environment
   process.env.NODE_ENV = 'test';
+  process.env.NAKAMA_HOST = 'localhost';
+  process.env.NAKAMA_PORT = '7350';
+  process.env.NAKAMA_SERVER_KEY = 'defaultkey';
+  process.env.DATABASE_ADDRESS = 'postgres://postgres:changeme@localhost:5432/nakama';
 
-  // Load .env file for local testing
-  if (isLocalTest) {
-    loadEnvFile();
-  }
-
-  if (isLocalTest) {
-    // For local testing: use localhost (Docker Compose network)
-    process.env.NAKAMA_HOST = 'localhost';
-    process.env.NAKAMA_PORT = '7350';
-    process.env.NAKAMA_SERVER_KEY = process.env.NAKAMA_SERVER_KEY || 'defaultkey';
-    process.env.DATABASE_ADDRESS = 'postgres://postgres:changeme@localhost:5432/nakama';
-  } else {
-    // CI mode: services are managed externally — preserve CI workflow's
-    // explicit env vars (NAKAMA_HOST, NAKAMA_PORT, NAKAMA_SERVER_KEY, etc.)
-    // which are already set by the GitHub Actions workflow.
-    console.log('🌐 Running in CI mode - using workflow environment variables');
+  if (!isLocalTest) {
+    console.log('🌐 Running in CI mode - assuming services are managed externally');
     return;
   }
 

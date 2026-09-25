@@ -85,9 +85,7 @@ const createStatefulStorage = () => {
   const storageWrite = jest.fn(
     (objects: { collection: string; key: string; userId?: string; value: string }[]) => {
       objects.forEach((obj) => {
-        const normalized =
-          typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-        records.set(`${obj.collection}:${obj.key}`, { value: normalized, version: '1' });
+        records.set(`${obj.collection}:${obj.key}`, { value: obj.value, version: '1' });
       });
       return [];
     }

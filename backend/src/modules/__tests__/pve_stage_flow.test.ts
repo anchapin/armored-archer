@@ -89,9 +89,7 @@ describe('PvE stage flow', () => {
 
     mockNk.storageWrite = jest.fn((objects: any[]) => {
       objects.forEach((obj: any) => {
-        const normalized =
-          typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-        testStorage.set(`${obj.collection}:${obj.key}`, normalized);
+        testStorage.set(`${obj.collection}:${obj.key}`, obj.value);
       });
     });
 
@@ -131,9 +129,7 @@ describe('PvE stage flow', () => {
 
     mockNk.storageWrite = jest.fn((objects: any[]) => {
       objects.forEach((obj: any) => {
-        const normalized =
-          typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
-        testStorage.set(`${obj.collection}:${obj.key}`, normalized);
+        testStorage.set(`${obj.collection}:${obj.key}`, obj.value);
       });
     });
 
