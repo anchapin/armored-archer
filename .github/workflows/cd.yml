@@ -34,6 +34,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          exclude: []
+        continue-on-error: false
+
       # Deployment observability: Create deployment status
       - name: Create deployment (staging)
         uses: actions/github-script@v7
@@ -216,6 +225,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          exclude: []
+        continue-on-error: false
 
       # Deployment observability: Create deployment status
       - name: Create deployment (production)
