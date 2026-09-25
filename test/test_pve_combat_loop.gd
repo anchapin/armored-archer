@@ -106,11 +106,13 @@ func test_dead_enemy_unregisters_from_autoaim() -> void:
 
 func test_died_signal_emitted_on_death() -> void:
 	var enemy = _create_enemy()
-	var signal_received: bool = false
+	# Use Array (reference type) instead of bool — Godot 4 lambdas cannot mutate
+	# primitive locals in the enclosing scope (see godotengine/godot#80597).
+	var signal_received: Array = []
 	if enemy.has_signal("died"):
-		enemy.died.connect(func(_val): signal_received = true)
+		enemy.died.connect(func(_val): signal_received.append(true))
 	enemy.take_damage(enemy.max_health)
-	if signal_received:
+	if signal_received.size() == 1:
 		_pass("test_died_signal_emitted_on_death")
 	else:
 		_fail("test_died_signal_emitted_on_death", "died signal should be emitted on death")
@@ -159,6 +161,13 @@ func test_kill_all_enemies_clears_autoaim() -> void:
 		_pass("test_kill_all_enemies_clears_autoaim (no AutoAimManager autoload)")
 		return
 
+	# Reset autoaim state for test isolation — earlier tests in this suite
+	# queue_free living enemies without calling unregister_enemy, leaving
+	# stale weakref entries that would skew the post-kill count.
+	if "registered_enemies" in autoaim:
+		autoaim.registered_enemies.clear()
+
+	# Setup: 3 enemies registered in autoaim
 	var enemies: Array = []
 	for i in range(3):
 		var enemy = _create_enemy()
