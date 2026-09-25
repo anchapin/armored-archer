@@ -176,7 +176,7 @@ function readSeasonEndSentinel(
         userId: '',
       },
     ]);
-    if (stored.length === 0 || !stored[0].value) {
+    if (stored.length === 0 || !stored[0].value || typeof stored[0].value !== 'string') {
       return null;
     }
     const parsed = JSON.parse(stored[0].value) as SeasonInfo & {
@@ -235,7 +235,7 @@ function readPlayerCompletionMarker(
         userId: ownerId,
       },
     ]);
-    if (stored.length === 0 || !stored[0].value) {
+    if (stored.length === 0 || !stored[0].value || typeof stored[0].value !== 'string') {
       return { completed: false };
     }
     const parsed = JSON.parse(stored[0].value) as {
