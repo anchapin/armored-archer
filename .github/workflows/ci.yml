@@ -888,7 +888,10 @@ jobs:
     # tests/integration/performance_smoke.test.ts and a handful of auth
     # tests in other files). Setting INFRASTRUCTURE_FIXED=true once the
     # auth/credential chain is fixed in the CI docker-compose.
-    # Remove the conditional above (or set the var) to re-enable.
+    # Remove the conditional below (or set the var) to re-enable.
+    # Follow-ups: #1360 (parent), and the decomposition into #1367a /
+    # #1367b / #1367c per docs/ci/issue-1360b-diagnosis.md.
+    if: ${{ vars.INFRASTRUCTURE_FIXED == 'true' }}
     # Issue #1144: the signal steps below post a PR comment (issues API) and
     # create a check run (dorny/test-reporter). Scoped to this job only; the
     # workflow-wide default stays `contents: read`.
