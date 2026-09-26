@@ -54,8 +54,9 @@ func test_toggle_high_contrast_mode():
 	assert_true(test_manager.is_high_contrast_enabled(), "High contrast should be enabled")
 
 func test_get_high_contrast_colors():
+	# Fix for issue #1361 follow-up: production API takes `is_dark: bool`, not a string.
 	test_manager.set_high_contrast(true)
-	var dark_colors = test_manager.get_high_contrast_colors("dark")
+	var dark_colors = test_manager.get_high_contrast_colors(true)
 	assert_not_null(dark_colors, "High contrast colors should be available")
 	assert_eq(dark_colors.background, Color("#000000"), "Background should be black")
 	assert_eq(dark_colors.text_primary, Color("#FFFFFF"), "Text should be white")

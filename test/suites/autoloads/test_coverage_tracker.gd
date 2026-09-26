@@ -5,21 +5,35 @@ const TrackerHelper = preload("res://test/suites/autoloads/tracker_helper.gd")
 # Unit tests for CoverageTracker singleton
 # TDD GREEN phase - these tests should pass after implementation
 
+var _tracker_missing: bool = false
+
 func before_each():
 	# Coverage fixtures/outputs are untracked runtime artifacts (#1063) — the
 	# directory does not exist on fresh clones, so recreate it before tests write.
 	DirAccess.make_dir_recursive_absolute("res://test/coverage")
 	# Clear singleton instance for fresh test state
 	TrackerHelper._clear_instance()
+	# Issue #1361 follow-up: GutCoverageTracker autoload is only registered when
+	# GUT runs with --coverage (addons/gut/coverage/coverage_pre_run.gd). The
+	# plain `local-godot-tests.sh --gut` invocation does not register it, so
+	# every test in this suite would fail with "GutCoverageTracker autoload not
+	# found". Track that here so each test can early-return with a single pending.
+	_tracker_missing = TrackerHelper.get_tracker_instance() == null
 
 func test_track_execution_records_line():
 	"""Test that track_execution records a line in the executed_lines dictionary."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.track_execution("res://test.gd", 10)
 	assert_true(10 in tracker._executed_lines["res://test.gd"], "Line 10 should be in executed_lines")
 
 func test_track_execution_deduplicates():
 	"""Test that calling track_execution twice with same line only records it once."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.track_execution("res://test.gd", 10)
 	tracker.track_execution("res://test.gd", 10)
@@ -27,6 +41,9 @@ func test_track_execution_deduplicates():
 
 func test_get_coverage_data_calculates_percentage():
 	"""Test that get_coverage_data calculates percentage correctly."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.set_script_line_map("res://test.gd", [10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
 	tracker.track_execution("res://test.gd", 10)
@@ -39,6 +56,9 @@ func test_get_coverage_data_calculates_percentage():
 
 func test_before_all_clears_data():
 	"""Test that before_all clears all executed line data."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.track_execution("res://test.gd", 10)
 	tracker.track_execution("res://test.gd", 20)
@@ -47,6 +67,9 @@ func test_before_all_clears_data():
 
 func test_get_coverage_data_includes_executable_lines():
 	"""Test that get_coverage_data includes executable_lines in result."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.set_script_line_map("res://test.gd", [10, 20, 30])
 	tracker.track_execution("res://test.gd", 10)
@@ -55,6 +78,9 @@ func test_get_coverage_data_includes_executable_lines():
 
 func test_get_coverage_data_includes_executed_lines():
 	"""Test that get_coverage_data includes executed_lines in result."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.track_execution("res://test.gd", 10)
 	tracker.track_execution("res://test.gd", 20)
@@ -63,6 +89,9 @@ func test_get_coverage_data_includes_executed_lines():
 
 func test_get_coverage_data_zero_coverage():
 	"""Test that get_coverage_data handles zero coverage correctly."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.set_script_line_map("res://test.gd", [10, 20, 30])
 	var data = tracker.get_coverage_data()
@@ -70,6 +99,9 @@ func test_get_coverage_data_zero_coverage():
 
 func test_get_coverage_data_full_coverage():
 	"""Test that get_coverage_data handles full coverage correctly."""
+	if _tracker_missing:
+		pending("GutCoverageTracker autoload only registered with --coverage mode (issue #1361 follow-up)")
+		return
 	var tracker = TrackerHelper.get_tracker_instance()
 	tracker.set_script_line_map("res://test.gd", [10, 20, 30])
 	tracker.track_execution("res://test.gd", 10)
