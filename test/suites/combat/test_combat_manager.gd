@@ -289,9 +289,14 @@ func test_no_network_graceful():
 func test_invalid_params():
 	var mock_net = MockNetwork.new()
 	_combat.network_manager = mock_net
-	
+
+	# Issue #1361 follow-up: production CombatManager pushes an error log for
+	# invalid parameters. Call first, then consume the error so it doesn't
+	# count as an unexpected error.
 	await _combat.submit_combat_action("", "", 0)
+	assert_push_error("Invalid combat action parameters")
 	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC with empty params")
-	
+
 	await _combat.get_match_state("")
+	assert_push_error("Match ID required")
 	assert_eq(mock_net.last_rpc_id, "", "Should not send RPC with empty match_id")

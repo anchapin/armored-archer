@@ -252,6 +252,8 @@ func test_submit_combat_action_empty_match_id():
 
 	# This should not crash, just push_error and return
 	_combat.submit_combat_action("", "shoot", 45.0, 1.0)
+	# Consume the expected push_error from CombatManager.submit_combat_action (issue #1361 follow-up).
+	assert_push_error("Invalid combat action parameters")
 	# Verify signal was not emitted due to empty match_id
 	assert_signal_emit_count(_combat, "combat_action_submitted", 0, "Signal should not emit with empty match_id")
 
@@ -261,6 +263,8 @@ func test_submit_combat_action_empty_action_type():
 
 	# This should not crash, just push_error and return
 	_combat.submit_combat_action("match-123", "", 45.0, 1.0)
+	# Consume the expected push_error from CombatManager.submit_combat_action (issue #1361 follow-up).
+	assert_push_error("Invalid combat action parameters")
 	# Verify signal was not emitted due to empty action_type
 	assert_signal_emit_count(_combat, "combat_action_submitted", 0, "Signal should not emit with empty action_type")
 
@@ -282,5 +286,7 @@ func test_get_match_state_empty_match_id():
 
 	# This should not crash, just push_error and return
 	_combat.get_match_state("")
+	# Consume the expected push_error from CombatManager.get_match_state (issue #1361 follow-up).
+	assert_push_error("Invalid match_id")
 	# Verify current_match_state remains empty
-	assert_eq(_combat.get_current_match_state(), {}, "Match state should remain empty with empty match_id")
+	assert_eq_deep(_combat.get_current_match_state(), {}, "Match state should remain empty with empty match_id")
