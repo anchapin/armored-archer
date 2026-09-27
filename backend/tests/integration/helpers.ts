@@ -77,6 +77,7 @@ export class IntegrationTestHelper {
   private adminSession: any = null;
   private testDbInitialized: boolean = false;
   private clients: Client[] = [];
+  private accounts: TestAccount[] = [];
 
   private constructor() {}
 
@@ -153,7 +154,7 @@ export class IntegrationTestHelper {
       // Authenticate (this will create the account if it doesn't exist)
       const session = await client.authenticateEmail(email, password, true, username);
 
-      return {
+      const account: TestAccount = {
         client,
         session,
         userId: session.user_id || '',
@@ -162,6 +163,11 @@ export class IntegrationTestHelper {
         refreshToken: session.refresh_token || '',
         expiresAt: session.expires_at || 0,
       };
+
+      // Track the account so writeStorageObject can find the player's session later
+      this.accounts.push(account);
+
+      return account;
     } catch (error) {
       if (typeof (client as any).disconnect === 'function') {
         await (client as any).disconnect();
@@ -311,11 +317,23 @@ export class IntegrationTestHelper {
 
   /**
    * Delete a specific storage object.
+   *
+   * nakama-js v2.x sends JSON to /v2/storage/delete which Nakama rejects with
+   * a 400 ("proto: syntax error") when the object doesn't exist or the
+   * payload shape is unexpected. Since afterEach cleanup is best-effort, we
+   * swallow that specific 400 to avoid cascading test failures. (see #1372)
    */
   async deleteStorageObject(collection: string, key: string, user_id: string): Promise<void> {
     const { client, session } = await this.getAdminClient();
     const request = { object_ids: [{ collection, key, user_id, version: '' }] };
-    await client.deleteStorageObjects(session, request as any);
+    try {
+      await client.deleteStorageObjects(session, request as any);
+    } catch (err: any) {
+      if (err?.status !== 400 && err?.statusCode !== 400) {
+        throw err;
+      }
+      // best-effort cleanup: ignore 400 (object already gone or proto mismatch)
+    }
   }
 
   /**
@@ -330,6 +348,12 @@ export class IntegrationTestHelper {
 
   /**
    * Write storage object directly (for test setup).
+   *
+   * Writes as the player whose storage is being modified. The admin client
+   * cannot write on behalf of another user in Nakama 3.21.1 — the session's
+   * user_id always becomes the storage owner, so admin writes with a
+   * different `user_id` field land in admin-owned storage and the player
+   * cannot read them back. (see issue #1372 / docs/ci/issue-1372-reproduction.md)
    */
   async writeStorageObject(
     collection: string,
@@ -337,11 +361,30 @@ export class IntegrationTestHelper {
     user_id: string,
     value: any
   ): Promise<void> {
-    const { client, session } = await this.getAdminClient();
     // nakama-js v2.x writeStorageObjects expects an array
     const objectValue = typeof value === 'string' ? JSON.parse(value) : value;
-    const objects = [{ collection, key, value: objectValue, version: '', user_id }];
-    await client.writeStorageObjects(session, objects as any);
+    const objects = [{
+      collection,
+      key,
+      value: objectValue,
+      version: '',
+      permission_read: 1,
+      permission_write: 1,
+    }];
+    // Find the player session matching this user_id (the caller owns the storage)
+    const account = this.accounts.find(a => a.userId === user_id);
+    if (!account) {
+      throw new Error(
+        `writeStorageObject: no TestAccount registered for user_id=${user_id} — register via createTestAccount first`
+      );
+    }
+    try {
+      await account.client.writeStorageObjects(account.session, objects as any);
+    } catch (err: any) {
+      let bodyText = 'n/a';
+      try { if (err?.response && typeof err.response.text === 'function') bodyText = await err.response.text(); } catch (_) {}
+      throw new Error(`writeStorageObject failed (collection=${collection}, key=${key}, user_id=${user_id}): status=${err?.statusCode} message=${err?.message} body=${bodyText}`);
+    }
   }
 }
 
