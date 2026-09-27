@@ -28,12 +28,23 @@ jobs:
         uses: zaproxy/action-baseline@a418de766254e096fa7d9e30f8dc9662b58df224 # v0.9.0
         with:
           target: ${{ vars.STAGING_URL }}
+          # Disable auto-issue creation: zaproxy/action-baseline defaults to
+          # allow_issue_writing: true and would POST to /repos/.../issues for
+          # every WARN-NEW/FAIL-NEW finding. GITHUB_TOKEN only carries
+          # `contents: read` + `security-events: write` (least-privilege), so
+          # the POST fails with "Resource not accessible by integration" and
+          # turns the workflow red on every push. The HTML report is still
+          # uploaded as an artifact for manual triage. Fix for #1357.
+          allow_issue_writing: false
       
       - name: Run OWASP ZAP Full Scan
         if: github.ref == 'refs/heads/main'
         uses: zaproxy/action-full-scan@a34710cc692896d035e7bf89bbcf5d40ea422110 # v0.9.0
         with:
           target: ${{ vars.PRODUCTION_URL }}
+          # See comment on the baseline step above. Same rationale — keep
+          # the report artifact, skip the per-push noise issue. Fix for #1357.
+          allow_issue_writing: false
       
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
