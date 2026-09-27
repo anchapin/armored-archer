@@ -161,7 +161,7 @@ export class IntegrationTestHelper {
         username: session.username || '',
         sessionToken: session.token,
         refreshToken: session.refresh_token || '',
-        expiresAt: session.expires_at || 0,
+        expiresAt: session.expires_at || Math.floor(Date.now() / 1000) + 3600,
       };
 
       // Track the account so writeStorageObject can find the player's session later

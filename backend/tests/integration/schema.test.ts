@@ -14,7 +14,10 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
 // Test configuration - uses environment variables or defaults
 const TEST_DB_HOST = process.env.TEST_DB_HOST || 'localhost';
-const TEST_DB_PORT = parseInt(process.env.TEST_DB_PORT || '5432');
+// Default 5433 matches the local backend/docker-compose.yml host-side port
+// (the container's 5432 is published to the host on 5433 per AGENTS.md).
+// CI/remote stacks override via TEST_DB_PORT env var.
+const TEST_DB_PORT = parseInt(process.env.TEST_DB_PORT || '5433');
 const TEST_DB_USER = process.env.TEST_DB_USER || 'postgres';
 const TEST_DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'localdbpassword';
 const TEST_DB_NAME = process.env.TEST_DB_NAME || 'nakama';
