@@ -289,4 +289,5 @@ func test_get_match_state_empty_match_id():
 	# Consume the expected push_error from CombatManager.get_match_state (issue #1361 follow-up).
 	assert_push_error("Invalid match_id")
 	# Verify current_match_state remains empty
-	assert_eq_deep(_combat.get_current_match_state(), {}, "Match state should remain empty with empty match_id")
+	# Match state should remain empty with empty match_id (GUT 9.x: assert_eq_deep has no text arg)
+	assert_eq_deep(_combat.get_current_match_state(), {})
