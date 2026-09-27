@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { Nakama } from '@heroiclabs/nakama-js';
+import { Client } from '@heroiclabs/nakama-js';
 
 // Test configuration
 const NAKAMA_HOST = process.env.NAKAMA_HOST || 'localhost';
@@ -36,23 +36,30 @@ const TEST_STAGE_ID = '1_1';
 const TEST_BOSS_STAGE_ID = '1_5';
 
 describe('Vertical Slice Smoke Test - Backend RPCs', () => {
-  let nakama: Nakama;
+  let nakama: Client;
   let userId: string;
   let sessionToken: string;
+  let session: Awaited<ReturnType<Client['authenticateDevice']>>;
 
   beforeAll(async () => {
     // Initialize Nakama client
-    nakama = new Nakama(SERVER_KEY, NAKAMA_HOST, NAKAMA_PORT, 'http');
+    // Fixed for nakama-js v2.x: Client(serverKey, host, port, useSSL, timeout, autoRefreshSession)
+    // v1.x took (serverKey, host, port, scheme-string); 'http' → useSSL=false.
+    nakama = new Client(SERVER_KEY, NAKAMA_HOST, NAKAMA_PORT.toString(), false, 10000, false);
 
     // Authenticate with test device ID
-    const authResult = await nakama.authenticateDevice(TEST_DEVICE_ID, TEST_USERNAME, true);
+    // v2.x: authenticateDevice returns a Session object with token + user_id fields
+    // (same shape as v1.x's Session, so downstream assertions still hold).
+    // v1.x signature was (id, username, create); v2.x is (id, create, username).
+    // Swapped 2nd/3rd args to preserve original "create account with username" intent.
+    session = await nakama.authenticateDevice(TEST_DEVICE_ID, true, TEST_USERNAME);
 
-    if (!authResult || !authResult.token || !authResult.user_id) {
-      throw new Error(`Failed to authenticate: ${JSON.stringify(authResult)}`);
+    if (!session || !session.token || !session.user_id) {
+      throw new Error(`Failed to authenticate: ${JSON.stringify(session)}`);
     }
 
-    userId = authResult.user_id!;
-    sessionToken = authResult.token!;
+    userId = session.user_id!;
+    sessionToken = session.token!;
 
     console.log(`[Setup] Authenticated user: ${userId}`);
   });
@@ -60,7 +67,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
   afterAll(async () => {
     // Cleanup test data
     try {
-      await nakama.rpc('armored_archer/cleanup_test_user', { user_id: userId });
+      await nakama.rpc(session, 'armored_archer/cleanup_test_user', { user_id: userId });
     } catch (error) {
       // Ignore cleanup errors
     }
@@ -75,7 +82,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     });
 
     it('should have initial player stats stored on server', async () => {
-      const result = await nakama.rpc('armored_archer/get_player_stats', {});
+      const result = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
 
       expect(result.payload).toBeDefined();
       expect(result.payload.success).toBe(true);
@@ -98,7 +105,8 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       // In a real scenario, another client would try to use the same username
       const secondDeviceId = `test_device_${Date.now()}`;
       try {
-        const result = await nakama.authenticateDevice(secondDeviceId, TEST_USERNAME, true);
+        // v1.x signature was (id, username, create); v2.x is (id, create, username).
+        const result = await nakama.authenticateDevice(secondDeviceId, true, TEST_USERNAME);
         // Nakama allows duplicate device IDs with different accounts,
         // so we just verify the flow doesn't crash
         expect(result).toBeDefined();
@@ -112,7 +120,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
   describe('VS-2: PvE Stage Configuration', () => {
     it('should track stage unlock for new player', async () => {
-      const result = await nakama.rpc('armored_archer/get_campaign_progress', {});
+      const result = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
 
       expect(result.payload).toBeDefined();
       expect(result.payload.success).toBe(true);
@@ -122,7 +130,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
     it('should mark stage as completed after completion RPC', async () => {
       // Complete a test stage
-      const completeResult = await nakama.rpc('armored_archer/stage_complete', {
+      const completeResult = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
         boss_id: '',
@@ -133,14 +141,14 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(completeResult.payload.success).toBe(true);
 
       // Verify stage is now in completed list
-      const progressResult = await nakama.rpc('armored_archer/get_completed_stages', {});
+      const progressResult = await nakama.rpc(session, 'armored_archer/get_completed_stages', {});
       expect(progressResult.payload.completed_stages).toContain(TEST_STAGE_ID);
     });
   });
 
   describe('VS-3: Combat System - Data Flow', () => {
     it('should handle stage completion with boss defeat', async () => {
-      const result = await nakama.rpc('armored_archer/stage_complete', {
+      const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_BOSS_STAGE_ID,
         boss_defeated: true,
         boss_id: 'boss_wind',
@@ -155,7 +163,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       // Complete multiple stages
       const stages = ['1_1', '1_2', '1_3'];
       for (const stageId of stages) {
-        await nakama.rpc('armored_archer/stage_complete', {
+        await nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: stageId,
           boss_defeated: false,
           boss_id: '',
@@ -164,7 +172,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       }
 
       // Check progress
-      const result = await nakama.rpc('armored_archer/get_campaign_progress', {});
+      const result = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
       expect(result.payload.completed_stages).toEqual(
         expect.arrayContaining(stages)
       );
@@ -173,7 +181,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
   describe('VS-4: Server-Side Loot Generation', () => {
     it('should generate loot on stage completion', async () => {
-      const result = await nakama.rpc('armored_archer/stage_complete', {
+      const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
         boss_id: '',
@@ -199,19 +207,19 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     it('should generate higher rarity loot from boss stages', async () => {
       // Test multiple boss stage completions for RNG variance
       const results = await Promise.all([
-        nakama.rpc('armored_archer/stage_complete', {
+        nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: '1_5',
           boss_defeated: true,
           boss_id: 'boss_wind',
           difficulty: 'medium'
         }),
-        nakama.rpc('armored_archer/stage_complete', {
+        nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: '2_5',
           boss_defeated: true,
           boss_id: 'boss_fire',
           difficulty: 'hard'
         }),
-        nakama.rpc('armored_archer/stage_complete', {
+        nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: '3_5',
           boss_defeated: true,
           boss_id: 'boss_ice',
@@ -230,7 +238,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
     it('should prevent duplicate gear ownership', async () => {
       // First completion to get gear
-      const firstResult = await nakama.rpc('armored_archer/stage_complete', {
+      const firstResult = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
         boss_id: '',
@@ -246,7 +254,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
       // Second completion with same stage config (in real game, RNG would vary)
       // This test verifies the system would handle duplicates if RNG allowed it
-      const inventoryResult = await nakama.rpc('armored_archer/get_inventory', {});
+      const inventoryResult = await nakama.rpc(session, 'armored_archer/get_inventory', {});
       expect(inventoryResult.payload.inventory).toBeDefined();
 
       // Verify gear is in inventory
@@ -257,7 +265,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     });
 
     it('should grant XP on stage completion', async () => {
-      const result = await nakama.rpc('armored_archer/stage_complete', {
+      const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
         boss_id: '',
@@ -269,7 +277,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.xp_gained).toBe(100); // Standard XP for stage 1
 
       // Verify XP was actually applied
-      const statsResult = await nakama.rpc('armored_archer/get_player_stats', {});
+      const statsResult = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       expect(statsResult.payload.player_stats.xp).toBe(result.payload.xp_gained);
     });
   });
@@ -279,7 +287,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
     beforeAll(async () => {
       // Get some gear in inventory first
-      const result = await nakama.rpc('armored_archer/generate_gear', {
+      const result = await nakama.rpc(session, 'armored_archer/generate_gear', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false
       });
@@ -288,7 +296,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     });
 
     it('should retrieve player inventory', async () => {
-      const result = await nakama.rpc('armored_archer/get_inventory', {});
+      const result = await nakama.rpc(session, 'armored_archer/get_inventory', {});
 
       expect(result.payload).toBeDefined();
       expect(result.payload.success).toBe(true);
@@ -298,7 +306,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     });
 
     it('should equip gear to valid slot', async () => {
-      const result = await nakama.rpc('armored_archer/equip_gear', {
+      const result = await nakama.rpc(session, 'armored_archer/equip_gear', {
         gear_id: testGearId,
         slot: 'bow'
       });
@@ -307,13 +315,13 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.success).toBe(true);
 
       // Verify gear is in loadout
-      const inventoryResult = await nakama.rpc('armored_archer/get_inventory', {});
+      const inventoryResult = await nakama.rpc(session, 'armored_archer/get_inventory', {});
       expect(inventoryResult.payload.loadout.bow).toBe(testGearId);
     });
 
     it('should prevent equipping to invalid slot', async () => {
       // Try to equip a bow to a helm slot (type mismatch)
-      const result = await nakama.rpc('armored_archer/equip_gear', {
+      const result = await nakama.rpc(session, 'armored_archer/equip_gear', {
         gear_id: testGearId,
         slot: 'helm'
       });
@@ -325,13 +333,13 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
     it('should unequip gear from slot', async () => {
       // First equip
-      await nakama.rpc('armored_archer/equip_gear', {
+      await nakama.rpc(session, 'armored_archer/equip_gear', {
         gear_id: testGearId,
         slot: 'bow'
       });
 
       // Then unequip
-      const result = await nakama.rpc('armored_archer/unequip_gear', {
+      const result = await nakama.rpc(session, 'armored_archer/unequip_gear', {
         slot: 'bow'
       });
 
@@ -339,7 +347,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.success).toBe(true);
 
       // Verify slot is now empty
-      const inventoryResult = await nakama.rpc('armored_archer/get_inventory', {});
+      const inventoryResult = await nakama.rpc(session, 'armored_archer/get_inventory', {});
       expect(inventoryResult.payload.loadout.bow).toBeNull();
     });
 
@@ -348,13 +356,13 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const bowId2 = 'test_bow_2'; // Hypothetical second bow
 
       // Equip first bow
-      await nakama.rpc('armored_archer/equip_gear', {
+      await nakama.rpc(session, 'armored_archer/equip_gear', {
         gear_id: bowId1,
         slot: 'bow'
       });
 
       // Equip second bow to same slot (should replace or fail)
-      const result = await nakama.rpc('armored_archer/equip_gear', {
+      const result = await nakama.rpc(session, 'armored_archer/equip_gear', {
         gear_id: bowId2,
         slot: 'bow'
       });
@@ -366,17 +374,17 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
     it('should calculate stat bonuses from equipped gear', async () => {
       // Get base stats
-      const beforeStats = await nakama.rpc('armored_archer/get_player_stats', {});
+      const beforeStats = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       const baseAttack = beforeStats.payload.player_stats.stats.attack;
 
       // Equip gear with +ATK
-      await nakama.rpc('armored_archer/equip_gear', {
+      await nakama.rpc(session, 'armored_archer/equip_gear', {
         gear_id: testGearId,
         slot: 'bow'
       });
 
       // Get stats with gear
-      const afterStats = await nakama.rpc('armored_archer/get_player_stats', {});
+      const afterStats = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       const totalAttack = afterStats.payload.player_stats.stats.attack;
 
       // Total should be base + gear bonus
@@ -387,24 +395,24 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
   describe('VS-6: Stat Allocation System', () => {
     beforeAll(async () => {
       // Give the player enough XP to level up and get ability points
-      await nakama.rpc('armored_archer/gain_xp', {
+      await nakama.rpc(session, 'armored_archer/gain_xp', {
         xp_amount: 1000,
         source: 'pve'
       });
     });
 
     it('should grant ability points on level-up', async () => {
-      const result = await nakama.rpc('armored_archer/get_player_stats', {});
+      const result = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
 
       expect(result.payload.player_stats.ability_points).toBeGreaterThan(0);
       expect(result.payload.player_stats.level).toBeGreaterThan(1);
     });
 
     it('should allocate points to attack stat', async () => {
-      const beforeStats = await nakama.rpc('armored_archer/get_player_stats', {});
+      const beforeStats = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       const beforeAttack = beforeStats.payload.player_stats.stats.attack;
 
-      const result = await nakama.rpc('armored_archer/allocate_stats', {
+      const result = await nakama.rpc(session, 'armored_archer/allocate_stats', {
         stat_name: 'attack',
         points: 1
       });
@@ -413,7 +421,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.success).toBe(true);
 
       // Verify attack increased
-      const afterStats = await nakama.rpc('armored_archer/get_player_stats', {});
+      const afterStats = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       expect(afterStats.payload.player_stats.stats.attack).toBe(beforeAttack + 1);
       expect(afterStats.payload.player_stats.ability_points).toBe(
         beforeStats.payload.player_stats.ability_points - 1
@@ -422,7 +430,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
     it('should validate player owns points before allocation', async () => {
       // Try to allocate more points than available
-      const result = await nakama.rpc('armored_archer/allocate_stats', {
+      const result = await nakama.rpc(session, 'armored_archer/allocate_stats', {
         stat_name: 'attack',
         points: 999 // More than available
       });
@@ -436,7 +444,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const stats = ['attack', 'defense', 'dodge', 'crit_rate'];
       const results = await Promise.all(
         stats.map(stat =>
-          nakama.rpc('armored_archer/allocate_stats', {
+          nakama.rpc(session, 'armored_archer/allocate_stats', {
             stat_name: stat,
             points: 1
           })
@@ -448,7 +456,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       }
 
       // Verify all stats increased
-      const finalStats = await nakama.rpc('armored_archer/get_player_stats', {});
+      const finalStats = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       expect(finalStats.payload.player_stats.stats.attack).toBeGreaterThan(10);
       expect(finalStats.payload.player_stats.stats.defense).toBeGreaterThan(10);
       expect(finalStats.payload.player_stats.stats.dodge).toBeGreaterThan(0);
@@ -462,11 +470,11 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(userId).toBeDefined();
 
       // Step 2: Get initial stats
-      const stats1 = await nakama.rpc('armored_archer/get_player_stats', {});
+      const stats1 = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       expect(stats1.payload.player_stats.level).toBe(1);
 
       // Step 3: Complete stage (simulated PvE win)
-      const stageResult = await nakama.rpc('armored_archer/stage_complete', {
+      const stageResult = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
         boss_id: '',
@@ -478,14 +486,14 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(stageResult.payload.xp_gained).toBe(100);
 
       // Step 5: Get inventory (should have loot if RNG allowed)
-      const inventory = await nakama.rpc('armored_archer/get_inventory', {});
+      const inventory = await nakama.rpc(session, 'armored_archer/get_inventory', {});
       expect(inventory.payload.success).toBe(true);
       expect(inventory.payload.inventory).toBeDefined();
 
       // Step 6: If loot dropped, equip it
       if (stageResult.payload.gear_dropped) {
         const gear = stageResult.payload.gear_dropped;
-        const equipResult = await nakama.rpc('armored_archer/equip_gear', {
+        const equipResult = await nakama.rpc(session, 'armored_archer/equip_gear', {
           gear_id: gear.id,
           slot: gear.type
         });
@@ -493,24 +501,24 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
         expect(equipResult.payload.success).toBe(true);
 
         // Step 7: Verify equipment in loadout
-        const finalInventory = await nakama.rpc('armored_archer/get_inventory', {});
+        const finalInventory = await nakama.rpc(session, 'armored_archer/get_inventory', {});
         expect(finalInventory.payload.loadout[gear.type]).toBe(gear.id);
 
         // Step 8: Verify total stats include gear bonus
-        const finalStats = await nakama.rpc('armored_archer/get_player_stats', {});
+        const finalStats = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
         expect(finalStats.payload.player_stats.stats.attack).toBeGreaterThan(
           stats1.payload.player_stats.stats.attack
         );
       }
 
       // Step 9: Verify stage progress updated
-      const campaignProgress = await nakama.rpc('armored_archer/get_campaign_progress', {});
+      const campaignProgress = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
       expect(campaignProgress.payload.completed_stages).toContain(TEST_STAGE_ID);
     });
 
     it('should handle boss defeat flow', async () => {
       // Complete boss stage
-      const result = await nakama.rpc('armored_archer/stage_complete', {
+      const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_BOSS_STAGE_ID,
         boss_defeated: true,
         boss_id: 'boss_wind',
@@ -521,14 +529,14 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.xp_gained).toBeGreaterThan(100); // Boss XP bonus
 
       // Verify boss defeat tracking
-      const progress = await nakama.rpc('armored_archer/get_campaign_progress', {});
+      const progress = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
       expect(progress.payload.bosses_defeated).toContain('boss_wind');
     });
 
     it('should handle rapid-fire combat actions', async () => {
       // Simulate multiple rapid stage completions
       const promises = Array(5).fill(null).map((_, i) =>
-        nakama.rpc('armored_archer/stage_complete', {
+        nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: `1_${i + 1}`,
           boss_defeated: false,
           boss_id: '',
@@ -543,7 +551,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       }
 
       // Verify all stages completed
-      const progress = await nakama.rpc('armored_archer/get_campaign_progress', {});
+      const progress = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
       expect(progress.payload.completed_stages.length).toBeGreaterThanOrEqual(5);
     });
   });
