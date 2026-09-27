@@ -1717,8 +1717,14 @@ if (typeof __realInitModule === 'function') {
       Promise.resolve().then(function() {});
     }
   } catch (e) {
-    /* eval-time publish is best-effort: pool runtimes retry nothing, but a
-       throwing init must not break eval (Nakama would drop the module). */
+    // eval-time publish is loud-fail (issue #1393): if a captured
+    // registration replays wrong, drop the module so Nakama surfaces the
+    // error in startup logs / monitoring instead of running pool runtimes
+    // with stubs. This is the silent-failure class that hit get_currency
+    // in #1387 and the 219 integration failures it caused. The CI check
+    // scripts/ci/verify-rpc-registration.sh prevents this from being
+    // reachable in practice.
+    throw new Error('eval-time RPC bridge publish failed: ' + (e && e.message ? e.message : String(e)));
   }
 }
 `;

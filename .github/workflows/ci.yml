@@ -20,21 +20,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ./backend
         run: npm ci
-      
+
       - name: Run ESLint
         working-directory: ./backend
         run: npm run lint
+
+  backend-rpc-registration:
+    name: Verify RPC Registration Parity
+    runs-on: ubuntu-latest
+    # Pure shell + grep on backend/src/ — no npm install needed. Defends
+    # against the #1387 class of drift (see docs/ci/issue-1393-reproduction.md).
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the two RPC-registration branches of backend/src/index.ts stay in sync
+        run: bash scripts/ci/verify-rpc-registration.sh
 
   backend-complexity:
     name: Cyclomatic Complexity Analysis
