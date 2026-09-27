@@ -194,6 +194,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [pii-detection, privacy-checks, dependency-audit, data-handling-review]
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write  # Required for `git push` of PRIVACY_COMPLIANCE_STATUS.md (issue #1374)
     
     steps:
       - name: Checkout repository
