@@ -1,9 +1,63 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Client } from '@heroiclabs/nakama-js';
 import { v4 as uuidv4 } from 'uuid';
 
+// --- Bootstrap .env for jest (issue #1371) ------------------------------
+// `npm run test:integration` does not load .env — there is no dotenv dep, no
+// `--env-file` flag, and `globalSetup` only does async cleanup. As a result
+// `process.env.NAKAMA_SERVER_KEY` was always undefined in tests, so the test
+// client fell back to the literal `'defaultkey'` and every authenticated call
+// returned 401 "Server key invalid". We parse backend/.env synchronously here
+// so `process.env.NAKAMA_SERVER_KEY` matches the running Nakama container.
+// Pre-existing OS env vars win (CI can still inject secrets); the file is
+// optional and silently ignored if missing.
+function loadDotEnvOnce(): void {
+  if (process.env.__DOTENV_LOADED_FOR_TESTS__) {
+    return;
+  }
+  const envPath = path.resolve(__dirname, '..', '..', '.env');
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+  const raw = fs.readFileSync(envPath, 'utf8');
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) {
+      continue;
+    }
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    // Strip surrounding quotes (single or double).
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    // Drop inline `# comment` only when preceded by whitespace (avoid mangling
+    // values that legitimately contain `#`, e.g. base64 padding).
+    const hashIdx = value.search(/\s+#/);
+    if (hashIdx !== -1) {
+      value = value.slice(0, hashIdx).trim();
+    }
+    // Don't clobber an env var that was already set (OS env / CI wins).
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+  process.env.__DOTENV_LOADED_FOR_TESTS__ = '1';
+}
+loadDotEnvOnce();
+// -----------------------------------------------------------------------
+
 // Test configuration
-const TEST_HOST = process.env.NAKAMA_HOST || 'localhost';
-const TEST_PORT = parseInt(process.env.NAKAMA_PORT || '7350');
+const TEST_HOST = process.env.NAKAMA_HOST || process.env.NAKAMA_SERVER_URL || 'localhost';
+const TEST_PORT = parseInt(process.env.NAKAMA_PORT || process.env.NAKAMA_SERVER_PORT || '7350');
 const TEST_DB_NAME = 'armored_archer_test';
 const TEST_ADMIN_KEY = process.env.NAKAMA_SERVER_KEY || 'defaultkey';
 
