@@ -71,18 +71,24 @@ jobs:
     name: Godot Flaky Tests (GDScript)
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'godot') || github.event_name == 'schedule'
-    strategy:
-      matrix:
-        godot-version: ['4.2']
     steps:
       - uses: actions/checkout@v4
-      
+
+      # Issue #1375: notifiarr/godot-action was removed from GitHub
+      # (##[error]Unable to resolve action notifiarr/godot-action, repository not found).
+      # Download the 4.6-stable headless binary directly and put it on PATH —
+      # matches the convention used by coverage.yml / test.yml / benchmark-regression.yml
+      # / visual-regression.yml. detect_godot_flaky_tests.py defaults to `godot4`
+      # from PATH, so no flag changes are needed in the run step below.
       - name: Setup Godot
-        uses: notifiarr/godot-action@v0.2.2
-        with:
-          godot-version: ${{ matrix.godot-version }}
-          godot-executable: godot4
-      
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+          rm godot.zip
+          echo "$PWD" >> "$GITHUB_PATH"
+
       - name: Run flaky test detection
         run: |
           python3 scripts/detect_godot_flaky_tests.py --runs=${{ github.event.inputs.runs || '3' }}
