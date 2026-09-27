@@ -364,6 +364,12 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/get_currency',
+      'get_currency',
+      rpcGetCurrencyWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/process_pending_purchases',
       'process_pending_purchases',
       rpcProcessPendingPurchases
@@ -776,6 +782,16 @@ function rpcSpendGemsWrapper(
 ): string {
   const { rpcSpendGems } = require('./modules/store');
   return rpcSpendGems(ctx, logger, nk, payload);
+}
+
+function rpcGetCurrencyWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetCurrency } = require('./modules/store');
+  return rpcGetCurrency(ctx, logger, nk, payload);
 }
 
 async function rpcRevenueCatWebhookWrapper(
