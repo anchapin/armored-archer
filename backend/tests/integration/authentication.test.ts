@@ -104,7 +104,7 @@ describe('Authentication Tests', () => {
         'armored_archer/get_player_rank',
         {}
       );
-      const result = response.payload ? JSON.parse(response.payload as unknown as string) : {};
+      const result = (response.payload as object | undefined) ?? {};
 
       expect(result).toBeDefined();
       expect(result.success || result.rank).toBeDefined();

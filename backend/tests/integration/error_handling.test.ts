@@ -25,10 +25,11 @@ describe('Error Handling Tests', () => {
     await testHelper.cleanup();
   });
 
-  // Helper to call RPC
+  // Helper to call RPC — nakama-js v2.x already parses payload (object | undefined);
+  // v1.x expected a JSON string, but the test infrastructure has been migrated to v2.x.
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
     const response = await account.client.rpc(account.session, rpcId, payload);
-    return response.payload ? JSON.parse(response.payload as unknown as string) : {};
+    return response.payload ?? {};
   }
 
   describe('Invalid Input Validation', () => {
