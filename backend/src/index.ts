@@ -147,6 +147,7 @@ import {
   rpcGetBundleCatalog,
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
+import { registerRpcCleanupTestUser } from './modules/cleanup_test_user';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
@@ -460,6 +461,36 @@ const InitModule: InitModule = function (
     );
     registerRpcWithRateLimit(
       initializer,
+      'armored_archer/unequip_gear',
+      'unequip_gear',
+      rpcUnequipGearWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_inventory',
+      'get_inventory',
+      rpcGetInventoryWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/unlock_modifier_pool',
+      'unlock_modifier_pool',
+      rpcUnlockModifierPoolWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/get_completed_stages',
+      'get_completed_stages',
+      rpcGetCompletedStagesWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
+      'armored_archer/cleanup_test_user',
+      'cleanup_test_user',
+      rpcCleanupTestUserWrapper
+    );
+    registerRpcWithRateLimit(
+      initializer,
       'armored_archer/stage_complete',
       'stage_complete',
       rpcStageCompleteWrapper
@@ -614,6 +645,7 @@ const InitModule: InitModule = function (
     registerRpcGetPlayerPerformance(initializer);
     registerRpcSubmitSurvey(initializer);
     registerRpcGetSurveyStatus(initializer);
+    registerRpcCleanupTestUser(initializer);
   }
 
   // Register replay RPC endpoints (always available for debugging/QA)
@@ -723,6 +755,9 @@ function rpcSubmitCombatActionWrapper(
   const { rpcSubmitCombatAction } = require('./modules/combat_system');
   return rpcSubmitCombatAction(ctx, logger, nk, payload);
 }
+// NOTE: This wrapper is intentionally NOT async — Nakama's goja runtime does
+// not support async RPC handlers (issue #1135). The wrapped production
+// function (rpcSubmitCombatAction) is now sync after issue #1390 cluster 2.
 
 function rpcGetMatchStateWrapper(
   ctx: Runtime.Context,
@@ -833,6 +868,56 @@ function rpcEquipGearWrapper(
 ): string {
   const { rpcEquipGear } = require('./modules/gear_system');
   return rpcEquipGear(ctx, logger, nk, payload);
+}
+
+function rpcUnequipGearWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcUnequipGear } = require('./modules/gear_system');
+  return rpcUnequipGear(ctx, logger, nk, payload);
+}
+
+function rpcGetInventoryWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetInventory } = require('./modules/gear_system');
+  return rpcGetInventory(ctx, logger, nk, payload);
+}
+
+function rpcUnlockModifierPoolWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcUnlockModifierPool } = require('./modules/gear_system');
+  return rpcUnlockModifierPool(ctx, logger, nk, payload);
+}
+
+function rpcGetCompletedStagesWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcGetCompletedStages } = require('./modules/stage_tracking');
+  return rpcGetCompletedStages(ctx, logger, nk, payload);
+}
+
+function rpcCleanupTestUserWrapper(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const { rpcCleanupTestUser } = require('./modules/cleanup_test_user');
+  return rpcCleanupTestUser(ctx, logger, nk, payload);
 }
 
 function rpcStageCompleteWrapper(
