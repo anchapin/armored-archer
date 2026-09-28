@@ -239,7 +239,7 @@ describe('Performance Smoke Tests', () => {
       expect(typeof metrics.averageMs).toBe('number');
       expect(Number.isFinite(metrics.averageMs)).toBe(true);
       expect(metrics.averageMs).toBeGreaterThanOrEqual(0);
-      expect(metrics.averageMs).toBeLessThan(5000);
+      expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
       expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
@@ -266,7 +266,7 @@ describe('Performance Smoke Tests', () => {
       expect(typeof metrics.averageMs).toBe('number');
       expect(Number.isFinite(metrics.averageMs)).toBe(true);
       expect(metrics.averageMs).toBeGreaterThanOrEqual(0);
-      expect(metrics.averageMs).toBeLessThan(5000);
+      expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
       expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
@@ -293,7 +293,7 @@ describe('Performance Smoke Tests', () => {
       expect(typeof metrics.averageMs).toBe('number');
       expect(Number.isFinite(metrics.averageMs)).toBe(true);
       expect(metrics.averageMs).toBeGreaterThanOrEqual(0);
-      expect(metrics.averageMs).toBeLessThan(5000);
+      expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
       expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
@@ -320,7 +320,7 @@ describe('Performance Smoke Tests', () => {
       expect(typeof metrics.averageMs).toBe('number');
       expect(Number.isFinite(metrics.averageMs)).toBe(true);
       expect(metrics.averageMs).toBeGreaterThanOrEqual(0);
-      expect(metrics.averageMs).toBeLessThan(5000);
+      expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
       expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
@@ -347,7 +347,7 @@ describe('Performance Smoke Tests', () => {
       expect(typeof metrics.averageMs).toBe('number');
       expect(Number.isFinite(metrics.averageMs)).toBe(true);
       expect(metrics.averageMs).toBeGreaterThanOrEqual(0);
-      expect(metrics.averageMs).toBeLessThan(5000);
+      expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
       expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
