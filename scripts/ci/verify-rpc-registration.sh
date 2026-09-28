@@ -69,7 +69,10 @@ RL_IF_START=273
 # not including) the first `} else {`, and the rate-limit-disabled branch starts
 # at the second `} else {` and runs to end-of-file.
 ELSE_END=$(wc -l < "${INDEX_TS}" 2>/dev/null || echo 1)
-ELSE_START=$(awk '/^\s*}\s*else\s*\{\s*$/ { print NR; exit }' "${INDEX_TS}" | tail -n 1)
+# Use `[[:space:]]` for awk ERE portability (plain `\s` doesn't work in awk BRE).
+# Find the FIRST `} else {` after line 273 — that marks the boundary between
+# the rate-limit-enabled branch and the rate-limit-disabled branch.
+ELSE_START=$(awk '/^[[:space:]]*\}[[:space:]]*else[[:space:]]*\{[[:space:]]*$/ { if (NR > 270) { print NR; exit } }' "${INDEX_TS}" | tail -n 1)
 # Fallback if we somehow miss it: end of the file's first else-block region.
 : "${ELSE_START:=542}"
 RL_IF_END=$((ELSE_START - 1))
