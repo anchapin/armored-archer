@@ -4,10 +4,10 @@
   "description": "Armored Archer Game",
   "scripts": {
     "detect-duplicate": "jscpd --config .jscpd.json",
-    "detect-duplicate:ci": "jscpd --config .jscpd.json --threshold 3"
+    "detect-duplicate:ci": "jscpd --config .jscpd.json"
   },
   "devDependencies": {
-    "jscpd": "^4.0.8",
+    "jscpd": "^5.3.2",
     "unleash-client": "^6.10.1"
   },
   "dependencies": {
