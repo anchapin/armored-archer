@@ -3,6 +3,16 @@
  * Clear environment variables to ensure tests start with clean state
  */
 
+// Disable src/config/index.ts `loadEnvironment()` from reading `.env` off disk
+// (issue #1427). It runs at module import and backfills any *falsy* key from
+// `.env`, so a developer's local file silently supplied HMAC_SECRET /
+// REVENUECAT_* and flipped tests that assert behaviour when they are absent
+// (4 failures with `.env` present, 0 without). Deleting the vars below alone
+// is NOT enough: `loadEnvironment()` would re-add them. CI provisions no
+// `.env`, which is why the coupling was invisible from CI evidence alone.
+// Test results must depend only on the committed tree, never on local files.
+process.env.SKIP_ENV_LOADING = 'true';
+
 // Clear all database-related environment variables before any modules load
 const dbVars = [
   'DB_HOST',
@@ -12,6 +22,12 @@ const dbVars = [
   'DB_PASSWORD',
   'DATABASE_ADDRESS',
   'NAKAMA_DATABASE_ADDRESS',
+  // Secrets a developer's shell or `.env` may export: tests must exercise the
+  // "not configured" path themselves instead of inheriting a real value.
+  'HMAC_SECRET',
+  'REVENUECAT_SECRET_KEY',
+  'REVENUECAT_WEBHOOK_SECRET',
+  'REVENUECAT_API_KEY',
 ];
 
 for (const varName of dbVars) {
@@ -20,6 +36,7 @@ for (const varName of dbVars) {
 
 // Set test environment
 process.env.NODE_ENV = 'test';
+// Assigned after the deletion above so an inherited real key can never survive.
 process.env.REVENUECAT_API_KEY = 'test_api_key';
 
 // Global fetch mock
