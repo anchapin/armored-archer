@@ -228,10 +228,10 @@ describe('metrics', () => {
       expect(handler).toHaveBeenCalledWith(ctx, logger, nk, '{}');
     });
 
-    it('rejects async handlers with a clear error (issue #1135)', () => {
+    it('rejects async handlers with a clear error (ADR-0008)', () => {
       // Nakama 3.21's goja runtime cannot resolve Promise returns (no job
       // scheduler); the wrapper fails fast instead of surfacing an opaque
-      // 500 to clients (issue #1135).
+      // 500 to clients (ADR-0008).
       const handler = jest.fn().mockResolvedValue('async_result');
       const wrapped = wrapRpcWithMetrics('async_rpc', handler);
       const { ctx, logger, nk } = makeRpcArgs();

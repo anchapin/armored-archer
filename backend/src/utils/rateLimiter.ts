@@ -173,7 +173,7 @@ export function createRateLimitedRpcHandler(
   // SYNC on purpose: Nakama 3.21's goja runtime has no promise-job
   // scheduler, so an async handler returns a pending Promise that Nakama
   // rejects ('Runtime function returned invalid data'). The wrap adds no
-  // awaits — keep the registered handler synchronous (issue #1135).
+  // awaits — keep the registered handler synchronous (ADR-0008).
   return function (
     ctx: Runtime.Context,
     loggerParam: Runtime.Logger,
@@ -202,7 +202,7 @@ export function createRateLimitedRpcHandler(
     if (typeof result !== 'string') {
       throw new Error(
         `RPC ${endpoint} returned a non-string result; async handlers are ` +
-          'unsupported by the Nakama JS runtime (issue #1135)'
+          'unsupported by the Nakama JS runtime (ADR-0008)'
       );
     }
     return result;

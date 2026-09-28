@@ -13,7 +13,7 @@ import { createHash } from 'crypto';
 // every supported runtime. Falling back to a non-unique placeholder would
 // make every receipt look like a duplicate, so this fallback is mandatory.
 function sha256Hex(input: string): string {
-  // NOTE (issue #1135): the Nakama JS runtime (goja) ships with a `crypto`
+  // NOTE (ADR-0008): the Nakama JS runtime (goja) ships with a `crypto`
   // shim whose `createHash().digest('hex')` always returns the empty string.
   // Any code that relies on `crypto.createHash` will silently produce empty
   // hashes — and because every receipt then shares the same hash, every
@@ -173,7 +173,7 @@ function isReceiptAlreadyUsed(
   logger: Runtime.Logger
 ): boolean {
   // Redis fast-path is unreachable from the Nakama JS runtime (goja has no
-  // microtask queue to drive async I/O — issue #1135). Skip the async Redis
+  // microtask queue to drive async I/O — ADR-0008). Skip the async Redis
   // branch and fall through to the in-memory + storage path so the RPC
   // handler stays synchronous.
   void getRedisClient(logger);
@@ -2577,7 +2577,7 @@ function validateWithRevenueCat(
     // test path works without a real RevenueCat backend. The
     // server-side fetch path is unreachable from the sync Nakama runtime
     // (goja has no microtask queue) so this is the only correct option
-    // (issue #1135 / cluster-4 parity).
+    // (ADR-0008 / cluster-4 parity).
     logger.debug(
       'RevenueCat API key not configured; treating receipt for %s as locally valid',
       productId
@@ -2586,7 +2586,7 @@ function validateWithRevenueCat(
   }
 
   // Real-API path retained for environments that configure the key and
-  // have a way to make synchronous HTTP calls (issue #1135 tracks a future
+  // have a way to make synchronous HTTP calls (#1423 tracks a future
   // sync HTTP migration). For now this branch is unreachable inside the
   // Nakama runtime.
   return { valid: false, error: 'RevenueCat async validation unavailable in sync runtime' };
@@ -2850,7 +2850,7 @@ export function rpcCheckRefunds(
   const appUserId = validation.data.app_user_id || ctx.userId;
 
   // External RevenueCat refund listing is unreachable from the sync runtime
-  // (goja has no microtask queue — issue #1135). The actionable refund
+  // (goja has no microtask queue — ADR-0008). The actionable refund
   // path goes through `processRefund` which uses durable storage markers,
   // and is fully sync. Return an empty refunds result so callers see the
   // correct shape without hitting async I/O.
@@ -2911,7 +2911,7 @@ export function rpcCheckSubscriptions(
   const appUserId = validation.data.app_user_id || ctx.userId;
 
   // External RevenueCat subscription listing is unreachable from the sync
-  // runtime (goja has no microtask queue — issue #1135). Return an empty
+  // runtime (goja has no microtask queue — ADR-0008). Return an empty
   // active-subscriptions result with the same shape callers expect.
   logger.debug(
     'rpcCheckSubscriptions: external listing skipped in sync runtime for user %s',
@@ -3027,7 +3027,7 @@ export function rpcRestorePurchases(
 
   // Query RevenueCat for subscriber/purchase history. The async fetch is
   // unreachable from the sync Nakama runtime (goja has no microtask queue
-  // — issue #1135). For now we surface a clear error so the client can
+  // — ADR-0008). For now we surface a clear error so the client can
   // fall back to local pending-purchase processing.
   logger.debug(
     'rpcRestorePurchases: external history query skipped in sync runtime for user %s',
@@ -3041,9 +3041,9 @@ export function rpcRestorePurchases(
   });
 
   // The remainder of this function (lines preserved in git history for the
-  // post-issue-#1135 sync-HTTP migration) intentionally omitted because it
+  // future sync-HTTP migration, #1423) intentionally omitted because it
   // performs async work the runtime cannot drive. Re-enable after the
-  // sync HTTP layer lands.
+  // sync HTTP layer lands. See ADR-0008.
 }
 
 export function registerRpcRestorePurchases(initializer: Runtime.Initializer): void {
@@ -3960,9 +3960,9 @@ export function rpcRevenueCatWebhook(
     // process the same event concurrently. That is not reachable in this runtime:
     // ioredis is promise-based and the Nakama JS runtime (goja) has no microtask
     // queue to drive it, so the await would never settle and the RPC would hang
-    // (issue #1135). The durable storage dedup above remains the authoritative
+    // (ADR-0008). The durable storage dedup above remains the authoritative
     // idempotency guard; a true cross-instance lock needs the sync-HTTP/Redis
-    // migration tracked by #1135.
+    // migration tracked by #1423.
     void getRedisClient(logger);
   }
 

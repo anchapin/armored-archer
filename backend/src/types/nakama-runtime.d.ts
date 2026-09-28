@@ -70,7 +70,7 @@ declare namespace Runtime {
     key: string;
     userId: string;
     // Nakama's goja storageWrite requires a plain object (it JSON-marshals
-    // internally); a raw string panics at runtime (issue #1135).
+    // internally); a raw string panics at runtime (ADR-0008).
     value: Record<string, unknown> | string;
     version?: string;
   }

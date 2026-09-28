@@ -556,7 +556,7 @@ export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHan
   // SYNC on purpose: Nakama 3.21's goja runtime has no promise-job
   // scheduler, so an async handler returns a pending Promise that Nakama
   // rejects ('Runtime function returned invalid data'). The wrap adds no
-  // awaits — keep the registered handler synchronous (issue #1135).
+  // awaits — keep the registered handler synchronous (ADR-0008).
   return function (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
@@ -573,7 +573,7 @@ export function wrapRpcWithMetrics(rpcName: string, handler: RpcHandler): RpcHan
         // a non-string here would surface as an opaque 500 downstream.
         throw new Error(
           `RPC ${rpcName} returned a non-string result; async handlers are ` +
-            'unsupported by the Nakama JS runtime (issue #1135)'
+            'unsupported by the Nakama JS runtime (ADR-0008)'
         );
       }
       // Detect rejection via JSON return (issue #1134).

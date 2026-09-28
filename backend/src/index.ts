@@ -756,7 +756,7 @@ function rpcSubmitCombatActionWrapper(
   return rpcSubmitCombatAction(ctx, logger, nk, payload);
 }
 // NOTE: This wrapper is intentionally NOT async — Nakama's goja runtime does
-// not support async RPC handlers (issue #1135). The wrapped production
+// not support async RPC handlers (ADR-0008). The wrapped production
 // function (rpcSubmitCombatAction) is now sync after issue #1390 cluster 2.
 
 function rpcGetMatchStateWrapper(
@@ -800,7 +800,7 @@ function rpcGetLeaderboardWrapper(
 }
 
 // NOTE (cluster-4 scope adjacency): the underlying `rpcValidatePurchase` in
-// store.ts is sync (issue #1135 — async RPC handlers are unsupported by the
+// store.ts is sync (ADR-0008 — async RPC handlers are unsupported by the
 // Nakama JS runtime). This wrapper was originally `async function` because the
 // module-level handler used to be async. The `async` keyword here causes Nakama
 // to throw "RPC validate_purchase returned a non-string result; async handlers

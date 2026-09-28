@@ -73,7 +73,7 @@ armored_archer/cleanup_test_user ERR 404 |
 2. Delete the wallet (currency) entries.
 3. Return `{ ok: true, user_id }`.
 
-Then register `armored_archer/cleanup_test_user` in **both** branches of `backend/src/index.ts` (lines 273–541 rate-limit-enabled and 542–617 rate-limit-disabled) using `registerRpcWithRateLimit` and plain `registerRpc`. Use a sync handler wrapper (Nakama JS issue #1135 — async wrappers are unsupported).
+Then register `armored_archer/cleanup_test_user` in **both** branches of `backend/src/index.ts` (lines 273–541 rate-limit-enabled and 542–617 rate-limit-disabled) using `registerRpcWithRateLimit` and plain `registerRpc`. Use a sync handler wrapper (Nakama JS runtime — async wrappers are unsupported; ADR-0008).
 
 ### Category C — `submit_combat_action` async handler rejected by runtime (~23 failures)
 
@@ -87,7 +87,7 @@ armored_archer/submit_combat_action ERR 500 |
    "message":"RPC submit_combat_action returned a non-string result; async handlers are unsupported"}
 ```
 
-**Hypothesis:** This is the same shape as the `validate_purchase` bug documented at `index.ts:770` (issue #1135). The fix is to convert `rpcSubmitCombatAction` to a sync handler. This is the largest production-side change in the cluster.
+**Hypothesis:** This is the same shape as the `validate_purchase` bug documented at `index.ts:770` (ADR-0008). The fix is to convert `rpcSubmitCombatAction` to a sync handler. This is the largest production-side change in the cluster.
 
 ### Category D — `create_match` returning undefined (~10 failures)
 

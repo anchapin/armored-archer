@@ -828,7 +828,7 @@ describe('matchmaker', () => {
       );
       mockNk.storageWrite = jest.fn((writes: any[]) => {
         writes.forEach((w) => {
-          // Normalize: production storageWrite accepts objects (issue #1135);
+          // Normalize: production storageWrite accepts objects (ADR-0008);
           // keep the string-backed map contract for the assertions below.
           stored[`${w.collection}:${w.key}`] =
             typeof w.value === 'string' ? w.value : JSON.stringify(w.value);

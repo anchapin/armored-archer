@@ -1,7 +1,7 @@
 // Test-only RPC: armored_archer/cleanup_test_user
 // Clears a user's Nakama storage and game tables between integration tests.
 // Mirrors backend/src/modules/test_cleanup.ts but is sync (Nakama JS runtime
-// does not support async RPC handlers — see index.ts:770 / issue #1135).
+// does not support async RPC handlers — see index.ts:770 / ADR-0008).
 // Cleanup runs as fire-and-forget async work after the RPC returns the ack.
 
 import { Runtime } from '../types/nakama';
