@@ -157,7 +157,7 @@ export function batchStorageWrite(nk: Runtime.Nakama, writes: StorageWriteOption
     return;
   }
 
-  // Post-#1135: goja storageWrite accepts plain objects/strings and
+  // ADR-0008: goja storageWrite accepts plain objects/strings and
   // JSON-marshals internally. Pass values through unchanged.
   nk.storageWrite(
     writes.map((w) => ({
@@ -228,7 +228,7 @@ export function writeStorageObject<T extends Record<string, unknown>>(
 /**
  * Normalize a storage-write `value` to the plain object Nakama's JS
  * storageWrite requires (it JSON-marshals internally; a raw string panics
- * with "expects 'value' value to be an object" — issue #1135).
+ * with "expects 'value' value to be an object" — ADR-0008).
  * Call sites that already hold a pre-stringified payload pass the JSON
  * string here; it is parsed back to the original object.
  */
@@ -258,7 +258,7 @@ export function toStorageValue(value: unknown): Record<string, unknown> {
 
 /**
  * Extract the raw JSON string from a storage object's `value` (which may be
- * a pre-parsed object depending on the runtime path — issue #1135).
+ * a pre-parsed object depending on the runtime path — ADR-0008).
  */
 export function getStorageRawValue(value: unknown): string | null {
   if (value === null || value === undefined) {
@@ -275,6 +275,6 @@ export function getStorageRawValue(value: unknown): string | null {
 }
 
 /**
- * Alias of getStorageRawValue for inline use at call sites (issue #1135).
+ * Alias of getStorageRawValue for inline use at call sites (ADR-0008).
  */
 export const asStorageJson = getStorageRawValue;

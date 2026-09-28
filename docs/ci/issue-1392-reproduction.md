@@ -27,7 +27,7 @@ territory and **out of scope for this PR**.
 ### A. Async RPC wrappers in `backend/src/index.ts` (12 failures)
 
 **Representative error:** `RPC validate_purchase returned a non-string result;
-async handlers are unsupported by the Nakama JS runtime (issue #1135)
+async handlers are unsupported by the Nakama JS runtime (ADR-0008)
 at index.js:67355:516(66)`.
 
 **Root cause:** `backend/src/index.ts` declared two wrappers around cluster-4
@@ -127,7 +127,7 @@ backend/src/index.ts            (scope-adjacent — 2 lines in 2 wrappers;
    `Promise<string>` → `string`.
    Why the fix is correct: the underlying handler in `store.ts` is sync and
    returns a JSON string. An async wrapper returns a Promise; the Nakama JS
-   runtime (issue #1135) throws "RPC validate_purchase returned a non-string
+   runtime (ADR-0008) throws "RPC validate_purchase returned a non-string
    result; async handlers are unsupported" if the wrapper returns anything
    other than a string. The wrapper must mirror the handler's sync-ness.
 

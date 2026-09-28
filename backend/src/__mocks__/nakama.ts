@@ -440,7 +440,7 @@ export const createMockNakama = (): Runtime.Nakama => {
           const key = `${obj.collection}:${obj.key}`;
           // Nakama's goja storageWrite accepts a plain object (it stringifies
           // internally); normalize to the JSON string the old string-based
-          // map/reads expect (issue #1135).
+          // map/reads expect (ADR-0008).
           const normalized =
             typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
           testStorage.set(key, normalized);

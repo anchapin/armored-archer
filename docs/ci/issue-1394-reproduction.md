@@ -34,7 +34,7 @@ observed failures **do not match that description**:
    registered through `metrics.ts` `wrapRpcWithMetrics` which checks
    `typeof result !== 'string'` synchronously — async RPC handlers return a
    `Promise<string>`, the wrap throws `"RPC <name> returned a non-string result;
-   async handlers are unsupported by the Nakama JS runtime (issue #1135)"`, and
+   async handlers are unsupported by the Nakama JS runtime (ADR-0008)"`, and
    the client receives HTTP 500. The 2 concurrent tests fail because they call
    the same RPCs. The 7th (`rpcStageComplete p99`) fails on a Postgres auth
    mismatch — local containers run with `POSTGRES_PASSWORD=your_postgres_password_here`

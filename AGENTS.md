@@ -161,7 +161,8 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 
 - Auth: Firebase. IAP: RevenueCat. Client talks to Nakama via `@heroiclabs/nakama-js`; the `NetworkManager` autoload owns the session/RPC calls.
 - Transmog: base gear carries all stats (gameplay-earned); cosmetic skins are visual-only (IAP). The client combines base + skin for rendering.
-- Ratified decisions are ADRs in `docs/adr/`: PRD governance (0001), server-declared match settlement (0002), hybrid duel model (0003), legacy duel-RPC decommission (0004), combat authority boundary (0005), admin-gate allowlist policy (0006) — read the relevant one before touching duel, settlement, combat-authority, or admin-gate code.
+- Ratified decisions are ADRs in `docs/adr/`: PRD governance (0001), server-declared match settlement (0002), hybrid duel model (0003), legacy duel-RPC decommission (0004), combat authority boundary (0005), admin-gate allowlist policy (0006), damage-math constants ratification (0007), Nakama JS runtime sync-handler invariant (0008) — read the relevant one before touching duel, settlement, combat-authority, or admin-gate code.
+- **RPC handlers must be synchronous.** The Nakama JS runtime (goja) has no microtask queue, so an `async` handler returns a Promise Nakama rejects ("returned a non-string result") or that never settles. No outbound HTTP or promise-based Redis on an RPC path either. See [`docs/adr/0008-nakama-js-runtime-sync-handler-invariant.md`](docs/adr/0008-nakama-js-runtime-sync-handler-invariant.md) before adding or wrapping any RPC.
 - The Nakama bundle has a size budget enforced by `make bundle-size-check` (config: `backend/bundle-size-limits.json`).
 
 ## Commit & PR Guidelines

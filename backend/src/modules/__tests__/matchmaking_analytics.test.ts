@@ -323,7 +323,7 @@ describe('Matchmaking Analytics Module', () => {
 
       await logMatchData(mockNk, requestData);
 
-      // Post-#1135: storageWrite accepts plain objects (goja JSON-marshals internally)
+      // ADR-0008: storageWrite accepts plain objects (goja JSON-marshals internally)
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -398,7 +398,7 @@ describe('Matchmaking Analytics Module', () => {
       };
       await logQueueTime(mockNk, requestData);
 
-      // Post-#1135: storageWrite accepts plain objects (goja JSON-marshals internally)
+      // ADR-0008: storageWrite accepts plain objects (goja JSON-marshals internally)
       expect(mockNk.storageWrite).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
