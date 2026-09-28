@@ -13,6 +13,15 @@
  */
 
 import { TSESTree, AST_NODE_TYPES } from '@typescript-eslint/utils';
+import type { RuleModule } from '@typescript-eslint/utils/ts-eslint';
+
+/** Options accepted by the rule, matching the `schema` block in `meta`. */
+type NPlusOneOptions = [
+  {
+    allowedMethods?: string[];
+    maxLoopDepth?: number;
+  },
+];
 
 // Database method patterns
 const DB_METHOD_PATTERNS = [
@@ -36,7 +45,10 @@ const DB_METHOD_PATTERNS = [
 ];
 
 // Create the rule
-export const NPlusOneDetectionRule = {
+export const NPlusOneDetectionRule: RuleModule<
+  'nPlusOneQuery' | 'nPlusOneIteration',
+  NPlusOneOptions
+> = {
   meta: {
     type: 'problem' as const,
     docs: {
