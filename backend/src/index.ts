@@ -764,14 +764,22 @@ function rpcGetLeaderboardWrapper(
   return rpcGetLeaderboard(ctx, logger, nk, payload);
 }
 
-async function rpcValidatePurchaseWrapper(
+// NOTE (cluster-4 scope adjacency): the underlying `rpcValidatePurchase` in
+// store.ts is sync (issue #1135 — async RPC handlers are unsupported by the
+// Nakama JS runtime). This wrapper was originally `async function` because the
+// module-level handler used to be async. The `async` keyword here causes Nakama
+// to throw "RPC validate_purchase returned a non-string result; async handlers
+// are unsupported" — so the wrapper itself must be sync too. Only this wrapper
+// (cluster 4 territory) is touched; every other RPC wrapper in index.ts is left
+// alone.
+function rpcValidatePurchaseWrapper(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   const { rpcValidatePurchase } = require('./modules/store');
-  return await rpcValidatePurchase(ctx, logger, nk, payload);
+  return rpcValidatePurchase(ctx, logger, nk, payload);
 }
 
 function rpcSpendGemsWrapper(
@@ -794,14 +802,17 @@ function rpcGetCurrencyWrapper(
   return rpcGetCurrency(ctx, logger, nk, payload);
 }
 
-async function rpcRevenueCatWebhookWrapper(
+// NOTE (cluster-4 scope adjacency): same justification as
+// rpcValidatePurchaseWrapper above. The underlying `rpcRevenueCatWebhook` is
+// sync; this wrapper must be sync too.
+function rpcRevenueCatWebhookWrapper(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   const { rpcRevenueCatWebhook } = require('./modules/store');
-  return await rpcRevenueCatWebhook(ctx, logger, nk, payload);
+  return rpcRevenueCatWebhook(ctx, logger, nk, payload);
 }
 
 function rpcGenerateGearWrapper(
