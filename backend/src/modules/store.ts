@@ -1353,6 +1353,7 @@ export function rpcValidatePurchase(
   const rcValidation = validatePurchaseWithRevenueCat(ctx, logger, nk, request);
   if (!rcValidation.valid) {
     recordPurchase(request.product_id, false);
+    addToPendingQueue(nk, ctx.userId, request.product_id, request.platform, request.transaction_receipt);
     return JSON.stringify({ error: rcValidation.error, error_code: rcValidation.errorCode });
   }
   const gemBundle = rcValidation.gemBundle;
@@ -2463,7 +2464,50 @@ interface PendingPurchase {
   timestamp: number;
   retry_count: number;
 }
-const pendingPurchases: Map<string, PendingPurchase[]> = new Map();
+const PENDING_PURCHASES_COLLECTION = 'pending_purchases';
+
+function getPendingPurchasesFromStorage(
+  nk: Runtime.Nakama,
+  userId: string
+): PendingPurchase[] {
+  try {
+    const objects = nk.storageRead([
+      { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
+    ]);
+    if (objects.length === 0) return [];
+    const rawValue = (objects[0] as Runtime.StorageObject).value;
+    const jsonStr = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue);
+    const parsed = safeParse<PendingPurchase[]>(jsonStr, null, undefined, 'getPendingPurchasesFromStorage');
+    return parsed.success && parsed.data ? parsed.data : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingPurchasesToStorage(
+  nk: Runtime.Nakama,
+  userId: string,
+  purchases: PendingPurchase[]
+): void {
+  if (purchases.length === 0) {
+    try {
+      nk.storageDelete([
+        { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
+      ]);
+    } catch {
+      // Ignore delete errors (collection/key may not exist)
+    }
+  } else {
+    nk.storageWrite([
+      {
+        collection: PENDING_PURCHASES_COLLECTION,
+        key: userId,
+        userId: userId,
+        value: JSON.stringify(purchases),
+      },
+    ]);
+  }
+}
 
 /**
  * Maximum number of retries for pending purchases.
@@ -2551,20 +2595,16 @@ function validateWithRevenueCat(
 /**
  * Add a purchase to the pending queue.
  * Called when network validation fails but receipt was received.
+ * Uses Nakama Storage for persistence across Nakama restarts.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function addToPendingQueue(
+  nk: Runtime.Nakama,
   userId: string,
   productId: string,
   platform: string,
   transactionReceipt: string
 ): void {
-  let userPending = pendingPurchases.get(userId);
-  if (!userPending) {
-    userPending = [];
-    pendingPurchases.set(userId, userPending);
-  }
-
+  const userPending = getPendingPurchasesFromStorage(nk, userId);
   userPending.push({
     product_id: productId,
     platform: platform,
@@ -2572,28 +2612,24 @@ function addToPendingQueue(
     timestamp: Date.now(),
     retry_count: 0,
   });
-
-  // Clean up old entries
-  cleanupPendingPurchases(userId);
+  savePendingPurchasesToStorage(nk, userId, userPending);
+  cleanupPendingPurchases(nk, userId);
 }
 
 /**
  * Remove expired and successfully processed purchases from queue.
+ * Uses Nakama Storage for persistence.
  */
-function cleanupPendingPurchases(userId: string): void {
-  const userPending = pendingPurchases.get(userId);
-  if (!userPending) return;
+function cleanupPendingPurchases(nk: Runtime.Nakama, userId: string): void {
+  const userPending = getPendingPurchasesFromStorage(nk, userId);
+  if (userPending.length === 0) return;
 
   const now = Date.now();
   const valid = userPending.filter(
     (p) => now - p.timestamp < PENDING_PURCHASE_EXPIRY_MS && p.retry_count < MAX_PENDING_RETRIES
   );
 
-  if (valid.length === 0) {
-    pendingPurchases.delete(userId);
-  } else {
-    pendingPurchases.set(userId, valid);
-  }
+  savePendingPurchasesToStorage(nk, userId, valid);
 }
 
 /**
@@ -2617,7 +2653,7 @@ export function rpcProcessPendingPurchases(
     return createValidationErrorResponse('process_pending_purchases', validation.error);
   }
 
-  const userPending = pendingPurchases.get(ctx.userId);
+  const userPending = getPendingPurchasesFromStorage(nk, ctx.userId);
   if (!userPending || userPending.length === 0) {
     return JSON.stringify({
       success: true,
@@ -2765,7 +2801,7 @@ export function rpcProcessPendingPurchases(
   }
 
   // Clean up processed purchases
-  cleanupPendingPurchases(ctx.userId);
+  cleanupPendingPurchases(nk, ctx.userId);
 
   const successful = results.filter((r) => r.success).length;
   return JSON.stringify({
@@ -3920,6 +3956,14 @@ export function rpcRevenueCatWebhook(
       recordWebhookEvent(normalizedEventType, 'duplicate');
       return recorded;
     }
+    // Issue #1299 asked for a Redis SETNX lock here so two instances could not
+    // process the same event concurrently. That is not reachable in this runtime:
+    // ioredis is promise-based and the Nakama JS runtime (goja) has no microtask
+    // queue to drive it, so the await would never settle and the RPC would hang
+    // (issue #1135). The durable storage dedup above remains the authoritative
+    // idempotency guard; a true cross-instance lock needs the sync-HTTP/Redis
+    // migration tracked by #1135.
+    void getRedisClient(logger);
   }
 
   let result: {
