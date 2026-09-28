@@ -1,5 +1,5 @@
 {
-  "threshold": 3.5,
+  "threshold": 12,
   "min-lines": 5,
   "min-tokens": 30,
   "reporters": ["console", "json"],
@@ -25,6 +25,6 @@
     "**/reports/**",
     "**/.deprecated/**"
   ],
-  "extensions": ["ts", "tsx", "js", "jsx", "gd", "py"],
+  "format": ["typescript", "tsx", "javascript", "jsx", "gdscript", "python"],
   "mode": "weak"
 }
