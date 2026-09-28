@@ -77,9 +77,7 @@ async function runCleanup(
 
   for (const collection of CLEANUP_COLLECTIONS) {
     try {
-      await nk.storageDelete([
-        { collection, key: userId, userId },
-      ]);
+      await initializer.deleteStorageObjects([{ collection, key: userId, userId }]);
     } catch (err) {
       logger.debug(`cleanup_test_user: ${collection} storage delete: ${(err as Error).message}`);
     }

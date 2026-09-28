@@ -63,9 +63,16 @@ fi
 UNCOND_START=258
 UNCOND_END=271
 RL_IF_START=273
-RL_IF_END=541
-ELSE_START=542
-ELSE_END=617
+# RL_IF_END is computed dynamically below: it's the line of the second `} else {` block
+# (the start of the rate-limit-disabled branch). The unconditional helpers live
+# in lines 258-271, the rate-limit-enabled branch runs from line 273 up to (but
+# not including) the first `} else {`, and the rate-limit-disabled branch starts
+# at the second `} else {` and runs to end-of-file.
+ELSE_END=$(wc -l < "${INDEX_TS}" 2>/dev/null || echo 1)
+ELSE_START=$(awk '/^\s*}\s*else\s*\{\s*$/ { print NR; exit }' "${INDEX_TS}" | tail -n 1)
+# Fallback if we somehow miss it: end of the file's first else-block region.
+: "${ELSE_START:=542}"
+RL_IF_END=$((ELSE_START - 1))
 
 # Helper: print 'armored_archer/<id>' literals from a single helper's
 # function body. Many helpers register exactly one literal; some (like
