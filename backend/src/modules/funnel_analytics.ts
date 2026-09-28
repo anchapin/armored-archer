@@ -39,14 +39,28 @@ interface FunnelCounts {
 
 type FunnelStep = keyof FunnelCounts;
 
-const FUNNEL_STEP_EVENTS: Record<string, FunnelStep> = {
+/**
+ * The subset of PlayerFunnelState keys that hold a funnel timestamp.
+ *
+ * Narrowing this matters: `keyof PlayerFunnelState` also includes `user_id`
+ * (string) and `last_updated` (number), which must never be written by the
+ * per-step timestamp logic below.
+ */
+type PlayerFunnelTimestampField = {
+  [K in keyof PlayerFunnelState]: PlayerFunnelState[K] extends number | null ? K : never;
+}[keyof PlayerFunnelState];
+
+const FUNNEL_STEP_EVENTS: Record<string, Exclude<FunnelStep, 'updated_at'>> = {
   first_session: 'install',
   pve_stage_completed: 'first_pve_completed',
   pvp_match_completed: 'first_pvp_completed',
   purchase_completed: 'first_purchase',
 };
 
-const STEP_TIMESTAMP_FIELDS: Record<Exclude<FunnelStep, 'updated_at'>, keyof PlayerFunnelState> = {
+const STEP_TIMESTAMP_FIELDS: Record<
+  Exclude<FunnelStep, 'updated_at'>,
+  PlayerFunnelTimestampField
+> = {
   install: 'install_timestamp',
   first_pve_completed: 'first_pve_timestamp',
   first_pvp_completed: 'first_pvp_timestamp',
@@ -179,9 +193,9 @@ export function processFunnelEvent(
   }
 
   const timestampField = STEP_TIMESTAMP_FIELDS[step];
-  if ((state[timestampField] as number | null) !== null) return;
+  if (state[timestampField] !== null) return;
 
-  (state[timestampField] as number | null) = Date.now();
+  state[timestampField] = Date.now();
   state.last_updated = Date.now();
   writePlayerState(nk, userId, state);
 

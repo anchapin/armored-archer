@@ -331,7 +331,7 @@ export async function recordSeasonCompletion(
   };
 
   // Archive season data using system user
-  const archiveData = await getSeasonArchive(nk);
+  const archiveData = getSeasonArchive(nk);
   archiveData[seasonId] = archive;
 
   nk.storageWrite([
@@ -364,7 +364,7 @@ export async function getSeasonHistory(
   nk: Runtime.Nakama,
   limit: number = 10
 ): Promise<SeasonArchive[]> {
-  const archiveData = await getSeasonArchive(nk);
+  const archiveData = getSeasonArchive(nk);
   const seasons = Object.values(archiveData);
 
   // Sort by season number descending
@@ -665,7 +665,7 @@ export function updatePlayerLastActive(nk: Runtime.Nakama, playerId: string): vo
  * @param nk - Nakama server interface
  * @returns Archive data object
  */
-export async function getSeasonArchive(nk: Runtime.Nakama): Promise<Record<string, SeasonArchive>> {
+export function getSeasonArchive(nk: Runtime.Nakama): Record<string, SeasonArchive> {
   try {
     const storage = nk.storageRead([
       {
