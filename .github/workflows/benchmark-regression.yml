@@ -23,6 +23,7 @@ on:
 # required; the gate fails if the snapshot is missing.
 permissions:
   contents: read
+  actions: write
 
 jobs:
   benchmark:
@@ -79,6 +80,15 @@ jobs:
           SLOW_TEST_THRESHOLD: 100
         working-directory: backend
         run: npm run test:benchmark
+
+      - name: Upload headless benchmark snapshot
+        if: env.ACT != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-benchmark-snapshot
+          path: backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Benchmark summary
         if: always()
