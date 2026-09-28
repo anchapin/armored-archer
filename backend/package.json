@@ -39,7 +39,7 @@
     "detect-dead-flags": "ts-node --transpile-only ./scripts/detect-dead-flags.ts",
     "detect-dead-flags:ci": "ts-node --transpile-only ./scripts/detect-dead-flags.ts --ci-mode",
     "detect-duplicate": "jscpd --config .jscpd.json",
-    "detect-duplicate:ci": "jscpd --config .jscpd.json --threshold 3",
+    "detect-duplicate:ci": "jscpd --config .jscpd.json --baseline .jscpd-baseline.json --fail-on-new-clones 0",
     "tech-debt:report": "ts-node scripts/detect-tech-debt.ts",
     "tech-debt:report:ci": "ts-node scripts/detect-tech-debt.ts --ci-mode",
     "tech-debt:report:json": "ts-node scripts/detect-tech-debt.ts --json-output",
