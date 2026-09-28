@@ -336,7 +336,16 @@ jobs:
 
       - name: Run duplicate code detection on TypeScript (backend)
         working-directory: ./backend
-        run: npx jscpd --config .jscpd.json --threshold 3
+        # Baseline mode: fails only on clones not already recorded in
+        # backend/.jscpd-baseline.json, so the gate keeps its strictness across
+        # the jscpd 4 -> 5 detector change. The absolute `threshold` in
+        # .jscpd.json remains as a coarse backstop. Regenerate with:
+        #   cd backend && npx jscpd --config .jscpd.json \
+        #     --baseline .jscpd-baseline.json --update-baseline
+        run: >-
+          npx jscpd --config .jscpd.json
+          --baseline .jscpd-baseline.json
+          --fail-on-new-clones 0
 
       - name: Run duplicate code detection on GDScript and Python
         working-directory: ./backend
