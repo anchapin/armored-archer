@@ -1,6 +1,16 @@
 /**
- * Jest setup file - runs before test environment is set up
- * Clear environment variables to ensure tests start with clean state
+ * Jest setup file - runs after the test framework is installed.
+ * Clear environment variables to ensure tests start with clean state.
+ *
+ * NOTE on issue #1422 (anti_cheat.ts open interval handle): no global
+ * NODE_ENV reset is installed here on purpose. `alerting.test.ts` (and
+ * potentially other suites) deliberately sets `process.env.NODE_ENV` at
+ * file scope for its whole suite; a global afterEach forcing it back to
+ * 'test' breaks those suites (verified: 13 alerting failures). The reset is
+ * also unnecessary: the cleanup interval is no longer created at import
+ * time (see `initAntiCheatCleanup()` in `src/modules/anti_cheat.ts` — it is
+ * only invoked from `InitModule` in `src/index.ts`, which no test imports),
+ * and the handle is `.unref()`-ed so it can never hold the process open.
  */
 
 // Disable src/config/index.ts `loadEnvironment()` from reading `.env` off disk
