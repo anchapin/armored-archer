@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Runbook Citation Freshness Audit (issue #1148)
+# Runbook Citation Freshness Audit (issue #1148, #1425)
 #
 # Walks docs/runbooks/*.md and verifies every code citation against the
 # current backend source:
-#   1. <file>.ts:<line> (and <file>.yml:<line>) citations — the file must
-#      exist, the line must be in range, and any symbol named on the citation
-#      line must actually sit on that source line.
+#   1. <file>.ts[#symbol] / <file>.yml[#symbol] citations — when a symbol is
+#      given (file#symbol or file:line#symbol) the audit checks that the
+#      symbol exists anywhere in the file. Line numbers are kept as human
+#      hints only and excluded from the pass/fail decision.
+#      Legacy format: file:line without a symbol → falls back to line-number
+#      check and is marked as LEGACY so it can be migrated off deliberately.
 #   2. grep commands targeting backend/src — every pattern alternative must
 #      match in at least one listed file, and every listed file must match at
 #      least one alternative (a 3am grep that returns nothing is drift).
@@ -38,7 +41,7 @@ python3 - <<'PYEOF'
 import glob, os, re, sys
 
 runbooks = sorted(glob.glob("docs/runbooks/*.md"))
-fails, passes = [], 0
+fails, passes, legacy = [], 0, 0
 
 def read(p):
     with open(p, encoding="utf-8") as f:
@@ -77,12 +80,14 @@ for p in src_files:
     except OSError:
         pass
 
-def check(label, ok, detail):
-    global passes
+def check(label, ok, detail, is_legacy=False):
+    global passes, legacy
     if ok:
         passes += 1
     else:
-        fails.append(f"{label}: {detail}")
+        fails.append((label, detail, is_legacy))
+    if is_legacy and ok:
+        legacy += 1
 
 for rb in runbooks:
     lines = read(rb)
@@ -97,20 +102,58 @@ for rb in runbooks:
     if buf:
         joined.append(buf)
 
-    # --- A. <file>.ts:<line> / <file>.yml:<line> citations ---
+    # --- A. Citation patterns ---
+    # Symbol-anchored citations (primary format, #1425):
+    #   file.ts#symbol        — symbol anchor only
+    #   file.ts:123#symbol   — line hint + symbol anchor
+    # Legacy line-number citations (to be migrated):
+    #   file.ts:123          — line number only (no symbol)
     for i, ln in enumerate(lines, 1):
-        for m in re.finditer(r"([A-Za-z0-9_./-]+\.(?:ts|yml)):(\d+)", ln):
-            frag, lineno = m.group(1), int(m.group(2))
+        # Symbol-anchored: file#symbol or file:line#symbol
+        for m in re.finditer(r"([A-Za-z0-9_./-]+\.(?:ts|yml))(?::(\d+))?(#([A-Za-z_][A-Za-z0-9_]*))", ln):
+            frag = m.group(1)
+            lineno = int(m.group(2)) if m.group(2) else None
+            symbol = m.group(4)
             path = resolve_src(frag)
-            label = f"{rb}:{i} citation {frag}:{lineno}"
+            base_label = f"{rb}:{i}"
+
             if path is None:
-                check(label, False, "file not found under backend/")
+                check(f"{base_label} symbol citation {frag}#{symbol}", False,
+                      f"file not found under backend/ (tried: {[c for c in [f'backend/{frag}', f'backend/src/modules/{frag}', f'backend/src/{frag}', frag] if not c.startswith('backend/')]})")
                 continue
+
             src = read(path)
-            if not (0 < lineno <= len(src)):
-                check(label, False, f"line {lineno} out of range (file has {len(src)})")
-                continue
             content = "\n".join(src)
+
+            # Symbol-anchored: check symbol exists anywhere in file
+            # Word-boundary match: a rename that merely extends the old name
+            # (rpcRevenueCatWebhook -> rpcRevenueCatWebhookV2) must still fail.
+            symbol_ok = re.search(r'(?<![A-Za-z0-9_])' + re.escape(symbol) + r'(?![A-Za-z0-9_])', content) is not None
+            check(f"{base_label} symbol {frag}#{symbol}", symbol_ok,
+                  f"symbol '{symbol}' not found in {frag}" if not symbol_ok else "",
+                  is_legacy=False)
+
+        # Legacy line-number citations: file:line (no symbol) — marked as LEGACY
+        for m in re.finditer(r"([A-Za-z0-9_./-]+\.(?:ts|yml)):(\d+)(?!#)", ln):
+            frag = m.group(1)
+            lineno = int(m.group(2))
+            path = resolve_src(frag)
+            base_label = f"{rb}:{i}"
+
+            if path is None:
+                check(f"{base_label} LEGACY citation {frag}:{lineno}", False,
+                      "file not found under backend/", is_legacy=True)
+                continue
+
+            src = read(path)
+            content = "\n".join(src)
+
+            if not (0 < lineno <= len(src)):
+                check(f"{base_label} LEGACY citation {frag}:{lineno}", False,
+                      f"line {lineno} out of range (file has {len(src)})",
+                      is_legacy=True)
+                continue
+
             cands = set(re.findall(r"`([A-Za-z_][A-Za-z0-9_.]+)`", ln))
             cands |= set(METRIC.findall(ln))
             pathtoks = set(re.findall(r"[A-Za-z0-9_]+", frag))
@@ -120,10 +163,13 @@ for rb in runbooks:
             cands = {c for c in cands if IDENT.fullmatch(c)}
             if cands:
                 ok = any(c in src[lineno - 1] for c in cands)
-                check(label, ok, "no mentioned symbol sits on the cited line ("
-                      + ", ".join(sorted(cands)) + "); line reads: " + src[lineno-1].strip()[:80])
+                check(f"{base_label} LEGACY citation {frag}:{lineno}", ok,
+                      "LEGACY: no mentioned symbol sits on the cited line ("
+                      + ", ".join(sorted(cands)) + "); line reads: " + src[lineno-1].strip()[:80],
+                      is_legacy=True)
             else:
-                check(label, True, "")
+                check(f"{base_label} LEGACY citation {frag}:{lineno}", True, "",
+                      is_legacy=True)
 
     # --- B. grep patterns targeting backend/src ---
     for ln in joined:
@@ -171,10 +217,13 @@ for rb in runbooks:
 print("=" * 72)
 if fails:
     print(f"BROKEN CITATIONS: {len(fails)}")
-    for f in fails:
-        print("  FAIL " + f)
+    for label, detail, is_legacy in fails:
+        prefix = "LEGACY-FAIL" if is_legacy else "FAIL"
+        print(f"  {prefix} {label}: {detail}")
 else:
     print("BROKEN CITATIONS: 0")
 print(f"PASS: {passes} checks across {len(runbooks)} runbooks")
+if legacy > 0:
+    print(f"LEGACY: {legacy} passes on uncaptured line-number citations (migrate to symbol anchoring)")
 sys.exit(1 if fails else 0)
 PYEOF

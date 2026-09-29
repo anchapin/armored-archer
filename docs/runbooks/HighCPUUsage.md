@@ -44,7 +44,7 @@ docker stats --no-stream | sort -k3 -h
 ### 2. Cross-Reference the Health Module
 
 ```bash
-# Canonical app-side gauge (defined at backend/src/modules/health_monitor.ts:27)
+# Canonical app-side gauge (defined at backend/src/modules/health_monitor.ts#healthCheckCpuUsage)
 curl -s http://nakama:7350/metrics | grep armored_archer_health_cpu_usage_percent
 
 # Confirm RPC request volume is the cause (or not)
@@ -87,7 +87,7 @@ curl -s 'http://prometheus:9090/api/v1/query' \
 ### Step 3: Check Matchmaking and Match Loops
 
 ```bash
-# PvP matchmaking is the most common CPU consumer — see backend/src/modules/matchmaker.ts:1
+# PvP matchmaking is the most common CPU consumer — see backend/src/modules/matchmaker.ts
 curl -s 'http://prometheus:9090/api/v1/query' \
   -G --data-urlencode 'query=armored_archer_matchmaking_queue_size' \
   | jq '.data.result[0].value[1]'
