@@ -9,7 +9,7 @@ More than one `stage_complete` request per minute is being rejected as
 `DUPLICATE_COMPLETION` for 5 minutes. The claim-first dedup marker (issue
 #1069) is doing its job — every rejected request had a prior
 `stage_completion_claims` storage object younger than the 5-minute cooldown
-(`STAGE_COMPLETION_CLAIM_COOLDOWN_MS`, stage_progression.ts:78).
+(`STAGE_COMPLETION_CLAIM_COOLDOWN_MS`, stage_progression.ts#STAGE_COMPLETION_CLAIM_COOLDOWN_MS).
 
 Two very different root causes present identically here:
 
@@ -22,11 +22,11 @@ Two very different root causes present identically here:
 
 ## Signal Chain
 
-- RPC handler: `claimStageCompletionOrReject` (gear_system.ts:1762) calls
-  `checkStageCompletionClaim` (stage_progression.ts:110) and records
-  `recordStageClaim('replay_rejected')` (metrics.ts:1031) plus the
+- RPC handler: `claimStageCompletionOrReject` (gear_system.ts#claimStageCompletionOrReject) calls
+  `checkStageCompletionClaim` (stage_progression.ts#checkStageCompletionClaim) and records
+  `recordStageClaim('replay_rejected')` (metrics.ts#recordStageClaim) plus the
   `duplicate` terminal outcome of `armored_archer_stage_complete_total`
-  (metrics.ts:939) on every rejection.
+  (metrics.ts#recordStageCompleteOutcome) on every rejection.
 - Alert rule: `StageCompletionDuplicateSpike` in backend/alerts.yml
   (`sum(rate(armored_archer_stage_completion_claims_total{result="replay_rejected"}[5m])) > 1/60`).
 

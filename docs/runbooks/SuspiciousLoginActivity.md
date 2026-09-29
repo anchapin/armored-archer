@@ -45,7 +45,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Canonical counter: recordLoginAttempt in metrics.ts:665
+# Canonical counter: recordLoginAttempt in metrics.ts#recordLoginAttempt
 grep -n "recordLoginAttempt\|playerLoginAttempts\|armored_archer_player_login_attempts_total" \
   backend/src/modules/metrics.ts | head -20
 
@@ -149,7 +149,7 @@ docker exec postgres psql -U postgres -c \
    FROM auth_failures
    WHERE created_at > now() - interval '30 minutes';"
 
-# 2. Tighten rate-limit window for /authenticate — see rate_limit.ts:74 (`DEFAULT_RATE_LIMITS`)
+# 2. Tighten rate-limit window for /authenticate — see rate_limit.ts#DEFAULT_RATE_LIMITS (`DEFAULT_RATE_LIMITS`)
 # Add or tighten the entry for the auth RPC and roll out.
 docker-compose build nakama && docker-compose up -d nakama
 
@@ -166,7 +166,7 @@ docker exec postgres psql -U postgres -c \
    WHERE user_id = '<user_id>' AND created_at > now() - interval '1 hour';"
 
 # 2. Temporary account lockout — bump failed-login threshold and cool-down
-# Edit rate_limit.ts:74 (`DEFAULT_RATE_LIMITS`) → add or tighten a maxRequests / penaltyMs entry
+# Edit rate_limit.ts#DEFAULT_RATE_LIMITS (`DEFAULT_RATE_LIMITS`) → add or tighten a maxRequests / penaltyMs entry
 docker-compose build nakama && docker-compose up -d nakama
 
 # 3. Notify the account owner via player support
