@@ -306,6 +306,7 @@ function checkRefundProcessed(
   // microtask queue). Fall through to the durable storage marker — that is
   // the authority for at-most-once refund dedup (issue #1067).
   void getRedisClient(logger);
+  incrementWebhookRedisError('dedup_lookup');
 
   // 2. Durable Nakama storage marker (authoritative)
   try {
@@ -3161,6 +3162,7 @@ function getRecordedWebhookOutcome(
   // microtask queue). The in-memory + durable storage path below is the
   // authoritative record for webhook event dedup (issue #1067).
   void getRedisClient(logger);
+  incrementWebhookRedisError('dedup_lookup');
 
   // 2. In-memory cache
   const memoryCached = processedWebhookEvents.get(eventId);
@@ -3238,6 +3240,7 @@ function recordWebhookOutcome(
   // Skipped here; the durable storage marker above is authoritative, and
   // losing the cache entry only costs an extra storage read on dedup.
   void getRedisClient(logger);
+  incrementWebhookRedisError('outcome_record');
 
   // 3. In-memory cache
   processedWebhookEvents.set(eventId, outcomeJson);

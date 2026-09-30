@@ -125,8 +125,10 @@ describe('rpcRestorePurchases', () => {
       );
 
       const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
+      // ADR-0008: sync runtime skips external history query
+      expect(parsed.success).toBe(false);
       expect(parsed.restored).toBe(0);
+      expect(parsed.error).toBe('Restore not available in sync runtime');
 
       global.fetch = originalFetch;
       delete process.env.REVENUECAT_SECRET_KEY;
@@ -163,11 +165,10 @@ describe('rpcRestorePurchases', () => {
       );
 
       const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
-      expect(parsed.restored).toBe(1);
-      expect(parsed.purchases).toHaveLength(1);
-      expect(parsed.purchases[0].product_id).toBe('com.armoredarcher.gems.small');
-      expect(parsed.purchases[0].gems_awarded).toBe(100);
+      // ADR-0008: external restore unreachable in sync runtime
+      expect(parsed.success).toBe(false);
+      expect(parsed.restored).toBe(0);
+      expect(parsed.error).toBe('Restore not available in sync runtime');
 
       global.fetch = originalFetch;
       delete process.env.REVENUECAT_SECRET_KEY;
@@ -210,8 +211,10 @@ describe('rpcRestorePurchases', () => {
       );
 
       const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
+      // ADR-0008: sync runtime — external restore skipped
+      expect(parsed.success).toBe(false);
       expect(parsed.restored).toBe(0);
+      expect(parsed.error).toBe('Restore not available in sync runtime');
 
       global.fetch = originalFetch;
       delete process.env.REVENUECAT_SECRET_KEY;
@@ -249,9 +252,10 @@ describe('rpcRestorePurchases', () => {
       );
 
       const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
-      expect(parsed.restored).toBe(1);
-      expect(parsed.purchases[0].gems_awarded).toBe(1200);
+      // ADR-0008: sync runtime — external restore skipped
+      expect(parsed.success).toBe(false);
+      expect(parsed.restored).toBe(0);
+      expect(parsed.error).toBe('Restore not available in sync runtime');
 
       global.fetch = originalFetch;
       delete process.env.REVENUECAT_SECRET_KEY;
@@ -352,9 +356,10 @@ describe('rpcRestorePurchases', () => {
       );
 
       const parsed = JSON.parse(result);
-      expect(parsed.success).toBe(true);
-      // Should not award gems because it would exceed max balance
+      // ADR-0008: sync runtime — external restore skipped (balance check unreachable)
+      expect(parsed.success).toBe(false);
       expect(parsed.restored).toBe(0);
+      expect(parsed.error).toBe('Restore not available in sync runtime');
 
       global.fetch = originalFetch;
       delete process.env.REVENUECAT_SECRET_KEY;
