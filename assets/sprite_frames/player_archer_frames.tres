@@ -1,34 +1,185 @@
-[gd_resource type="SpriteFrames" format=3]
+[gd_resource type="SpriteFrames" load_steps=34 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/player/idle_down_0.png" id="1_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/idle_down_1.png" id="2_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/idle_down_2.png" id="3_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/idle_down_3.png" id="4_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/idle_down_4.png" id="5_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/idle_down_5.png" id="6_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/walk_down_0.png" id="7_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/walk_down_1.png" id="8_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/walk_down_2.png" id="9_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/walk_down_3.png" id="10_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/walk_down_4.png" id="11_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/walk_down_5.png" id="12_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_0.png" id="13_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_1.png" id="14_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_2.png" id="15_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_3.png" id="16_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_4.png" id="17_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_5.png" id="18_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/bow_draw_down_6.png" id="19_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_0.png" id="20_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_1.png" id="21_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_2.png" id="22_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_3.png" id="23_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_4.png" id="24_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_5.png" id="25_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/attack_down_6.png" id="26_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_0.png" id="27_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_1.png" id="28_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_2.png" id="29_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_3.png" id="30_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_4.png" id="31_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_5.png" id="32_f"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/death_down_6.png" id="33_f"]
 
 [resource]
 animations = [{
-"frames": [],
-"loop": false,
-"name": &"death",
-"speed": 6.0
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_f")
 }, {
-"frames": [],
-"loop": true,
-"name": &"default",
-"speed": 5.0
+"duration": 1.0,
+"texture": ExtResource("2_f")
 }, {
-"frames": [],
-"loop": false,
-"name": &"draw",
-"speed": 8.0
+"duration": 1.0,
+"texture": ExtResource("3_f")
 }, {
-"frames": [],
+"duration": 1.0,
+"texture": ExtResource("4_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_f")
+}],
 "loop": true,
 "name": &"idle",
 "speed": 8.0
 }, {
-"frames": [],
-"loop": false,
-"name": &"release",
-"speed": 12.0
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_f")
 }, {
-"frames": [],
+"duration": 1.0,
+"texture": ExtResource("2_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_f")
+}],
+"loop": true,
+"name": &"default",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_f")
+}],
 "loop": true,
 "name": &"walk",
+"speed": 12.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("13_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("14_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("16_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("17_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("19_f")
+}],
+"loop": false,
+"name": &"draw",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("20_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("21_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("22_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("23_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("24_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("25_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("26_f")
+}],
+"loop": false,
+"name": &"release",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("27_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("28_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("29_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("30_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("31_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("32_f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("33_f")
+}],
+"loop": false,
+"name": &"death",
 "speed": 8.0
 }]
