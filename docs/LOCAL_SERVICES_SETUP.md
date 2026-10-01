@@ -245,6 +245,16 @@ Note: `DB_PORT` in `backend/.env` describes the **in-container** Postgres
 port (5432). Compose maps it to host port **5433**, which is what the script
 checks. The same applies to `REDIS_PORT` (in-container 6379 → host 6380).
 
+The CI compose (`.github/docker-compose.yml`) binds a deliberately different
+set of ports — notably it claims the standard Postgres **5432** host port
+instead of 5433, and ships without Redis or observability services.
+`make ci-services-start` and `./scripts/local_services.sh` (the dev
+Makefile/script pair) both use the same guard via `check-ports.sh
+--profile ci`, which probes only **5432, 7350, 7351** and intentionally does
+**not** honor `backend/.env` (the CI compose hardcodes its ports inline).
+For the dev port set on the dev script path, no flag is needed — the script
+defaults to `--profile dev`.
+
 ### Database Connection Issues
 
 1. Ensure PostgreSQL is healthy:

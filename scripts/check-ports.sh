@@ -3,18 +3,37 @@
 # check-ports.sh — fail fast when a host port the compose stack binds is
 # already in use.
 #
-# `make backend-start` / `make services-start` previously let `docker compose
-# up -d` crash with a confusing "port is already allocated" error after the
-# stack had already started partially. This script is the first step of both
-# targets: it probes the host ports the compose file binds, prints the
-# offending PID + command for each conflict, and exits non-zero so chained
-# Make targets and CI see the failure.
+# `make backend-start` / `make services-start` / `make ci-services-start`
+# previously let `docker compose up -d` crash with a confusing "port is
+# already allocated" error after the stack had already started partially.
+# This script is the first step of those targets: it probes the host ports
+# the compose file binds, prints the offending PID + command for each
+# conflict, and exits non-zero so chained Make targets and CI see the
+# failure.
 #
 # It does NOT auto-pick free ports and does NOT prompt interactively.
 #
-# Scope:
-#   Default — game ports only (5433 postgres, 6380 redis, 7349/7350/7351 nakama)
-#   --all   — additionally checks the observability stack
+# Two compose stacks ship with this repo and they bind deliberately
+# different host ports:
+#
+#   Dev  — backend/docker-compose.yml (default profile)
+#         Postgres 5433 (compose maps 5433:5432), Redis 6380 (6380:6379),
+#         Nakama API 7350, Nakama Console 7351, Nakama gRPC 7349, plus
+#         the observability stack (see --all).
+#
+#   CI   — .github/docker-compose.yml (--profile ci)
+#         Postgres 5432 (compose maps 5432:5432), Nakama API 7350,
+#         Nakama Console 7351. No Redis, no observability stack.
+#
+# Profiles:
+#   --profile dev  (default) — checks the dev compose port set; honors
+#         backend/.env (NAKAMA_SERVER_PORT, NAKAMA_CONSOLE_PORT, REDIS_PORT).
+#         --all additionally checks the dev observability stack.
+#   --profile ci   — checks only the CI compose port set (5432, 7350, 7351).
+#         Does NOT source backend/.env — the CI compose hardcodes those
+#         ports inline (issue: CI profile binds the standard Postgres port).
+#         --all is accepted as a no-op with a warning because the CI compose
+#         has no observability services to check.
 #
 # Exit codes:
 #   0 — every requested port is free
@@ -22,13 +41,15 @@
 #   2 — neither `ss` nor `lsof` is available; cannot inspect ports at all
 #
 # Usage:
-#   scripts/check-ports.sh          # game ports only
-#   scripts/check-ports.sh --all    # game + observability
+#   scripts/check-ports.sh                  # dev profile, game ports only
+#   scripts/check-ports.sh --all            # dev profile + observability
+#   scripts/check-ports.sh --profile ci     # CI compose port set
+#   scripts/check-ports.sh --profile ci --all   # CI ports only (warns)
 #
 # Honors `backend/.env` if present (NAKAMA_SERVER_PORT, NAKAMA_CONSOLE_PORT,
 # REDIS_PORT) and falls back to the compose-file defaults. `DB_PORT` describes
 # the container port (5432) — compose maps it to host port 5433, which is what
-# we check.
+# we check (dev profile only).
 
 set -euo pipefail
 
@@ -37,10 +58,29 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$REPO_ROOT/backend/.env"
 
 CHECK_ALL=0
-for arg in "$@"; do
+PROFILE="dev"
+while [ $# -gt 0 ]; do
+    arg="$1"
     case "$arg" in
-        --all) CHECK_ALL=1 ;;
-        --help|-h) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --all) CHECK_ALL=1; shift ;;
+        --profile)
+            if [ $# -lt 2 ]; then
+                echo "Missing value for --profile (expected 'dev' or 'ci')" >&2; exit 2
+            fi
+            case "$2" in
+                dev|ci) PROFILE="$2" ;;
+                *) echo "Unknown --profile value: $2 (expected 'dev' or 'ci')" >&2; exit 2 ;;
+            esac
+            shift 2
+            ;;
+        --profile=*)
+            case "${arg#--profile=}" in
+                dev|ci) PROFILE="${arg#--profile=}" ;;
+                *) echo "Unknown --profile value: ${arg#--profile=} (expected 'dev' or 'ci')" >&2; exit 2 ;;
+            esac
+            shift
+            ;;
+        --help|-h) sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown flag: $arg" >&2; exit 2 ;;
     esac
 done
@@ -67,13 +107,13 @@ env_value() {
 
 # --- Port list (host-side binds from backend/docker-compose.yml) ------------
 # Format: "port:description". The descriptions are printed verbatim in the
-# conflict output so operators know which compose service is impacted.
+# conflict output so operators know which compose stack + port is impacted.
 GAME_PORTS=(
-    "5433:PostgreSQL (host bind; compose maps 5433:5432)"
-    "6380:Redis (host bind; compose maps 6380:6379)"
-    "7349:Nakama gRPC"
-    "7350:Nakama API (NAKAMA_SERVER_PORT)"
-    "7351:Nakama Console (NAKAMA_CONSOLE_PORT)"
+    "5433:PostgreSQL — dev compose host bind (compose maps 5433:5432)"
+    "6380:Redis — dev compose host bind (compose maps 6380:6379)"
+    "7349:Nakama gRPC — dev compose"
+    "7350:Nakama API — dev compose (NAKAMA_SERVER_PORT)"
+    "7351:Nakama Console — dev compose (NAKAMA_CONSOLE_PORT)"
 )
 # Opt-in via --all. Includes the otel-collector / tempo host-port remaps
 # documented in backend/docker-compose.yml (issue #895).
@@ -86,6 +126,15 @@ OBS_PORTS=(
     "6831:Jaeger thrift compact" "19411:otel-collector Zipkin (host remap)"
     "8888:otel-collector self-metrics" "8889:otel-collector exporter"
     "13133:otel-collector health" "55679:otel-collector Z-pages" "9411:Tempo Zipkin"
+)
+# CI compose (.github/docker-compose.yml) — Postgres intentionally claims
+# the standard 5432 host port (no ${POSTGRES_PORT} substitution), and there
+# is no Redis or observability stack. Ports here are NOT overridden by
+# backend/.env — the CI compose hardcodes them.
+CI_PORTS=(
+    "5432:PostgreSQL — CI compose host bind (compose maps 5432:5432)"
+    "7350:Nakama API — CI compose"
+    "7351:Nakama Console — CI compose"
 )
 
 # --- Tool selection ---------------------------------------------------------
@@ -113,14 +162,23 @@ cmd_for_pid() {
 }
 
 # --- Apply .env overrides for the compose-interpolated ports ----------------
-NAKAMA_SERVER_PORT="$(env_value NAKAMA_SERVER_PORT 7350)"
-NAKAMA_CONSOLE_PORT="$(env_value NAKAMA_CONSOLE_PORT 7351)"
-REDIS_PORT_HOST="$(env_value REDIS_PORT 6380)"
-# DB_PORT describes the in-container Postgres port (5432). The host bind is
-# always 5433 — that's what collides when something else is listening.
+# Only meaningful for the dev profile — the CI compose hardcodes its ports
+# inline (see .github/docker-compose.yml), so backend/.env never affects it.
+if [ "$PROFILE" = "dev" ]; then
+    NAKAMA_SERVER_PORT="$(env_value NAKAMA_SERVER_PORT 7350)"
+    NAKAMA_CONSOLE_PORT="$(env_value NAKAMA_CONSOLE_PORT 7351)"
+    REDIS_PORT_HOST="$(env_value REDIS_PORT 6380)"
+    # DB_PORT describes the in-container Postgres port (5432). The host bind is
+    # always 5433 — that's what collides when something else is listening.
+else
+    # CI compose ports are hardcoded; explicitly do NOT source backend/.env.
+    NAKAMA_SERVER_PORT=7350
+    NAKAMA_CONSOLE_PORT=7351
+    REDIS_PORT_HOST=6380  # unused for ci; kept so unset detection below works.
+fi
 
 # --- Probe ------------------------------------------------------------------
-info "Probing host ports for compose-stack conflicts"
+info "Probing host ports for compose-stack conflicts (profile: $PROFILE)"
 CONFLICTS=()
 
 check_one() {
@@ -138,30 +196,56 @@ check_one() {
     else
         echo "      holder: <unable to determine pid (insufficient perms?)>"
     fi
-    echo "      fix:   stop the conflicting process, or change the host bind in"
-    echo "            backend/docker-compose.yml (and backend/.env if it is env-driven)."
+    if [ "$PROFILE" = "ci" ]; then
+        echo "      fix:   stop the conflicting process, or change the host bind in"
+        echo "            .github/docker-compose.yml (the CI compose hardcodes ports — backend/.env is NOT read for this profile)."
+    else
+        echo "      fix:   stop the conflicting process, or change the host bind in"
+        echo "            backend/docker-compose.yml (and backend/.env if it is env-driven)."
+    fi
     CONFLICTS+=("$port")
 }
 
-for entry in "${GAME_PORTS[@]}"; do
-    case "${entry%%:*}" in
-        7350) entry="${NAKAMA_SERVER_PORT}:Nakama API (NAKAMA_SERVER_PORT)" ;;
-        7351) entry="${NAKAMA_CONSOLE_PORT}:Nakama Console (NAKAMA_CONSOLE_PORT)" ;;
-        6380) entry="${REDIS_PORT_HOST}:Redis (host bind; compose maps ${REDIS_PORT_HOST}:6379)" ;;
-    esac
-    check_one "$entry"
-done
-
-if [ "$CHECK_ALL" = "1" ]; then
-    for entry in "${OBS_PORTS[@]}"; do check_one "$entry"; done
+if [ "$PROFILE" = "ci" ]; then
+    # CI compose: hardcoded ports, no Redis, no observability stack. Do NOT
+    # source backend/.env — the file describes the dev stack and using its
+    # values here would mislead the operator (and the CI compose does not
+    # interpolate them anyway).
+    for entry in "${CI_PORTS[@]}"; do
+        check_one "$entry"
+    done
+    if [ "$CHECK_ALL" = "1" ]; then
+        info "--all has no extra ports to check on the CI profile (no Redis, no observability stack)"
+    fi
 else
-    info "Skipping observability ports (run with --all to include them)"
+    for entry in "${GAME_PORTS[@]}"; do
+        case "${entry%%:*}" in
+            7350) entry="${NAKAMA_SERVER_PORT}:Nakama API — dev compose (NAKAMA_SERVER_PORT)" ;;
+            7351) entry="${NAKAMA_CONSOLE_PORT}:Nakama Console — dev compose (NAKAMA_CONSOLE_PORT)" ;;
+            6380) entry="${REDIS_PORT_HOST}:Redis — dev compose host bind (compose maps ${REDIS_PORT_HOST}:6379)" ;;
+        esac
+        check_one "$entry"
+    done
+
+    if [ "$CHECK_ALL" = "1" ]; then
+        for entry in "${OBS_PORTS[@]}"; do check_one "$entry"; done
+    else
+        info "Skipping observability ports (run with --all to include them)"
+    fi
 fi
 
 echo ""
 if [ "${#CONFLICTS[@]}" -gt 0 ]; then
     err "Found ${#CONFLICTS[@]} port conflict(s): ${CONFLICTS[*]}"
-    echo "    Refusing to start the compose stack until the host ports above are free."
+    if [ "$PROFILE" = "ci" ]; then
+        echo "    Refusing to start the CI compose stack until the host ports above are free."
+    else
+        echo "    Refusing to start the compose stack until the host ports above are free."
+    fi
     exit 1
 fi
-ok "All requested ports are free — safe to run 'make backend-start' or 'make services-start'"
+if [ "$PROFILE" = "ci" ]; then
+    ok "All requested ports are free — safe to run 'make ci-services-start'"
+else
+    ok "All requested ports are free — safe to run 'make backend-start' or 'make services-start'"
+fi

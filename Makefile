@@ -79,7 +79,7 @@ help:
 	@echo "$(GREEN)CI Services (for act)$(RESET)"
 	@echo "  make ci-services-preflight        Fail-fast if backend/data/modules/index.js is missing (build:full prerequisite)"
 	@echo "  make ci-services-preflight-build  Run 'npm run build:full' then verify bundle"
-	@echo "  make ci-services-start            Start CI services (PostgreSQL:5432, Nakama:7350) — runs preflight + assert --require-nakama-bundle"
+	@echo "  make ci-services-start            Start CI services (PostgreSQL:5432, Nakama:7350) — pre-checks 5432/7350/7351, runs preflight + assert --require-nakama-bundle"
 	@echo "  make ci-services-stop             Stop CI services"
 	@echo "  make ci-services-status           Show CI services status + bundle mount check (fails when /nakama/data/modules is empty)"
 	@echo "  make ci-services-restart          Restart CI services"
@@ -573,6 +573,8 @@ ci-services-preflight-build:
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --no-print-directory ci-services-preflight
 
 ci-services-start:
+	@echo "$(BLUE)Pre-checking CI compose host ports for conflicts...$(RESET)"
+	@./scripts/check-ports.sh --profile ci
 	@echo "$(BLUE)Starting CI services (for act)...$(RESET)"
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --no-print-directory ci-services-preflight
 	docker compose -f .github/docker-compose.yml -p ci-armored-archer up -d
