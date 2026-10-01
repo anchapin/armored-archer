@@ -215,6 +215,36 @@ make backend-migrate-new
    docker-compose logs
    ```
 
+### "Port Already Allocated" / Compose-Bind Conflicts
+
+Both `make backend-start` and `make services-start` now run
+[`scripts/check-ports.sh`](../scripts/check-ports.sh) **before** invoking
+`docker compose up -d`. If a host port the compose stack binds (5433
+postgres, 6380 redis, 7349/7350/7351 nakama) is already in use, the script
+prints the offending port + PID + command (via `ss`, falling back to `lsof`)
+and exits non-zero so chained Make targets and CI see the failure.
+
+Example conflict output:
+
+```text
+✗ 5433  (PostgreSQL (host bind; compose maps 5433:5432)) — IN USE
+    pid:   1234
+    cmd:   docker-proxy ...
+    fix:   stop the conflicting process, or change the host bind in
+          backend/docker-compose.yml (and backend/.env if it is env-driven).
+```
+
+Remediation: stop the conflicting process (e.g. `kill <pid>`, or another
+`docker compose` stack on the same host), or change the host bind in
+`backend/docker-compose.yml`. To manually inspect every port the stack
+needs — including the observability stack (grafana, prometheus, loki, tempo,
+otel-collector, alertmanager, node-exporter, postgres-exporter) — run
+`scripts/check-ports.sh --all`. Pass `--help` for the full flag list.
+
+Note: `DB_PORT` in `backend/.env` describes the **in-container** Postgres
+port (5432). Compose maps it to host port **5433**, which is what the script
+checks. The same applies to `REDIS_PORT` (in-container 6379 → host 6380).
+
 ### Database Connection Issues
 
 1. Ensure PostgreSQL is healthy:
