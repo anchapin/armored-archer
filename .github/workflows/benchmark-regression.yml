@@ -32,10 +32,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload headless benchmark snapshot
         if: env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: headless-benchmark-snapshot
           path: backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json

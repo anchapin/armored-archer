@@ -32,10 +32,10 @@ jobs:
       url: https://staging.armored-archer.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -45,7 +45,7 @@ jobs:
 
       # Deployment observability: Create deployment status
       - name: Create deployment (staging)
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: deployment
         with:
           script: |
@@ -65,7 +65,7 @@ jobs:
             );
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -122,7 +122,7 @@ jobs:
       # Deployment observability: Update deployment status to success
       - name: Update deployment status (success)
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const deploymentId = '${{ steps.deployment.outputs.deployment_id }}';
@@ -142,7 +142,7 @@ jobs:
       # Deployment observability: Update deployment status to failure
       - name: Update deployment status (failure)
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const deploymentId = '${{ steps.deployment.outputs.deployment_id }}';
@@ -162,8 +162,10 @@ jobs:
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (staging)
         if: always() && env.ACT != 'true'
-        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "Deployment to *Staging* ${{ job.status }}",
@@ -211,9 +213,6 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   deploy-production:
     name: Deploy to Production
@@ -224,10 +223,10 @@ jobs:
       url: https://armored-archer.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
@@ -237,7 +236,7 @@ jobs:
 
       # Deployment observability: Create deployment status
       - name: Create deployment (production)
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: deployment
         with:
           script: |
@@ -257,7 +256,7 @@ jobs:
             );
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -314,7 +313,7 @@ jobs:
       # Deployment observability: Update deployment status to success
       - name: Update deployment status (success)
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const deploymentId = '${{ steps.deployment.outputs.deployment_id }}';
@@ -334,7 +333,7 @@ jobs:
       # Deployment observability: Update deployment status to failure
       - name: Update deployment status (failure)
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const deploymentId = '${{ steps.deployment.outputs.deployment_id }}';
@@ -354,8 +353,10 @@ jobs:
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (production)
         if: always() && env.ACT != 'true'
-        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           payload: |
             {
               "text": "Deployment to *Production* ${{ job.status }}",
@@ -403,6 +404,3 @@ jobs:
                 }
               ]
             }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

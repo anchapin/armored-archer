@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Skip for act (OOM issue)
         if: env.ACT == 'true'
@@ -102,7 +102,7 @@ jobs:
     # The gut_baseline_gate.py ratchet-down rule fails on every PR.
     # Set vars.GUT_BASELINE_FIXED=true once the baseline is reconciled.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Godot
         run: |
@@ -165,10 +165,10 @@ jobs:
       # (jest roots=src), which never connect to Nakama.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -381,12 +381,12 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success() && steps.detect-worktree.outputs.is_worktree == '0'
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          file: ./backend/coverage/lcov.info
+          files: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
-          git_service_name: github
+          git_service: github
           verbose: true
 
       - name: Skip Codecov (worktree/act detected)
@@ -397,7 +397,7 @@ jobs:
       
       - name: Upload test results
         if: env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: backend-test-results
@@ -449,10 +449,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [require-tests]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -474,7 +474,7 @@ jobs:
       
       - name: Upload report
         if: env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: flaky-test-report

@@ -19,10 +19,10 @@ jobs:
     name: Backend Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -42,7 +42,7 @@ jobs:
     # Pure shell + grep on backend/src/ — no npm install needed. Defends
     # against the #1387 class of drift (see docs/ci/issue-1393-reproduction.md).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Verify the two RPC-registration branches of backend/src/index.ts stay in sync
         run: bash scripts/ci/verify-rpc-registration.sh
@@ -51,10 +51,10 @@ jobs:
     name: Cyclomatic Complexity Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -72,10 +72,10 @@ jobs:
     name: N+1 Query Detection (Non-Blocking)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -93,10 +93,10 @@ jobs:
     name: Dead Feature Flag Detection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -114,10 +114,10 @@ jobs:
     name: Backend Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -162,10 +162,10 @@ jobs:
       # containers and executes `npm run test:integration`.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -236,12 +236,12 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success() && steps.detect-worktree.outputs.is_worktree == '0'
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          file: ./backend/coverage/lcov.info
+          files: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
-          git_service_name: github
+          git_service: github
           verbose: true
 
       - name: Skip Codecov (worktree/act detected)
@@ -254,10 +254,10 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -279,10 +279,10 @@ jobs:
     name: Log Scrubbing Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -300,10 +300,10 @@ jobs:
     name: N+1 Query Detection (Blocking)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -321,10 +321,10 @@ jobs:
     name: Duplicate Code Detection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -355,10 +355,10 @@ jobs:
     name: Unused Dependency Detection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -392,10 +392,10 @@ jobs:
     name: Bundle Size Tracking
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -417,7 +417,7 @@ jobs:
       
       - name: Upload bundle report
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bundle-report
           path: |
@@ -450,7 +450,7 @@ jobs:
     name: Godot Project Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Validate project.godot
         run: |
@@ -476,10 +476,10 @@ jobs:
     name: Python Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -494,10 +494,10 @@ jobs:
     name: GDScript Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -512,10 +512,10 @@ jobs:
     name: Tech Debt Tracking
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -535,7 +535,7 @@ jobs:
       
       - name: Upload Tech Debt Report
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: tech-debt-report
@@ -552,10 +552,10 @@ jobs:
     name: Dead Code Detection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -567,7 +567,7 @@ jobs:
         run: pip install gdtoolkit
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -612,12 +612,12 @@ jobs:
       # (jest roots=src); NAKAMA_* env vars below are inert config defaults.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Shallow clone should be disabled for SonarCloud
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -682,7 +682,7 @@ jobs:
 
       - name: Run SonarCloud Scanner for Backend (TypeScript/Node.js)
         if: env.ACT != 'true'
-        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -706,7 +706,7 @@ jobs:
       - name: Run SonarCloud Scanner for Game Scripts
         # Note: GDScript requires SonarQube server with community plugin
         if: env.ACT != 'true'
-        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -746,10 +746,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -806,7 +806,7 @@ jobs:
 
       - name: Upload schema test results
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: schema-test-results
@@ -822,10 +822,10 @@ jobs:
     name: AGENTS.md Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -841,7 +841,7 @@ jobs:
       
       - name: Upload validation report
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: agents-md-validation-report
@@ -858,10 +858,10 @@ jobs:
     name: Tracked-but-ignored Files Guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -889,7 +889,7 @@ jobs:
     name: Observability Config Consolidation Guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fail on duplicated or unmounted observability configs
         run: bash scripts/check-observability-configs.sh
@@ -942,10 +942,10 @@ jobs:
       HMAC_SECRET: ci-test-secret-do-not-use-in-production
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -963,7 +963,7 @@ jobs:
       # data/backend-flaky-test-history.json from the checkout is used instead.
       - name: Restore flaky-test history
         if: env.ACT != 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         continue-on-error: true
         with:
           path: data/backend-flaky-test-history.json
@@ -1220,7 +1220,7 @@ jobs:
       # one authority for the status check.
       - name: Annotate PR with test results (dorny/test-reporter)
         if: always() && env.ACT != 'true'
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         continue-on-error: true
         with:
           name: Backend Integration Tests (Nakama + Postgres)
@@ -1239,7 +1239,7 @@ jobs:
       # instead of stacking new comments.
       - name: Post PR comment with integration test summary
         if: always() && github.event_name == 'pull_request' && env.ACT != 'true' && steps.integration-summary.outputs.pr_comment_written == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -1280,7 +1280,7 @@ jobs:
       # overwrite history with an empty file.
       - name: Save flaky-test history
         if: always() && env.ACT != 'true' && steps.integration-summary.conclusion == 'success'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         continue-on-error: true
         with:
           path: data/backend-flaky-test-history.json
@@ -1291,7 +1291,7 @@ jobs:
       # weekly runs. Distinct from the short-lived raw output below.
       - name: Upload integration junit results
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: integration-test-junit
@@ -1304,7 +1304,7 @@ jobs:
 
       - name: Upload integration test results
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: integration-test-results
