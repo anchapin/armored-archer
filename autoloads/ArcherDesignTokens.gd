@@ -32,6 +32,7 @@ const COLOR_SURFACE_DIM := Color("#e5e2d9")
 
 # --- Content Colors ---
 const COLOR_ON_SURFACE := Color("#383833")  # Primary text
+const COLOR_ON_SURFACE_VARIANT := Color(0.22, 0.22, 0.2, 0.7)  # Secondary text (70% on_surface)
 const COLOR_OUTLINE_VARIANT := Color("#bbb9b3")  # For ghost borders
 
 # --- Ambient & Glass Effects ---

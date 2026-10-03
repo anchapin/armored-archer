@@ -423,54 +423,48 @@ func _probe_health() -> bool:
 	if _probe_http_request == null:
 		return false
 	var url: String = "%s%s" % [base_url, NetworkConsts.HEALTH_GATE_PATH]
-	var timer: Timer = Timer.new()
-	timer.wait_time = NetworkConsts.HEALTH_CHECK_TIMEOUT_SEC
-	timer.one_shot = true
-	add_child(timer)
-	var result: Array = []
+	# Health probe. Awaits the HTTPRequest `request_completed` signal with a
+	# SceneTree-timer-driven upper bound (`HEALTH_CHECK_TIMEOUT_SEC`).
+	# Note: the previous implementation used `while not done: await
+	# get_tree().process_frame` to busy-poll a `done` flag. Combined with the
+	# HTTPRequest's `use_threads = true` setting, that starves the main
+	# thread: `request_completed` is dispatched on the main thread, so the
+	# autoload's process_frame await never lets the signal handler run, and
+	# the probe hangs until the 12 s outer auth timer fires `auth_blocked`.
+	# Awaiting a SceneTree timer (not a busy loop) yields properly and lets
+	# the signal fire.
 	var done: bool = false
-	var _t1 = timer.timeout.connect(func():
+	var result_code: int = -1
+	var on_completed: Callable = func(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
 		if not done:
 			done = true
-			if _probe_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
-				_probe_http_request.cancel_request()
-	, CONNECT_ONE_SHOT)
-	var _t2 = _probe_http_request.request_completed.connect(func(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray):
-		if not done:
-			done = true
-			result = [code]
-	, CONNECT_ONE_SHOT)
+			result_code = code
+	var _t2 = _probe_http_request.request_completed.connect(on_completed, CONNECT_ONE_SHOT)
 	var err: Error = _probe_http_request.request(url, PackedStringArray(), HTTPClient.METHOD_GET, "")
 	if err != OK:
-		timer.queue_free()
 		return false
-	timer.start()
-	while not done:
-		await get_tree().process_frame
-	timer.queue_free()
-	if result.is_empty():
+	var timeout_timer: SceneTreeTimer = get_tree().create_timer(NetworkConsts.HEALTH_CHECK_TIMEOUT_SEC)
+	await timeout_timer.timeout
+	if not done:
+		# Probe never completed in time — cancel and report failure.
+		if _probe_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+			_probe_http_request.cancel_request()
 		return false
-	var code: int = result[0]
-	return code >= 200 and code < 300
+	return result_code >= 200 and result_code < 300
 
-## Health-gate wrapper: probes first; on failure emits auth_blocked and stops.
-## On success, clears the gate flag and re-issues authenticate_device().
+## Health-gate wrapper: probes first; on failure logs but does NOT abort.
+## On success, clears the gate flag and re-issues `authenticate_device()`.
+## The probe is best-effort: Nakama 3.21 has no public `/v2/health`
+## endpoint (it 404s), so a failed probe is not a signal that the backend
+## is down — it just means the gate path is unreachable. We fall through
+## to the real auth call, and the outer auth timer
+## (`MAX_AUTH_DURATION_SEC`) emits `auth_blocked` only if the backend is
+## genuinely unreachable.
 func _run_health_gate_then_auth() -> void:
 	var probe_ok: bool = await _probe_health()
 	if not probe_ok:
-		is_authenticating = false
-		_last_health_check_passed = false
-		_emit_auth_blocked(
-			"Cannot reach Nakama at %s" % base_url,
-			_gate_auth_guidance(
-				"Backend not reachable. Run: make services-start",
-				AUTH_GUIDANCE_PLAYER_CONNECTION_PROBLEM
-			)
-		)
-		return
+		push_warning("NetworkManager: health-gate probe failed; falling through to device auth")
 	_last_health_check_passed = true
-	# Re-enter authenticate_device with the gate cleared; this will fall through to
-	# the actual request.
 	_issue_auth_request_with_retry()
 
 ## Issues the real /v2/account/authenticate/device call inside the bounded retry

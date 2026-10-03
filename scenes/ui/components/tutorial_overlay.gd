@@ -4,10 +4,10 @@
 extends Control
 
 # --- Node References ---
-@onready var title_label: Label = $VBoxContainer/TitleLabel
-@onready var description_label: Label = $VBoxContainer/DescriptionLabel
-@onready var progress_label: Label = $VBoxContainer/ProgressLabel
-@onready var skip_button: Button = $VBoxContainer/SkipButton
+@onready var title_label: Label = $PanelContainer/VBoxContainer/TitleLabel
+@onready var description_label: Label = $PanelContainer/VBoxContainer/DescriptionLabel
+@onready var progress_label: Label = $PanelContainer/VBoxContainer/ProgressLabel
+@onready var skip_button: Button = $PanelContainer/VBoxContainer/SkipButton
 @onready var panel: PanelContainer = $PanelContainer
 @onready var content_container: VBoxContainer = $PanelContainer/VBoxContainer
 

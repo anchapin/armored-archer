@@ -356,7 +356,9 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 		button.text += " \u2713"  # Checkmark
 
 	# Add visual progress indicator - status circle
-	var status_icon = _create_status_icon(is_completed, is_unlocked, level_met, stage_data.get("boss"))
+	# "boss" is null for normal stages and a boss id String otherwise; coerce to bool
+	var is_boss_stage: bool = true if stage_data.get("boss") else false
+	var status_icon = _create_status_icon(is_completed, is_unlocked, level_met, is_boss_stage)
 	button.add_child(status_icon)
 	status_icon.position = Vector2(button.custom_minimum_size.x - 25, 10)
 
@@ -517,12 +519,12 @@ func _apply_theme() -> void:
 
 	# Style progress bar background
 	if progress_bar_background:
-		progress_bar_background.color = colors["surface_container_high"]
+		progress_bar_background.color = colors["surface_high"]
 
 	# Style boss unlock panel
 	if boss_unlock_info:
 		boss_unlock_info.modulate = Color(1, 1, 1, 0)  # Initially hidden
-		boss_unlock_info.self_modulate = colors["surface_container_lowest"]
+		boss_unlock_info.self_modulate = colors["surface_lowest"]
 	if boss_unlock_label:
 		boss_unlock_label.modulate = colors["on_surface"]
 

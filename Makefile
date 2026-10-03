@@ -25,7 +25,7 @@ help:
 	@echo "  make setup              Install all dependencies (npm + Godot)"
 	@echo ""
 	@echo "$(GREEN)Backend Commands$(RESET)"
-	@echo "  make backend-start      Start Nakama backend with Docker"
+	@echo "  make backend-start      Start Nakama backend with Docker (pre-checks host ports)"
 	@echo "  make backend-stop        Stop backend services"
 	@echo "  make backend-dev        Start backend with auto-reload"
 	@echo "  make backend-test       Run TypeScript backend tests"
@@ -64,7 +64,7 @@ help:
 	@echo "  make backend-db-schema   Display current database schema"
 	@echo ""
 	@echo "$(GREEN)Local Services (Dev)$(RESET)"
-	@echo "  make services-start                 Start Nakama + PostgreSQL (robust cold-start, #907)"
+	@echo "  make services-start                 Start Nakama + PostgreSQL (robust cold-start, #907; pre-checks host ports)"
 	@echo "  make services-cold-start            Same as services-start"
 	@echo "  make services-assert-cold-start     Assert stack reached all-green"
 	@echo "  make services-stop                  Stop all service containers"
@@ -79,7 +79,7 @@ help:
 	@echo "$(GREEN)CI Services (for act)$(RESET)"
 	@echo "  make ci-services-preflight        Fail-fast if backend/data/modules/index.js is missing (build:full prerequisite)"
 	@echo "  make ci-services-preflight-build  Run 'npm run build:full' then verify bundle"
-	@echo "  make ci-services-start            Start CI services (PostgreSQL:5432, Nakama:7350) — runs preflight + assert --require-nakama-bundle"
+	@echo "  make ci-services-start            Start CI services (PostgreSQL:5432, Nakama:7350) — pre-checks 5432/7350/7351, runs preflight + assert --require-nakama-bundle"
 	@echo "  make ci-services-stop             Stop CI services"
 	@echo "  make ci-services-status           Show CI services status + bundle mount check (fails when /nakama/data/modules is empty)"
 	@echo "  make ci-services-restart          Restart CI services"
@@ -173,6 +173,8 @@ commit-check:
 
 ## Backend Commands
 backend-start:
+	@echo "$(BLUE)Pre-checking host ports for compose conflicts...$(RESET)"
+	@./scripts/check-ports.sh
 	@echo "$(BLUE)Starting Nakama backend...$(RESET)"
 	cd $(BACKEND_DIR) && docker compose up -d
 	@echo "$(GREEN)Nakama started: http://localhost:7350$(RESET)"
@@ -327,13 +329,20 @@ serve-burndown:
 # cold state (no containers, no volumes) reaches `make services-health`
 # all-green with zero manual steps. If you already have a healthy stack this
 # is a no-op (docker compose up -d is idempotent) — preserved for back-compat.
+# The port pre-check runs first from the Makefile (NOT inside cold-start.sh)
+# so a fast fail does not require re-touching cold-start.sh and so the same
+# check guards both `services-start` and `services-cold-start`.
 services-start:
+	@echo "$(BLUE)Pre-checking host ports for compose conflicts...$(RESET)"
+	@./scripts/check-ports.sh
 	@echo "$(BLUE)Starting local services (Nakama + PostgreSQL) — robust cold-start (#907)$(RESET)"
 	@./scripts/cold-start.sh
 	@echo ""
 	@echo "Run 'make services-health' to verify services are healthy."
 
 services-cold-start:
+	@echo "$(BLUE)Pre-checking host ports for compose conflicts...$(RESET)"
+	@./scripts/check-ports.sh
 	@echo "$(BLUE)Robust cold-start (alias for services-start, see #907)$(RESET)"
 	@./scripts/cold-start.sh
 
@@ -564,6 +573,8 @@ ci-services-preflight-build:
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --no-print-directory ci-services-preflight
 
 ci-services-start:
+	@echo "$(BLUE)Pre-checking CI compose host ports for conflicts...$(RESET)"
+	@./scripts/check-ports.sh --profile ci
 	@echo "$(BLUE)Starting CI services (for act)...$(RESET)"
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --no-print-directory ci-services-preflight
 	docker compose -f .github/docker-compose.yml -p ci-armored-archer up -d
