@@ -22,10 +22,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@3b1a19a80ab047f35cbb237b5bd9bdc1e14f166c # v3
+      uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
       with:
         languages: ${{ matrix.language }}
         config: |
@@ -37,7 +37,7 @@ jobs:
             - '**/*.test.gd'
 
     - name: Autobuild
-      uses: github/codeql-action/autobuild@3b1a19a80ab047f35cbb237b5bd9bdc1e14f166c # v3
+      uses: github/codeql-action/autobuild@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@3b1a19a80ab047f35cbb237b5bd9bdc1e14f166c # v3
+      uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4

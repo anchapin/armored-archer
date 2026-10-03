@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Get Sentry errors
         id: sentry
@@ -70,7 +70,7 @@ jobs:
 
       - name: Post error summary to PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             // This would post a comment on the PR with error summary
@@ -82,7 +82,7 @@ jobs:
           echo "Error metrics would be recorded here"
           
       - name: Upload Sentry results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sentry-error-report
           path: .sentinel/
@@ -102,7 +102,7 @@ jobs:
           echo "alert_id=${{ github.event.client_payload.alert_id }}" >> $GITHUB_OUTPUT
           
       - name: Create GitHub issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const issueBody = `

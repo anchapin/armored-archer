@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Godot
         run: |
@@ -69,7 +69,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload current screenshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: visual-regression-screenshots
@@ -79,7 +79,7 @@ jobs:
           retention-days: 30
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: visual-regression-results
@@ -150,7 +150,7 @@ jobs:
 
       - name: Add PR comment with results
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -177,7 +177,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Godot
         run: |
@@ -206,7 +206,7 @@ jobs:
           set -e
 
       - name: Upload theme consistency results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: theme-consistency-results
