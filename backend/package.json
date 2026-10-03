@@ -9,7 +9,7 @@
     "build:full": "npm run build && npm run bundle:nakama && npm run bundle:validate",
     "bundle:nakama": "webpack --mode=production --config webpack.nakama.config.js && node scripts/transpile-bundle.js",
     "bundle:validate": "node scripts/validate-nakama-bundle.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -87,7 +87,7 @@
     "@typescript-eslint/eslint-plugin": "^8.67.0",
     "@typescript-eslint/parser": "^8.70.1",
     "babel-loader": "^10.1.1",
-    "depcheck": "^1.4.7",
+    "depcheck": "1.4.3",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
@@ -103,7 +103,7 @@
     "ts-jest": "^29.4.12",
     "ts-loader": "^9.6.2",
     "ts-node": "^10.9.0",
-    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.15",
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
     "webpack": "^5.111.0",
@@ -131,6 +131,9 @@
     "winston": "^3.11.0"
   },
   "overrides": {
-    "@babel/core": "^8.0.1"
+    "@babel/core": "^8.0.1",
+    "scss-parser": {
+      "lodash": "^4.17.24"
+    }
   }
 }
