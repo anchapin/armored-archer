@@ -1,9 +1,9 @@
 extends Node2D
 
 @onready var player: CharacterBody2D = get_node_or_null("Player")
-@onready var touch_ui: Control = get_node_or_null("TouchUI")
+@onready var touch_ui: Control = get_node_or_null("HUD/TouchUI")
 @onready var camera: Camera2D = $Camera2D
-@onready var tutorial_controller: Node = get_node_or_null("TutorialController")
+@onready var tutorial_controller: Node = get_node_or_null("HUD/TutorialController")
 
 # --- Tutorial Integration ---
 var tutorial_controller_scene: PackedScene = preload("res://scenes/ui/tutorial_controller.tscn")
@@ -33,7 +33,9 @@ func _setup_tutorial_controller() -> void:
 	if not tutorial_controller:
 		tutorial_controller = tutorial_controller_scene.instantiate()
 		tutorial_controller.name = "TutorialController"
-		add_child(tutorial_controller)
+		# Issue #1449: parent under the HUD CanvasLayer so the overlay is drawn in
+		# screen space instead of world space (where it followed the camera off-screen).
+		$HUD.add_child(tutorial_controller)
 
 func _process(_delta: float) -> void:
 	# Make camera follow player

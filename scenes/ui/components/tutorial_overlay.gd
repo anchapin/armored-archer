@@ -177,5 +177,18 @@ func _update_position() -> void:
 			panel.offset_right = 150.0
 			panel.offset_bottom = 100.0
 
+	# Issue #1449: when step text makes the panel taller or wider than its
+	# offsets, grow toward the middle of the screen so corner panels never
+	# clip off the edge they are pinned to.
+	panel.grow_horizontal = _grow_for_anchor(panel.anchor_left)
+	panel.grow_vertical = _grow_for_anchor(panel.anchor_top)
+
+func _grow_for_anchor(anchor: float) -> Control.GrowDirection:
+	if anchor <= 0.25:
+		return Control.GROW_DIRECTION_END
+	if anchor >= 0.75:
+		return Control.GROW_DIRECTION_BEGIN
+	return Control.GROW_DIRECTION_BOTH
+
 func _on_skip_pressed() -> void:
 	skip_requested.emit()
