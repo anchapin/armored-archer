@@ -4,13 +4,13 @@
 # This Dockerfile is used for containerizing the Nakama backend server.
 # The Godot client is built separately and connects to this server.
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
 # Copy backend files
 COPY backend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 COPY backend/dist ./dist
 
