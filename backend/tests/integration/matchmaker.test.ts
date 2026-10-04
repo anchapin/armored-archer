@@ -36,21 +36,10 @@ describe('Matchmaker Integration Tests', () => {
 
   afterEach(async () => {
     // Clean up matches created during this test
-    for (const matchId of createdMatchIds) {
-      try {
-        // We cannot directly delete matches via client unless we have admin rights
-        // Use admin to delete storage objects for these matches
-        const admin = await testHelper.getAdminClient();
-        await admin.storageDelete([
-          {
-            collection: 'pvp_matches',
-            key: matchId,
-            userId: '', // delete regardless of userId
-          },
-        ]);
-      } catch (e) {
-        // ignore cleanup errors
-      }
+    try {
+      await testHelper.deleteStorageObjectsAnyOwner('pvp_matches', createdMatchIds);
+    } catch (e) {
+      // ignore cleanup errors
     }
     createdMatchIds = [];
   });
@@ -318,10 +307,7 @@ describe('Matchmaker Integration Tests', () => {
     beforeAll(async () => {
       // Create a completed match in the database for testing
       testMatchId = `test_match_${Date.now()}`;
-      const admin = await testHelper.getAdminClient();
-      await admin.rpc(
-        await testHelper.getServerSession(),
-        'sql',
+      await testHelper.sql(
         `
         INSERT INTO match_results (
           match_id, creator_id, opponent_id, winner_id, loser_id,
@@ -476,14 +462,8 @@ describe('Matchmaker Integration Tests', () => {
 
     afterAll(async () => {
       // Clean up the test match
-      const admin = await testHelper.getAdminClient();
       try {
-        await admin.rpc(
-          await testHelper.getServerSession(),
-          'sql',
-          `DELETE FROM match_results WHERE match_id = $1`,
-          [testMatchId]
-        );
+        await testHelper.sql(`DELETE FROM match_results WHERE match_id = $1`, [testMatchId]);
       } catch (e) {
         // Ignore cleanup errors
       }
