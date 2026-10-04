@@ -91,6 +91,24 @@ jobs:
           echo "CombatManager tests: $(grep -c 'func test_' test/test_combat_manager.gd)"
           echo "PlayerStatsManager tests: $(grep -c 'func test_' test/test_player_stats_manager.gd)"
 
+  stage-smoke-test:
+    name: Stage Smoke Test (headless play, #1464)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.6-stable_linux.x86_64
+          mv Godot_v4.6-stable_linux.x86_64 godot4
+
+      - name: Play stage 1 headless for 60s
+        run: GODOT=./godot4 scripts/smoke_stage.sh 60 10
+
   godot-coverage-gate:
     name: Coverage Gate (Tracked Autoload Coverage, issue #1097)
     runs-on: ubuntu-latest

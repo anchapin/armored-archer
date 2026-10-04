@@ -3,6 +3,8 @@
 # Updated: 2026-03-17 - Added design system support
 extends Control
 
+const NetworkConsts := preload("res://autoloads/const.gd")
+
 # --- UI References ---
 var loading_label: Label
 var status_label: Label
@@ -107,6 +109,8 @@ func _on_session_created(success: bool, error_message: String) -> void:
 
 		login_complete.emit(true)
 	else:
+		if _continue_offline_if_pve_only():
+			return
 		loading_label.text = "Connection Failed"
 		status_label.text = error_message
 		progress_bar.value = 0.0
@@ -142,6 +146,8 @@ func _on_retry_pressed() -> void:
 # error panel, and wait for the user to press Retry.
 func _on_auth_blocked(reason: String, guidance: String) -> void:
 	is_connecting = false
+	if _continue_offline_if_pve_only():
+		return
 	if loading_label:
 		loading_label.text = "Cannot connect"
 	if status_label:
@@ -164,6 +170,31 @@ func _on_error_retry_pressed() -> void:
 
 func _on_test_connection_pressed() -> void:
 	_transition_to_scene("res://scenes/ui/connection_test_scene.tscn")
+
+## PvE-only builds (NetworkConsts.MVP_PVE_ONLY) need no server to play the
+## campaign, so a failed or blocked login drops the player into the main menu
+## offline instead of parking them on a Retry screen. Returns true when it did.
+var _offline_continue_started: bool = false
+
+func _continue_offline_if_pve_only() -> bool:
+	if not NetworkConsts.MVP_PVE_ONLY:
+		return false
+	if _offline_continue_started:
+		return true
+	_offline_continue_started = true
+	is_connecting = false
+	if loading_label:
+		loading_label.text = "Playing offline"
+	if status_label:
+		status_label.text = "No server needed for the campaign. Progress is saved on this device."
+	if progress_bar:
+		progress_bar.value = 100.0
+	if error_panel:
+		error_panel.hide()
+	var tween: Tween = create_tween()
+	var _t1 = tween.tween_interval(0.8)
+	var _t2 = tween.tween_callback(_load_main_menu)
+	return true
 
 # --- Navigation ---
 func _load_main_menu() -> void:
