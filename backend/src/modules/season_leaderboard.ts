@@ -219,11 +219,11 @@ export async function getTopPlayers(
  * @param playerId - Player ID
  * @returns Player's rank or null if not found
  */
-export async function getPlayerRank(
+export function getPlayerRank(
   nk: Runtime.Nakama,
   seasonId: string,
   playerId: string
-): Promise<{ rank: number; entry: SeasonRanking } | null> {
+): { rank: number; entry: SeasonRanking } | null {
   const records = nk.leaderboardRecordList(seasonId, [playerId], 1, '', 0);
 
   if (records.length === 0) {
@@ -240,7 +240,7 @@ export async function getPlayerRank(
   // Collect every ownerId we need a last-active timestamp for (target + the
   // other players we'll compare against) and batch the lookup — one
   // storageRead instead of one per record (issue #1089).
-  const lastActiveMap = await getPlayersLastActiveBatch(
+  const lastActiveMap = getPlayersLastActiveBatch(
     nk,
     collectOwnerIdsForRank(record.ownerId, playerId, allRecords)
   );
@@ -575,10 +575,10 @@ export async function getPlayerLastActive(nk: Runtime.Nakama, playerId: string):
  * @param playerIds - Player IDs to fetch (duplicates are collapsed; order is preserved)
  * @returns Map of player ID -> last-active timestamp in ms (0 if unknown)
  */
-export async function getPlayersLastActiveBatch(
+export function getPlayersLastActiveBatch(
   nk: Runtime.Nakama,
   playerIds: string[]
-): Promise<Map<string, number>> {
+): Map<string, number> {
   const result = new Map<string, number>();
   if (playerIds.length === 0) {
     return result;
@@ -848,12 +848,12 @@ export async function rpcGetSeasonHistory(
  *   "rating": 1450     // deprecated alias of ladder_rating
  * }
  */
-export async function rpcGetPlayerRank(
+export function rpcGetPlayerRank(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Get player rank called for user: %s', ctx.userId);
 
   // Validate payload (using schema from validation module)
@@ -891,7 +891,7 @@ export async function rpcGetPlayerRank(
     }
 
     const currentSeason = getCurrentSeasonInfo(nk);
-    const rankResult = await getPlayerRank(nk, currentSeason.season_id, ctx.userId);
+    const rankResult = getPlayerRank(nk, currentSeason.season_id, ctx.userId);
 
     if (!rankResult) {
       return JSON.stringify({

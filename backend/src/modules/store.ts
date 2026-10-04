@@ -2478,13 +2478,16 @@ function getPendingPurchasesFromStorage(nk: Runtime.Nakama, userId: string): Pen
     if (objects.length === 0) return [];
     const rawValue = (objects[0] as Runtime.StorageObject).value;
     const jsonStr = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue);
-    const parsed = safeParse<PendingPurchase[]>(
+    const parsed = safeParse<PendingPurchase[] | { purchases?: PendingPurchase[] }>(
       jsonStr,
       null,
       undefined,
       'getPendingPurchasesFromStorage'
     );
-    return parsed.success && parsed.data ? parsed.data : [];
+    if (!parsed.success || !parsed.data) return [];
+    // Current shape is { purchases: [...] }; legacy rows were a bare array.
+    if (Array.isArray(parsed.data)) return parsed.data;
+    return Array.isArray(parsed.data.purchases) ? parsed.data.purchases : [];
   } catch {
     return [];
   }
@@ -2507,7 +2510,9 @@ function savePendingPurchasesToStorage(
         collection: PENDING_PURCHASES_COLLECTION,
         key: userId,
         userId: userId,
-        value: JSON.stringify(purchases),
+        // Wrapped in an object: Nakama's storageWrite rejects a JSON string
+        // ("expects 'value' value to be an object").
+        value: toStorageValue({ purchases }),
       },
     ]);
   }

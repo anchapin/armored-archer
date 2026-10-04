@@ -130,6 +130,9 @@ export function registerTestFixtureRpcs(
     'TEST_FIXTURE_RPCS_ENABLED=true: registering test-only leaderboard fixture RPC. ' +
       'This must never be enabled outside CI.'
   );
-  initializer.registerRpc(TEST_FIXTURE_RPC_ID, rpcTestLeaderboardFixture);
+  // Literal id (not TEST_FIXTURE_RPC_ID): scripts/transpile-bundle.js finds
+  // RPC ids by scanning for registerRpc('<id>'; a constant here is invisible
+  // to it, so the RPC was never bridged and every call 404'd.
+  initializer.registerRpc('armored_archer/test_leaderboard_fixture', rpcTestLeaderboardFixture);
   return true;
 }

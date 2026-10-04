@@ -28,7 +28,7 @@ describe('E2E Authentication Flow', () => {
       const deviceId = `test_device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
       const username = `device_user_${Date.now()}`;
 
-      const session = await client.authenticateDevice(deviceId, username, true);
+      const session = await client.authenticateDevice(deviceId, true, username);
 
       expect(session).toBeDefined();
       expect(session.token).toBeDefined();
@@ -42,10 +42,10 @@ describe('E2E Authentication Flow', () => {
       const deviceId = `reuse_device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
       const username = `reuse_user_${Date.now()}`;
 
-      const session1 = await client.authenticateDevice(deviceId, username, true);
+      const session1 = await client.authenticateDevice(deviceId, true, username);
       const userId1 = session1.user_id;
 
-      const session2 = await client.authenticateDevice(deviceId, username, false);
+      const session2 = await client.authenticateDevice(deviceId, false, username);
       const userId2 = session2.user_id;
 
       expect(userId1).toBe(userId2);
@@ -58,7 +58,7 @@ describe('E2E Authentication Flow', () => {
       const username = `invalid_device_${Date.now()}`;
 
       try {
-        await client.authenticateDevice(emptyDeviceId, username, true);
+        await client.authenticateDevice(emptyDeviceId, true, username);
         expect(true).toBe(false);
       } catch (error: unknown) {
         expect(error).toBeDefined();
@@ -71,7 +71,7 @@ describe('E2E Authentication Flow', () => {
       const client = createClient();
       const deviceId = `jwt_test_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-      const session = await client.authenticateDevice(deviceId, `jwt_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(deviceId, true, `jwt_user_${Date.now()}`);
 
       const tokenParts = session.token.split('.');
       expect(tokenParts.length).toBe(3);
@@ -85,7 +85,7 @@ describe('E2E Authentication Flow', () => {
       const client = createClient();
       const deviceId = `expiry_test_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-      const session = await client.authenticateDevice(deviceId, `expiry_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(deviceId, true, `expiry_user_${Date.now()}`);
 
       expect(session.expires_at).toBeGreaterThan(Date.now() / 1000);
       expect(session.expires_at).toBeLessThanOrEqual(Date.now() / 1000 + 60 * 60);
@@ -95,7 +95,7 @@ describe('E2E Authentication Flow', () => {
       const client = createClient();
       const deviceId = `userid_test_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
-      const session = await client.authenticateDevice(deviceId, `userid_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(deviceId, true, `userid_user_${Date.now()}`);
 
       expect(session.user_id).toBeDefined();
       expect(typeof session.user_id).toBe('string');
@@ -109,7 +109,7 @@ describe('E2E Authentication Flow', () => {
       const deviceId = `lifecycle_test_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
       const username = `lifecycle_user_${Date.now()}`;
 
-      const session = await client.authenticateDevice(deviceId, username, true);
+      const session = await client.authenticateDevice(deviceId, true, username);
 
       const result1 = await client.rpc(session, 'armored_archer/get_player_rank', {});
       expect(result1).toBeDefined();
@@ -125,7 +125,7 @@ describe('E2E Authentication Flow', () => {
 
       for (let i = 0; i < 5; i++) {
         const deviceId = `${baseDeviceId}_${i}`;
-        const session = await client.authenticateDevice(deviceId, `rapid_${i}_${Date.now()}`, true);
+        const session = await client.authenticateDevice(deviceId, true, `rapid_${i}_${Date.now()}`);
         results.push(session.user_id);
       }
 
@@ -138,7 +138,11 @@ describe('E2E Authentication Flow', () => {
     test('should reject RPC calls with malformed token', async () => {
       const client = createClient();
       const deviceId = `malformed_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      const session = await client.authenticateDevice(deviceId, `malformed_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(
+        deviceId,
+        true,
+        `malformed_user_${Date.now()}`
+      );
 
       const badSession = {
         ...session,
@@ -156,7 +160,7 @@ describe('E2E Authentication Flow', () => {
     test('should reject RPC calls with empty token', async () => {
       const client = createClient();
       const deviceId = `empty_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      const session = await client.authenticateDevice(deviceId, `empty_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(deviceId, true, `empty_user_${Date.now()}`);
 
       const emptySession = {
         ...session,
@@ -174,7 +178,7 @@ describe('E2E Authentication Flow', () => {
     test('should reject RPC calls with null token', async () => {
       const client = createClient();
       const deviceId = `null_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      const session = await client.authenticateDevice(deviceId, `null_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(deviceId, true, `null_user_${Date.now()}`);
 
       const nullSession = {
         ...session,
@@ -192,7 +196,11 @@ describe('E2E Authentication Flow', () => {
     test('should handle token with wrong signature', async () => {
       const client = createClient();
       const deviceId = `wrongsig_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-      const session = await client.authenticateDevice(deviceId, `wrongsig_user_${Date.now()}`, true);
+      const session = await client.authenticateDevice(
+        deviceId,
+        true,
+        `wrongsig_user_${Date.now()}`
+      );
 
       const tamperedSession = {
         ...session,
@@ -239,7 +247,11 @@ describe('E2E Authentication Flow', () => {
       for (let i = 0; i < count; i++) {
         const client = createClient();
         const deviceId = `many_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${i}`;
-        const session = await client.authenticateDevice(deviceId, `many_user_${i}_${Date.now()}`, true);
+        const session = await client.authenticateDevice(
+          deviceId,
+          true,
+          `many_user_${i}_${Date.now()}`
+        );
         clients.push(client);
         sessions.push(session);
       }
@@ -254,11 +266,18 @@ describe('E2E Authentication Flow', () => {
 
   describe('Authentication Error Handling', () => {
     test('should fail authentication with wrong server key', async () => {
-      const wrongClient = new Client('wrong_server_key', TEST_HOST, TEST_PORT.toString(), false, 10000, false);
+      const wrongClient = new Client(
+        'wrong_server_key',
+        TEST_HOST,
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
       const deviceId = `wrongkey_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
       try {
-        await wrongClient.authenticateDevice(deviceId, `wrongkey_user_${Date.now()}`, true);
+        await wrongClient.authenticateDevice(deviceId, true, `wrongkey_user_${Date.now()}`);
         expect(true).toBe(false);
       } catch (error: unknown) {
         expect(error).toBeDefined();
@@ -266,11 +285,22 @@ describe('E2E Authentication Flow', () => {
     });
 
     test('should handle network-level auth failures gracefully', async () => {
-      const unreachableClient = new Client(TEST_SERVER_KEY, 'invalid.host.local', TEST_PORT.toString(), false, 10000, false);
+      const unreachableClient = new Client(
+        TEST_SERVER_KEY,
+        'invalid.host.local',
+        TEST_PORT.toString(),
+        false,
+        10000,
+        false
+      );
       const deviceId = `unreachable_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
       try {
-        await unreachableClient.authenticateDevice(deviceId, `unreachable_user_${Date.now()}`, true);
+        await unreachableClient.authenticateDevice(
+          deviceId,
+          true,
+          `unreachable_user_${Date.now()}`
+        );
         expect(true).toBe(false);
       } catch (error: unknown) {
         expect(error).toBeDefined();
@@ -284,10 +314,10 @@ describe('E2E Authentication Flow', () => {
       const deviceId = `refresh_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
       const username = `refresh_user_${Date.now()}`;
 
-      const session1 = await client.authenticateDevice(deviceId, username, true);
+      const session1 = await client.authenticateDevice(deviceId, true, username);
       const originalToken = session1.token;
 
-      const session2 = await client.authenticateDevice(deviceId, username, false);
+      const session2 = await client.authenticateDevice(deviceId, false, username);
       const newToken = session2.token;
 
       expect(newToken).not.toBe(originalToken);

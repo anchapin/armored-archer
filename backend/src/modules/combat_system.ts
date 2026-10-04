@@ -8,7 +8,8 @@ import { logger } from '../config/logger';
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
-import { traceAsync, setTracingAttribute } from '../utils/tracing';
+import { setTracingAttribute } from '../utils/tracing';
+import { withSpanSync } from '../utils/tracing-helpers';
 import {
   verifyRequestSignature,
   validateCombatActionParameters,
@@ -28,7 +29,7 @@ import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { PvPMatch } from './matchmaker';
 import { recordCombatAction, recordDamageDealt } from './metrics';
-import { profileFunction } from './profiling';
+import { profileSync } from './profiling';
 import { getCurrentSeason, getLeaderboardEntry } from './season_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -250,11 +251,11 @@ function validateMatchForCombat(
  * Handles turn timeout by switching to opponent's turn
  * Returns true if match was forfeited due to consecutive timeouts
  */
-async function handleTurnTimeout(
+function handleTurnTimeout(
   nk: Runtime.Nakama,
   matchState: MatchState,
   logger: Runtime.Logger
-): Promise<HandleTurnTimeoutResult> {
+): HandleTurnTimeoutResult {
   const timedOutUserId = matchState.current_turn_user_id;
   const opponentId =
     timedOutUserId === matchState.creator_id ? matchState.opponent_id : matchState.creator_id;
@@ -311,7 +312,7 @@ async function handleTurnTimeout(
 
     if (matchObjects.length > 0) {
       const matchResult = safeParse<PvPMatch>(
-    getStorageRawValue(matchObjects[0].value) ?? '',
+        getStorageRawValue(matchObjects[0].value) ?? '',
         null,
         logger,
         'handleTimeoutForfeit:match'
@@ -340,7 +341,7 @@ async function handleTurnTimeout(
         // If the DB write fails we MUST NOT broadcast match_completed — the
         // match_results row never landed, so the players would otherwise
         // believe the match was permanently recorded when it was not.
-        const persistResult = await persistMatchResult(nk, matchResult.data, matchState, 'timeout');
+        const persistResult = persistMatchResult(nk, matchResult.data, matchState, 'timeout');
         if (!persistResult.success) {
           logger.error(
             'persistMatchResult failed in handleTurnTimeout auto-forfeit (issue #1107)',
@@ -479,16 +480,16 @@ function validateAntiCheat(
 /**
  *
  */
-export async function rpcSubmitCombatAction(
+export function rpcSubmitCombatAction(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
-  return traceAsync('rpc.submit_combat_action', async (span) => {
+): string {
+  return withSpanSync('rpc.submit_combat_action', (span) => {
     span.setAttribute('user.id', ctx.userId || 'anonymous');
 
-    return profileFunction<string>('combat.submit_combat_action', async () => {
+    return profileSync<string>('combat.submit_combat_action', () => {
       logger.info('Submit combat action called for user: %s', ctx.userId);
 
       setTracingAttribute('rpc.payload_size', payload.length);
@@ -522,7 +523,7 @@ export async function rpcSubmitCombatAction(
 
       // Handle turn timeout
       if (isTurnTimedOut(matchState)) {
-        const timeoutResult = await handleTurnTimeout(nk, matchState, logger);
+        const timeoutResult = handleTurnTimeout(nk, matchState, logger);
         span.setAttribute('combat.turn_timeout', true);
 
         if (timeoutResult.status === 'persist-failed') {
@@ -586,7 +587,7 @@ export async function rpcSubmitCombatAction(
         // NOT broadcast match_completed (players would otherwise believe the
         // match was permanently saved) and must surface PERSIST_FAILED so the
         // client knows the settlement needs follow-up.
-        const persistResult = await persistMatchResult(nk, match, matchState, 'health_zero');
+        const persistResult = persistMatchResult(nk, match, matchState, 'health_zero');
         if (!persistResult.success) {
           logger.error('persistMatchResult failed on health_zero settlement (issue #1107)', {
             matchId: match.match_id,
@@ -665,13 +666,13 @@ export function registerRpcGetMatchState(initializer: Runtime.Initializer): void
  *   ...
  * }
  */
-export async function rpcGetMatchState(
+export function rpcGetMatchState(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
-  return profileFunction<string>('combat.get_match_state', (): string => {
+): string {
+  return profileSync<string>('combat.get_match_state', (): string => {
     logger.info('Get match state called for user: %s', ctx.userId);
 
     const validation = validatePayload(ZodSchemas.get_match_state, payload, 'get_match_state');
@@ -728,7 +729,7 @@ function getOrCreateMatchState(
       // Fall through to create new state
     } else {
       const stateResult = safeParse<MatchState>(
-    getStorageRawValue(stateObjects[0].value) ?? '',
+        getStorageRawValue(stateObjects[0].value) ?? '',
         null,
         logger,
         'getOrCreateMatchState'
@@ -994,7 +995,11 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logg
     };
   } else {
     const statsResult = safeParse<PlayerStats>(
-    getStorageRawValue(objects[0].value) ?? '', null, logger, 'getPlayerStats');
+      getStorageRawValue(objects[0].value) ?? '',
+      null,
+      logger,
+      'getPlayerStats'
+    );
     if (!statsResult.success || !statsResult.data) {
       logger.warn('Failed to parse player stats for user %s, using defaults', userId);
       baseStats = {
@@ -1288,16 +1293,16 @@ function buildNotificationMessage(
  * Handles a player disconnect/leave match request.
  * This allows graceful handling of disconnections.
  */
-export async function rpcPlayerDisconnect(
+export function rpcPlayerDisconnect(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
-  return traceAsync('rpc.player_disconnect', async (span) => {
+): string {
+  return withSpanSync('rpc.player_disconnect', (span) => {
     span.setAttribute('user.id', ctx.userId || 'anonymous');
 
-    return profileFunction<string>('combat.player_disconnect', async () => {
+    return profileSync<string>('combat.player_disconnect', () => {
       logger.info('Player disconnect called for user: %s', ctx.userId);
 
       const validation = validatePayload(
@@ -1328,7 +1333,7 @@ export async function rpcPlayerDisconnect(
       }
 
       const matchResult = safeParse<PvPMatch>(
-    getStorageRawValue(matchObjects[0].value) ?? '',
+        getStorageRawValue(matchObjects[0].value) ?? '',
         null,
         logger,
         'rpcForfeitMatch:match'
@@ -1365,7 +1370,7 @@ export async function rpcPlayerDisconnect(
       }
 
       const stateResult = safeParse<MatchState>(
-    getStorageRawValue(stateObjects[0].value) ?? '',
+        getStorageRawValue(stateObjects[0].value) ?? '',
         null,
         logger,
         'rpcForfeitMatch:matchState'
@@ -1406,7 +1411,7 @@ export async function rpcPlayerDisconnect(
       // Same contract as the health-zero path: a failed persist means
       // match_results row never landed; broadcast no match_completed and
       // surface PERSIST_FAILED so the forfeiting player can be informed.
-      const persistResult = await persistMatchResult(
+      const persistResult = persistMatchResult(
         nk,
         match,
         matchState,
@@ -1498,12 +1503,12 @@ export async function rpcPlayerDisconnect(
  * @param endReason - Reason match ended (health_zero, forfeit, timeout, disconnect)
  * @returns Promise resolving to success or error
  */
-async function persistMatchResult(
+function persistMatchResult(
   nk: Runtime.Nakama,
   match: PvPMatch,
   matchState: MatchState,
   endReason: 'health_zero' | 'forfeit' | 'timeout' | 'disconnect'
-): Promise<{ success: boolean; error?: string }> {
+): { success: boolean; error?: string } {
   try {
     const winnerId = matchState.winner || match.winner;
     if (!winnerId) {
@@ -1545,7 +1550,7 @@ async function persistMatchResult(
       }
     }
 
-    await nk.dbQuery(
+    nk.dbQuery(
       `INSERT INTO match_results (
         match_id, creator_id, opponent_id, winner_id, loser_id,
         match_type, is_punch_up, creator_rank, opponent_rank,
