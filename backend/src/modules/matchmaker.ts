@@ -2721,6 +2721,53 @@ export function registerRpcGetMatchHistory(initializer: Runtime.Initializer): vo
 }
 
 /**
+ * Appends the optional created_at range filter to a match_results query, runs
+ * a COUNT(*) over the filtered set, then runs the page itself ordered newest
+ * first. The count is taken BEFORE ORDER BY is appended: Postgres rejects an
+ * aggregate ordered by a bare column (SQLSTATE 42803).
+ *
+ * @param opts.stripJoins - drop LEFT JOINs from the count query (they only add
+ *   display columns and never change the row count)
+ */
+function runPagedMatchResultsQuery(
+  nk: Runtime.Nakama,
+  baseQuery: string,
+  params: any[],
+  startIndex: number,
+  opts: {
+    range: { start_date?: string | number; end_date?: string | number };
+    limit: number;
+    offset: number;
+    stripJoins?: boolean;
+  }
+): { total: number; rows: any[] } {
+  const { range, limit, offset, stripJoins } = opts;
+  let query = baseQuery;
+  let paramIndex = startIndex;
+  if (range.start_date) {
+    query += ` AND mr.created_at >= $${paramIndex}`;
+    params.push(new Date(range.start_date).toISOString());
+    paramIndex++;
+  }
+  if (range.end_date) {
+    query += ` AND mr.created_at <= $${paramIndex}`;
+    params.push(new Date(range.end_date).toISOString());
+    paramIndex++;
+  }
+
+  let countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
+  if (stripJoins) {
+    countQuery = countQuery.replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
+  }
+  const countResult = nk.sqlQuery(countQuery, params) as any[];
+  const total = Number(countResult[0]?.total) || 0;
+
+  query += ` ORDER BY mr.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  const rows = nk.sqlQuery(query, [...params, limit, offset]) as any[];
+  return { total, rows };
+}
+
+/**
  * Retrieves a player's match history with optional filtering.
  *
  * Queries the match_results database table for historical match data.
@@ -2794,30 +2841,11 @@ export function rpcGetMatchHistory(
       paramIndex++;
     }
 
-    // Add optional date range filter
-    if (request.start_date) {
-      query += ` AND mr.created_at >= $${paramIndex}`;
-      params.push(new Date(request.start_date).toISOString());
-      paramIndex++;
-    }
-    if (request.end_date) {
-      query += ` AND mr.created_at <= $${paramIndex}`;
-      params.push(new Date(request.end_date).toISOString());
-      paramIndex++;
-    }
-
-    // Get total count first (before ORDER BY: an aggregate cannot be ordered by a bare column)
-    const countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
-    const countResult = nk.sqlQuery(countQuery, params) as any[];
-    const total = Number(countResult[0]?.total) || 0;
-
-    // Add ordering and pagination
-    query += ` ORDER BY mr.created_at DESC`;
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit);
-    params.push(offset);
-
-    const result = nk.sqlQuery(query, params) as any[];
+    const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
+      range: request,
+      limit,
+      offset,
+    });
 
     const matches = result.map((row: any) => {
       const isVictory = row.winner_id === ctx.userId;
@@ -3174,32 +3202,12 @@ export function rpcAdminQueryMatches(
       paramIndex++;
     }
 
-    // Add date range filter
-    if (request.start_date) {
-      query += ` AND mr.created_at >= $${paramIndex}`;
-      params.push(new Date(request.start_date).toISOString());
-      paramIndex++;
-    }
-    if (request.end_date) {
-      query += ` AND mr.created_at <= $${paramIndex}`;
-      params.push(new Date(request.end_date).toISOString());
-      paramIndex++;
-    }
-
-    // Get total count first
-    const countQuery = query
-      .replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM')
-      .replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
-    const countResult = nk.sqlQuery(countQuery, params) as any[];
-    const total = countResult[0]?.total || 0;
-
-    // Add ordering and pagination
-    query += ` ORDER BY mr.created_at DESC`;
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit);
-    params.push(offset);
-
-    const result = nk.sqlQuery(query, params) as any[];
+    const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
+      stripJoins: true,
+      range: request,
+      limit,
+      offset,
+    });
 
     const matches = result.map((row: any) => ({
       match_id: row.match_id,
