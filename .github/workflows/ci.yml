@@ -1207,6 +1207,12 @@ jobs:
           CI: 'true'
         run: npm run test:integration
 
+      # Server-side context for failing RPCs: handler errors are logged by
+      # Nakama, not returned to the client, so surface them in the job log.
+      - name: Dump Nakama runtime errors after integration tests
+        if: always()
+        run: docker logs ci_nakama 2>&1 | grep -E '"level":"(error|warn)"' | tail -150 || true
+
       # Pass-rate + flake signal surface and the job's status gate (issue
       # #1144). Parses the junit XML, computes pass/fail/skip counts and
       # pass-rate, appends per-test results to the 30-day flake history,

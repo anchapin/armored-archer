@@ -44,7 +44,8 @@ describe('Gear System Integration Tests', () => {
       const payload = { stage_id: 'stage_1', boss_defeated: false };
       const result = await rpcCall(player, 'armored_archer/generate_gear', payload);
 
-      expect(result.success).toBe(true);
+      // toMatchObject prints the full response (error / error_code) on failure.
+      expect(result).toMatchObject({ success: true });
       expect(result.gear).toBeDefined();
       expect(result.gear.id).toBeDefined();
       expect(result.gear.name).toBeDefined();
