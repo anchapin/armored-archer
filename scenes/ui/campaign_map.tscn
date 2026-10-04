@@ -99,7 +99,7 @@ color = Color(0.2, 0.2, 0.2, 0.3)
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
 size_flags_horizontal = 3
-color = Color("#22C55E")
+color = Color(0.133333, 0.772549, 0.368627, 1)
 
 [node name="ProgressPercent" type="Label" parent="ProgressBarContainer"]
 layout_mode = 2

@@ -2,20 +2,20 @@
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 4
-background_color = Color(0.05, 0.05, 0.08, 1)
-glow_enabled = true
+background_color = Color(0.22, 0.27, 0.23, 1)
+glow_enabled = false
 glow_intensity = 0.5
 glow_bloom = 0.3
 glow_blend_mode = 0
 glow_hdr_threshold = 0.8
-vignette_enabled = true
-vignette_intensity = 0.4
+vignette_enabled = false
+vignette_intensity = 0.15
 vignette_radius = 0.8
 
 [sub_resource type="Environment" id="Environment_low_quality"]
 background_mode = 4
-background_color = Color(0.05, 0.05, 0.08, 1)
-glow_enabled = true
+background_color = Color(0.22, 0.27, 0.23, 1)
+glow_enabled = false
 glow_intensity = 0.3
 glow_bloom = 0.2
 glow_blend_mode = 0

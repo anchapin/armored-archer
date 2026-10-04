@@ -248,6 +248,16 @@ func spawn_enemy() -> void:
 	if enemy_instance.has_method("enable_collision"):
 		enemy_instance.enable_collision()
 
+	# The pooled path parents the enemy itself (ObjectPool.get_enemy); a freshly
+	# instantiated scene has no parent, so without this it is never added to the
+	# tree and the enemy is counted but never drawn or ticked.
+	if enemy_instance and enemy_instance.get_parent() == null:
+		var parent_node: Node = get_tree().current_scene
+		if parent_node == null:
+			parent_node = self
+		parent_node.add_child(enemy_instance)
+		enemy_instance.global_position = spawn_position
+
 	# CRITICAL: Only add if not already in list (handles pooled enemy reuse)
 	if not enemy_instance in active_enemies:
 		active_enemies.append(enemy_instance)

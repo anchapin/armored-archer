@@ -31,7 +31,7 @@ func _ready() -> void:
 func _setup_tutorial_controller() -> void:
 	# Create tutorial controller dynamically
 	if not tutorial_controller:
-		tutorial_controller = tutorial_controller_scene.new()
+		tutorial_controller = tutorial_controller_scene.instantiate()
 		tutorial_controller.name = "TutorialController"
 		add_child(tutorial_controller)
 

@@ -1,7 +1,7 @@
-[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://boss_basic_sprite"]
+[gd_resource type="AtlasTexture" load_steps=2 format=3 uid="uid://boss_basic_sprite"]
 
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_boss_basic"]
-size = Vector2(64, 64)
+[ext_resource type="Texture2D" path="res://assets/sprites/enemies/brute_idle_down_0.png" id="1_src"]
 
 [resource]
-SubResource = SubResource("PlaceholderTexture2D_boss_basic")
+atlas = ExtResource("1_src")
+region = Rect2(0, 0, 32, 32)
