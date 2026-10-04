@@ -9,8 +9,13 @@ describe('Combat System Integration Tests', () => {
   beforeAll(async () => {
     await testHelper.initialize();
     await testHelper.cleanAllTestData();
+  }, 120000);
 
-    // Create test accounts with different stats for combat variety
+  beforeEach(async () => {
+    // Fresh accounts per test: create_match is rate limited per user
+    // (5/min with a 5 min penalty, rate_limit.ts), so reusing one pair
+    // across ~15 tests tripped the limiter and every later beforeEach got
+    // an error payload with no `match` (the "reading 'match_id'" failures).
     playerA = await testHelper.createTestAccount('combat_a');
     playerB = await testHelper.createTestAccount('combat_b');
 
@@ -27,15 +32,16 @@ describe('Combat System Integration Tests', () => {
       xp: 2000,
       stats: { attack: 20, defense: 20, dodge: 15, crit_rate: 10 },
     });
-  }, 120000);
 
-  beforeEach(async () => {
     // Create an active match before each combat test
     const createPayload = {
       match_type: 'ranked',
       target_opponent_id: playerB.userId,
     };
     const createResult = await rpcCall(playerA, 'armored_archer/create_match', createPayload);
+    if (!createResult?.match?.match_id) {
+      throw new Error(`create_match failed in beforeEach: ${JSON.stringify(createResult)}`);
+    }
     activeMatchId = createResult.match.match_id;
     cleanupMatchIds.push(activeMatchId);
 
@@ -45,17 +51,11 @@ describe('Combat System Integration Tests', () => {
 
   afterEach(async () => {
     // Clean up matches created during this test
-    for (const matchId of cleanupMatchIds) {
-      try {
-        const admin = await testHelper.getAdminClient();
-        // Delete both match and match state
-        await admin.storageDelete([
-          { collection: 'pvp_matches', key: matchId, userId: '' },
-          { collection: 'pvp_match_states', key: matchId, userId: '' },
-        ]);
-      } catch (e) {
-        // ignore
-      }
+    try {
+      await testHelper.deleteStorageObjectsAnyOwner('pvp_matches', cleanupMatchIds);
+      await testHelper.deleteStorageObjectsAnyOwner('pvp_match_states', cleanupMatchIds);
+    } catch (e) {
+      // ignore
     }
     cleanupMatchIds = [];
   });
