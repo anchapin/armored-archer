@@ -6,7 +6,7 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, normalizeStorageList } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import {
   isPlayerFlagged,
@@ -291,7 +291,7 @@ export function rpcListMatches(
   const playerStats = playerStatsResult.data;
   const playerRank = calculateRank(playerStats);
 
-  const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '');
+  const matches = normalizeStorageList(nk.storageList(ctx.userId, 'pvp_matches', limit, ''));
 
   const filteredMatches: PvPMatch[] = [];
 
@@ -453,13 +453,19 @@ export function rpcCreateMatch(
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
-    const targetStats = nk.storageRead([
-      {
-        collection: 'player_stats',
-        key: request.target_opponent_id,
-        userId: request.target_opponent_id,
-      },
-    ]);
+    // Nakama throws for a non-UUID owner id; treat that as an unknown player.
+    let targetStats: Runtime.StorageObject[];
+    try {
+      targetStats = nk.storageRead([
+        {
+          collection: 'player_stats',
+          key: request.target_opponent_id,
+          userId: request.target_opponent_id,
+        },
+      ]);
+    } catch {
+      targetStats = [];
+    }
 
     if (targetStats.length === 0) {
       return JSON.stringify({

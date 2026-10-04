@@ -34,7 +34,12 @@
 
 import { Runtime } from '../types/nakama';
 import { listAllLeaderboardRecords } from '../utils/leaderboard-list';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import {
+  toStorageValue,
+  getStorageRawValue,
+  parseRecordMetadata,
+  normalizeStorageList,
+} from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
@@ -154,12 +159,8 @@ export function validateOrphanedRewards(
   };
 
   try {
-    const rewards = nk.storageList(
-      '00000000-0000-0000-0000-000000000000',
-      'season_rewards_claimed',
-      100,
-      '',
-      ''
+    const rewards = normalizeStorageList(
+      nk.storageList('00000000-0000-0000-0000-000000000000', 'season_rewards_claimed', 100, '')
     );
 
     for (const obj of rewards) {
@@ -242,7 +243,7 @@ export function validateDecayConsistency(
 
   for (const record of records) {
     try {
-      const meta = record.metadata ? JSON.parse(record.metadata) : {};
+      const meta = parseRecordMetadata(record.metadata);
       if (meta.decayed !== 'true') continue;
 
       const lastActive = meta.last_active ? parseInt(meta.last_active, 10) : 0;
@@ -307,7 +308,7 @@ export function validateLeaderboardIntegrity(records: LeaderboardRecord[]): Vali
     prevScore = record.score;
 
     // Check for unparseable metadata
-    if (record.metadata) {
+    if (record.metadata && typeof record.metadata === 'string') {
       try {
         JSON.parse(record.metadata);
       } catch {
@@ -500,7 +501,7 @@ export function triggerEndSeason(
   });
   for (const record of allRecords) {
     const softResetElo = calculateSoftResetElo(record.rank);
-    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    const metadata = parseRecordMetadata(record.metadata);
     nk.leaderboardRecordWrite(
       nextSeason.season_id,
       record.ownerId,
@@ -552,7 +553,7 @@ export function triggerRecalculateDecay(
 
   for (const record of records) {
     try {
-      const meta = record.metadata ? JSON.parse(record.metadata) : {};
+      const meta = parseRecordMetadata(record.metadata);
       const lastActive = meta.last_active ? parseInt(meta.last_active, 10) : 0;
       if (!lastActive) continue;
 
@@ -712,7 +713,7 @@ export function rpcAdminGetSeasonState(
 
     for (const r of records) {
       try {
-        const meta = r.metadata ? JSON.parse(r.metadata) : {};
+        const meta = parseRecordMetadata(r.metadata);
         if (meta.decayed === 'true') playersWithDecay++;
       } catch {
         // skip
@@ -898,7 +899,7 @@ function executeRecalculateRatings(
     if (record.score < decayConfig.minimum_rating) {
       corrected++;
       if (!dryRun) {
-        const meta = record.metadata ? JSON.parse(record.metadata) : {};
+        const meta = parseRecordMetadata(record.metadata);
         nk.leaderboardRecordWrite(
           seasonId,
           record.ownerId,

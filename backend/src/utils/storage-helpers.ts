@@ -278,3 +278,38 @@ export function getStorageRawValue(value: unknown): string | null {
  * Alias of getStorageRawValue for inline use at call sites (ADR-0008).
  */
 export const asStorageJson = getStorageRawValue;
+
+/**
+ * Normalise the result of `nk.storageList`. The real Nakama JS runtime returns
+ * `{ objects, cursor }`; legacy mocks return a bare array. Always yields an array.
+ */
+export function normalizeStorageList(res: unknown): Runtime.StorageObject[] {
+  if (Array.isArray(res)) {
+    return res as Runtime.StorageObject[];
+  }
+  const list = (res || {}) as { objects?: Runtime.StorageObject[] | null };
+  return list.objects || [];
+}
+
+/**
+ * Leaderboard record metadata arrives as a pre-parsed object from the Nakama JS
+ * runtime but as a JSON string from mocks/older paths. Returns {} when absent or invalid.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors JSON.parse's untyped result
+export function parseRecordMetadata(metadata: unknown): Record<string, any> {
+  if (metadata === null || metadata === undefined || metadata === '') {
+    return {};
+  }
+  if (typeof metadata === 'object') {
+    return metadata as Record<string, string>;
+  }
+  if (typeof metadata === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(metadata);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}

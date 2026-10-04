@@ -6,7 +6,12 @@
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
-import { readAndParseStorage, toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import {
+  readAndParseStorage,
+  toStorageValue,
+  getStorageRawValue,
+  parseRecordMetadata,
+} from '../utils/storage-helpers';
 import { calculateRank } from './rank';
 import { SeasonInfo } from './season_system';
 import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
@@ -117,7 +122,7 @@ export async function applyDailyDecay(
       const actualLoss = record.score - newRating;
 
       // Update leaderboard with decayed rating
-      const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+      const metadata = parseRecordMetadata(record.metadata);
       nk.leaderboardRecordWrite(seasonId, record.ownerId, record.username, newRating, 0, {
         ...metadata,
         original_rating: String(record.score),
@@ -171,7 +176,7 @@ export async function getTopPlayers(
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    const metadata = parseRecordMetadata(record.metadata);
 
     const lastActiveData = lastActiveMap.get(record.ownerId) ?? 0;
     const daysInactive = getDaysInactive(lastActiveData);
@@ -232,7 +237,7 @@ export function getPlayerRank(
   }
 
   const record = records[0];
-  const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+  const metadata = parseRecordMetadata(record.metadata);
   const decayConfig = getDecayConfig(nk);
 
   // Need to recalculate rank based on decayed ratings

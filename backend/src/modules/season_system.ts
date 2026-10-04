@@ -8,7 +8,7 @@ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './va
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import { recordSeasonCompletion } from './season_leaderboard';
 import { logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, parseRecordMetadata } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
 
@@ -598,7 +598,7 @@ export function rpcGetLeaderboard(
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: JSON.parse(record.metadata || '{}'),
+    meta: parseRecordMetadata(record.metadata) as LeaderboardEntry['meta'],
   }));
 
   return JSON.stringify({
@@ -1298,7 +1298,7 @@ export function rpcEndSeason(
   // Seed all players into new season with soft-reset ELO
   for (const record of allRecords) {
     const softResetElo = calculateSoftResetElo(record.rank);
-    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    const metadata = parseRecordMetadata(record.metadata);
     nk.leaderboardRecordWrite(
       nextSeason.season_id,
       record.ownerId,
@@ -1378,7 +1378,7 @@ export function getLeaderboardEntry(
     username: record.username,
     rank: record.rank,
     score: record.score,
-    meta: JSON.parse(record.metadata || '{}'),
+    meta: parseRecordMetadata(record.metadata) as LeaderboardEntry['meta'],
   };
 }
 

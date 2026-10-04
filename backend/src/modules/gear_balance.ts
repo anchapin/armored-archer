@@ -5,7 +5,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, normalizeStorageList } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { GearItem } from './gear_system';
 
@@ -258,7 +258,7 @@ export async function getGearUsageStats(
 
   try {
     // Read all gear balance objects for this user
-    const objects = await nk.storageList(userId, 'gear_balance', 100, '');
+    const objects = normalizeStorageList(nk.storageList(userId, 'gear_balance', 100, ''));
 
     for (const obj of objects) {
       const gearId = obj.key.split(':')[2];

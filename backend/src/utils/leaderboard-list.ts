@@ -62,7 +62,16 @@ export function listLeaderboardRecords(
   expiry = 0
 ): LeaderboardPage {
   const pageLimit = Math.max(1, Math.min(limit, MAX_PAGE));
-  const res = resolveListFn(nk)(leaderboardId, ownerIds, pageLimit, cursor, expiry);
+  let res: unknown;
+  try {
+    res = resolveListFn(nk)(leaderboardId, ownerIds, pageLimit, cursor, expiry);
+  } catch (e) {
+    // A season whose leaderboard has not been created yet simply has no records.
+    if (/leaderboard not found/i.test(String((e as Error)?.message ?? e))) {
+      return { records: [], nextCursor: '' };
+    }
+    throw e;
+  }
   return toPage(res, ownerIds, pageLimit);
 }
 
