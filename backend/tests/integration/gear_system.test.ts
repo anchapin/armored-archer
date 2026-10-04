@@ -11,7 +11,11 @@ describe('Gear System Integration Tests', () => {
   }, 120000);
 
   afterEach(async () => {
-    // Clean up inventory after each test
+    // Inventory, loadout, boss defeats and modifier pools live in SQL tables
+    // (gear_db.ts), not storage, so clear them directly between tests.
+    for (const table of ['loadout', 'inventory_items', 'boss_defeats', 'unlocked_modifier_pools']) {
+      await testHelper.sql(`DELETE FROM ${table} WHERE user_id = $1`, [player.userId]);
+    }
     await testHelper.deleteStorageObject('player_inventory', player.userId, player.userId);
   });
 
@@ -119,9 +123,9 @@ describe('Gear System Integration Tests', () => {
         }
       }
 
-      // Should have generated at least 2 different types (among weapon, armor, accessory)
+      // Should have generated at least 2 different types (among helm, armor, bow, arrow, amulet)
       expect(generatedTypes.size).toBeGreaterThanOrEqual(2);
-      expect(['weapon', 'armor', 'accessory']).toContain(Array.from(generatedTypes)[0]);
+      expect(['helm', 'armor', 'bow', 'arrow', 'amulet']).toContain(Array.from(generatedTypes)[0]);
     });
 
     test('should generate gear with appropriate rarities', async () => {
@@ -242,12 +246,12 @@ describe('Gear System Integration Tests', () => {
       // Equip first gear as weapon
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: gear1.gear.id,
-        slot: 'weapon',
+        slot: 'bow',
       });
 
       // Check inventory
       const inventory = await getInventory(player);
-      expect(inventory.equipped_gear.weapon).toBe(gear1.gear.id);
+      expect(inventory.equipped_gear.bow).toBe(gear1.gear.id);
     });
   });
 
@@ -262,18 +266,18 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_weapon',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'weapon') {
+        if (result.success && result.gear.type === 'bow') {
           weaponGear = result.gear;
         }
         attempts++;
       }
       expect(weaponGear).not.toBeNull();
 
-      const payload = { gear_id: weaponGear.id, slot: 'weapon' };
+      const payload = { gear_id: weaponGear.id, slot: 'bow' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.weapon).toBe(weaponGear.id);
+      expect(result.equipped_gear.bow).toBe(weaponGear.id);
     });
 
     test('should equip armor to correct slot', async () => {
@@ -306,22 +310,22 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_accessory',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'accessory') {
+        if (result.success && result.gear.type === 'amulet') {
           accessoryGear = result.gear;
         }
         attempts++;
       }
       expect(accessoryGear).not.toBeNull();
 
-      const payload = { gear_id: accessoryGear.id, slot: 'accessory' };
+      const payload = { gear_id: accessoryGear.id, slot: 'amulet' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.accessory).toBe(accessoryGear.id);
+      expect(result.equipped_gear.amulet).toBe(accessoryGear.id);
     });
 
     test('should return error when gear not in inventory', async () => {
-      const payload = { gear_id: 'nonexistent_gear_id', slot: 'weapon' };
+      const payload = { gear_id: 'nonexistent_gear_id', slot: 'bow' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.error).toBe('Gear not found in inventory');
@@ -351,7 +355,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_w1',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'weapon') {
+        if (result.success && result.gear.type === 'bow') {
           weapon1 = result.gear;
         }
         attempts++;
@@ -365,7 +369,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_w2',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'weapon' && result.gear.id !== weapon1.id) {
+        if (result.success && result.gear.type === 'bow' && result.gear.id !== weapon1.id) {
           weapon2 = result.gear;
         }
         attempts++;
@@ -376,20 +380,20 @@ describe('Gear System Integration Tests', () => {
       // Equip first weapon
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weapon1.id,
-        slot: 'weapon',
+        slot: 'bow',
       });
 
       // Equip second weapon (should replace first)
       const result = await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weapon2.id,
-        slot: 'weapon',
+        slot: 'bow',
       });
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.weapon).toBe(weapon2.id);
+      expect(result.equipped_gear.bow).toBe(weapon2.id);
 
       // Verify first weapon is no longer equipped
       const inventory = await getInventory(player);
-      expect(inventory.equipped_gear.weapon).toBe(weapon2.id);
+      expect(inventory.equipped_gear.bow).toBe(weapon2.id);
     });
   });
 
@@ -403,7 +407,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_eq_uneq',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'weapon') {
+        if (result.success && result.gear.type === 'bow') {
           weaponGear = result.gear;
         }
         attempts++;
@@ -412,27 +416,27 @@ describe('Gear System Integration Tests', () => {
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weaponGear.id,
-        slot: 'weapon',
+        slot: 'bow',
       });
 
       // Verify equipped
       let inventory = await getInventory(player);
-      expect(inventory.equipped_gear.weapon).toBe(weaponGear.id);
+      expect(inventory.equipped_gear.bow).toBe(weaponGear.id);
 
       // Unequip
       const result = await rpcCall(player, 'armored_archer/unequip_gear', {
-        slot: 'weapon',
+        slot: 'bow',
       });
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.weapon).toBeUndefined();
+      expect(result.equipped_gear.bow).toBeUndefined();
 
       // Verify unequipped
       inventory = await getInventory(player);
-      expect(inventory.equipped_gear.weapon).toBeUndefined();
+      expect(inventory.equipped_gear.bow).toBeUndefined();
     });
 
     test('should return error when no gear equipped in slot', async () => {
-      const payload = { slot: 'weapon' };
+      const payload = { slot: 'bow' };
       const result = await rpcCall(player, 'armored_archer/unequip_gear', payload);
 
       expect(result.error).toBe('No gear equipped in this slot');
@@ -475,7 +479,7 @@ describe('Gear System Integration Tests', () => {
           stage_id: 'stage_acc_uneq',
           boss_defeated: false,
         });
-        if (result.success && result.gear.type === 'accessory') {
+        if (result.success && result.gear.type === 'amulet') {
           accessoryGear = result.gear;
         }
         attempts++;
@@ -484,16 +488,16 @@ describe('Gear System Integration Tests', () => {
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: accessoryGear.id,
-        slot: 'accessory',
+        slot: 'amulet',
       });
 
       const result = await rpcCall(player, 'armored_archer/unequip_gear', {
-        slot: 'accessory',
+        slot: 'amulet',
       });
       expect(result.success).toBe(true);
 
       const inventory = await getInventory(player);
-      expect(inventory.equipped_gear.accessory).toBeUndefined();
+      expect(inventory.equipped_gear.amulet).toBeUndefined();
     });
   });
 

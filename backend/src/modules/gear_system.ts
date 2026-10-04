@@ -1245,6 +1245,7 @@ export function rpcGetInventory(
   const unlockedModifierPools = getUnlockedModifierPoolsFromStorage(nk, ctx.userId, logger);
 
   return JSON.stringify({
+    success: true,
     gear: dbInventory.gear,
     equipped_gear: dbInventory.equipped_gear,
     unlocked_modifier_pools: unlockedModifierPools,
