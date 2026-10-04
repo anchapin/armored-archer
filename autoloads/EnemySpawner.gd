@@ -277,7 +277,35 @@ func spawn_enemy() -> void:
 	# Emit enemy count updated signal on spawn
 	enemy_count_changed.emit(active_enemies.size(), total_enemies_for_stage)
 
+## Enemies never spawn closer than this to the player (#1446: an enemy that
+## appeared on top of the player killed them in about 3 seconds).
+const MIN_SPAWN_DISTANCE_FROM_PLAYER: float = 220.0
+const SPAWN_POSITION_ATTEMPTS: int = 12
+
 func get_random_spawn_position() -> Vector2:
+	var player: Node2D = get_tree().get_first_node_in_group("Player") as Node2D if is_inside_tree() else null
+	var candidate: Vector2 = _random_point_in_spawn_area()
+	if player == null:
+		return candidate
+	var best: Vector2 = candidate
+	var best_dist: float = candidate.distance_to(player.global_position)
+	for _i in range(SPAWN_POSITION_ATTEMPTS):
+		if best_dist >= MIN_SPAWN_DISTANCE_FROM_PLAYER:
+			return best
+		candidate = _random_point_in_spawn_area()
+		var d: float = candidate.distance_to(player.global_position)
+		if d > best_dist:
+			best = candidate
+			best_dist = d
+	if best_dist < MIN_SPAWN_DISTANCE_FROM_PLAYER:
+		# Spawn area is too small around the player: push straight out to the minimum radius.
+		var dir: Vector2 = (best - player.global_position)
+		if dir.length() < 0.001:
+			dir = Vector2.RIGHT.rotated(randf() * TAU)
+		best = player.global_position + dir.normalized() * MIN_SPAWN_DISTANCE_FROM_PLAYER
+	return best
+
+func _random_point_in_spawn_area() -> Vector2:
 	var random_x = randf_range(spawn_area.position.x, spawn_area.end.x)
 	var random_y = randf_range(spawn_area.position.y, spawn_area.end.y)
 	return global_position + Vector2(random_x, random_y)
