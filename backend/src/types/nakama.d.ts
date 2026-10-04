@@ -160,6 +160,7 @@ declare namespace Runtime {
       metadata: { [key: string]: string }
     ): void;
     leaderboardDelete(id: string): void;
+    leaderboardRecordDelete(leaderboardId: string, owner: string): void;
     leaderboardRecordList(
       leaderboardId: string,
       ownerIds: string[],

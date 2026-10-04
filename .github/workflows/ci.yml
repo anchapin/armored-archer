@@ -998,6 +998,11 @@ jobs:
             # not override the baked constant).
             echo "NAKAMA_SERVER_KEY=ci-test-server-key-do-not-use-in-production" >> .env
           fi
+          # Test-only leaderboard fixture RPC for the season integration suite
+          # (backend/src/modules/test_fixtures.ts, #1456). CI only, never deploy.
+          if [ ! -f .env ] || ! grep -q "^TEST_FIXTURE_RPCS_ENABLED=" .env; then
+            echo "TEST_FIXTURE_RPCS_ENABLED=true" >> .env
+          fi
           # Session encryption keys must also be non-default in production.
           # validateSessionKeys() in src/config/index.ts throws when any of
           # SESSION_ENCRYPTION_KEY, REFRESH_ENCRYPTION_KEY, or TOKEN_ENCRYPTION_KEY

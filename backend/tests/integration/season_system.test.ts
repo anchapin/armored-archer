@@ -33,35 +33,17 @@ describe('Season System Integration Tests', () => {
 
   afterEach(async () => {
     // Clean up leaderboard entries and season claims between tests
-    // We'll use admin to clean specific season data
-    const admin = await testHelper.getAdminClient();
     try {
-      // Clean leaderboard for current season
       const season = getCurrentSeasonInfo();
-      await admin.leaderboardDelete(season.season_id, [
-        playerA.userId,
-        playerB.userId,
-        playerC.userId,
-      ]);
-
-      // Clean season rewards claimed
-      await admin.storageDelete([
-        {
-          collection: 'season_rewards_claimed',
-          key: `${season.season_id}_${playerA.userId}`,
-          userId: playerA.userId,
-        },
-        {
-          collection: 'season_rewards_claimed',
-          key: `${season.season_id}_${playerB.userId}`,
-          userId: playerB.userId,
-        },
-        {
-          collection: 'season_rewards_claimed',
-          key: `${season.season_id}_${playerC.userId}`,
-          userId: playerC.userId,
-        },
-      ]);
+      await leaderboardFixture({
+        op: 'delete',
+        leaderboard_id: season.season_id,
+        owner_ids: [playerA.userId, playerB.userId, playerC.userId],
+      });
+      await testHelper.deleteStorageObjectsAnyOwner(
+        'season_rewards_claimed',
+        [playerA, playerB, playerC].map((p) => `${season.season_id}_${p.userId}`)
+      );
     } catch (e) {
       // ignore cleanup errors
     }
@@ -83,6 +65,44 @@ describe('Season System Integration Tests', () => {
     const { client, session } = await testHelper.getAdminClient();
     const response = await client.rpc(session, rpcId, payload);
     return response.payload;
+  }
+
+  // Season leaderboards are authoritative, so records are seeded through the
+  // CI-only fixture RPC (backend/src/modules/test_fixtures.ts).
+  async function leaderboardFixture(body: any): Promise<any> {
+    const result = await rpcCallAsAdmin('armored_archer/test_leaderboard_fixture', body);
+    if (!result?.success) {
+      throw new Error(`test_leaderboard_fixture ${body.op} failed: ${JSON.stringify(result)}`);
+    }
+    return result;
+  }
+
+  async function seedSeasonRecord(
+    leaderboardId: string,
+    ownerId: string,
+    username: string,
+    score: number,
+    subscore: number,
+    metadata: { [key: string]: string }
+  ): Promise<void> {
+    await leaderboardFixture({
+      op: 'write',
+      leaderboard_id: leaderboardId,
+      owner_id: ownerId,
+      username,
+      score,
+      subscore,
+      metadata,
+    });
+  }
+
+  async function listSeasonRecords(leaderboardId: string): Promise<any[]> {
+    const result = await leaderboardFixture({
+      op: 'list',
+      leaderboard_id: leaderboardId,
+      limit: 10,
+    });
+    return result.records;
   }
 
   // Helper to setup player stats
@@ -133,9 +153,8 @@ describe('Season System Integration Tests', () => {
 
     test('should return player rank and score', async () => {
       // Manually write a leaderboard entry for playerA
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1500, 0, {
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1500, 0, {
         wins: '10',
         losses: '5',
         win_rate: '0.667',
@@ -162,23 +181,22 @@ describe('Season System Integration Tests', () => {
   describe('rpcGetLeaderboard', () => {
     test('should return leaderboard entries', async () => {
       // Create some leaderboard entries
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
       // Write entries for our test players
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1800, 0, {
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1800, 0, {
         wins: '15',
         losses: '5',
         win_rate: '0.75',
         punch_up_wins: '3',
       });
-      admin.leaderboardRecordWrite(season.season_id, playerB.userId, playerB.username, 1600, 0, {
+      await seedSeasonRecord(season.season_id, playerB.userId, playerB.username, 1600, 0, {
         wins: '12',
         losses: '8',
         win_rate: '0.6',
         punch_up_wins: '1',
       });
-      admin.leaderboardRecordWrite(season.season_id, playerC.userId, playerC.username, 2000, 0, {
+      await seedSeasonRecord(season.season_id, playerC.userId, playerC.username, 2000, 0, {
         wins: '20',
         losses: '3',
         win_rate: '0.87',
@@ -207,25 +225,17 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should respect limit parameter', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
       // Create several entries
       for (let i = 0; i < 5; i++) {
         const user = await testHelper.createTestAccount(`lb_user_${i}`);
-        admin.leaderboardRecordWrite(
-          season.season_id,
-          user.userId,
-          user.username,
-          1000 + i * 100,
-          0,
-          {
-            wins: String(i * 2),
-            losses: '0',
-            win_rate: '1.0',
-            punch_up_wins: '0',
-          }
-        );
+        await seedSeasonRecord(season.season_id, user.userId, user.username, 1000 + i * 100, 0, {
+          wins: String(i * 2),
+          losses: '0',
+          win_rate: '1.0',
+          punch_up_wins: '0',
+        });
       }
 
       const payload = { limit: 2 };
@@ -235,22 +245,21 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should return leaderboard sorted by score descending', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1500, 0, {
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1500, 0, {
         wins: '10',
         losses: '5',
         win_rate: '0.667',
         punch_up_wins: '2',
       });
-      admin.leaderboardRecordWrite(season.season_id, playerB.userId, playerB.username, 1800, 0, {
+      await seedSeasonRecord(season.season_id, playerB.userId, playerB.username, 1800, 0, {
         wins: '15',
         losses: '3',
         win_rate: '0.833',
         punch_up_wins: '3',
       });
-      admin.leaderboardRecordWrite(season.season_id, playerC.userId, playerC.username, 1200, 0, {
+      await seedSeasonRecord(season.season_id, playerC.userId, playerC.username, 1200, 0, {
         wins: '8',
         losses: '10',
         win_rate: '0.444',
@@ -286,15 +295,14 @@ describe('Season System Integration Tests', () => {
 
   describe('rpcGetSeasonRewards', () => {
     test('should return rewards based on rank', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
       // Player A at rank 15 (legendary tier)
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1900, 0, {});
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1900, 0, {});
       // Player B at rank 30 (epic tier)
-      admin.leaderboardRecordWrite(season.season_id, playerB.userId, playerB.username, 1700, 0, {});
+      await seedSeasonRecord(season.season_id, playerB.userId, playerB.username, 1700, 0, {});
       // Player C at rank 75 (rare tier)
-      admin.leaderboardRecordWrite(season.season_id, playerC.userId, playerC.username, 1400, 0, {});
+      await seedSeasonRecord(season.season_id, playerC.userId, playerC.username, 1400, 0, {});
 
       const resultA = await rpcCall(playerA, 'armored_archer/get_season_rewards', {});
       expect(resultA.success).toBe(true);
@@ -321,51 +329,29 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should calculate correct tier thresholds', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
       // Test rank 10 (legendary max)
       const playerTop = await testHelper.createTestAccount('top_rank');
-      admin.leaderboardRecordWrite(
-        season.season_id,
-        playerTop.userId,
-        playerTop.username,
-        2000,
-        0,
-        {}
-      );
+      await seedSeasonRecord(season.season_id, playerTop.userId, playerTop.username, 2000, 0, {});
       const resultTop = await rpcCall(playerTop, 'armored_archer/get_season_rewards', {});
       expect(resultTop.rewards.rank_tier).toBe('legendary');
 
       // Test rank 50 (epic max)
       const playerEpic = await testHelper.createTestAccount('epic_rank');
-      admin.leaderboardRecordWrite(
-        season.season_id,
-        playerEpic.userId,
-        playerEpic.username,
-        1800,
-        0,
-        {}
-      );
+      await seedSeasonRecord(season.season_id, playerEpic.userId, playerEpic.username, 1800, 0, {});
       const resultEpic = await rpcCall(playerEpic, 'armored_archer/get_season_rewards', {});
       expect(resultEpic.rewards.rank_tier).toBe('epic');
 
       // Test rank 100 (rare max)
       const playerRare = await testHelper.createTestAccount('rare_rank');
-      admin.leaderboardRecordWrite(
-        season.season_id,
-        playerRare.userId,
-        playerRare.username,
-        1600,
-        0,
-        {}
-      );
+      await seedSeasonRecord(season.season_id, playerRare.userId, playerRare.username, 1600, 0, {});
       const resultRare = await rpcCall(playerRare, 'armored_archer/get_season_rewards', {});
       expect(resultRare.rewards.rank_tier).toBe('rare');
 
       // Test rank 500 (uncommon max)
       const playerUncommon = await testHelper.createTestAccount('uncommon_rank');
-      admin.leaderboardRecordWrite(
+      await seedSeasonRecord(
         season.season_id,
         playerUncommon.userId,
         playerUncommon.username,
@@ -378,7 +364,7 @@ describe('Season System Integration Tests', () => {
 
       // Test rank 1000 (common)
       const playerCommon = await testHelper.createTestAccount('common_rank');
-      admin.leaderboardRecordWrite(
+      await seedSeasonRecord(
         season.season_id,
         playerCommon.userId,
         playerCommon.username,
@@ -393,11 +379,10 @@ describe('Season System Integration Tests', () => {
 
   describe('rpcClaimSeasonRewards', () => {
     test('should claim season rewards successfully', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
       // Set up leaderboard entry for playerA
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1500, 0, {});
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1500, 0, {});
       // Also set up player stats for wallet updates
       await testHelper.writeStorageObject('player_currency', playerA.userId, playerA.userId, {
         user_id: playerA.userId,
@@ -415,10 +400,9 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should prevent double claiming', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1500, 0, {});
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1500, 0, {});
 
       // First claim
       const result1 = await rpcCall(playerA, 'armored_archer/claim_season_rewards', {});
@@ -437,10 +421,9 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should award currency to wallet', async () => {
-      const admin = await testHelper.getAdminClient();
       const season = getCurrentSeasonInfo();
 
-      admin.leaderboardRecordWrite(season.season_id, playerA.userId, playerA.username, 1500, 0, {});
+      await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1500, 0, {});
       await testHelper.writeStorageObject('player_currency', playerA.userId, playerA.userId, {
         user_id: playerA.userId,
         gems: 0,
@@ -478,28 +461,20 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should create new leaderboard for new season (admin)', async () => {
-      const admin = await testHelper.getAdminClient();
       const oldSeason = getCurrentSeasonInfo();
 
       // Write to old season leaderboard
-      admin.leaderboardRecordWrite(
-        oldSeason.season_id,
-        playerA.userId,
-        playerA.username,
-        1500,
-        0,
-        {}
-      );
+      await seedSeasonRecord(oldSeason.season_id, playerA.userId, playerA.username, 1500, 0, {});
 
       const result = await rpcCallAsAdmin('armored_archer/end_season', {});
       const newSeason = result.new_season;
 
       // Check that old season leaderboard still exists
-      const oldRecords = admin.leaderboardRecordList(oldSeason.season_id, [], 10, '', 0);
+      const oldRecords = await listSeasonRecords(oldSeason.season_id);
       expect(oldRecords.length).toBeGreaterThan(0);
 
       // Check that new season leaderboard exists but is empty
-      const newRecords = admin.leaderboardRecordList(newSeason.season_id, [], 10, '', 0);
+      const newRecords = await listSeasonRecords(newSeason.season_id);
       expect(newRecords.length).toBe(0);
     });
 
