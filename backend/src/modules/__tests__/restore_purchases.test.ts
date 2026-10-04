@@ -105,9 +105,9 @@ describe('rpcRestorePurchases', () => {
   describe('Successful Restore', () => {
     it('should return no purchases when RevenueCat reports no subscriber', async () => {
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockReturnValue({
         ok: true,
-        json: async () => ({ subscriber: null }),
+        json: () => ({ subscriber: null }),
       });
 
       // Need REVENUECAT_SECRET_KEY set
@@ -134,9 +134,9 @@ describe('rpcRestorePurchases', () => {
 
     it('should restore non-subscription purchases and award gems', async () => {
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             non_subscriptions: {
               'com.armoredarcher.gems.small': [
@@ -175,9 +175,9 @@ describe('rpcRestorePurchases', () => {
 
     it('should skip already-processed purchases during restore', async () => {
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             non_subscriptions: {
               'com.armoredarcher.gems.medium': [
@@ -219,9 +219,9 @@ describe('rpcRestorePurchases', () => {
 
     it('should restore purchases from entitlements', async () => {
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -282,10 +282,10 @@ describe('rpcRestorePurchases', () => {
 
     it('should handle RevenueCat API errors gracefully', async () => {
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockReturnValue({
         ok: false,
         status: 401,
-        text: async () => 'Unauthorized',
+        text: () => 'Unauthorized',
       });
 
       process.env.REVENUECAT_SECRET_KEY = 'test-api-key';
@@ -311,9 +311,9 @@ describe('rpcRestorePurchases', () => {
   describe('Balance Limits', () => {
     it('should not restore purchase if it would exceed max balance', async () => {
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             non_subscriptions: {
               'com.armoredarcher.gems.large': [

@@ -1030,7 +1030,11 @@ describe('rpcRevenueCatWebhook', () => {
       expect(await eventTotal('unknown_event', 'unhandled')).toBe(before + 1);
     });
 
-    it('increments armored_archer_webhook_redis_errors_total when the Redis dedup fast path fails', async () => {
+    // ADR-0008: ioredis is promise-based and the Nakama JS runtime cannot drive
+    // promises, so the webhook never consults Redis; durable storage is the
+    // dedup authority. A Redis outage must therefore neither fail the webhook
+    // nor touch the client, and the redis_errors counter stays flat.
+    it('processes the webhook without touching Redis when Redis is down (ADR-0008)', async () => {
       const { storageRead, storageWrite, seedCurrency } = createStatefulStorage();
       const nk = createTestNakama({ storageRead, storageWrite });
       seedCurrency('metric-redis-user', 0);
@@ -1060,8 +1064,12 @@ describe('rpcRevenueCatWebhook', () => {
       );
 
       expect(JSON.parse(result).success).toBe(true);
-      expect(await redisErrors('dedup_lookup')).toBeGreaterThan(beforeLookup);
-      expect(await redisErrors('outcome_record')).toBeGreaterThan(beforeRecord);
+      expect(failingRedis.exists).not.toHaveBeenCalled();
+      expect(failingRedis.get).not.toHaveBeenCalled();
+      expect(failingRedis.set).not.toHaveBeenCalled();
+      expect(failingRedis.setex).not.toHaveBeenCalled();
+      expect(await redisErrors('dedup_lookup')).toBe(beforeLookup);
+      expect(await redisErrors('outcome_record')).toBe(beforeRecord);
     });
 
     it('sets armored_archer_webhook_pending_awards when a purchase queues at the cap', async () => {

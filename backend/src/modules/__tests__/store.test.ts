@@ -151,9 +151,9 @@ describe('store', () => {
   describe('rpcValidatePurchase', () => {
     it('should validate purchase and add gems', async () => {
       // Mock RevenueCat API response for successful validation
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -190,9 +190,9 @@ describe('store', () => {
 
     it('migrates a legacy gold record on purchase with zero balance loss (#866)', async () => {
       // Mock RevenueCat API response for successful validation
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -1205,9 +1205,9 @@ describe('store', () => {
     });
 
     it('should accept ios platform', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -1239,9 +1239,9 @@ describe('store', () => {
     });
 
     it('should accept android platform', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -2232,9 +2232,9 @@ describe('store', () => {
 
   describe('hashReceipt (via duplicate detection)', () => {
     it('should detect duplicate receipts across purchases', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -2400,9 +2400,9 @@ describe('store', () => {
 
   describe('rpcValidatePurchase - max balance exceeded', () => {
     it('should return EXCEEDS_MAX_BALANCE when purchase exceeds limit', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -2552,9 +2552,9 @@ describe('store', () => {
     });
 
     it('should handle successful refund check with no refunds', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlement_details: {},
           },
@@ -2570,10 +2570,10 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat API error', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: false,
         status: 500,
-        text: async () => 'Internal Server Error',
+        text: () => 'Internal Server Error',
       });
 
       const ctx = createMockContext({ userId: 'test-user' });
@@ -2585,9 +2585,9 @@ describe('store', () => {
     });
 
     it('should handle missing subscriber in response', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({}),
+        json: () => ({}),
       });
 
       const ctx = createMockContext({ userId: 'test-user' });
@@ -2599,9 +2599,9 @@ describe('store', () => {
     });
 
     it('should detect and process refunds from entitlement history', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlement_details: {
               'com.armoredarcher.gems.small': {
@@ -2660,9 +2660,9 @@ describe('store', () => {
     });
 
     it('should handle successful subscription check with no subscriptions', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {},
           },
@@ -2678,10 +2678,10 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat API error', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: false,
         status: 500,
-        text: async () => 'Internal Server Error',
+        text: () => 'Internal Server Error',
       });
 
       const ctx = createMockContext({ userId: 'test-user' });
@@ -2694,9 +2694,9 @@ describe('store', () => {
 
     it('should detect active subscriptions', async () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -2719,9 +2719,9 @@ describe('store', () => {
     });
 
     it('should handle missing subscriber in response', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({}),
+        json: () => ({}),
       });
 
       const ctx = createMockContext({ userId: 'test-user' });
@@ -2747,9 +2747,9 @@ describe('store', () => {
     });
 
     it('should run all app launch checks successfully', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlement_details: {},
             entitlements: {},
@@ -2816,9 +2816,9 @@ describe('store', () => {
     });
 
     it('should return error when RevenueCat rejects receipt', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'expired',
         }),
       });
@@ -2836,10 +2836,10 @@ describe('store', () => {
     });
 
     it('should return error when RevenueCat API returns non-OK response', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: false,
         status: 401,
-        text: async () => 'Unauthorized',
+        text: () => 'Unauthorized',
       });
 
       const payload = JSON.stringify({
@@ -2855,9 +2855,9 @@ describe('store', () => {
     });
 
     it('should return error when product ID not found in RevenueCat response', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {},
@@ -2880,9 +2880,9 @@ describe('store', () => {
     });
 
     it('should validate via entitlements match', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {
@@ -2917,9 +2917,9 @@ describe('store', () => {
     });
 
     it('should validate via subscriptions match', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {},
@@ -2953,9 +2953,9 @@ describe('store', () => {
     });
 
     it('should validate via status=0 (legacy RevenueCat response)', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 0,
           subscriber: {
             non_subscriptions: {
@@ -3156,9 +3156,9 @@ describe('store', () => {
 
   describe('Branch coverage: validateWithRevenueCat paths', () => {
     it('should validate via valid:true response format', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           valid: true,
           subscriber: {
             non_subscriptions: {
@@ -3190,9 +3190,9 @@ describe('store', () => {
     });
 
     it('should validate when entitlement key matches product_id directly', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {
@@ -3224,9 +3224,9 @@ describe('store', () => {
     });
 
     it('should fail when entitlements exist but none match product', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {
@@ -3253,9 +3253,9 @@ describe('store', () => {
 
   describe('Branch coverage: PII detection', () => {
     it('should warn when receipt contains PII', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -3561,9 +3561,9 @@ describe('store', () => {
   describe('hashReceipt determinism', () => {
     it('should produce consistent hashes for the same receipt', async () => {
       // Two purchases with the same receipt should be detected as duplicates
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -3607,9 +3607,9 @@ describe('store', () => {
 
   describe('isReceiptAlreadyUsed (in-memory cache path)', () => {
     it('should detect duplicate receipt from in-memory cache', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -3704,9 +3704,9 @@ describe('store', () => {
         return [];
       });
 
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -3741,9 +3741,9 @@ describe('store', () => {
         exists: jest.fn().mockRejectedValue(new Error('Redis connection failed')),
       });
 
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -3784,9 +3784,9 @@ describe('store', () => {
         return [];
       });
 
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -3834,9 +3834,9 @@ describe('store', () => {
     });
 
     it('should return VALIDATION_FAILED when RevenueCat rejects receipt', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'expired',
           subscriber: {},
         }),
@@ -3860,10 +3860,10 @@ describe('store', () => {
     });
 
     it('should return VALIDATION_FAILED when RevenueCat API returns error', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: false,
         status: 500,
-        text: async () => 'Internal Server Error',
+        text: () => 'Internal Server Error',
       });
 
       mockNk.storageRead = jest.fn(() => []);
@@ -3912,9 +3912,9 @@ describe('store', () => {
 
   describe('RevenueCat validation branches', () => {
     it('should handle RevenueCat response with subscriptions matching product', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             subscriptions: {
@@ -3942,9 +3942,9 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat response with entitlements matching by product_id', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {
@@ -3972,9 +3972,9 @@ describe('store', () => {
     });
 
     it('should fail when RevenueCat has no matching product anywhere', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             entitlements: {
@@ -4004,9 +4004,9 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat response with status 0 (valid)', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 0,
           subscriber: {
             non_subscriptions: {
@@ -4034,9 +4034,9 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat response with valid:true field', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           valid: true,
           subscriber: {
             non_subscriptions: {
@@ -4115,10 +4115,10 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat API error in refund check', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: false,
         status: 401,
-        text: async () => 'Unauthorized',
+        text: () => 'Unauthorized',
       });
 
       const result = await rpcCheckRefunds(
@@ -4134,9 +4134,9 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat response with no subscriber in refund check', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({ subscriber: null }),
+        json: () => ({ subscriber: null }),
       });
 
       const result = await rpcCheckRefunds(
@@ -4181,10 +4181,10 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat API error in subscription check', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: false,
         status: 500,
-        text: async () => 'Internal Server Error',
+        text: () => 'Internal Server Error',
       });
 
       const result = await rpcCheckSubscriptions(
@@ -4200,9 +4200,9 @@ describe('store', () => {
     });
 
     it('should handle RevenueCat response with no subscriber in subscription check', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({ subscriber: null }),
+        json: () => ({ subscriber: null }),
       });
 
       const result = await rpcCheckSubscriptions(
@@ -4219,9 +4219,9 @@ describe('store', () => {
 
     it('should detect active subscriptions from entitlements', async () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -4247,9 +4247,9 @@ describe('store', () => {
     });
 
     it('should detect subscriptions via is_subscribed flag', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -4274,9 +4274,9 @@ describe('store', () => {
     });
 
     it('should detect subscriptions via product_plan_interval without cancellation', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -4301,9 +4301,9 @@ describe('store', () => {
 
     it('should return no active subscriptions when entitlements are expired', async () => {
       const pastDate = new Date(Date.now() - 86400000).toISOString();
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -4870,9 +4870,9 @@ describe('store', () => {
 
   describe('wouldExceedMaxBalance branch', () => {
     it('should allow purchase when balance is within max', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -4940,9 +4940,9 @@ describe('store', () => {
 
   describe('markReceiptAsUsed storage write error branch', () => {
     it('should handle storage write error when marking receipt', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -5009,9 +5009,9 @@ describe('store', () => {
 
   describe('rpcCheckRefunds - refunded_at field branch', () => {
     it('should detect refunds using refunded_at field', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlement_details: {
               'com.armoredarcher.gems.small': {
@@ -5048,9 +5048,9 @@ describe('store', () => {
 
   describe('rpcCheckRefunds - missing refunds array branch', () => {
     it('should handle response without refunds field', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlement_details: null,
           },
@@ -5073,9 +5073,9 @@ describe('store', () => {
 
   describe('isReceiptAlreadyUsed storage fallback branch', () => {
     it('should check Nakama storage when Redis and memory miss', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -5107,9 +5107,9 @@ describe('store', () => {
 
   describe('rpcCheckSubscriptions - is_subscribed with cancellation_date', () => {
     it('should not count subscription with cancellation_date', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           subscriber: {
             entitlements: {
               premium: {
@@ -6412,9 +6412,9 @@ describe('store', () => {
     it('records purchases_total{status=success} + purchase_revenue_total only on a successful IAP award', async () => {
       // Mirror the existing happy-path mock setup (revenuecat fetch + a
       // seeded currency record) so the validator reaches the award branch.
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'active',
           subscriber: {
             non_subscriptions: {
@@ -6472,9 +6472,9 @@ describe('store', () => {
     });
 
     it('records purchases_total{status=failure} when the receipt fails RevenueCat validation', async () => {
-      mockFetch.mockResolvedValue({
+      mockFetch.mockReturnValue({
         ok: true,
-        json: async () => ({
+        json: () => ({
           status: 'unknown', // RevenueCat returns this when it doesn't recognize the receipt
         }),
       });
