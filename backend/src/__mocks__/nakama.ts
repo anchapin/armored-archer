@@ -40,6 +40,40 @@ export interface MockStorageObject {
   updateTime: number;
 }
 
+/**
+ * nk.httpRequest test double (#1423). nk.httpRequest is synchronous in the
+ * Nakama JS runtime, so this routes it through whatever jest mock a test put
+ * on global.fetch and returns {code, body, headers} directly. Fixtures must
+ * be synchronous (mockReturnValue, json: () => ...). With no mock installed
+ * it throws, as a transport failure would in production.
+ */
+export function httpRequestViaFetchMock(
+  url: string,
+  method: string,
+  headers?: { [key: string]: string },
+  body?: string
+): { code: number; body: string; headers: { [key: string]: string } } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fetchMock = (globalThis as any).fetch;
+  if (typeof fetchMock !== 'function') {
+    throw new Error('nk.httpRequest: no HTTP mock installed');
+  }
+  const res = fetchMock(url, { method: method.toUpperCase(), headers, body });
+  if (!res || typeof res.then === 'function') {
+    throw new Error('nk.httpRequest mock must return a response synchronously');
+  }
+  const code = typeof res.status === 'number' ? res.status : res.ok ? 200 : 500;
+  let text = '';
+  if (res.ok && typeof res.json === 'function') {
+    text = JSON.stringify(res.json());
+  } else if (typeof res.text === 'function') {
+    text = String(res.text());
+  } else if (typeof res.json === 'function') {
+    text = JSON.stringify(res.json());
+  }
+  return { code, body: text, headers: {} };
+}
+
 export const createMockNakama = (): Runtime.Nakama => {
   const storageWriteCalls: MockStorageObject[] = [];
 
@@ -430,6 +464,7 @@ export const createMockNakama = (): Runtime.Nakama => {
   });
 
   return {
+    httpRequest: jest.fn(httpRequestViaFetchMock),
     storageRead: storageReadMock,
     dbQuery: dbQueryMock,
     notificationSend: jest.fn(),
