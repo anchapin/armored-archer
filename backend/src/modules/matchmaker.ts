@@ -6,7 +6,12 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
-import { toStorageValue, getStorageRawValue, normalizeStorageList } from '../utils/storage-helpers';
+import {
+  toStorageValue,
+  getStorageRawValue,
+  normalizeStorageList,
+  readPvpMatch,
+} from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import {
   isPlayerFlagged,
@@ -714,13 +719,7 @@ export function rpcAcceptMatch(
     });
   }
 
-  const objects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: request.match_id,
-      userId: ctx.userId,
-    },
-  ]);
+  const objects = readPvpMatch(nk, request.match_id, ctx.userId);
 
   if (objects.length === 0) {
     return JSON.stringify({
@@ -1613,13 +1612,7 @@ function getAndValidateMatch(
   logger: Runtime.Logger,
   options?: { allowCompleted?: boolean }
 ): { match?: PvPMatch; error?: string } {
-  const objects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: request.match_id,
-      userId: ctx.userId,
-    },
-  ]);
+  const objects = readPvpMatch(nk, request.match_id, ctx.userId);
 
   if (objects.length === 0) {
     return { error: 'Match not found' };

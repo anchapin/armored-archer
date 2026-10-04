@@ -313,3 +313,38 @@ export function parseRecordMetadata(metadata: unknown): Record<string, any> {
   }
   return {};
 }
+
+/**
+ * Read a PvP match by id regardless of which participant is calling.
+ *
+ * `pvp_matches` objects are owned by the match creator (see rpcCreateMatch),
+ * so a storageRead keyed on the opponent's userId always comes back empty and
+ * the opponent sees "Match not found" on accept/combat/forfeit. Try the
+ * caller-owned read first (covers the creator, and keeps unit-test mocks that
+ * ignore userId working), then resolve the owner from the storage table.
+ */
+export function readPvpMatch(
+  nk: Runtime.Nakama,
+  matchId: string,
+  callerUserId: string
+): Runtime.StorageObject[] {
+  const own = nk.storageRead([{ collection: 'pvp_matches', key: matchId, userId: callerUserId }]);
+  if (own.length > 0 || typeof nk.sqlQuery !== 'function') {
+    return own;
+  }
+  let ownerId: string | undefined;
+  try {
+    const rows = nk.sqlQuery(
+      "SELECT user_id FROM storage WHERE collection = 'pvp_matches' AND key = $1 LIMIT 1",
+      [matchId]
+    ) as Array<{ user_id?: unknown }>;
+    const raw = rows && rows.length > 0 ? rows[0].user_id : undefined;
+    ownerId = raw === undefined || raw === null ? undefined : String(raw);
+  } catch {
+    return own;
+  }
+  if (!ownerId || ownerId === callerUserId) {
+    return own;
+  }
+  return nk.storageRead([{ collection: 'pvp_matches', key: matchId, userId: ownerId }]);
+}

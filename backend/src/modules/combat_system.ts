@@ -25,7 +25,7 @@ import {
   type TimeoutEvent,
 } from './fairness_telemetry';
 import { wrapStorageRead } from './n_plus_one_detection';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, readPvpMatch } from '../utils/storage-helpers';
 import { getPlayerInventory, getEquippedGearModifierBonuses, PlayerInventory } from './gear_system';
 import { PvPMatch } from './matchmaker';
 import { recordCombatAction, recordDamageDealt } from './metrics';
@@ -199,13 +199,7 @@ function validateMatchForCombat(
   userId: string,
   span: Span
 ): { valid: true; match: PvPMatch } | { valid: false; error: string; errorCode?: string } {
-  const matchObjects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: matchId,
-      userId: userId,
-    },
-  ]);
+  const matchObjects = readPvpMatch(nk, matchId, userId);
 
   if (matchObjects.length === 0) {
     span.setAttribute('error', true);
@@ -1318,22 +1312,16 @@ export function rpcPlayerDisconnect(
       const { match_id, reason } = validation.data;
 
       // Read match
-      const matchObjects = nk.storageRead([
-        {
-          collection: 'pvp_matches',
-          key: match_id,
-          userId: ctx.userId,
-        },
-      ]);
-
-      if (matchObjects.length === 0) {
-        span.setAttribute('error', true);
-        span.setAttribute('error.message', 'Match not found');
+      const forfeitObjects = readPvpMatch(nk, match_id, ctx.userId);
+      const rawForfeitMatch =
+        forfeitObjects.length > 0 ? getStorageRawValue(forfeitObjects[0].value) : null;
+      if (rawForfeitMatch === null) {
+        span.setAttributes({ error: true, 'error.message': 'Match not found' });
         return JSON.stringify({ error: 'Match not found' });
       }
 
       const matchResult = safeParse<PvPMatch>(
-        getStorageRawValue(matchObjects[0].value) ?? '',
+        rawForfeitMatch,
         null,
         logger,
         'rpcForfeitMatch:match'
