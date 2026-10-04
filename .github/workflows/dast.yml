@@ -119,6 +119,11 @@ jobs:
         with:
           target: 'http://localhost:7350'
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Same fix as dast-scanning.yml (#1357): this workflow's token is
+          # contents: read + security-events: write, so the action's default
+          # issue creation fails with "Resource not accessible by
+          # integration" even when the scan passes. Report stays an artifact.
+          allow_issue_writing: false
 
       - name: OWASP ZAP Full Scan
         if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
@@ -126,6 +131,11 @@ jobs:
         with:
           target: 'http://localhost:7350'
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Same fix as dast-scanning.yml (#1357): this workflow's token is
+          # contents: read + security-events: write, so the action's default
+          # issue creation fails with "Resource not accessible by
+          # integration" even when the scan passes. Report stays an artifact.
+          allow_issue_writing: false
 
       - name: Stop services
         if: always()
