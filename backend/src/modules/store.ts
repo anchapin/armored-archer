@@ -37,7 +37,7 @@ function sha256Hex(input: string): string {
   for (let i = 0; i < 8; i++) {
     let h = hash >>> 0;
     for (let j = 0; j < 8; j++) {
-      h ^= (input.charCodeAt((i * 8 + j) % input.length) || 0);
+      h ^= input.charCodeAt((i * 8 + j) % input.length) || 0;
       h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
       h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
       h = (h ^ (h >>> 16)) >>> 0;
@@ -561,13 +561,7 @@ export function processRefund(
     // Operators reconcile the inconsistency from the audit trail.
     if (deduction > 0) {
       try {
-        applyCurrencyDelta(
-          nk,
-          userId,
-          { gems: deduction },
-          'refund_rollback',
-          logger
-        );
+        applyCurrencyDelta(nk, userId, { gems: deduction }, 'refund_rollback', logger);
       } catch (rollbackErr) {
         logger.error(
           'CRITICAL: refund rollback failed for user %s, transaction %s after marker-write failure — manual reconciliation required: %s',
@@ -1073,15 +1067,22 @@ function validatePurchaseRequest(
     } catch {
       // fall through to generic message
     }
-    const validProductIds = ['com.armoredarcher.gems.small', 'com.armoredarcher.gems.medium', 'com.armoredarcher.gems.large'];
+    const validProductIds = [
+      'com.armoredarcher.gems.small',
+      'com.armoredarcher.gems.medium',
+      'com.armoredarcher.gems.large',
+    ];
     if (typeof parsed.product_id === 'string' && !validProductIds.includes(parsed.product_id)) {
       return { valid: false, error: 'Invalid product ID', errorCode: 'VALIDATION_ERROR' };
     }
     if (typeof parsed.platform === 'string' && !['ios', 'android'].includes(parsed.platform)) {
       return { valid: false, error: 'Invalid platform', errorCode: 'VALIDATION_ERROR' };
     }
-    if (parsed.transaction_receipt === undefined || parsed.transaction_receipt === '' ||
-        (typeof parsed.transaction_receipt === 'string' && parsed.transaction_receipt.length === 0)) {
+    if (
+      parsed.transaction_receipt === undefined ||
+      parsed.transaction_receipt === '' ||
+      (typeof parsed.transaction_receipt === 'string' && parsed.transaction_receipt.length === 0)
+    ) {
       return { valid: false, error: 'Receipt is required', errorCode: 'VALIDATION_ERROR' };
     }
     return { valid: false, error: validation.error, errorCode: 'VALIDATION_ERROR' };
@@ -1151,8 +1152,7 @@ function validatePurchaseWithRevenueCat(
   request: { product_id: string; platform: string; transaction_receipt: string }
 ):
   | { valid: true; gemBundle: { gem_amount: number } }
-  | { valid: false; error: string; errorCode?: string }
-{
+  | { valid: false; error: string; errorCode?: string } {
   // Validate receipt with RevenueCat server-side API for fraud protection
   // (sync via nk.httpRequest, #1423). Fails closed on any error.
   const rcValidation = validateWithRevenueCat(
@@ -1351,7 +1351,13 @@ export function rpcValidatePurchase(
   const rcValidation = validatePurchaseWithRevenueCat(ctx, logger, nk, request);
   if (!rcValidation.valid) {
     recordPurchase(request.product_id, false);
-    addToPendingQueue(nk, ctx.userId, request.product_id, request.platform, request.transaction_receipt);
+    addToPendingQueue(
+      nk,
+      ctx.userId,
+      request.product_id,
+      request.platform,
+      request.transaction_receipt
+    );
     return JSON.stringify({ error: rcValidation.error, error_code: rcValidation.errorCode });
   }
   const gemBundle = rcValidation.gemBundle;
@@ -1601,7 +1607,7 @@ export function rpcPurchaseCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1765,7 +1771,7 @@ export function rpcGetOwnedCosmetics(
   let items: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1882,7 +1888,7 @@ export function rpcEquipCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2010,7 +2016,7 @@ export function rpcSaveCosmeticLoadout(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2155,7 +2161,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
+        getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2214,7 +2220,7 @@ export function rpcPurchaseBundle(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2303,7 +2309,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
+        getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2381,7 +2387,7 @@ export function rpcGetBundleCatalog(
   let ownedBundles: string[] = [];
   if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
     const parsed = safeParse<{ bundles: string[] }>(
-    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
+      getStorageRawValue(bundleOwnedResult[0].value) ?? '',
       null,
       logger,
       'player_bundles_owned'
@@ -2464,10 +2470,7 @@ interface PendingPurchase {
 }
 const PENDING_PURCHASES_COLLECTION = 'pending_purchases';
 
-function getPendingPurchasesFromStorage(
-  nk: Runtime.Nakama,
-  userId: string
-): PendingPurchase[] {
+function getPendingPurchasesFromStorage(nk: Runtime.Nakama, userId: string): PendingPurchase[] {
   try {
     const objects = nk.storageRead([
       { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
@@ -2475,7 +2478,12 @@ function getPendingPurchasesFromStorage(
     if (objects.length === 0) return [];
     const rawValue = (objects[0] as Runtime.StorageObject).value;
     const jsonStr = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue);
-    const parsed = safeParse<PendingPurchase[]>(jsonStr, null, undefined, 'getPendingPurchasesFromStorage');
+    const parsed = safeParse<PendingPurchase[]>(
+      jsonStr,
+      null,
+      undefined,
+      'getPendingPurchasesFromStorage'
+    );
     return parsed.success && parsed.data ? parsed.data : [];
   } catch {
     return [];
@@ -2489,9 +2497,7 @@ function savePendingPurchasesToStorage(
 ): void {
   if (purchases.length === 0) {
     try {
-      nk.storageDelete([
-        { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
-      ]);
+      nk.storageDelete([{ collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId }]);
     } catch {
       // Ignore delete errors (collection/key may not exist)
     }
@@ -2529,10 +2535,7 @@ const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
  * Returns undefined if not configured.
  */
 function getRevenueCatApiKey(): string | undefined {
-  const raw =
-    process.env.REVENUECAT_SECRET_KEY ||
-    config.revenuecat.secretKey ||
-    undefined;
+  const raw = process.env.REVENUECAT_SECRET_KEY || config.revenuecat.secretKey || undefined;
   // Treat `.env` placeholder values (e.g. `your_revenuecat_secret_key_here`)
   // and empty strings as "not configured". The local `.env` ships with these
   // placeholders for documentation; the production handler must short-circuit
@@ -2614,11 +2617,97 @@ function revenueCatRequest(
     return { ok: false, status: response.code, text };
   }
   try {
-    return { ok: true, status: response.code, data: JSON.parse(text) as Record<string, unknown>, text };
+    return {
+      ok: true,
+      status: response.code,
+      data: JSON.parse(text) as Record<string, unknown>,
+      text,
+    };
   } catch {
     logger.error('RevenueCat %s %s returned a non-JSON body', method, path);
     return { ok: false, status: response.code, text };
   }
+}
+
+/**
+ * Response for a read-only RevenueCat lookup RPC when the API call failed.
+ * Kept non-fatal (success: true) so clients can retry later.
+ */
+function revenueCatLookupFailure(empty: Record<string, unknown>, message: string): string {
+  return JSON.stringify({ success: true, ...empty, message, apiError: true });
+}
+
+const SUBSCRIBER_CHECKS = {
+  refunds: {
+    empty: { refunds_found: 0 } as Record<string, unknown>,
+    skipLog: 'RevenueCat API key not configured - skipping refund check',
+    notConfigured: 'Refund check not configured',
+    failed: 'Unable to check refunds',
+  },
+  subscriptions: {
+    empty: { active_subscriptions: [] } as Record<string, unknown>,
+    skipLog: 'RevenueCat API key not configured - skipping subscription check',
+    notConfigured: 'Subscription check not configured',
+    failed: 'Unable to check subscriptions',
+  },
+};
+
+/**
+ * Shared front half of the read-only RevenueCat check RPCs (refunds,
+ * subscriptions): returns either a finished response (key missing or the API
+ * call failed, both non-fatal) or the subscriber record to inspect.
+ */
+function lookupSubscriberForCheck(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  appUserId: string,
+  check: keyof typeof SUBSCRIBER_CHECKS
+): { response?: string; subscriber?: Record<string, unknown> } {
+  const { empty, ...messages } = SUBSCRIBER_CHECKS[check];
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) {
+    logger.warn(messages.skipLog);
+    return {
+      response: JSON.stringify({ success: true, ...empty, message: messages.notConfigured }),
+    };
+  }
+  const { ok, subscriber } = fetchRevenueCatSubscriber(nk, logger, apiKey, appUserId);
+  if (!ok) {
+    return { response: revenueCatLookupFailure(empty, messages.failed) };
+  }
+  return { subscriber };
+}
+
+/**
+ * Fetches a RevenueCat subscriber record (GET /subscribers/{id}).
+ * Shared by the refund, subscription and restore RPCs so each one only
+ * shapes its own response. `subscriber` is undefined when the call failed
+ * or RevenueCat returned no subscriber object.
+ */
+function fetchRevenueCatSubscriber(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  apiKey: string,
+  appUserId: string,
+  extraHeaders?: { [header: string]: string }
+): { ok: boolean; subscriber?: Record<string, unknown> } {
+  const response = revenueCatRequest(
+    nk,
+    logger,
+    apiKey,
+    'get',
+    `/subscribers/${encodeURIComponent(appUserId)}`,
+    undefined,
+    extraHeaders
+  );
+  if (!response.ok || !response.data) {
+    logger.error('RevenueCat subscriber lookup failed: %s - %s', response.status, response.text);
+    return { ok: false };
+  }
+  return {
+    ok: true,
+    subscriber: response.data.subscriber as Record<string, unknown> | undefined,
+  };
 }
 
 function validateWithRevenueCat(
@@ -2947,37 +3036,9 @@ export function rpcCheckRefunds(
     return createValidationErrorResponse('check_refunds', validation.error);
   }
 
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey) {
-    logger.warn('RevenueCat API key not configured - skipping refund check');
-    return JSON.stringify({
-      success: true,
-      refunds_found: 0,
-      message: 'Refund check not configured',
-    });
-  }
-
   const appUserId = validation.data.app_user_id || ctx.userId;
-
-  const response = revenueCatRequest(
-    nk,
-    logger,
-    apiKey,
-    'get',
-    `/subscribers/${encodeURIComponent(appUserId)}`
-  );
-
-  if (!response.ok || !response.data) {
-    logger.error('RevenueCat API error: %s - %s', response.status, response.text);
-    return JSON.stringify({
-      success: true,
-      refunds_found: 0,
-      message: 'Unable to check refunds',
-      apiError: true,
-    });
-  }
-
-  const subscriber = response.data.subscriber as Record<string, unknown> | undefined;
+  const { response, subscriber } = lookupSubscriberForCheck(nk, logger, appUserId, 'refunds');
+  if (response !== undefined) return response;
   if (!subscriber) {
     return JSON.stringify({ success: true, refunds_found: 0, message: 'No subscriber found' });
   }
@@ -3056,37 +3117,9 @@ export function rpcCheckSubscriptions(
     return createValidationErrorResponse('check_subscriptions', validation.error);
   }
 
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey) {
-    logger.warn('RevenueCat API key not configured - skipping subscription check');
-    return JSON.stringify({
-      success: true,
-      active_subscriptions: [],
-      message: 'Subscription check not configured',
-    });
-  }
-
   const appUserId = validation.data.app_user_id || ctx.userId;
-
-  const response = revenueCatRequest(
-    nk,
-    logger,
-    apiKey,
-    'get',
-    `/subscribers/${encodeURIComponent(appUserId)}`
-  );
-
-  if (!response.ok || !response.data) {
-    logger.error('RevenueCat API error: %s - %s', response.status, response.text);
-    return JSON.stringify({
-      success: true,
-      active_subscriptions: [],
-      message: 'Unable to check subscriptions',
-      apiError: true,
-    });
-  }
-
-  const subscriber = response.data.subscriber as Record<string, unknown> | undefined;
+  const { response, subscriber } = lookupSubscriberForCheck(nk, logger, appUserId, 'subscriptions');
+  if (response !== undefined) return response;
   if (!subscriber) {
     return JSON.stringify({
       success: true,
@@ -3096,8 +3129,11 @@ export function rpcCheckSubscriptions(
   }
 
   const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
-  const activeSubscriptions: { product_id: string; expires_date?: string; is_subscribed: boolean }[] =
-    [];
+  const activeSubscriptions: {
+    product_id: string;
+    expires_date?: string;
+    is_subscribed: boolean;
+  }[] = [];
   if (entitlements) {
     for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
       const ent = entitlement as Record<string, unknown>;
@@ -3228,18 +3264,11 @@ export function rpcRestorePurchases(
     });
   }
 
-  const response = revenueCatRequest(
-    nk,
-    logger,
-    apiKey,
-    'get',
-    `/subscribers/${encodeURIComponent(ctx.userId)}`,
-    undefined,
-    { 'X-Platform': request.platform === 'ios' ? 'apple' : 'google' }
-  );
+  const { ok, subscriber } = fetchRevenueCatSubscriber(nk, logger, apiKey, ctx.userId, {
+    'X-Platform': request.platform === 'ios' ? 'apple' : 'google',
+  });
 
-  if (!response.ok || !response.data) {
-    logger.error('RevenueCat restore API error: %s - %s', response.status, response.text);
+  if (!ok) {
     return JSON.stringify({
       success: false,
       error: 'Unable to query purchase history',
@@ -3248,7 +3277,6 @@ export function rpcRestorePurchases(
     });
   }
 
-  const subscriber = response.data.subscriber as Record<string, unknown> | undefined;
   if (!subscriber) {
     return JSON.stringify({ success: true, restored: 0, purchases: [] });
   }
@@ -3309,7 +3337,11 @@ export function rpcRestorePurchases(
     for (const [productId, purchases] of Object.entries(nonSubscriptions)) {
       for (const purchase of purchases) {
         const p = purchase as Record<string, unknown>;
-        grant(productId, (p.id as string) || (p.transaction_id as string) || '', 'non_subscription');
+        grant(
+          productId,
+          (p.id as string) || (p.transaction_id as string) || '',
+          'non_subscription'
+        );
       }
     }
   }
@@ -3327,7 +3359,11 @@ export function rpcRestorePurchases(
     }
   }
 
-  const result = { success: true, restored: restoredPurchases.length, purchases: restoredPurchases };
+  const result = {
+    success: true,
+    restored: restoredPurchases.length,
+    purchases: restoredPurchases,
+  };
 
   logAudit(
     nk,
@@ -4212,9 +4248,10 @@ export function rpcRevenueCatWebhook(
     (eventObj?.refund_transaction_id as string) ||
     '';
   const rawEventId = eventObj?.id ?? webhookData.event_id ?? eventObj?.event_id;
-  const eventId = rawEventId !== undefined && rawEventId !== null && String(rawEventId) !== ''
-    ? String(rawEventId)
-    : transactionId;
+  const eventId =
+    rawEventId !== undefined && rawEventId !== null && String(rawEventId) !== ''
+      ? String(rawEventId)
+      : transactionId;
 
   // Event types whose application must be idempotent (issue #1067).
   const requiresEventDedup =
