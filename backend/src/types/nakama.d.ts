@@ -225,7 +225,10 @@ declare namespace Runtime {
     ): StreamUserListResult[];
     streamCount(stream: Stream): number;
     storageDelete(objects: StorageRead[]): void;
-    dbQuery(query: string, params?: unknown[]): unknown[];
+    /** Run a SQL statement that returns rows (SELECT or ... RETURNING). */
+    sqlQuery(query: string, params?: unknown[]): unknown[];
+    /** Run a SQL statement that returns no rows. */
+    sqlExec(query: string, params?: unknown[]): { rowsAffected: number };
   }
 
   /**

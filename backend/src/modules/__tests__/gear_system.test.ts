@@ -64,7 +64,7 @@ describe('gear_system', () => {
       unlocked_modifier_pools: [],
       ...overrides,
     };
-    // Also store in testStorage for dbQuery mock
+    // Also store in testStorage for sqlQuery mock
     testStorage.set('player_inventory:test-user', JSON.stringify(inventory));
     return inventory;
   };
@@ -1071,8 +1071,8 @@ describe('gear_system', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
-      // Make dbQuery throw on all attempts to simulate persistent DB failure
-      mockNk.dbQuery = jest.fn().mockImplementation(() => {
+      // Make sqlQuery throw on all attempts to simulate persistent DB failure
+      mockNk.sqlQuery = jest.fn().mockImplementation(() => {
         throw new Error('DB connection failed');
       });
 
@@ -1096,7 +1096,7 @@ describe('gear_system', () => {
 
       // First call throws synchronously, second succeeds
       let callCount = 0;
-      mockNk.dbQuery = jest.fn().mockImplementation(() => {
+      mockNk.sqlQuery = jest.fn().mockImplementation(() => {
         callCount++;
         if (callCount === 1) {
           throw new Error('DB connection failed');
@@ -1192,7 +1192,7 @@ describe('gear_system', () => {
     });
 
     it('should return DATABASE_ERROR when the gear insert fails', () => {
-      mockNk.dbQuery = jest.fn().mockImplementation((query: string) => {
+      mockNk.sqlQuery = jest.fn().mockImplementation((query: string) => {
         if (query.includes('INSERT INTO inventory_items')) {
           throw new Error('db down');
         }

@@ -2810,7 +2810,7 @@ export function rpcGetMatchHistory(
 
     // Get total count first
     const countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
-    const countResult = nk.dbQuery(countQuery, params) as any[];
+    const countResult = nk.sqlQuery(countQuery, params) as any[];
     const total = countResult[0]?.total || 0;
 
     // Add pagination
@@ -2818,7 +2818,7 @@ export function rpcGetMatchHistory(
     params.push(limit);
     params.push(offset);
 
-    const result = nk.dbQuery(query, params) as any[];
+    const result = nk.sqlQuery(query, params) as any[];
 
     const matches = result.map((row: any) => {
       const isVictory = row.winner_id === ctx.userId;
@@ -2952,7 +2952,7 @@ export function rpcGetMatchDetails(
       WHERE mr.match_id = $1
     `;
 
-    const result = nk.dbQuery(query, [match_id]) as any[];
+    const result = nk.sqlQuery(query, [match_id]) as any[];
 
     if (!result || result.length === 0) {
       return JSON.stringify({
@@ -3191,7 +3191,7 @@ export function rpcAdminQueryMatches(
     const countQuery = query
       .replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM')
       .replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
-    const countResult = nk.dbQuery(countQuery, params) as any[];
+    const countResult = nk.sqlQuery(countQuery, params) as any[];
     const total = countResult[0]?.total || 0;
 
     // Add ordering and pagination
@@ -3200,7 +3200,7 @@ export function rpcAdminQueryMatches(
     params.push(limit);
     params.push(offset);
 
-    const result = nk.dbQuery(query, params) as any[];
+    const result = nk.sqlQuery(query, params) as any[];
 
     const matches = result.map((row: any) => ({
       match_id: row.match_id,

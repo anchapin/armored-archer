@@ -58,7 +58,7 @@ export function rpcCleanupTestUser(
 
   // Fire-and-forget async cleanup. The handler returns the ack immediately so
   // the sync wrapper contract is honored. Real cleanup happens via
-  // nk.storageDelete (async) and nk.dbQuery (async) below.
+  // nk.storageDelete (async) and nk.sqlQuery (async) below.
   void runCleanup(nk, logger, userId);
 
   return JSON.stringify({ success: true, user_id: userId, async: true });
@@ -85,7 +85,7 @@ async function runCleanup(
 
   for (const table of CLEANUP_TABLES) {
     try {
-      await nk.dbQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
+      await nk.sqlQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     } catch (err) {
       logger.debug(`cleanup_test_user: ${table} delete: ${(err as Error).message}`);
     }

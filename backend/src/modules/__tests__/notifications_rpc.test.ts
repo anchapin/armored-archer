@@ -667,7 +667,7 @@ describe('notifications_rpc', () => {
       const handler = getHandler('armored_archer_get_notification_status');
 
       const mockNk = {
-        dbQuery: jest.fn().mockResolvedValue([{ count: 3 }]),
+        sqlQuery: jest.fn().mockResolvedValue([{ count: 3 }]),
       };
 
       const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, mockNk, '{}');
@@ -684,7 +684,7 @@ describe('notifications_rpc', () => {
       const handler = getHandler('armored_archer_get_notification_status');
 
       const mockNk = {
-        dbQuery: jest.fn().mockResolvedValue([]),
+        sqlQuery: jest.fn().mockResolvedValue([]),
       };
 
       const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, mockNk, '{}');
@@ -694,13 +694,13 @@ describe('notifications_rpc', () => {
       expect(parsed.registeredDevices).toBe(0);
     });
 
-    test('should handle dbQuery error gracefully', async () => {
+    test('should handle sqlQuery error gracefully', async () => {
       const mockInitializer = createMockInitializer();
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_get_notification_status');
 
       const mockNk = {
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB error')),
       };
 
       const result = await handler({ userId: 'user-123' }, { error: jest.fn() }, mockNk, '{}');
@@ -811,16 +811,14 @@ describe('notifications_rpc', () => {
       }
     );
 
-    test('armored_archer_get_notification_status (dbQuery throw) is also safe', async () => {
-      const thrown = new Error(
-        `connection failed: ${SECRET_DSN} — ${SECRET_FRAGMENT}`
-      );
+    test('armored_archer_get_notification_status (sqlQuery throw) is also safe', async () => {
+      const thrown = new Error(`connection failed: ${SECRET_DSN} — ${SECRET_FRAGMENT}`);
       const mockInitializer = createMockInitializer();
       registerNotificationEndpoints(mockInitializer);
       const handler = getHandler('armored_archer_get_notification_status');
 
       const mockNk = {
-        dbQuery: jest.fn().mockRejectedValue(thrown),
+        sqlQuery: jest.fn().mockRejectedValue(thrown),
       };
       const rpcLogger = { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 

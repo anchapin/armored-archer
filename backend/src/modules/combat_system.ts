@@ -1550,7 +1550,7 @@ function persistMatchResult(
       }
     }
 
-    nk.dbQuery(
+    nk.sqlQuery(
       `INSERT INTO match_results (
         match_id, creator_id, opponent_id, winner_id, loser_id,
         match_type, is_punch_up, creator_rank, opponent_rank,

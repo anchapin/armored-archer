@@ -6,7 +6,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
-import { GearItem } from './gear_system';
+import { GearItem, GearModifier } from './gear_system';
 
 /**
  * Database row interface for gear items.
@@ -105,7 +105,7 @@ export function insertGearItem(
     // Convert modifiers array to JSONB
     const modifiersJson = JSON.stringify(gear.modifiers);
 
-    const result = nk.dbQuery(query, [
+    const result = nk.sqlQuery(query, [
       userId,
       gear.type,
       gear.name,
@@ -135,6 +135,23 @@ export function insertGearItem(
 }
 
 /**
+ * Normalises a JSONB column value from nk.sqlQuery. Depending on the driver
+ * path it can arrive already decoded or as its JSON text, so accept both.
+ */
+function jsonbArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/**
  * Retrieves all gear items for a player from the database.
  *
  * @param nk - Nakama server interface
@@ -158,7 +175,7 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as GearItemRow[];
+    const result = nk.sqlQuery(query, [userId]) as GearItemRow[];
 
     if (!result || result.length === 0) {
       return [];
@@ -170,14 +187,14 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
       name: row.name,
       rarity: row.rarity,
       level: row.level,
-      stats: Array.isArray(row.stats)
-        ? (row.stats as GearStatRow[]).map((stat: GearStatRow) => ({
+      stats: Array.isArray(jsonbArray(row.stats))
+        ? (jsonbArray(row.stats) as GearStatRow[]).map((stat: GearStatRow) => ({
             name: stat.name,
             base_value: stat.base_value,
             value: stat.value,
           }))
         : [],
-      modifiers: Array.isArray(row.modifiers) ? row.modifiers : [],
+      modifiers: jsonbArray(row.modifiers) as GearModifier[],
       timestamp: new Date(row.created_at).getTime(),
     }));
   } catch (error) {
@@ -214,7 +231,7 @@ export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Load
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as LoadoutRow[];
+    const result = nk.sqlQuery(query, [userId]) as LoadoutRow[];
 
     if (!result || result.length === 0) {
       return {
@@ -276,7 +293,7 @@ export function equipItemInDB(
 
   let gearType: string | null = null;
   try {
-    const verifyResult = nk.dbQuery(verifyQuery, [itemId, userId]) as any[];
+    const verifyResult = nk.sqlQuery(verifyQuery, [itemId, userId]) as any[];
     if (!verifyResult || verifyResult.length === 0) {
       return {
         success: false,
@@ -311,7 +328,7 @@ export function equipItemInDB(
   `;
 
   try {
-    nk.dbQuery(upsertQuery, [userId, itemId]);
+    nk.sqlQuery(upsertQuery, [userId, itemId]);
     return { success: true };
   } catch (error) {
     return {
@@ -344,7 +361,7 @@ export function unequipItemInDB(
   `;
 
   try {
-    nk.dbQuery(query, [userId]);
+    nk.sqlQuery(query, [userId]);
     return { success: true };
   } catch (error) {
     return {
@@ -427,7 +444,7 @@ export function recordBossDefeatInDB(
   let defeatCount = 1;
 
   try {
-    const checkResult = nk.dbQuery(checkQuery, [userId, bossId]) as any[];
+    const checkResult = nk.sqlQuery(checkQuery, [userId, bossId]) as any[];
 
     if (checkResult && checkResult.length > 0) {
       defeatCount = checkResult[0].defeat_count + 1;
@@ -446,7 +463,7 @@ export function recordBossDefeatInDB(
       RETURNING defeat_count
     `;
 
-    const upsertResult = nk.dbQuery(upsertQuery, [userId, bossId]) as any[];
+    const upsertResult = nk.sqlQuery(upsertQuery, [userId, bossId]) as any[];
     if (upsertResult && upsertResult.length > 0) {
       defeatCount = upsertResult[0].defeat_count;
     }
@@ -481,7 +498,7 @@ export function getDefeatedBossesFromDB(nk: Runtime.Nakama, userId: string): str
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as BossDefeatRow[];
+    const result = nk.sqlQuery(query, [userId]) as BossDefeatRow[];
     if (!result || result.length === 0) {
       return [];
     }
@@ -507,7 +524,7 @@ export function getBossDefeatCount(nk: Runtime.Nakama, userId: string, bossId: s
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId, bossId]) as BossDefeatRow[];
+    const result = nk.sqlQuery(query, [userId, bossId]) as BossDefeatRow[];
     if (result && result.length > 0) {
       return result[0].defeat_count;
     }
@@ -548,7 +565,7 @@ export function unlockModifierPoolInDB(
   `;
 
   try {
-    const checkResult = nk.dbQuery(checkQuery, [userId, modifierId]) as any[];
+    const checkResult = nk.sqlQuery(checkQuery, [userId, modifierId]) as any[];
 
     if (checkResult && checkResult.length > 0) {
       return {
@@ -563,7 +580,7 @@ export function unlockModifierPoolInDB(
       VALUES ($1, $2, $3, $4)
     `;
 
-    nk.dbQuery(insertQuery, [userId, modifierId, unlockReason, sourceBossId || null]);
+    nk.sqlQuery(insertQuery, [userId, modifierId, unlockReason, sourceBossId || null]);
 
     return {
       success: true,
@@ -593,7 +610,7 @@ export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: strin
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId]) as UnlockedModifierPoolRow[];
+    const result = nk.sqlQuery(query, [userId]) as UnlockedModifierPoolRow[];
     if (!result || result.length === 0) {
       return [];
     }
@@ -623,7 +640,7 @@ export function isModifierPoolUnlocked(
   `;
 
   try {
-    const result = nk.dbQuery(query, [userId, modifierId]) as UnlockedModifierPoolRow[];
+    const result = nk.sqlQuery(query, [userId, modifierId]) as UnlockedModifierPoolRow[];
     return result && result.length > 0;
   } catch (error) {
     logger.error('Failed to check if modifier pool is unlocked', { error: String(error) });
