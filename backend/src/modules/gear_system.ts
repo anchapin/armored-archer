@@ -7,8 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Runtime } from '../types/nakama';
 import { getCacheManager } from '../utils/cache';
-import { safeParse, createErrorResponse } from '../utils/safeParse';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { createErrorResponse } from '../utils/safeParse';
 import { createTracedRpcHandler } from '../utils/tracing';
 import { logAudit } from './audit';
 import { recordStageAttempt, recordDrop } from './balance_analytics';
@@ -809,68 +808,29 @@ export function rpcGenerateGear(
 
   const request = validation.data;
 
-  const inventoryObjects = nk.storageRead([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
+  // Gear lives in the inventory_items table (gear_db.ts); every other gear
+  // RPC reads from there, so generated gear must be written there too.
+  const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
+  const gear = generateGearItem(request.stage_id, unlockedPools, logger);
 
-  let inventory: PlayerInventory;
-
-  if (inventoryObjects.length === 0) {
-    inventory = {
-      user_id: ctx.userId,
-      gear: [],
-      equipped_gear: {},
-      unlocked_modifier_pools: [],
-    };
-  } else {
-    const value = inventoryObjects[0].value;
-    if (value) {
-      const parseResult = safeParse<PlayerInventory>(
-        getStorageRawValue(value) ?? '',
-        null,
-        logger,
-        'storage_data'
-      );
-      if (!parseResult.success || !parseResult.data) {
-        logger.error('Failed to parse data');
-        logAudit(
-          nk,
-          ctx.userId,
-          ctx.ipAddress ?? null,
-          'generate_gear',
-          'player_inventory',
-          { stage_id: request.stage_id },
-          'failure',
-          'Failed to parse inventory data'
-        );
-        return createErrorResponse('INVALID_DATA', 'Failed to parse data');
-      }
-      inventory = parseResult.data;
-    } else {
-      inventory = {
-        user_id: ctx.userId,
-        gear: [],
-        equipped_gear: {},
-        unlocked_modifier_pools: [],
-      };
-    }
+  const insertResult = insertGearItem(nk, ctx.userId, gear);
+  if (!insertResult.success || !insertResult.item_id) {
+    logger.error('Failed to save generated gear: %s', insertResult.error ?? 'unknown');
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'generate_gear',
+      'player_inventory',
+      { stage_id: request.stage_id },
+      'failure',
+      'Failed to save generated gear'
+    );
+    return createErrorResponse('DATABASE_ERROR', 'Failed to save generated gear');
   }
+  gear.id = insertResult.item_id;
 
-  const gear = generateGearItem(request.stage_id, inventory.unlocked_modifier_pools, logger);
-  inventory.gear.push(gear);
-
-  nk.storageWrite([
-    {
-      collection: 'player_inventory',
-      key: ctx.userId,
-      userId: ctx.userId,
-      value: toStorageValue(inventory),
-    },
-  ]);
+  const dbInventory = getFullInventoryFromDB(nk, ctx.userId);
 
   logger.info('Generated gear %s (%s) for user %s', gear.name, gear.rarity, ctx.userId);
 
@@ -885,7 +845,7 @@ export function rpcGenerateGear(
       gear_id: gear.id,
       gear_rarity: gear.rarity,
       gear_type: gear.type,
-      inventory_size: inventory.gear.length,
+      inventory_size: dbInventory.gear.length,
     },
     'success'
   );
@@ -894,8 +854,8 @@ export function rpcGenerateGear(
     success: true,
     gear: gear,
     inventory: {
-      gear: inventory.gear,
-      equipped_gear: inventory.equipped_gear,
+      gear: dbInventory.gear,
+      equipped_gear: dbInventory.equipped_gear,
     },
   });
 }
