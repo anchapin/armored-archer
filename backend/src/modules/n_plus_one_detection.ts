@@ -719,7 +719,7 @@ export function wrapStorageList(
   return trackQuery(
     operationName,
     'storage',
-    () => nk.storageList(userId, collection, limit, cursor, ''),
+    () => nk.storageList(userId, collection, limit, cursor),
     { collection, userId }
   );
 }

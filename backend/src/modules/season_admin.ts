@@ -33,6 +33,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { listAllLeaderboardRecords } from '../utils/leaderboard-list';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
@@ -111,15 +112,7 @@ function resolveSeason(seasonId?: string): SeasonInfo {
 }
 
 function getAllLeaderboardRecords(nk: Runtime.Nakama, seasonId: string): LeaderboardRecord[] {
-  const BATCH_SIZE = 500;
-  let allRecords: LeaderboardRecord[] = [];
-  let cursor = '';
-  do {
-    const batch = nk.leaderboardRecordList(seasonId, [], BATCH_SIZE, cursor, 0);
-    allRecords = allRecords.concat(batch);
-    cursor = batch.length >= BATCH_SIZE ? String(batch[batch.length - 1]?.rank || '') : '';
-  } while (cursor !== '');
-  return allRecords;
+  return listAllLeaderboardRecords(nk, seasonId, Number.MAX_SAFE_INTEGER, 500);
 }
 
 function getTierForRank(rank: number): string {

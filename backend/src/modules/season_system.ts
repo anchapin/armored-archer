@@ -10,6 +10,7 @@ import { recordSeasonCompletion } from './season_leaderboard';
 import { logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
+import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
 
 /**
  * Season rewards data structure.
@@ -590,7 +591,7 @@ export function rpcGetLeaderboard(
   const request = validation.data || {};
   const limit = request.limit || 50;
 
-  const records = nk.leaderboardRecordList(currentSeason.season_id, [], limit, '', 0);
+  const records = listLeaderboardRecords(nk, currentSeason.season_id, [], limit).records;
 
   const entries: LeaderboardEntry[] = records.map((record: LeaderboardRecord) => ({
     owner_id: record.ownerId,
@@ -1069,14 +1070,12 @@ export function rpcEndSeason(
   const currentSeason = getCurrentSeason();
 
   // Fetch all players from ending season leaderboard (paginated)
-  const BATCH_SIZE = 500;
-  let allRecords: LeaderboardRecord[] = [];
-  let cursor = '';
-  do {
-    const batch = nk.leaderboardRecordList(currentSeason.season_id, [], BATCH_SIZE, cursor, 0);
-    allRecords = allRecords.concat(batch);
-    cursor = batch.length >= BATCH_SIZE ? String(batch[batch.length - 1]?.rank || '') : '';
-  } while (cursor !== '');
+  const allRecords: LeaderboardRecord[] = listAllLeaderboardRecords(
+    nk,
+    currentSeason.season_id,
+    Number.MAX_SAFE_INTEGER,
+    500
+  );
 
   // Issue #1132: atomicity via sentinel + per-player completion marker.
   //
@@ -1367,7 +1366,7 @@ export function getLeaderboardEntry(
   userId: string,
   leaderboardId: string
 ): LeaderboardEntry | null {
-  const records = nk.leaderboardRecordList(leaderboardId, [userId], 1, '', 0);
+  const records = listLeaderboardRecords(nk, leaderboardId, [userId], 1).records;
 
   if (records.length === 0) {
     return null;

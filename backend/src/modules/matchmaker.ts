@@ -291,7 +291,7 @@ export function rpcListMatches(
   const playerStats = playerStatsResult.data;
   const playerRank = calculateRank(playerStats);
 
-  const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
+  const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '');
 
   const filteredMatches: PvPMatch[] = [];
 

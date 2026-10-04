@@ -202,7 +202,7 @@ export function rpcQueryAuditLogs(
   const effectiveUserId: string = callerIsAdmin && user_id !== undefined ? user_id : ctx.userId;
 
   try {
-    const storageObjects = nk.storageList(effectiveUserId, 'audit_logs', limit, cursor || '', '');
+    const storageObjects = nk.storageList(effectiveUserId, 'audit_logs', limit, cursor || '');
 
     const logs = filterAuditEntries(
       storageObjects,

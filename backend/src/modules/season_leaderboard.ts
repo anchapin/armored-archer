@@ -5,6 +5,7 @@
 
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
+import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
 import { readAndParseStorage, toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { calculateRank } from './rank';
 import { SeasonInfo } from './season_system';
@@ -89,7 +90,7 @@ export async function applyDailyDecay(
   logger?: Runtime.Logger
 ): Promise<{ affected: number; total_loss: number }> {
   const decayConfig = getDecayConfig(nk);
-  const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
+  const leaderboardRecords = listLeaderboardRecords(nk, seasonId, [], 1000).records;
 
   // Batch last-active lookups for every record up-front so the decay sweep
   // costs ONE storageRead regardless of leaderboard size (issue #1089).
@@ -156,7 +157,7 @@ export async function getTopPlayers(
   mode: '1v1' | '2v2' | null = null,
   limit: number = 100
 ): Promise<SeasonRanking[]> {
-  const records = nk.leaderboardRecordList(seasonId, [], limit, '', 0);
+  const records = listLeaderboardRecords(nk, seasonId, [], limit).records;
   const decayConfig = getDecayConfig(nk);
 
   // Batch last-active lookups for every record up-front; one storageRead
@@ -224,7 +225,7 @@ export function getPlayerRank(
   seasonId: string,
   playerId: string
 ): { rank: number; entry: SeasonRanking } | null {
-  const records = nk.leaderboardRecordList(seasonId, [playerId], 1, '', 0);
+  const records = listLeaderboardRecords(nk, seasonId, [playerId], 1).records;
 
   if (records.length === 0) {
     return null;
@@ -235,7 +236,7 @@ export function getPlayerRank(
   const decayConfig = getDecayConfig(nk);
 
   // Need to recalculate rank based on decayed ratings
-  const allRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
+  const allRecords = listLeaderboardRecords(nk, seasonId, [], 1000).records;
 
   // Collect every ownerId we need a last-active timestamp for (target + the
   // other players we'll compare against) and batch the lookup — one
@@ -316,7 +317,7 @@ export async function recordSeasonCompletion(
   const winner = topPlayers.length > 0 ? topPlayers[0] : null;
 
   // Get total players in season
-  const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 10000, '', 0);
+  const leaderboardRecords = listAllLeaderboardRecords(nk, seasonId, 10000);
 
   const archive: SeasonArchive = {
     season_id: seasonId,

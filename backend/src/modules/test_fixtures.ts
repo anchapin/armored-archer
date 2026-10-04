@@ -1,4 +1,5 @@
 import { Runtime } from '../types/nakama';
+import { listLeaderboardRecords } from '../utils/leaderboard-list';
 
 /**
  * Test-only fixture RPC for integration tests (#1456).
@@ -66,12 +67,11 @@ function opDelete(nk: Runtime.Nakama, leaderboardId: string, body: FixturePayloa
 }
 
 function opList(nk: Runtime.Nakama, leaderboardId: string, body: FixturePayload): string {
-  const records = nk.leaderboardRecordList(
+  const { records } = listLeaderboardRecords(
+    nk,
     leaderboardId,
     body.owner_ids || [],
-    body.limit || 100,
-    '',
-    0
+    body.limit || 100
   );
   return JSON.stringify({ success: true, records: records || [] });
 }

@@ -258,7 +258,7 @@ export async function getGearUsageStats(
 
   try {
     // Read all gear balance objects for this user
-    const objects = await nk.storageList(userId, 'gear_balance', 100, '', '');
+    const objects = await nk.storageList(userId, 'gear_balance', 100, '');
 
     for (const obj of objects) {
       const gearId = obj.key.split(':')[2];
