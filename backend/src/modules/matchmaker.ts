@@ -2781,7 +2781,7 @@ export function rpcGetMatchHistory(
         mr.creator_health_remaining,
         mr.opponent_health_remaining
       FROM match_results mr
-      WHERE mr.creator_id = $1 OR mr.opponent_id = $1
+      WHERE (mr.creator_id = $1 OR mr.opponent_id = $1)
     `;
 
     const params: any[] = [ctx.userId];
@@ -2806,14 +2806,13 @@ export function rpcGetMatchHistory(
       paramIndex++;
     }
 
-    query += ` ORDER BY mr.created_at DESC`;
-
-    // Get total count first
+    // Get total count first (before ORDER BY: an aggregate cannot be ordered by a bare column)
     const countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
     const countResult = nk.sqlQuery(countQuery, params) as any[];
-    const total = countResult[0]?.total || 0;
+    const total = Number(countResult[0]?.total) || 0;
 
-    // Add pagination
+    // Add ordering and pagination
+    query += ` ORDER BY mr.created_at DESC`;
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit);
     params.push(offset);

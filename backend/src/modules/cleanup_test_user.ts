@@ -20,18 +20,19 @@ const CLEANUP_COLLECTIONS = [
   'catalog',
 ];
 
+// Only real SQL tables (see backend/data/*.sql). player_activity,
+// season_rewards_claimed, respec_data, campaign_progress and audit_logs are
+// Nakama storage collections, not tables; deleting them via SQL just logged
+// "relation does not exist" errors. Their rows live in `storage`.
 const CLEANUP_TABLES = [
   'storage',
   'unlocked_modifier_pools',
   'boss_defeats',
   'inventory',
+  'inventory_items',
   'loadout',
   'player_stats',
-  'campaign_progress',
-  'season_rewards_claimed',
-  'player_activity',
-  'respec_data',
-  'audit_logs',
+  'stage_completion',
 ];
 
 interface CleanupPayload {
