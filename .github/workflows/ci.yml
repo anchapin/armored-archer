@@ -71,13 +71,13 @@ jobs:
             # Baseline mode: fails only on clones not already recorded in
             # backend/.jscpd-baseline.json, so the gate keeps its strictness across
             # the jscpd 4 -> 5 detector change. The absolute `threshold` in
-            # .jscpd.json remains as a coarse backstop. Regenerate with:
-            #   cd backend && npx jscpd --config .jscpd.json \\
+            # .jscpd.backend.json remains as a coarse backstop. Regenerate with:
+            #   cd backend && npx jscpd --config .jscpd.backend.json \\
             #     --baseline .jscpd-baseline.json --update-baseline
             # The GDScript/Python pass stays informational (|| true).
             run: |
-              npx jscpd --config .jscpd.json --baseline .jscpd-baseline.json --fail-on-new-clones 0
-              npx jscpd --config .jscpd.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
+              npx jscpd --config .jscpd.backend.json --baseline .jscpd-baseline.json --fail-on-new-clones 0
+              npx jscpd --config ../.jscpd.client.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
 
           - name: Tech debt report and critical check
             run: |
