@@ -37,7 +37,7 @@ function sha256Hex(input: string): string {
   for (let i = 0; i < 8; i++) {
     let h = hash >>> 0;
     for (let j = 0; j < 8; j++) {
-      h ^= (input.charCodeAt((i * 8 + j) % input.length) || 0);
+      h ^= input.charCodeAt((i * 8 + j) % input.length) || 0;
       h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
       h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
       h = (h ^ (h >>> 16)) >>> 0;
@@ -561,13 +561,7 @@ export function processRefund(
     // Operators reconcile the inconsistency from the audit trail.
     if (deduction > 0) {
       try {
-        applyCurrencyDelta(
-          nk,
-          userId,
-          { gems: deduction },
-          'refund_rollback',
-          logger
-        );
+        applyCurrencyDelta(nk, userId, { gems: deduction }, 'refund_rollback', logger);
       } catch (rollbackErr) {
         logger.error(
           'CRITICAL: refund rollback failed for user %s, transaction %s after marker-write failure — manual reconciliation required: %s',
@@ -1073,15 +1067,22 @@ function validatePurchaseRequest(
     } catch {
       // fall through to generic message
     }
-    const validProductIds = ['com.armoredarcher.gems.small', 'com.armoredarcher.gems.medium', 'com.armoredarcher.gems.large'];
+    const validProductIds = [
+      'com.armoredarcher.gems.small',
+      'com.armoredarcher.gems.medium',
+      'com.armoredarcher.gems.large',
+    ];
     if (typeof parsed.product_id === 'string' && !validProductIds.includes(parsed.product_id)) {
       return { valid: false, error: 'Invalid product ID', errorCode: 'VALIDATION_ERROR' };
     }
     if (typeof parsed.platform === 'string' && !['ios', 'android'].includes(parsed.platform)) {
       return { valid: false, error: 'Invalid platform', errorCode: 'VALIDATION_ERROR' };
     }
-    if (parsed.transaction_receipt === undefined || parsed.transaction_receipt === '' ||
-        (typeof parsed.transaction_receipt === 'string' && parsed.transaction_receipt.length === 0)) {
+    if (
+      parsed.transaction_receipt === undefined ||
+      parsed.transaction_receipt === '' ||
+      (typeof parsed.transaction_receipt === 'string' && parsed.transaction_receipt.length === 0)
+    ) {
       return { valid: false, error: 'Receipt is required', errorCode: 'VALIDATION_ERROR' };
     }
     return { valid: false, error: validation.error, errorCode: 'VALIDATION_ERROR' };
@@ -1151,14 +1152,11 @@ function validatePurchaseWithRevenueCat(
   request: { product_id: string; platform: string; transaction_receipt: string }
 ):
   | { valid: true; gemBundle: { gem_amount: number } }
-  | { valid: false; error: string; errorCode?: string }
-{
-  // Validate receipt with RevenueCat server-side API for fraud protection.
-  // In the sync runtime (goja) the async HTTP path is unreachable; the
-  // validator returns a stubbed {valid:true} response which is correct for
-  // the integration test path and safe for production when no API key is
-  // configured.
+  | { valid: false; error: string; errorCode?: string } {
+  // Validate receipt with RevenueCat server-side API for fraud protection
+  // (sync via nk.httpRequest, #1423). Fails closed on any error.
   const rcValidation = validateWithRevenueCat(
+    nk,
     logger,
     request.transaction_receipt,
     request.product_id,
@@ -1353,7 +1351,13 @@ export function rpcValidatePurchase(
   const rcValidation = validatePurchaseWithRevenueCat(ctx, logger, nk, request);
   if (!rcValidation.valid) {
     recordPurchase(request.product_id, false);
-    addToPendingQueue(nk, ctx.userId, request.product_id, request.platform, request.transaction_receipt);
+    addToPendingQueue(
+      nk,
+      ctx.userId,
+      request.product_id,
+      request.platform,
+      request.transaction_receipt
+    );
     return JSON.stringify({ error: rcValidation.error, error_code: rcValidation.errorCode });
   }
   const gemBundle = rcValidation.gemBundle;
@@ -1603,7 +1607,7 @@ export function rpcPurchaseCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1767,7 +1771,7 @@ export function rpcGetOwnedCosmetics(
   let items: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -1884,7 +1888,7 @@ export function rpcEquipCosmetic(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2012,7 +2016,7 @@ export function rpcSaveCosmeticLoadout(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2157,7 +2161,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
+        getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2216,7 +2220,7 @@ export function rpcPurchaseBundle(
   let ownedItems: string[] = [];
   if (ownedResult.length > 0 && ownedResult[0].value) {
     const parsed = safeParse<{ items: string[] }>(
-    getStorageRawValue(ownedResult[0].value) ?? '',
+      getStorageRawValue(ownedResult[0].value) ?? '',
       null,
       logger,
       'player_cosmetics_owned'
@@ -2305,7 +2309,7 @@ export function rpcPurchaseBundle(
     let ownedBundles: string[] = [];
     if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
       const parsed = safeParse<{ bundles: string[] }>(
-    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
+        getStorageRawValue(bundleOwnedResult[0].value) ?? '',
         null,
         logger,
         'player_bundles_owned'
@@ -2383,7 +2387,7 @@ export function rpcGetBundleCatalog(
   let ownedBundles: string[] = [];
   if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
     const parsed = safeParse<{ bundles: string[] }>(
-    getStorageRawValue(bundleOwnedResult[0].value) ?? '',
+      getStorageRawValue(bundleOwnedResult[0].value) ?? '',
       null,
       logger,
       'player_bundles_owned'
@@ -2466,10 +2470,7 @@ interface PendingPurchase {
 }
 const PENDING_PURCHASES_COLLECTION = 'pending_purchases';
 
-function getPendingPurchasesFromStorage(
-  nk: Runtime.Nakama,
-  userId: string
-): PendingPurchase[] {
+function getPendingPurchasesFromStorage(nk: Runtime.Nakama, userId: string): PendingPurchase[] {
   try {
     const objects = nk.storageRead([
       { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
@@ -2477,7 +2478,12 @@ function getPendingPurchasesFromStorage(
     if (objects.length === 0) return [];
     const rawValue = (objects[0] as Runtime.StorageObject).value;
     const jsonStr = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue);
-    const parsed = safeParse<PendingPurchase[]>(jsonStr, null, undefined, 'getPendingPurchasesFromStorage');
+    const parsed = safeParse<PendingPurchase[]>(
+      jsonStr,
+      null,
+      undefined,
+      'getPendingPurchasesFromStorage'
+    );
     return parsed.success && parsed.data ? parsed.data : [];
   } catch {
     return [];
@@ -2491,9 +2497,7 @@ function savePendingPurchasesToStorage(
 ): void {
   if (purchases.length === 0) {
     try {
-      nk.storageDelete([
-        { collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId },
-      ]);
+      nk.storageDelete([{ collection: PENDING_PURCHASES_COLLECTION, key: userId, userId: userId }]);
     } catch {
       // Ignore delete errors (collection/key may not exist)
     }
@@ -2531,10 +2535,7 @@ const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
  * Returns undefined if not configured.
  */
 function getRevenueCatApiKey(): string | undefined {
-  const raw =
-    process.env.REVENUECAT_SECRET_KEY ||
-    config.revenuecat.secretKey ||
-    undefined;
+  const raw = process.env.REVENUECAT_SECRET_KEY || config.revenuecat.secretKey || undefined;
   // Treat `.env` placeholder values (e.g. `your_revenuecat_secret_key_here`)
   // and empty strings as "not configured". The local `.env` ships with these
   // placeholders for documentation; the production handler must short-circuit
@@ -2565,7 +2566,152 @@ interface RevenueCatValidationResult {
  * @param platform - Platform (ios or android)
  * @returns Validation result with validity status and product ID from receipt
  */
+const REVENUECAT_HTTP_TIMEOUT_MS = 5000;
+
+interface RevenueCatHttpResult {
+  ok: boolean;
+  status: number;
+  data?: Record<string, unknown>;
+  text: string;
+}
+
+/**
+ * Call the RevenueCat REST API through Nakama's `nk.httpRequest` (#1423).
+ *
+ * `nk.httpRequest` is synchronous in the JS runtime: the Go host performs the
+ * request and returns `{code, body, headers}` directly, with no Promise. That
+ * satisfies the ADR-0008 sync-handler invariant, which only rules out
+ * `fetch`/async I/O. A transport failure throws a GoError; it is caught here
+ * and reported as status 0 so every caller fails closed.
+ */
+function revenueCatRequest(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  apiKey: string,
+  method: 'get' | 'post',
+  path: string,
+  body?: Record<string, unknown>,
+  extraHeaders?: { [header: string]: string }
+): RevenueCatHttpResult {
+  const headers: { [header: string]: string } = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    ...(extraHeaders || {}),
+  };
+  let response: { code: number; body: string };
+  try {
+    response = nk.httpRequest(
+      `${REVENUECAT_API_BASE}${path}`,
+      method,
+      headers,
+      body ? JSON.stringify(body) : '',
+      REVENUECAT_HTTP_TIMEOUT_MS
+    );
+  } catch (err) {
+    logger.error('RevenueCat request %s %s failed: %s', method, path, String(err));
+    return { ok: false, status: 0, text: String(err) };
+  }
+  const text = response.body || '';
+  const ok = response.code >= 200 && response.code < 300;
+  if (!ok) {
+    return { ok: false, status: response.code, text };
+  }
+  try {
+    return {
+      ok: true,
+      status: response.code,
+      data: JSON.parse(text) as Record<string, unknown>,
+      text,
+    };
+  } catch {
+    logger.error('RevenueCat %s %s returned a non-JSON body', method, path);
+    return { ok: false, status: response.code, text };
+  }
+}
+
+/**
+ * Response for a read-only RevenueCat lookup RPC when the API call failed.
+ * Kept non-fatal (success: true) so clients can retry later.
+ */
+function revenueCatLookupFailure(empty: Record<string, unknown>, message: string): string {
+  return JSON.stringify({ success: true, ...empty, message, apiError: true });
+}
+
+const SUBSCRIBER_CHECKS = {
+  refunds: {
+    empty: { refunds_found: 0 } as Record<string, unknown>,
+    skipLog: 'RevenueCat API key not configured - skipping refund check',
+    notConfigured: 'Refund check not configured',
+    failed: 'Unable to check refunds',
+  },
+  subscriptions: {
+    empty: { active_subscriptions: [] } as Record<string, unknown>,
+    skipLog: 'RevenueCat API key not configured - skipping subscription check',
+    notConfigured: 'Subscription check not configured',
+    failed: 'Unable to check subscriptions',
+  },
+};
+
+/**
+ * Shared front half of the read-only RevenueCat check RPCs (refunds,
+ * subscriptions): returns either a finished response (key missing or the API
+ * call failed, both non-fatal) or the subscriber record to inspect.
+ */
+function lookupSubscriberForCheck(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  appUserId: string,
+  check: keyof typeof SUBSCRIBER_CHECKS
+): { response?: string; subscriber?: Record<string, unknown> } {
+  const { empty, ...messages } = SUBSCRIBER_CHECKS[check];
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) {
+    logger.warn(messages.skipLog);
+    return {
+      response: JSON.stringify({ success: true, ...empty, message: messages.notConfigured }),
+    };
+  }
+  const { ok, subscriber } = fetchRevenueCatSubscriber(nk, logger, apiKey, appUserId);
+  if (!ok) {
+    return { response: revenueCatLookupFailure(empty, messages.failed) };
+  }
+  return { subscriber };
+}
+
+/**
+ * Fetches a RevenueCat subscriber record (GET /subscribers/{id}).
+ * Shared by the refund, subscription and restore RPCs so each one only
+ * shapes its own response. `subscriber` is undefined when the call failed
+ * or RevenueCat returned no subscriber object.
+ */
+function fetchRevenueCatSubscriber(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  apiKey: string,
+  appUserId: string,
+  extraHeaders?: { [header: string]: string }
+): { ok: boolean; subscriber?: Record<string, unknown> } {
+  const response = revenueCatRequest(
+    nk,
+    logger,
+    apiKey,
+    'get',
+    `/subscribers/${encodeURIComponent(appUserId)}`,
+    undefined,
+    extraHeaders
+  );
+  if (!response.ok || !response.data) {
+    logger.error('RevenueCat subscriber lookup failed: %s - %s', response.status, response.text);
+    return { ok: false };
+  }
+  return {
+    ok: true,
+    subscriber: response.data.subscriber as Record<string, unknown> | undefined,
+  };
+}
+
 function validateWithRevenueCat(
+  nk: Runtime.Nakama,
   logger: Runtime.Logger,
   receipt: string,
   productId: string,
@@ -2573,23 +2719,76 @@ function validateWithRevenueCat(
 ): RevenueCatValidationResult {
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) {
-    // No API key configured — short-circuit to "valid" so the integration
-    // test path works without a real RevenueCat backend. The
-    // server-side fetch path is unreachable from the sync Nakama runtime
-    // (goja has no microtask queue) so this is the only correct option
-    // (ADR-0008 / cluster-4 parity).
-    logger.debug(
-      'RevenueCat API key not configured; treating receipt for %s as locally valid',
-      productId
-    );
-    return { valid: true, product_id: productId };
+    // Fail closed: without a key no receipt can be verified, so no gems are
+    // granted (#1423). Previously this branch returned valid:true, which let
+    // any client mint gems on a server with no RevenueCat key.
+    logger.error('RevenueCat API key not configured - strictly enforcing validation');
+    return { valid: false, error: 'RevenueCat API key not configured' };
   }
 
-  // Real-API path retained for environments that configure the key and
-  // have a way to make synchronous HTTP calls (#1423 tracks a future
-  // sync HTTP migration). For now this branch is unreachable inside the
-  // Nakama runtime.
-  return { valid: false, error: 'RevenueCat async validation unavailable in sync runtime' };
+  const rcPlatform = platform === 'ios' ? 'apple' : 'google';
+  const response = revenueCatRequest(nk, logger, apiKey, 'post', '/receipts/validate', {
+    receipt: receipt,
+    platform: rcPlatform,
+    product_id: productId,
+  });
+
+  if (!response.ok || !response.data) {
+    logger.error('RevenueCat validation failed: %s - %s', response.status, response.text);
+    return { valid: false, error: `RevenueCat validation failed: ${response.status}` };
+  }
+
+  const data = response.data;
+  const isValid = data.status === 'active' || data.status === 0 || data.valid === true;
+  if (!isValid) {
+    logger.warn('RevenueCat rejected receipt: status=%s', data.status);
+    return { valid: false, error: `Invalid receipt: ${data.status}` };
+  }
+
+  // Confirm the claimed product actually appears in the subscriber record.
+  const subscriber = data.subscriber as Record<string, unknown> | undefined;
+  let isVerified = false;
+
+  if (subscriber) {
+    if (subscriber.entitlements) {
+      const entitlements = subscriber.entitlements as Record<string, { product_id?: string }>;
+      if (entitlements[productId]) {
+        isVerified = true;
+      } else {
+        for (const ent of Object.values(entitlements)) {
+          if (ent && ent.product_id === productId) {
+            isVerified = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!isVerified && subscriber.non_subscriptions) {
+      const nonSubscriptions = subscriber.non_subscriptions as Record<string, unknown[]>;
+      if (nonSubscriptions[productId] && nonSubscriptions[productId].length > 0) {
+        isVerified = true;
+      }
+    }
+
+    if (!isVerified && subscriber.subscriptions) {
+      const subscriptions = subscriber.subscriptions as Record<string, unknown>;
+      if (subscriptions[productId]) {
+        isVerified = true;
+      }
+    }
+  }
+
+  if (!isVerified) {
+    logger.warn('Product ID mismatch or not found: claimed=%s', productId);
+    return {
+      valid: false,
+      error: `Product ID verification failed: ${productId} not found in receipt`,
+    };
+  }
+
+  logger.info('RevenueCat validation successful for user product: %s', productId);
+  return { valid: true, subscriber, product_id: productId };
 }
 
 /**
@@ -2837,35 +3036,55 @@ export function rpcCheckRefunds(
     return createValidationErrorResponse('check_refunds', validation.error);
   }
 
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey) {
-    logger.warn('RevenueCat API key not configured - skipping refund check');
-    return JSON.stringify({
-      success: true,
-      refunds_found: 0,
-      message: 'Refund check not configured',
-    });
+  const appUserId = validation.data.app_user_id || ctx.userId;
+  const { response, subscriber } = lookupSubscriberForCheck(nk, logger, appUserId, 'refunds');
+  if (response !== undefined) return response;
+  if (!subscriber) {
+    return JSON.stringify({ success: true, refunds_found: 0, message: 'No subscriber found' });
   }
 
-  const appUserId = validation.data.app_user_id || ctx.userId;
+  // RevenueCat reports refunds as refund_date / refunded_at on entitlement details.
+  const entitlementHistory = subscriber.entitlement_details as Record<string, unknown> | undefined;
+  const refunds: { product_id: string; refunded_at: string }[] = [];
+  if (entitlementHistory) {
+    for (const [productId, details] of Object.entries(entitlementHistory)) {
+      const ent = details as Record<string, unknown>;
+      if (ent.refund_date || ent.refunded_at) {
+        refunds.push({
+          product_id: productId,
+          refunded_at: (ent.refund_date || ent.refunded_at) as string,
+        });
+      }
+    }
+  }
 
-  // External RevenueCat refund listing is unreachable from the sync runtime
-  // (goja has no microtask queue — ADR-0008). The actionable refund
-  // path goes through `processRefund` which uses durable storage markers,
-  // and is fully sync. Return an empty refunds result so callers see the
-  // correct shape without hitting async I/O.
-  logger.debug(
-    'rpcCheckRefunds: external refund listing skipped in sync runtime for user %s',
-    appUserId
-  );
+  const catalog = getStoreCatalog(logger);
+  let processedCount = 0;
+  for (const refund of refunds) {
+    // processRefund performs its own durable dedup check (issue #1067).
+    const productInfo = catalog[refund.product_id];
+    if (productInfo) {
+      const refundOutcome = processRefund(
+        nk,
+        appUserId,
+        productInfo.gem_amount,
+        refund.refunded_at,
+        RefundReason.CHARGEBACK,
+        logger
+      );
+      if (refundOutcome.success) {
+        processedCount++;
+      }
+    }
+  }
 
-  logger.info('Refund check complete for user %s: found 0 refunds', appUserId);
+  logger.info('Refund check complete for user %s: found %d refunds', appUserId, refunds.length);
 
   return JSON.stringify({
     success: true,
-    refunds_found: 0,
-    processed: 0,
-    message: 'No refunds detected',
+    refunds_found: refunds.length,
+    processed: processedCount,
+    message: refunds.length > 0 ? `Found ${refunds.length} refunds` : 'No refunds detected',
   });
 }
 
@@ -2898,32 +3117,52 @@ export function rpcCheckSubscriptions(
     return createValidationErrorResponse('check_subscriptions', validation.error);
   }
 
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey) {
-    logger.warn('RevenueCat API key not configured - skipping subscription check');
+  const appUserId = validation.data.app_user_id || ctx.userId;
+  const { response, subscriber } = lookupSubscriberForCheck(nk, logger, appUserId, 'subscriptions');
+  if (response !== undefined) return response;
+  if (!subscriber) {
     return JSON.stringify({
       success: true,
       active_subscriptions: [],
-      message: 'Subscription check not configured',
+      message: 'No subscriber found',
     });
   }
 
-  const appUserId = validation.data.app_user_id || ctx.userId;
+  const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
+  const activeSubscriptions: {
+    product_id: string;
+    expires_date?: string;
+    is_subscribed: boolean;
+  }[] = [];
+  if (entitlements) {
+    for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
+      const ent = entitlement as Record<string, unknown>;
+      const isActive = ent.expires_date && new Date(ent.expires_date as string) > new Date();
+      const isSubscribed =
+        ent.is_subscribed === true || (ent.product_plan_interval && !ent.cancellation_date);
+      if (isActive || isSubscribed) {
+        activeSubscriptions.push({
+          product_id: (ent.product_id as string) || entitlementId,
+          expires_date: ent.expires_date as string | undefined,
+          is_subscribed: true,
+        });
+      }
+    }
+  }
 
-  // External RevenueCat subscription listing is unreachable from the sync
-  // runtime (goja has no microtask queue — ADR-0008). Return an empty
-  // active-subscriptions result with the same shape callers expect.
-  logger.debug(
-    'rpcCheckSubscriptions: external listing skipped in sync runtime for user %s',
-    appUserId
+  logger.info(
+    'Subscription check complete for user %s: %d active',
+    appUserId,
+    activeSubscriptions.length
   );
-
-  logger.info('Subscription check complete for user %s: 0 active', appUserId);
 
   return JSON.stringify({
     success: true,
-    active_subscriptions: [],
-    message: 'No active subscriptions',
+    active_subscriptions: activeSubscriptions,
+    message:
+      activeSubscriptions.length > 0
+        ? `Found ${activeSubscriptions.length} active subscriptions`
+        : 'No active subscriptions',
   });
 }
 
@@ -3025,25 +3264,118 @@ export function rpcRestorePurchases(
     });
   }
 
-  // Query RevenueCat for subscriber/purchase history. The async fetch is
-  // unreachable from the sync Nakama runtime (goja has no microtask queue
-  // — ADR-0008). For now we surface a clear error so the client can
-  // fall back to local pending-purchase processing.
-  logger.debug(
-    'rpcRestorePurchases: external history query skipped in sync runtime for user %s',
-    ctx.userId
-  );
-
-  return JSON.stringify({
-    success: false,
-    error: 'Restore not available in sync runtime',
-    restored: 0,
+  const { ok, subscriber } = fetchRevenueCatSubscriber(nk, logger, apiKey, ctx.userId, {
+    'X-Platform': request.platform === 'ios' ? 'apple' : 'google',
   });
 
-  // The remainder of this function (lines preserved in git history for the
-  // future sync-HTTP migration, #1423) intentionally omitted because it
-  // performs async work the runtime cannot drive. Re-enable after the
-  // sync HTTP layer lands. See ADR-0008.
+  if (!ok) {
+    return JSON.stringify({
+      success: false,
+      error: 'Unable to query purchase history',
+      restored: 0,
+      apiError: true,
+    });
+  }
+
+  if (!subscriber) {
+    return JSON.stringify({ success: true, restored: 0, purchases: [] });
+  }
+
+  const catalog = getStoreCatalog(logger);
+  const restoredPurchases: { product_id: string; gems_awarded: number }[] = [];
+
+  // Grant one bundle per unseen transaction id, deduped through the same
+  // durable receipt markers rpcValidatePurchase uses.
+  const grant = (productId: string, transactionId: string, source: string): void => {
+    const bundle = catalog[productId];
+    if (!bundle || !transactionId) return;
+
+    const receiptHash = hashReceipt(transactionId);
+    if (isReceiptAlreadyUsed(nk, ctx.userId, receiptHash, logger)) return;
+
+    const playerCurrency = getPlayerCurrencyWithCache(nk, ctx.userId, logger);
+    if (wouldExceedMaxBalance(playerCurrency.gems, bundle.gem_amount)) return;
+
+    markReceiptAsUsed(nk, ctx.userId, receiptHash, logger);
+    playerCurrency.gems += bundle.gem_amount;
+    nk.storageWrite([
+      {
+        collection: 'player_currency',
+        key: ctx.userId,
+        userId: ctx.userId,
+        value: toStorageValue(playerCurrency),
+      },
+    ]);
+    invalidateCurrencyCache(ctx.userId, logger);
+
+    logAudit(
+      nk,
+      ctx.userId,
+      ctx.ipAddress ?? null,
+      'restore_purchase_grant',
+      'player_currency',
+      {
+        product_id: productId,
+        gems_awarded: bundle.gem_amount,
+        new_balance: playerCurrency.gems,
+        source,
+      },
+      'success'
+    );
+    restoredPurchases.push({ product_id: productId, gems_awarded: bundle.gem_amount });
+    logger.info(
+      'Restored purchase for user %s: %s (%d gems)',
+      ctx.userId,
+      productId,
+      bundle.gem_amount
+    );
+  };
+
+  // Consumables (gem packs)
+  const nonSubscriptions = subscriber.non_subscriptions as Record<string, unknown[]> | undefined;
+  if (nonSubscriptions) {
+    for (const [productId, purchases] of Object.entries(nonSubscriptions)) {
+      for (const purchase of purchases) {
+        const p = purchase as Record<string, unknown>;
+        grant(
+          productId,
+          (p.id as string) || (p.transaction_id as string) || '',
+          'non_subscription'
+        );
+      }
+    }
+  }
+
+  // Subscription entitlements
+  const entitlements = subscriber.entitlements as Record<string, unknown> | undefined;
+  if (entitlements) {
+    for (const entitlement of Object.values(entitlements)) {
+      const ent = entitlement as Record<string, unknown>;
+      grant(
+        (ent.product_id as string) || '',
+        (ent.transaction_id as string) || (ent.original_transaction_id as string) || '',
+        'entitlement'
+      );
+    }
+  }
+
+  const result = {
+    success: true,
+    restored: restoredPurchases.length,
+    purchases: restoredPurchases,
+  };
+
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'restore_purchases',
+    'player_currency',
+    { platform: request.platform, restored: result.restored },
+    'success'
+  );
+
+  return JSON.stringify(result);
 }
 
 export function registerRpcRestorePurchases(initializer: Runtime.Initializer): void {
@@ -3916,9 +4248,10 @@ export function rpcRevenueCatWebhook(
     (eventObj?.refund_transaction_id as string) ||
     '';
   const rawEventId = eventObj?.id ?? webhookData.event_id ?? eventObj?.event_id;
-  const eventId = rawEventId !== undefined && rawEventId !== null && String(rawEventId) !== ''
-    ? String(rawEventId)
-    : transactionId;
+  const eventId =
+    rawEventId !== undefined && rawEventId !== null && String(rawEventId) !== ''
+      ? String(rawEventId)
+      : transactionId;
 
   // Event types whose application must be idempotent (issue #1067).
   const requiresEventDedup =

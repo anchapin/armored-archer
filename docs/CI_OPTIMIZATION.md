@@ -167,7 +167,7 @@ Edit `.actrc-local` to customize:
 --parallel
 
 # Use slim images
--P ubuntu-latest=node:20-slim
+-P ubuntu-latest=node:24-slim
 
 # Set memory limit
 --container-options --memory=2g
@@ -206,7 +206,7 @@ rm -rf ~/.act-cache/
 rm -rf act-cache/
 
 # Rebuild containers
-act -P ubuntu-latest=node:20 -j backend-test --rebuild
+act -P ubuntu-latest=node:24 -j backend-test --rebuild
 ```
 
 ## Best Practices

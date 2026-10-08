@@ -15,6 +15,9 @@ module.exports = {
   resetModules: false,
   restoreMocks: true,
   maxWorkers: 1,
+  // Turn nakama-js `thrown: Response {}` rejections into Errors that carry
+  // the HTTP status and body (tests/integration/unwrap_response_errors.ts).
+  setupFilesAfterEnv: ['<rootDir>/tests/integration/unwrap_response_errors.ts'],
   // Issue #1144: emit machine-readable junit XML for the CI signal surface
   // (pass-rate summary, flake history, PR comment, dorny/test-reporter
   // annotations). jest-junit is wired as a reporter with inline options —

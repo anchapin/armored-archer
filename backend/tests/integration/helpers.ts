@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Client } from '@heroiclabs/nakama-js';
+import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- Bootstrap .env for jest (issue #1371) ------------------------------
@@ -72,6 +73,14 @@ export interface TestAccount {
 }
 
 export class IntegrationTestHelper {
+  // Direct Postgres access for fixtures and cleanup that a Nakama *client*
+  // cannot do (rows in game tables like match_results, other users'
+  // storage objects). Several suites previously called server-runtime
+  // APIs (`admin.storageDelete`, `admin.rpc(getServerSession(), 'sql')`)
+  // on a nakama-js Client, which has no such methods, so their fixtures
+  // and cleanup silently never ran. Defaults match .github/docker-compose.yml.
+  private pgPool: Pool | null = null;
+
   private static instance: IntegrationTestHelper | null = null;
   private adminClient: Client | null = null;
   private adminSession: any = null;
@@ -103,6 +112,16 @@ export class IntegrationTestHelper {
    * This now ensures all tracked clients are properly disconnected.
    */
   async cleanup(): Promise<void> {
+    if (this.pgPool) {
+      try {
+        await this.pgPool.end();
+      } catch (error) {
+        // Ignore pool shutdown errors
+      } finally {
+        this.pgPool = null;
+      }
+    }
+
     // Disconnect admin client
     if (this.adminClient) {
       try {
@@ -179,6 +198,37 @@ export class IntegrationTestHelper {
   /**
    * Get a client authenticated as admin for administrative tasks.
    */
+  /**
+   * Run a parameterised SQL statement against the CI Postgres that backs
+   * Nakama. For test fixtures and cleanup only.
+   */
+  async sql(query: string, params: unknown[] = []): Promise<any[]> {
+    if (!this.pgPool) {
+      this.pgPool = new Pool({
+        host: process.env.PGHOST || '127.0.0.1',
+        port: parseInt(process.env.PGPORT || '5432', 10),
+        user: process.env.PGUSER || 'postgres',
+        password: process.env.PGPASSWORD || 'changeme',
+        database: process.env.PGDATABASE || 'nakama',
+        max: 2,
+      });
+    }
+    const result = await this.pgPool.query(query, params);
+    return result.rows;
+  }
+
+  /**
+   * Delete storage objects by collection + key regardless of owner.
+   * Replaces the old `admin.storageDelete([...{ userId: '' }])` calls.
+   */
+  async deleteStorageObjectsAnyOwner(collection: string, keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    await this.sql('DELETE FROM storage WHERE collection = $1 AND key = ANY($2)', [
+      collection,
+      keys,
+    ]);
+  }
+
   async getAdminClient(): Promise<{ client: Client; session: any }> {
     if (!this.adminClient || !this.adminSession) {
       this.adminClient = new Client(
@@ -363,16 +413,18 @@ export class IntegrationTestHelper {
   ): Promise<void> {
     // nakama-js v2.x writeStorageObjects expects an array
     const objectValue = typeof value === 'string' ? JSON.parse(value) : value;
-    const objects = [{
-      collection,
-      key,
-      value: objectValue,
-      version: '',
-      permission_read: 1,
-      permission_write: 1,
-    }];
+    const objects = [
+      {
+        collection,
+        key,
+        value: objectValue,
+        version: '',
+        permission_read: 1,
+        permission_write: 1,
+      },
+    ];
     // Find the player session matching this user_id (the caller owns the storage)
-    const account = this.accounts.find(a => a.userId === user_id);
+    const account = this.accounts.find((a) => a.userId === user_id);
     if (!account) {
       throw new Error(
         `writeStorageObject: no TestAccount registered for user_id=${user_id} — register via createTestAccount first`
@@ -382,8 +434,13 @@ export class IntegrationTestHelper {
       await account.client.writeStorageObjects(account.session, objects as any);
     } catch (err: any) {
       let bodyText = 'n/a';
-      try { if (err?.response && typeof err.response.text === 'function') bodyText = await err.response.text(); } catch (_) {}
-      throw new Error(`writeStorageObject failed (collection=${collection}, key=${key}, user_id=${user_id}): status=${err?.statusCode} message=${err?.message} body=${bodyText}`);
+      try {
+        if (err?.response && typeof err.response.text === 'function')
+          bodyText = await err.response.text();
+      } catch (_) {}
+      throw new Error(
+        `writeStorageObject failed (collection=${collection}, key=${key}, user_id=${user_id}): status=${err?.statusCode} message=${err?.message} body=${bodyText}`
+      );
     }
   }
 }

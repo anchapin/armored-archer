@@ -125,3 +125,15 @@ as a thrown error rather than a hung RPC:
 - `npm test -- rateLimiter` and `npm test -- metrics` — assert that a non-string (async)
   handler result is rejected with a clear error.
 - `npm run bundle:validate` — catches runtime-invalid constructs at build time.
+
+## Amendment (2026-10-03, #1423 / #1416)
+
+Constraint 2 overstated the limit on outbound HTTP. `fetch` is unavailable, but
+`nk.httpRequest(url, method, headers?, body?, timeout?, insecure?)` is a
+**synchronous** host call in the JS runtime (see nakama-common `index.d.ts`): it
+returns `{code, body, headers}` directly with no Promise, so it satisfies the
+sync-handler invariant. RevenueCat receipt validation, refund checks,
+subscription checks and purchase restore now use it (`revenueCatRequest` in
+`backend/src/modules/store.ts`). Receipt validation fails closed when no
+RevenueCat key is configured or the call errors. Promise-based Redis (`ioredis`)
+remains unreachable, as stated above.

@@ -148,6 +148,7 @@ import {
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
 import { registerRpcCleanupTestUser } from './modules/cleanup_test_user';
+import { registerTestFixtureRpcs } from './modules/test_fixtures';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
@@ -647,6 +648,10 @@ const InitModule: InitModule = function (
     registerRpcGetSurveyStatus(initializer);
     registerRpcCleanupTestUser(initializer);
   }
+
+  // Test-only fixture RPCs: registered only when TEST_FIXTURE_RPCS_ENABLED=true
+  // is baked into the bundle env (CI integration job). See test_fixtures.ts.
+  registerTestFixtureRpcs(initializer, loggerParam, process.env);
 
   // Register replay RPC endpoints (always available for debugging/QA)
   registerRpcGetMatchReplay(initializer);

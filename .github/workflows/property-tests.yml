@@ -17,16 +17,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Issue #1031: this workflow previously ran `go test` against the Go
       # backend (backend/go.sum, ./internal/combat/, ./internal/rng/), which
       # was abandoned and deleted. The property-based suite now lives in the
       # TypeScript backend as tests/unit/property_based.test.ts.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
