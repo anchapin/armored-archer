@@ -212,7 +212,7 @@ describe('Error Handling Tests', () => {
       test('should return error for non-existent gear ID', async () => {
         const result = await rpcCall(player, 'armored_archer/equip_gear', {
           gear_id: 'nonexistent_gear_12345',
-          slot: 'weapon',
+          slot: 'bow',
         });
 
         expect(result.error).toBe('Gear not found in inventory');
@@ -232,11 +232,12 @@ describe('Error Handling Tests', () => {
           }
         }
 
+        expect(armorGear).not.toBeNull();
         if (armorGear) {
-          // Try to equip armor as weapon
+          // Try to equip armor in the bow slot
           const result = await rpcCall(player, 'armored_archer/equip_gear', {
             gear_id: armorGear.id,
-            slot: 'weapon',
+            slot: 'bow',
           });
 
           expect(result.error).toBe('Gear type does not match slot');
@@ -379,7 +380,7 @@ describe('Error Handling Tests', () => {
     test('should provide descriptive error messages', async () => {
       const result = await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: 'fake_gear_id',
-        slot: 'weapon',
+        slot: 'bow',
       });
 
       expect(result.error).toBeDefined();
