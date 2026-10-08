@@ -28,12 +28,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload coverage artifact
         if: env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-coverage
           path: backend/coverage/
@@ -105,7 +105,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Skip for act (OOM issue)
         if: env.ACT == 'true'
@@ -163,7 +163,7 @@ jobs:
 
       - name: Upload GUT JUnit results
         if: env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gut-junit-results
           path: test/results/gut-results.xml
@@ -183,7 +183,7 @@ jobs:
 
       - name: Upload Godot coverage artifact
         if: env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: godot-coverage-html
           path: test/coverage/html/

@@ -24,12 +24,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -66,23 +66,21 @@ jobs:
           echo "from_tag=$FROM_TAG" >> $GITHUB_OUTPUT
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-notes
           path: release_notes.md
           retention-days: 30
 
-      - name: Create GitHub Release
+      - name: Publish release notes to the release
+        # actions/create-release@v1 is archived and runs on a removed Node
+        # runtime. This job is triggered by the release itself, so the release
+        # already exists: update its notes instead of trying to create it again.
         if: github.event_name == 'release'
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          release_name: Release ${{ github.event.release.tag_name }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ github.event.release.prerelease }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file release_notes.md
 
       - name: Comment on latest release PR
         if: github.event_name == 'workflow_dispatch'

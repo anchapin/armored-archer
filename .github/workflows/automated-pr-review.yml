@@ -45,7 +45,7 @@ jobs:
 
       - name: Get PR details
         id: check_pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNum = '${{ steps.pr_num.outputs.pr_number }}';
@@ -100,7 +100,7 @@ jobs:
       risk_level: ${{ steps.analyze.outputs.risk_level }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -151,7 +151,7 @@ jobs:
     if: needs.pre-review-checks.outputs.pr_exists == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
@@ -174,14 +174,14 @@ jobs:
     if: needs.pre-review-checks.outputs.pr_exists == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -209,7 +209,7 @@ jobs:
     if: needs.pre-review-checks.outputs.pr_exists == 'true'
     steps:
       - name: Generate review
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             // Substitute values via ${{ toJson(...) }} so any embedded
@@ -286,7 +286,7 @@ jobs:
     if: needs.pre-review-checks.outputs.pr_exists == 'true'
     steps:
       - name: Add labels
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             // toJson() encodes the value as a JSON string literal so quotes,

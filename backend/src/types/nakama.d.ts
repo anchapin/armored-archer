@@ -160,6 +160,7 @@ declare namespace Runtime {
       metadata: { [key: string]: string }
     ): void;
     leaderboardDelete(id: string): void;
+    leaderboardRecordDelete(leaderboardId: string, owner: string): void;
     leaderboardRecordList(
       leaderboardId: string,
       ownerIds: string[],
@@ -183,11 +184,15 @@ declare namespace Runtime {
       persist: boolean,
       senderId: string
     ): void;
+    // Synchronous in the JS runtime. Argument order matches nakama-common:
+    // httpRequest(url, method, headers?, body?, timeout?, insecure?); timeout in ms.
     httpRequest(
-      method: string,
       url: string,
-      headers: { [key: string]: string },
-      body: string
+      method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete',
+      headers?: { [key: string]: string },
+      body?: string,
+      timeout?: number,
+      insecure?: boolean
     ): { code: number; body: string; headers: { [key: string]: string } };
     uuidGenerateV4(): string;
     userIdGetFromUsername(username: string): string;

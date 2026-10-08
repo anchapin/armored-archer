@@ -15,26 +15,109 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend-lint:
-    name: Backend Lint
+  # Twelve checks that each used to be their own job, repeating checkout +
+  # setup-node + `npm ci` just to run one or two commands. They now share a
+  # single install and run concurrently via step-level `parallel:` (GitHub
+  # Actions, 2026-06-25). Each check keeps its own step and log; the group
+  # fails if any blocking check fails, after every check has finished.
+  # The old non-blocking N+1 job ran the same command as the blocking one,
+  # so only the blocking run is kept. Not required status checks (main only
+  # requires CodeQL and Bundle Size Tracking), so no ruleset change needed.
+  backend-static-checks:
+    name: Backend Static Checks
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./backend
         run: npm ci
 
-      - name: Run ESLint
-        working-directory: ./backend
-        run: npm run lint
+      # Max 10 concurrent background steps per job; the 11th queues.
+      - parallel:
+          - name: Run ESLint
+            run: npm run lint
+
+          - name: Run TypeScript type check
+            run: npm run typecheck
+
+          - name: Run ESLint complexity analysis
+            run: npm run complexity
+
+          - name: Run N+1 query detection (blocking)
+            run: npm run detect-n-plus-one:ci
+
+          - name: Run dead feature flag detection (non-blocking)
+            run: npm run detect-dead-flags:ci || true
+
+          - name: Run npm audit
+            run: |
+              npm audit --audit-level=high
+              npm audit --production --audit-level=high
+
+          - name: Run log scrubbing tests
+            run: npm test -- --testPathPatterns=log_scrubbing
+
+          - name: Run duplicate code detection
+            # Baseline mode: fails only on clones not already recorded in
+            # backend/.jscpd-baseline.json, so the gate keeps its strictness across
+            # the jscpd 4 -> 5 detector change. The absolute `threshold` in
+            # .jscpd.json remains as a coarse backstop. Regenerate with:
+            #   cd backend && npx jscpd --config .jscpd.json \\
+            #     --baseline .jscpd-baseline.json --update-baseline
+            # The GDScript/Python pass stays informational (|| true).
+            run: |
+              npx jscpd --config .jscpd.json --baseline .jscpd-baseline.json --fail-on-new-clones 0
+              npx jscpd --config .jscpd.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
+
+          - name: Tech debt report and critical check
+            run: |
+              npm run tech-debt:report
+              npm run tech-debt:report:ci
+
+          - name: Validate AGENTS.md
+            run: npm run validate:agents-md:ci
+
+          # Fails when `git ls-files -i -c --exclude-standard` is non-empty,
+          # i.e. a file is both tracked and gitignored (secrets-leak vector,
+          # issue #1032). The validator only lists file paths, never contents.
+          - name: Fail if any tracked file matches .gitignore
+            run: npm run validate:tracked-ignored:ci
+
+      - name: Upload Tech Debt Report
+        if: always() && env.ACT != 'true'
+        uses: actions/upload-artifact@v6
+        continue-on-error: true
+        with:
+          name: tech-debt-report
+          path: |
+            backend/tech-debt-report.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload AGENTS.md validation report
+        if: always() && env.ACT != 'true'
+        uses: actions/upload-artifact@v6
+        continue-on-error: true
+        with:
+          name: agents-md-validation-report
+          path: |
+            backend/agents-md-validation-report.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Skip uploads (act detected)
+        if: always() && env.ACT == 'true'
+        run: echo "Skipping artifact uploads in act environment"
 
   backend-rpc-registration:
     name: Verify RPC Registration Parity
@@ -42,94 +125,10 @@ jobs:
     # Pure shell + grep on backend/src/ — no npm install needed. Defends
     # against the #1387 class of drift (see docs/ci/issue-1393-reproduction.md).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Verify the two RPC-registration branches of backend/src/index.ts stay in sync
         run: bash scripts/ci/verify-rpc-registration.sh
-
-  backend-complexity:
-    name: Cyclomatic Complexity Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run ESLint complexity analysis
-        working-directory: ./backend
-        run: npm run complexity
-
-  backend-n-plus-one:
-    name: N+1 Query Detection (Non-Blocking)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run N+1 query detection
-        working-directory: ./backend
-        run: npm run detect-n-plus-one:ci || true
-
-  backend-dead-flags:
-    name: Dead Feature Flag Detection
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run dead feature flag detection
-        working-directory: ./backend
-        run: npm run detect-dead-flags:ci || true
-
-  backend-typecheck:
-    name: Backend Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run TypeScript type check
-        working-directory: ./backend
-        run: npm run typecheck
 
   backend-test:
     name: Backend Tests with Coverage
@@ -162,12 +161,12 @@ jobs:
       # containers and executes `npm run test:integration`.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -236,12 +235,12 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success() && steps.detect-worktree.outputs.is_worktree == '0'
-        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          file: ./backend/coverage/lcov.info
+          files: ./backend/coverage/lcov.info
           flags: backend
           fail_ci_if_error: false
-          git_service_name: github
+          git_service: github
           verbose: true
 
       - name: Skip Codecov (worktree/act detected)
@@ -250,117 +249,16 @@ jobs:
           echo "⚠️  Skipping Codecov upload due to git worktree or act environment"
           echo "This is expected behavior - Codecov has issues with worktrees and local testing"
 
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run npm audit
-        working-directory: ./backend
-        run: npm audit --audit-level=high
-      
-      - name: Run npm audit with production flag
-        working-directory: ./backend
-        run: npm audit --production --audit-level=high
-
-  log-scrubbing:
-    name: Log Scrubbing Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run log scrubbing tests
-        working-directory: ./backend
-        run: npm test -- --testPathPatterns=log_scrubbing
-
-  n-plus-one-detection:
-    name: N+1 Query Detection (Blocking)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Run N+1 query detection
-        working-directory: ./backend
-        run: npm run detect-n-plus-one:ci
-
-  duplicate-code-detection:
-    name: Duplicate Code Detection
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-
-      - name: Run duplicate code detection on TypeScript (backend)
-        working-directory: ./backend
-        # Baseline mode: fails only on clones not already recorded in
-        # backend/.jscpd-baseline.json, so the gate keeps its strictness across
-        # the jscpd 4 -> 5 detector change. The absolute `threshold` in
-        # .jscpd.json remains as a coarse backstop. Regenerate with:
-        #   cd backend && npx jscpd --config .jscpd.json \
-        #     --baseline .jscpd-baseline.json --update-baseline
-        run: >-
-          npx jscpd --config .jscpd.json
-          --baseline .jscpd-baseline.json
-          --fail-on-new-clones 0
-
-      - name: Run duplicate code detection on GDScript and Python
-        working-directory: ./backend
-        run: npx jscpd --config .jscpd.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
-
   dependency-check:
     name: Unused Dependency Detection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       
@@ -392,12 +290,12 @@ jobs:
     name: Bundle Size Tracking
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       
@@ -417,7 +315,7 @@ jobs:
       
       - name: Upload bundle report
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bundle-report
           path: |
@@ -450,7 +348,7 @@ jobs:
     name: Godot Project Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Validate project.godot
         run: |
@@ -476,10 +374,10 @@ jobs:
     name: Python Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -494,10 +392,10 @@ jobs:
     name: GDScript Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -508,54 +406,14 @@ jobs:
       - name: Run gdlint
         run: gdlint .
 
-  tech-debt-tracking:
-    name: Tech Debt Tracking
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Generate Tech Debt Report
-        working-directory: ./backend
-        run: npm run tech-debt:report
-      
-      - name: Check for critical tech debt
-        working-directory: ./backend
-        run: npm run tech-debt:report:ci
-      
-      - name: Upload Tech Debt Report
-        if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: tech-debt-report
-          path: |
-            backend/tech-debt-report.json
-          retention-days: 30
-          if-no-files-found: ignore
-
-      - name: Skip upload (act detected)
-        if: always() && env.ACT == 'true'
-        run: echo "Skipping artifact upload in act environment"
-
   dead-code-detection:
     name: Dead Code Detection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -567,9 +425,9 @@ jobs:
         run: pip install gdtoolkit
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -612,14 +470,14 @@ jobs:
       # (jest roots=src); NAKAMA_* env vars below are inert config defaults.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Shallow clone should be disabled for SonarCloud
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -682,7 +540,7 @@ jobs:
 
       - name: Run SonarCloud Scanner for Backend (TypeScript/Node.js)
         if: env.ACT != 'true'
-        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -692,7 +550,6 @@ jobs:
             -Dsonar.sources=src
             -Dsonar.tests=tests
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.testExecutionReportPaths=coverage/coverage-final.json
             -Dsonar.coverage.exclusions=**/node_modules/**,**/*.d.ts,**/*.config.js
             -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.test.ts,**/*.spec.ts
             -Dsonar.qualitygate.wait=true
@@ -706,7 +563,7 @@ jobs:
       - name: Run SonarCloud Scanner for Game Scripts
         # Note: GDScript requires SonarQube server with community plugin
         if: env.ACT != 'true'
-        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -746,12 +603,12 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -806,7 +663,7 @@ jobs:
 
       - name: Upload schema test results
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: schema-test-results
@@ -817,66 +674,6 @@ jobs:
       - name: Skip upload (act detected)
         if: always() && env.ACT == 'true'
         run: echo "Skipping artifact upload in act environment"
-
-  agents-md-validation:
-    name: AGENTS.md Validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-      
-      - name: Validate AGENTS.md
-        working-directory: ./backend
-        run: npm run validate:agents-md:ci
-      
-      - name: Upload validation report
-        if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: agents-md-validation-report
-          path: |
-            backend/agents-md-validation-report.json
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Skip upload (act detected)
-        if: always() && env.ACT == 'true'
-        run: echo "Skipping artifact upload in act environment"
-
-  tracked-ignored-files:
-    name: Tracked-but-ignored Files Guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm ci
-
-      # Fails when `git ls-files -i -c --exclude-standard` is non-empty —
-      # i.e. a file is both tracked and gitignored (secrets-leak vector,
-      # issue #1032). The validator only lists file paths, never contents.
-      - name: Fail if any tracked file matches .gitignore
-        working-directory: ./backend
-        run: npm run validate:tracked-ignored:ci
 
   # Issue #1112: the alerting/prometheus configs once lived in two divergent
   # copies (backend/prometheus.yml vs backend/config/prometheus.yml, etc.);
@@ -889,7 +686,7 @@ jobs:
     name: Observability Config Consolidation Guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fail on duplicated or unmounted observability configs
         run: bash scripts/check-observability-configs.sh
@@ -942,12 +739,12 @@ jobs:
       HMAC_SECRET: ci-test-secret-do-not-use-in-production
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -963,7 +760,7 @@ jobs:
       # data/backend-flaky-test-history.json from the checkout is used instead.
       - name: Restore flaky-test history
         if: env.ACT != 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         continue-on-error: true
         with:
           path: data/backend-flaky-test-history.json
@@ -998,6 +795,11 @@ jobs:
             # excludes NODE_ENV from the embedded env so the runtime value does
             # not override the baked constant).
             echo "NAKAMA_SERVER_KEY=ci-test-server-key-do-not-use-in-production" >> .env
+          fi
+          # Test-only leaderboard fixture RPC for the season integration suite
+          # (backend/src/modules/test_fixtures.ts, #1456). CI only, never deploy.
+          if [ ! -f .env ] || ! grep -q "^TEST_FIXTURE_RPCS_ENABLED=" .env; then
+            echo "TEST_FIXTURE_RPCS_ENABLED=true" >> .env
           fi
           # Session encryption keys must also be non-default in production.
           # validateSessionKeys() in src/config/index.ts throws when any of
@@ -1220,7 +1022,7 @@ jobs:
       # one authority for the status check.
       - name: Annotate PR with test results (dorny/test-reporter)
         if: always() && env.ACT != 'true'
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         continue-on-error: true
         with:
           name: Backend Integration Tests (Nakama + Postgres)
@@ -1239,7 +1041,7 @@ jobs:
       # instead of stacking new comments.
       - name: Post PR comment with integration test summary
         if: always() && github.event_name == 'pull_request' && env.ACT != 'true' && steps.integration-summary.outputs.pr_comment_written == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -1280,7 +1082,7 @@ jobs:
       # overwrite history with an empty file.
       - name: Save flaky-test history
         if: always() && env.ACT != 'true' && steps.integration-summary.conclusion == 'success'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         continue-on-error: true
         with:
           path: data/backend-flaky-test-history.json
@@ -1291,7 +1093,7 @@ jobs:
       # weekly runs. Distinct from the short-lived raw output below.
       - name: Upload integration junit results
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: integration-test-junit
@@ -1304,7 +1106,7 @@ jobs:
 
       - name: Upload integration test results
         if: always() && env.ACT != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: integration-test-results
