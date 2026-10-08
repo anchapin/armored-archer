@@ -174,7 +174,7 @@ else
     # CI compose ports are hardcoded; explicitly do NOT source backend/.env.
     NAKAMA_SERVER_PORT=7350
     NAKAMA_CONSOLE_PORT=7351
-    REDIS_PORT_HOST=6380  # unused for ci; kept so unset detection below works.
+    # CI has no Redis service, so no Redis host port is needed.
 fi
 
 # --- Probe ------------------------------------------------------------------
