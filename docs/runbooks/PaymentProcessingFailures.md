@@ -182,11 +182,12 @@ gh issue create --repo anchapin/armored-archer \
   --label "priority:high,revenue,payments" \
   --body "Triggered by PaymentProcessingFailures. Status page: <link>"
 
-# 3. Disable the strict fail-closed fallback if it is harming UX
-# backend/src/modules/store.ts#validatePurchaseWithRevenueCat — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
-# (its fail-closed fallback sits at store.ts#getPendingPurchasesFromStorage); temporarily
-# return success on an open circuit *only* for one-off IAPs you have manually validated.
-# (Default is to fail closed. Flip only after product sign-off.)
+# 3. Keep validation fail-closed during the outage.
+# backend/src/modules/store.ts#validateWithRevenueCat rejects unconfigured keys
+# and failed validation responses. store.ts#validatePurchaseWithRevenueCat
+# propagates that failure; store.ts#rpcValidatePurchase queues the receipt
+# through store.ts#addToPendingQueue rather than granting unverified gems.
+# Do not bypass receipt validation. Reconcile queued purchases after recovery.
 ```
 
 ### Scenario 2: Webhook Secret Mismatch
