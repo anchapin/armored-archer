@@ -244,15 +244,15 @@ describe('Gear System Integration Tests', () => {
       });
       expect(gear2.success).toBe(true);
 
-      // Equip first gear as weapon
+      // Equip generated gear in its matching canonical slot
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: gear1.gear.id,
-        slot: 'bow',
+        slot: gear1.gear.type,
       });
 
       // Check inventory
       const inventory = await getInventory(player);
-      expect(inventory.equipped_gear.bow).toBe(gear1.gear.id);
+      expect(inventory.equipped_gear[gear1.gear.type]).toBe(gear1.gear.id);
     });
   });
 
@@ -341,7 +341,8 @@ describe('Gear System Integration Tests', () => {
       expect(weaponGear.success).toBe(true);
 
       // Try to equip it as armor
-      const payload = { gear_id: weaponGear.gear.id, slot: 'armor' };
+      const mismatchedSlot = weaponGear.gear.type === 'armor' ? 'bow' : 'armor';
+      const payload = { gear_id: weaponGear.gear.id, slot: mismatchedSlot };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
 
       expect(result.error).toBe('Gear type does not match slot');
