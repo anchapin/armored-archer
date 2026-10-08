@@ -44,7 +44,7 @@ jest_rs/
 .bin/
 
 # CI-generated reports
-*.jscpd-report.json
+.jscpd-report/
 tech-debt-report.json
 .bundle-size-history.json
 agents-md-validation-report.json
