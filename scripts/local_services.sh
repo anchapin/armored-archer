@@ -109,7 +109,7 @@ health_check() {
         echo -e "${GREEN}Healthy${NC}"
     else
         # Try alternative container name
-        if docker exec $(docker ps --filter "name=postgres" --format "{{.Names}}" | head -1) pg_isready -U postgres > /dev/null 2>&1; then
+        if docker exec "$(docker ps --filter "name=postgres" --format "{{.Names}}" | head -1)" pg_isready -U postgres > /dev/null 2>&1; then
             echo -e "${GREEN}Healthy${NC}"
         else
             echo -e "${YELLOW}Not responding (may still be starting)${NC}"
