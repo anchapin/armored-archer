@@ -500,6 +500,20 @@ describe('season_system', () => {
   });
 
   describe('calculateRewards', () => {
+    it.each([
+      [10, 'legendary', 8500, 600],
+      [11, 'epic', 4500, 250],
+      [50, 'epic', 4500, 250],
+      [51, 'rare', 2200, 125],
+      [100, 'rare', 2200, 125],
+      [101, 'uncommon', 750, 25],
+      [500, 'uncommon', 750, 25],
+      [501, 'common', 250, 10],
+    ])('preserves rewards at rank boundary %s', (rank, tier, coins, gems) => {
+      const { calculateRewards } = require('../season_system');
+      expect(calculateRewards(rank, 5)).toMatchObject({ rank_tier: tier, coins, gems });
+    });
+
     it('should return legendary rewards for rank 1-10', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(1, 5);
