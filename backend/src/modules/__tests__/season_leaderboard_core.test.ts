@@ -460,8 +460,8 @@ describe('season_leaderboard_core', () => {
         total_players: 0,
         rewards_distributed: false,
       });
-      // Season window comes from getCurrentSeasonInfo: a 30-day window around now.
-      expect(archive.end_time - archive.start_time).toBe(30 * DAY_MS);
+      // Season window comes from getCurrentSeasonInfo: a four-week window around now.
+      expect(archive.end_time - archive.start_time).toBe(28 * DAY_MS);
       expect(archive.start_time).toBeLessThanOrEqual(Date.now());
       expect(archive.end_time).toBeGreaterThan(Date.now());
 

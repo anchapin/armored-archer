@@ -1,4 +1,9 @@
-import { createMockLogger, createMockContext, createMockNakama, testStorage } from '../../__mocks__/nakama';
+import {
+  createMockLogger,
+  createMockContext,
+  createMockNakama,
+  testStorage,
+} from '../../__mocks__/nakama';
 
 import {
   rpcGetSeasonInfo,
@@ -28,6 +33,12 @@ import {
   SeasonInfo,
 } from '../season_system';
 import { Runtime } from '../../types/nakama';
+
+// Storage writes now pass objects (Nakama rejects JSON strings); normalise
+// either shape to text for assertions.
+function storageValueText(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
 
 describe('season_system', () => {
   let mockLogger: Runtime.Logger;
@@ -234,13 +245,17 @@ describe('season_system', () => {
 
     it('should return error when rewards already claimed', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
-      mockNk.storageRead = jest.fn().mockReturnValue([
-        {
-          collection: 'season_rewards_claimed',
-          key: 'season_1_test-user',
-          value: JSON.stringify({ claimed_at: Date.now() }),
-        },
-      ]);
+      mockNk.storageRead = jest.fn((objects) =>
+        objects[0].collection === 'season_rewards_claimed'
+          ? [
+              {
+                collection: 'season_rewards_claimed',
+                key: 'season_1_test-user',
+                value: JSON.stringify({ claimed_at: Date.now() }),
+              },
+            ]
+          : []
+      );
 
       const payload = JSON.stringify({});
       const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -489,6 +504,20 @@ describe('season_system', () => {
   });
 
   describe('calculateRewards', () => {
+    it.each([
+      [10, 'legendary', 8500, 600],
+      [11, 'epic', 4500, 250],
+      [50, 'epic', 4500, 250],
+      [51, 'rare', 2200, 125],
+      [100, 'rare', 2200, 125],
+      [101, 'uncommon', 750, 25],
+      [500, 'uncommon', 750, 25],
+      [501, 'common', 250, 10],
+    ])('preserves rewards at rank boundary %s', (rank, tier, coins, gems) => {
+      const { calculateRewards } = require('../season_system');
+      expect(calculateRewards(rank, 5)).toMatchObject({ rank_tier: tier, coins, gems });
+    });
+
     it('should return legendary rewards for rank 1-10', () => {
       const { calculateRewards } = require('../season_system');
       const rewards = calculateRewards(1, 5);
@@ -715,7 +744,14 @@ describe('season_system', () => {
       addPlayerCosmetic(mockNk, 'user-123', 'Existing Title');
 
       const writeCall = mockNk.storageWrite.mock.calls[0][0][0];
-      const writtenData = (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? (typeof writeCall.value === 'string' ? JSON.parse(writeCall.value) : writeCall.value) : writeCall.value) : writeCall.value);
+      const writtenData =
+        typeof writeCall.value === 'string'
+          ? typeof writeCall.value === 'string'
+            ? typeof writeCall.value === 'string'
+              ? JSON.parse(writeCall.value)
+              : writeCall.value
+            : writeCall.value
+          : writeCall.value;
       expect(writtenData.titles).toEqual(['Existing Title']); // Not added twice
     });
   });
@@ -930,7 +966,9 @@ describe('season_system', () => {
       for (const call of currencyWrites) {
         const record =
           typeof call[0][0].value === 'string'
-            ? (typeof call[0][0].value === 'string' ? JSON.parse(call[0][0].value) : call[0][0].value)
+            ? typeof call[0][0].value === 'string'
+              ? JSON.parse(call[0][0].value)
+              : call[0][0].value
             : call[0][0].value;
         expect(record.gems).toBeGreaterThanOrEqual(0);
         expect(record.coins).toBeGreaterThanOrEqual(0);
@@ -1079,7 +1117,12 @@ describe('season_system', () => {
         (call: any[]) => call[0][0].collection === 'player_currency'
       );
       expect(currencyWrites).toHaveLength(1);
-      const ledgerRecord = (typeof currencyWrites[0][0][0].value === 'string' ? (typeof currencyWrites[0][0][0].value === 'string' ? JSON.parse(currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value);
+      const ledgerRecord =
+        typeof currencyWrites[0][0][0].value === 'string'
+          ? typeof currencyWrites[0][0][0].value === 'string'
+            ? JSON.parse(currencyWrites[0][0][0].value)
+            : currencyWrites[0][0][0].value
+          : currencyWrites[0][0][0].value;
       expect(ledgerRecord.user_id).toBe('test-user');
       expect(ledgerRecord.gems).toBeGreaterThan(0);
       expect(ledgerRecord.coins).toBeGreaterThan(0);
@@ -1289,8 +1332,14 @@ describe('season_system', () => {
     });
 
     it('exposes per-side K-factors for telemetry', () => {
-      expect(getEloKFactors(false, false)).toEqual({ winnerK: BASE_K_FACTOR, loserK: BASE_K_FACTOR });
-      expect(getEloKFactors(false, true)).toEqual({ winnerK: BASE_K_FACTOR, loserK: BASE_K_FACTOR });
+      expect(getEloKFactors(false, false)).toEqual({
+        winnerK: BASE_K_FACTOR,
+        loserK: BASE_K_FACTOR,
+      });
+      expect(getEloKFactors(false, true)).toEqual({
+        winnerK: BASE_K_FACTOR,
+        loserK: BASE_K_FACTOR,
+      });
       expect(getEloKFactors(true, false)).toEqual({
         winnerK: PUNCH_UP_K_FACTOR,
         loserK: PUNCH_UP_K_FACTOR,
@@ -1452,11 +1501,7 @@ describe('season_system', () => {
     const installCrashOnKthCurrency = (failOnPlayerId: string) => {
       const counts: Record<string, number> = {};
       mockNk.storageWrite = jest.fn((writes: any[]) => {
-        if (
-          writes.some(
-            (w) => w.collection === 'player_currency' && w.userId === failOnPlayerId
-          )
-        ) {
+        if (writes.some((w) => w.collection === 'player_currency' && w.userId === failOnPlayerId)) {
           throw new Error('simulated db error on player_currency write');
         }
         for (const w of writes) {
@@ -1467,8 +1512,7 @@ describe('season_system', () => {
           // Nakama's goja storageWrite accepts a plain object (it stringifies
           // internally); normalize to the JSON string the old string-based
           // map/reads expect (ADR-0008).
-          const normalized =
-            typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
+          const normalized = typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
           testStorage.set(key, normalized);
         }
         return [];
@@ -1486,12 +1530,11 @@ describe('season_system', () => {
       mockNk.walletUpdate = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
-      const writes: Array<{ collection: string; key: string; value: string }> = [];
+      const writes: Array<{ collection: string; key: string; value: unknown }> = [];
       mockNk.storageWrite = jest.fn((objs: any[]) => {
         for (const obj of objs) {
           writes.push(obj);
-          const normalized =
-            typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
+          const normalized = typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
           testStorage.set(`${obj.collection}:${obj.key}`, normalized);
         }
         return [];
@@ -1505,10 +1548,10 @@ describe('season_system', () => {
       // ordering a crash between the loop start and the first credit would
       // leave a season that looks "active" to observers.
       const sentinelWrite = writes.find(
-        (w) => w.collection === 'seasons' && /end_distribution/.test(w.value)
+        (w) => w.collection === 'seasons' && /end_distribution/.test(storageValueText(w.value))
       );
       expect(sentinelWrite).toBeDefined();
-      const sentinel = JSON.parse(sentinelWrite!.value);
+      const sentinel = JSON.parse(storageValueText(sentinelWrite!.value));
       expect(sentinel.status).toBe('ending');
       expect(sentinel.end_distribution).toBeDefined();
       expect(sentinel.end_distribution.generation_token).toBeDefined();
@@ -1564,9 +1607,7 @@ describe('season_system', () => {
 
       // First call: throws on player-3's currency write.
       installCrashOnKthCurrency('player-3');
-      const firstResult = JSON.parse(
-        rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({}))
-      );
+      const firstResult = JSON.parse(rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({})));
       expect(firstResult.success).toBe(false);
       expect(firstResult.error_code).toBe('PARTIAL_SEASON_FAILED');
       const generationToken = firstResult.generation_token;
@@ -1678,9 +1719,7 @@ describe('season_system', () => {
         return [];
       });
 
-      const result = JSON.parse(
-        rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({}))
-      );
+      const result = JSON.parse(rpcEndSeason(mockCtx, mockLogger, mockNk, JSON.stringify({})));
 
       expect(result.success).toBe(true);
       // player-1 must NOT have been re-credited — its marker carried the

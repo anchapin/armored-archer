@@ -20,18 +20,19 @@ const CLEANUP_COLLECTIONS = [
   'catalog',
 ];
 
+// Only real SQL tables (see backend/data/*.sql). player_activity,
+// season_rewards_claimed, respec_data, campaign_progress and audit_logs are
+// Nakama storage collections, not tables; deleting them via SQL just logged
+// "relation does not exist" errors. Their rows live in `storage`.
 const CLEANUP_TABLES = [
   'storage',
   'unlocked_modifier_pools',
   'boss_defeats',
   'inventory',
+  'inventory_items',
   'loadout',
   'player_stats',
-  'campaign_progress',
-  'season_rewards_claimed',
-  'player_activity',
-  'respec_data',
-  'audit_logs',
+  'stage_completion',
 ];
 
 interface CleanupPayload {
@@ -58,7 +59,7 @@ export function rpcCleanupTestUser(
 
   // Fire-and-forget async cleanup. The handler returns the ack immediately so
   // the sync wrapper contract is honored. Real cleanup happens via
-  // nk.storageDelete (async) and nk.dbQuery (async) below.
+  // nk.storageDelete (async) and nk.sqlQuery (async) below.
   void runCleanup(nk, logger, userId);
 
   return JSON.stringify({ success: true, user_id: userId, async: true });
@@ -85,7 +86,7 @@ async function runCleanup(
 
   for (const table of CLEANUP_TABLES) {
     try {
-      await nk.dbQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
+      await nk.sqlQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     } catch (err) {
       logger.debug(`cleanup_test_user: ${table} delete: ${(err as Error).message}`);
     }

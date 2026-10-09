@@ -202,20 +202,29 @@ export function readPlayerDataWithCache<T>(
 export function parsePlayerStatsValue(
   value: unknown
 ): { level: number; xp: number; stats: unknown } | null {
-  if (!value) {
-    return null;
-  }
+  let parsed: unknown = value;
   if (typeof value === 'string') {
     try {
-      return JSON.parse(value);
+      parsed = JSON.parse(value);
     } catch {
       return null;
     }
   }
-  if (typeof value === 'object') {
-    return value as { level: number; xp: number; stats: unknown };
-  }
-  return null;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const stats = parsed as { level?: unknown; xp?: unknown; stats?: unknown };
+  if (
+    typeof stats.level !== 'number' ||
+    !Number.isFinite(stats.level) ||
+    stats.level < 1 ||
+    typeof stats.xp !== 'number' ||
+    !Number.isFinite(stats.xp) ||
+    stats.xp < 0 ||
+    !stats.stats ||
+    typeof stats.stats !== 'object' ||
+    Array.isArray(stats.stats)
+  )
+    return null;
+  return parsed as { level: number; xp: number; stats: unknown };
 }
 
 /**

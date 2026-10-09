@@ -759,6 +759,82 @@ describe('Analytics Module - Analytics Enabled', () => {
     });
   });
 
+  describe('durable analytics across runtime instances', () => {
+    it('persists before acknowledging a tracked event', () => {
+      const nk = { storageWrite: jest.fn() } as any;
+      const result = JSON.parse(
+        rpcTrackEvent(
+          mockCtx,
+          mockLogger as any,
+          nk,
+          JSON.stringify({ event_name: 'durable', platform: 'android' })
+        )
+      );
+      expect(result.success).toBe(true);
+      expect(nk.storageWrite).toHaveBeenCalledWith([
+        expect.objectContaining({
+          collection: 'analytics_events',
+          key: result.event_id,
+          userId: mockCtx.userId,
+          permissionRead: 0,
+          permissionWrite: 0,
+        }),
+      ]);
+    });
+    it('returns failure when durable tracking cannot be saved', () => {
+      const nk = {
+        storageWrite: jest.fn(() => {
+          throw new Error('write failed');
+        }),
+      } as any;
+      expect(
+        JSON.parse(
+          rpcTrackEvent(mockCtx, mockLogger as any, nk, JSON.stringify({ event_name: 'failed' }))
+        ).success
+      ).toBe(false);
+    });
+    it('summarizes stored events absent from local memory and respects name filtering', () => {
+      const today = new Date().toISOString().split('T')[0];
+      const event = {
+        id: 'from-another-vm',
+        userId: 'other',
+        eventName: 'durable-only',
+        timestamp: Date.now(),
+        properties: {},
+        platform: 'android',
+        sessionId: '',
+      };
+      const nk = { sqlQuery: jest.fn(() => [{ event_json: JSON.stringify(event) }]) } as any;
+      const result = JSON.parse(
+        rpcGetAnalyticsSummary(
+          mockCtx,
+          mockLogger as any,
+          nk,
+          JSON.stringify({ start_date: today, end_date: today, event_names: ['durable-only'] })
+        )
+      );
+      expect(result.summary.events['durable-only']).toEqual({ count: 1, unique_users: 1 });
+      expect(result.summary.total_events).toBe(1);
+    });
+    it('reports a read failure rather than an empty successful summary', () => {
+      const nk = {
+        sqlQuery: jest.fn(() => {
+          throw new Error('read failed');
+        }),
+      } as any;
+      expect(
+        JSON.parse(
+          rpcGetAnalyticsSummary(
+            mockCtx,
+            mockLogger as any,
+            nk,
+            JSON.stringify({ start_date: '2026-10-09', end_date: '2026-10-09' })
+          )
+        ).success
+      ).toBe(false);
+    });
+  });
+
   describe('rpcGetAnalyticsSummary with actual data', () => {
     it('should return accurate summary after tracking events', () => {
       const analytics = loadAnalyticsWithConfig({
