@@ -5,6 +5,7 @@ describe('Season System Integration Tests', () => {
   let playerB: TestAccount;
   let playerC: TestAccount;
   const rewardFixtureOwners: string[] = [];
+  const leaderboardFixtureOwners: string[] = [];
 
   beforeAll(async () => {
     await testHelper.initialize();
@@ -39,7 +40,7 @@ describe('Season System Integration Tests', () => {
       await leaderboardFixture({
         op: 'delete',
         leaderboard_id: season.season_id,
-        owner_ids: [playerA.userId, playerB.userId, playerC.userId, ...rewardFixtureOwners],
+        owner_ids: [playerA.userId, playerB.userId, playerC.userId, ...rewardFixtureOwners, ...leaderboardFixtureOwners],
       });
       await testHelper.deleteStorageObjectsAnyOwner(
         'season_rewards_claimed',
@@ -231,6 +232,7 @@ describe('Season System Integration Tests', () => {
       // Create several entries
       for (let i = 0; i < 5; i++) {
         const user = await testHelper.createTestAccount(`lb_user_${i}`);
+        leaderboardFixtureOwners.push(user.userId);
         await seedSeasonRecord(season.season_id, user.userId, user.username, 1000 + i * 100, 0, {
           wins: String(i * 2),
           losses: '0',
