@@ -27,7 +27,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14-alpine
+        # Docker Official Image mirror avoids shared-runner Docker Hub pull limits.
+        image: public.ecr.aws/docker/library/postgres:14-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
