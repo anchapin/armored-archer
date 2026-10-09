@@ -598,6 +598,48 @@ describe('matchmaker', () => {
       expect(parsed.total).toBe(2);
     });
 
+    it('scans all owners across pages without exposing other targeted or expired matches', () => {
+      mockNk.storageRead = jest.fn(() => [{ value: createPlayerStats() }]);
+      const object = (match: PvPMatch) => ({ value: match });
+      mockNk.storageList = jest
+        .fn()
+        .mockReturnValueOnce({
+          objects: [
+            object(createMatch({ match_id: 'own', creator_id: mockCtx.userId })),
+            object(createMatch({ match_id: 'private', opponent_id: 'someone-else' })),
+            object(createMatch({ match_id: 'expired', expires_at: Date.now() - 1 })),
+            { value: '{broken' },
+          ],
+          cursor: 'page-2',
+        })
+        .mockReturnValueOnce({
+          objects: [
+            object(createMatch({ match_id: 'public' })),
+            object(createMatch({ match_id: 'direct', opponent_id: mockCtx.userId })),
+            object(createMatch({ match_id: 'active', status: 'active' })),
+          ],
+        });
+      const result = JSON.parse(rpcListMatches(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result.matches.map((match: PvPMatch) => match.match_id).sort()).toEqual([
+        'direct',
+        'public',
+      ]);
+      expect(mockNk.storageList).toHaveBeenNthCalledWith(1, '', 'pvp_matches', 100, '');
+      expect(mockNk.storageList).toHaveBeenNthCalledWith(2, '', 'pvp_matches', 100, 'page-2');
+    });
+
+    it('bounds collection scanning and stops repeated cursors', () => {
+      mockNk.storageRead = jest.fn(() => [{ value: createPlayerStats() }]);
+      let page = 0;
+      mockNk.storageList = jest.fn(() => ({ objects: [], cursor: `page-${++page}` }));
+      const bounded = JSON.parse(rpcListMatches(mockCtx, mockLogger, mockNk, '{}'));
+      expect(bounded.scan_truncated).toBe(true);
+      expect(mockNk.storageList).toHaveBeenCalledTimes(10);
+      mockNk.storageList = jest.fn(() => ({ objects: [], cursor: 'same' }));
+      rpcListMatches(mockCtx, mockLogger, mockNk, '{}');
+      expect(mockNk.storageList).toHaveBeenCalledTimes(2);
+    });
+
     // Issue #902: list_matches must expose the canonical `power_rating`
     // field and keep `player_rank` as a deprecated alias for already-
     // shipped clients. Both fields must return the same value.

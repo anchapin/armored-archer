@@ -221,9 +221,36 @@ function matchPassesFilter(match: PvPMatch, userId: string, request: ListMatches
   if (match.status !== 'pending') return false;
   if (request.match_type && match.match_type !== request.match_type) return false;
   if (match.creator_id === userId) return false;
+  if (match.opponent_id && match.opponent_id !== userId) return false;
+  if (match.expires_at !== undefined && match.expires_at <= Date.now()) return false;
   if (request.min_rank !== undefined && match.creator_rank < request.min_rank) return false;
   if (request.max_rank !== undefined && match.creator_rank > request.max_rank) return false;
   return true;
+}
+
+/** Append only available matches visible to this requester from a storage page. */
+function appendVisibleMatches(
+  objects: Runtime.StorageObject[],
+  userId: string,
+  request: ListMatchesRequest,
+  logger: Runtime.Logger,
+  matches: PvPMatch[]
+): void {
+  for (const object of objects) {
+    const matchResult = safeParse<PvPMatch>(
+      getStorageRawValue(object.value) ?? '',
+      null,
+      logger,
+      'rpcListMatches:match'
+    );
+    if (!matchResult.success || !matchResult.data) {
+      logger.warn('Skipping corrupted match record for user: %s', userId);
+      continue;
+    }
+    if (matchPassesFilter(matchResult.data, userId, request)) {
+      matches.push(matchResult.data);
+    }
+  }
 }
 
 /**
@@ -296,26 +323,26 @@ export function rpcListMatches(
   const playerStats = playerStatsResult.data;
   const playerRank = calculateRank(playerStats);
 
-  const matches = normalizeStorageList(nk.storageList(ctx.userId, 'pvp_matches', limit, ''));
-
   const filteredMatches: PvPMatch[] = [];
-
-  for (const object of matches) {
-    const matchResult = safeParse<PvPMatch>(
-      getStorageRawValue(object.value) ?? '',
-      null,
+  let cursor = '';
+  let scanTruncated = false;
+  // Server storageList's owner argument is a filter, not the caller. Matches
+  // belong to their creators, so scan across owners and enforce visibility
+  // ourselves. Bound the scan to 1,000 records per request, including records
+  // rejected by the filters; never let a full collection stall the runtime.
+  for (let page = 0; page < 10; page++) {
+    const result = nk.storageList('', 'pvp_matches', 100, cursor);
+    appendVisibleMatches(
+      normalizeStorageList(result),
+      ctx.userId,
+      request,
       logger,
-      'rpcListMatches:match'
+      filteredMatches
     );
-    if (!matchResult.success || !matchResult.data) {
-      logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
-      continue;
-    }
-    const match = matchResult.data;
-
-    if (matchPassesFilter(match, ctx.userId, request)) {
-      filteredMatches.push(match);
-    }
+    const nextCursor = (result as { cursor?: string }).cursor;
+    if (!nextCursor || nextCursor === cursor) break;
+    cursor = nextCursor;
+    scanTruncated = page === 9;
   }
 
   filteredMatches.sort((a, b) => b.created_at - a.created_at);
@@ -329,6 +356,7 @@ export function rpcListMatches(
     power_rating: playerRank,
     player_rank: playerRank,
     total: filteredMatches.length,
+    scan_truncated: scanTruncated,
   });
 }
 
