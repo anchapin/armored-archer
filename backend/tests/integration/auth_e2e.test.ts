@@ -76,8 +76,8 @@ describe('E2E Authentication Flow', () => {
       const tokenParts = session.token.split('.');
       expect(tokenParts.length).toBe(3);
 
-      const payload = JSON.parse(atob(tokenParts[1]));
-      expect(payload.user_id).toBe(session.user_id);
+      const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString('utf8'));
+      expect(payload.uid).toBe(session.user_id);
       expect(payload.exp).toBeDefined();
     });
 
