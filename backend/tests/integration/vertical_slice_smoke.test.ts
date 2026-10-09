@@ -13,8 +13,9 @@
  * Related: #679 - Sprint 1 Vertical Slice Foundation
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import { Client } from '@heroiclabs/nakama-js';
+import { testHelper } from './helpers';
 
 // Test configuration
 const NAKAMA_HOST = process.env.NAKAMA_HOST || 'localhost';
@@ -41,7 +42,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
   let sessionToken: string;
   let session: Awaited<ReturnType<Client['authenticateDevice']>>;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Initialize Nakama client
     // Fixed for nakama-js v2.x: Client(serverKey, host, port, useSSL, timeout, autoRefreshSession)
     // v1.x took (serverKey, host, port, scheme-string); 'http' → useSSL=false.
@@ -52,7 +53,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     // (same shape as v1.x's Session, so downstream assertions still hold).
     // v1.x signature was (id, username, create); v2.x is (id, create, username).
     // Swapped 2nd/3rd args to preserve original "create account with username" intent.
-    session = await nakama.authenticateDevice(TEST_DEVICE_ID, true, TEST_USERNAME);
+    session = await nakama.authenticateDevice(`${TEST_DEVICE_ID}_${Math.random()}`, true, `${TEST_USERNAME}_${Math.random().toString(36).slice(2, 7)}`);
 
     if (!session || !session.token || !session.user_id) {
       throw new Error(`Failed to authenticate: ${JSON.stringify(session)}`);
@@ -61,6 +62,11 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     userId = session.user_id!;
     sessionToken = session.token!;
 
+    await testHelper.initialize();
+    await testHelper.writeStorageObject('player_stats', userId, userId, {
+      level: 1, xp: 0, ability_points: 0,
+      stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+    });
     console.log(`[Setup] Authenticated user: ${userId}`);
   });
 
@@ -133,7 +139,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const completeResult = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
-        boss_id: '',
         difficulty: 'easy'
       });
 
@@ -166,8 +171,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
         await nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: stageId,
           boss_defeated: false,
-          boss_id: '',
-          difficulty: 'easy'
+            difficulty: 'easy'
         });
       }
 
@@ -184,7 +188,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
-        boss_id: '',
         difficulty: 'easy'
       });
 
@@ -241,7 +244,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const firstResult = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
-        boss_id: '',
         difficulty: 'easy'
       });
 
@@ -268,7 +270,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
-        boss_id: '',
         difficulty: 'easy'
       });
 
@@ -285,7 +286,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
   describe('VS-5: Inventory Display & Loadout Management', () => {
     let testGearId: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       // Get some gear in inventory first
       const result = await nakama.rpc(session, 'armored_archer/generate_gear', {
         stage_id: TEST_STAGE_ID,
@@ -393,7 +394,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
   });
 
   describe('VS-6: Stat Allocation System', () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
       // Give the player enough XP to level up and get ability points
       await nakama.rpc(session, 'armored_archer/gain_xp', {
         xp_amount: 1000,
@@ -477,7 +478,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const stageResult = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
-        boss_id: '',
         difficulty: 'easy'
       });
       expect(stageResult.payload.success).toBe(true);
@@ -539,8 +539,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
         nakama.rpc(session, 'armored_archer/stage_complete', {
           stage_id: `1_${i + 1}`,
           boss_defeated: false,
-          boss_id: '',
-          difficulty: 'easy'
+            difficulty: 'easy'
         })
       );
 
