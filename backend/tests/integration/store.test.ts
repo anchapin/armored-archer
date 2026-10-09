@@ -10,6 +10,11 @@ describe('Store System Integration Tests', () => {
     player = await testHelper.createTestAccount('store_player');
   }, 120000);
 
+  beforeEach(async () => {
+    // Fresh owner prevents cached currency from an earlier case masking seeds.
+    player = await testHelper.createTestAccount('store_case');
+  });
+
   afterEach(async () => {
     // Clean up currency and purchases
     await testHelper.deleteStorageObject('player_currency', player.userId, player.userId);

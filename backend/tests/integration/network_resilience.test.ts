@@ -269,8 +269,10 @@ describe('Network Resilience Integration Tests', () => {
 
       const matchId = createResult.match.match_id;
 
-      // Simulate reconnection by getting the match again
-      const listResult = await rpcCall(playerA, 'armored_archer/list_matches', {});
+      // Refresh the opponent session, then rediscover the creator-owned open
+      // match. Own matches are deliberately excluded by list_matches.
+      playerB.session = await playerB.client.sessionRefresh(playerB.session);
+      const listResult = await rpcCall(playerB, 'armored_archer/list_matches', {});
 
       // The match should still be available
       const match = listResult.matches.find((m: any) => m.match_id === matchId);

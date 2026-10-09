@@ -392,10 +392,12 @@ describe('Error Handling Tests', () => {
         inject_sql: "'; DROP TABLE player_inventory; --",
       });
 
-      // Should return error without exposing SQL or internal details
-      expect(result.error).toBeDefined();
-      expect(result.error).not.toContain('SQL');
-      expect(result.error).not.toContain('database');
+      // Unknown fields are stripped by the schema. An injection-shaped
+      // unused field must not change the normal inventory response.
+      const baseline = await rpcCall(player, 'armored_archer/get_inventory', {});
+      expect(result).toEqual(baseline);
+      expect(JSON.stringify(result)).not.toContain('DROP TABLE');
+      expect(JSON.stringify(result)).not.toContain('stackTrace');
     });
   });
 
