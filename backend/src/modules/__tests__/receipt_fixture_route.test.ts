@@ -10,6 +10,6 @@ describe('receipt fixture route gating', () => {
   it('uses only the fixed isolated service when both fixture gates are present', () => {
     expect(
       getRevenueCatApiBase({ TEST_FIXTURE_RPCS_ENABLED: 'true', CI_RECEIPT_FIXTURE: 'true' })
-    ).toBe('http://receipt-fixture:8080/v1');
+    ).toBe('https://receipt-fixture:8080/v1');
   });
 });

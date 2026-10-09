@@ -58,3 +58,15 @@ export function publishCurrentSeason(nk: Runtime.Nakama, season: CurrentSeason):
     },
   ]);
 }
+
+/** Store season metadata under the operator's existing record ownership. */
+export function saveSeasonInfo(nk: Runtime.Nakama, ownerId: string, season: CurrentSeason): void {
+  nk.storageWrite([
+    {
+      collection: 'seasons',
+      key: season.season_id,
+      userId: ownerId,
+      value: toStorageValue(season),
+    },
+  ]);
+}

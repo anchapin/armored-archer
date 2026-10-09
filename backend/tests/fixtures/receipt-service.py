@@ -1,5 +1,6 @@
 """CI-only RevenueCat HTTP contract fixture, not a real receipt verifier."""
 import json
+import ssl
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 PRODUCTS = {"com.armoredarcher.gems." + size for size in ("small", "medium", "large")}
@@ -27,4 +28,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(result).encode())
 
 if __name__ == "__main__":
-    HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+    server = HTTPServer(("0.0.0.0", 8080), Handler)
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain("/fixture-cert/cert.pem", "/fixture-cert/key.pem")
+    server.socket = tls.wrap_socket(server.socket, server_side=True)
+    server.serve_forever()

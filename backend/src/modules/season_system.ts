@@ -4,7 +4,11 @@
  */
 
 import { Runtime } from '../types/nakama';
-import { resolveCurrentSeason, publishCurrentSeason } from '../utils/current-season';
+import {
+  resolveCurrentSeason,
+  publishCurrentSeason,
+  saveSeasonInfo,
+} from '../utils/current-season';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
 import { recordSeasonCompletion } from './season_leaderboard';
@@ -539,9 +543,7 @@ export function rpcGetSeasonInfo(
     return createValidationErrorResponse('get_season_info', validation.error);
   }
 
-  const currentSeason = getCurrentSeason(nk);
-
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+  const { currentSeason, playerEntry } = getCurrentSeasonPlayer(nk, ctx.userId);
 
   return JSON.stringify({
     success: true,
@@ -799,8 +801,7 @@ export function rpcGetSeasonRewards(
     return createValidationErrorResponse('get_season_rewards', validation.error);
   }
 
-  const currentSeason = getCurrentSeason(nk);
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+  const { currentSeason, playerEntry } = getCurrentSeasonPlayer(nk, ctx.userId);
 
   if (!playerEntry) {
     return JSON.stringify({
@@ -1273,14 +1274,7 @@ export function rpcEndSeason(
   };
 
   // Store new season info
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: nextSeason.season_id,
-      userId: ctx.userId,
-      value: toStorageValue(nextSeason),
-    },
-  ]);
+  saveSeasonInfo(nk, ctx.userId, nextSeason);
 
   // Create new leaderboard for next season
   nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
@@ -1316,14 +1310,7 @@ export function rpcEndSeason(
   const oldSeason = currentSeason;
   oldSeason.status = SEASON_ENDED_STATUS;
 
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: oldSeason.season_id,
-      userId: ctx.userId,
-      value: toStorageValue(oldSeason),
-    },
-  ]);
+  saveSeasonInfo(nk, ctx.userId, oldSeason);
 
   publishCurrentSeason(nk, nextSeason);
 
@@ -1340,6 +1327,18 @@ export function rpcEndSeason(
     generation_token: generationToken,
     resumed: resumeFromIndex > 0,
   });
+}
+
+/** Resolve a player's entry in the authoritative current season. */
+function getCurrentSeasonPlayer(
+  nk: Runtime.Nakama,
+  userId: string
+): {
+  currentSeason: SeasonInfo;
+  playerEntry: LeaderboardEntry | null;
+} {
+  const currentSeason = getCurrentSeason(nk);
+  return { currentSeason, playerEntry: getLeaderboardEntry(nk, userId, currentSeason.season_id) };
 }
 
 /**
@@ -1675,8 +1674,8 @@ export function rpcGetProjectedNextSeasonElo(
     return createValidationErrorResponse('get_projected_next_season_elo', validation.error);
   }
 
-  const currentSeason = getCurrentSeason(nk);
-  const playerEntry = getLeaderboardEntry(nk, ctx.userId, currentSeason.season_id);
+  const seasonPlayer = getCurrentSeasonPlayer(nk, ctx.userId);
+  const { playerEntry, currentSeason } = seasonPlayer;
 
   if (!playerEntry) {
     return JSON.stringify({

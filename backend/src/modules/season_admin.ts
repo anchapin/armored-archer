@@ -1,5 +1,5 @@
 import { Runtime } from '../types/nakama';
-import { publishCurrentSeason } from '../utils/current-season';
+import { publishCurrentSeason, saveSeasonInfo } from '../utils/current-season';
 /**
  * Season Admin Tools module.
  * @fileoverview Provides admin RPC endpoints for season state inspection,
@@ -476,25 +476,11 @@ export function triggerEndSeason(
     duration_weeks: SEASON_DURATION_WEEKS,
   };
 
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: nextSeason.season_id,
-      userId: ctx.userId,
-      value: toStorageValue(nextSeason),
-    },
-  ]);
+  saveSeasonInfo(nk, ctx.userId, nextSeason);
 
   // Mark old season ended
   const oldSeason = { ...currentSeason, status: 'ended' };
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: oldSeason.season_id,
-      userId: ctx.userId,
-      value: toStorageValue(oldSeason),
-    },
-  ]);
+  saveSeasonInfo(nk, ctx.userId, oldSeason);
 
   // Create new leaderboard and seed players
   nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
@@ -695,8 +681,8 @@ export function rpcAdminGetSeasonState(
   }
 
   const request = validation.data || {};
-  const season = resolveSeason(nk, request.season_id as string | undefined);
   const now = Date.now();
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const elapsedMs = now - season.start_time;
   const remainingMs = Math.max(0, season.end_time - now);
 

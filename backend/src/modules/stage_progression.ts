@@ -404,25 +404,11 @@ function applyStageCompletionAttempt(
 
 /** Retry only the versioned completion-map merge, before any reward side effects. */
 export function applyStageCompletion(
-  nk: Runtime.Nakama,
-  userId: string,
-  stageId: string,
-  stagePrefix: string,
-  starsEarned: number,
-  score: number,
-  logger: Runtime.Logger
+  ...args: Parameters<typeof applyStageCompletionAttempt>
 ): StageCompletionResult {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      return applyStageCompletionAttempt(
-        nk,
-        userId,
-        stageId,
-        stagePrefix,
-        starsEarned,
-        score,
-        logger
-      );
+      return applyStageCompletionAttempt(...args);
     } catch (error) {
       // This exact Nakama conflict means the map changed since our read.
       // Re-read and merge, never re-run claim or reward processing.

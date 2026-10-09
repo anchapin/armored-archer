@@ -2536,7 +2536,7 @@ export function getRevenueCatApiBase(env: { [key: string]: string | undefined })
   // A fixed internal service is allowed only in the explicitly disposable CI
   // fixture bundle. No arbitrary endpoint override or validation bypass.
   return env.TEST_FIXTURE_RPCS_ENABLED === 'true' && env.CI_RECEIPT_FIXTURE === 'true'
-    ? 'http://receipt-fixture:8080/v1'
+    ? 'https://receipt-fixture:8080/v1'
     : 'https://api.revenuecat.com/v1';
 }
 const REVENUECAT_API_BASE = getRevenueCatApiBase(process.env);
