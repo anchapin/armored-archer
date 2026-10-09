@@ -64,7 +64,7 @@ import {
 import type { NotificationType } from '../notifications';
 
 const createMockNk = () => ({
-  dbQuery: jest.fn().mockResolvedValue([]),
+  sqlQuery: jest.fn().mockResolvedValue([]),
   storageRead: jest.fn().mockReturnValue([]),
   storageWrite: jest.fn(),
 });
@@ -167,12 +167,12 @@ describe('Notifications Module', () => {
       const nk = createMockNk();
       const result = await registerDeviceToken(nk as any, 'user_123', 'device_token', 'android');
       expect(result.success).toBe(true);
-      expect(nk.dbQuery).toHaveBeenCalled();
+      expect(nk.sqlQuery).toHaveBeenCalled();
     });
 
     it('should handle database errors', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
       const result = await registerDeviceToken(nk as any, 'user_123', 'device_token', 'ios');
       expect(result.success).toBe(false);
       expect(result.error).toBe('DB error');
@@ -188,7 +188,7 @@ describe('Notifications Module', () => {
         '1.0.0',
         'fcm_token'
       );
-      expect(nk.dbQuery).toHaveBeenCalledWith(
+      expect(nk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO device_tokens'),
         expect.arrayContaining(['user_123', 'device_token', 'android', '1.0.0', 'fcm_token'])
       );
@@ -204,7 +204,7 @@ describe('Notifications Module', () => {
 
     it('should handle database errors', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('Delete failed'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('Delete failed'));
       const result = await removeDeviceToken(nk as any, 'device_token');
       expect(result.success).toBe(false);
     });
@@ -213,7 +213,7 @@ describe('Notifications Module', () => {
   describe('getUserDeviceTokens', () => {
     it('should return device tokens for user', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         { device_token: 'tok1', platform: 'android', fcm_token: 'fcm1' },
         { device_token: 'tok2', platform: 'ios', fcm_token: 'fcm2' },
       ]);
@@ -226,7 +226,7 @@ describe('Notifications Module', () => {
 
     it('should return empty array on error', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
       const tokens = await getUserDeviceTokens(nk as any, 'user_123');
       expect(tokens).toEqual([]);
     });
@@ -235,7 +235,7 @@ describe('Notifications Module', () => {
   describe('getNotificationPreferences', () => {
     it('should return existing preferences', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([{ user_id: 'user_123', notifications_enabled: true }]);
+      nk.sqlQuery.mockResolvedValue([{ user_id: 'user_123', notifications_enabled: true }]);
 
       const prefs = await getNotificationPreferences(nk as any, 'user_123');
       expect(prefs).toBeDefined();
@@ -244,7 +244,7 @@ describe('Notifications Module', () => {
 
     it('should create default preferences when none exist', async () => {
       const nk = createMockNk();
-      nk.dbQuery
+      nk.sqlQuery
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ user_id: 'user_123', notifications_enabled: true }]);
 
@@ -254,7 +254,7 @@ describe('Notifications Module', () => {
 
     it('should return null on error', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValue(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValue(new Error('DB error'));
       const prefs = await getNotificationPreferences(nk as any, 'user_123');
       expect(prefs).toBeNull();
     });
@@ -279,7 +279,7 @@ describe('Notifications Module', () => {
 
     it('should handle database errors', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('Update failed'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('Update failed'));
       const result = await updateNotificationPreferences(nk as any, 'user_123', {
         notificationsEnabled: true,
       });
@@ -289,7 +289,7 @@ describe('Notifications Module', () => {
 
     it('should handle non-Error database exceptions', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce('string exception');
+      nk.sqlQuery.mockRejectedValueOnce('string exception');
       const result = await updateNotificationPreferences(nk as any, 'user_123', {
         dailyRewardsEnabled: true,
       });
@@ -317,7 +317,7 @@ describe('Notifications Module', () => {
   describe('scheduleNotification', () => {
     it('should schedule notification successfully', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([{ notification_id: 'notif_123' }]);
+      nk.sqlQuery.mockResolvedValue([{ notification_id: 'notif_123' }]);
 
       const result = await scheduleNotification(
         nk as any,
@@ -333,7 +333,7 @@ describe('Notifications Module', () => {
 
     it('should handle scheduling errors', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('Insert failed'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('Insert failed'));
       const result = await scheduleNotification(
         nk as any,
         'user_123',
@@ -348,7 +348,7 @@ describe('Notifications Module', () => {
 
     it('should handle non-Error scheduling exceptions', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce('string error');
+      nk.sqlQuery.mockRejectedValueOnce('string error');
       const result = await scheduleNotification(
         nk as any,
         'user_123',
@@ -371,7 +371,7 @@ describe('Notifications Module', () => {
 
     it('should handle cancel errors', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('Cancel failed'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('Cancel failed'));
       const result = await cancelScheduledNotification(nk as any, 'notif_123');
       expect(result.success).toBe(false);
       expect(result.error).toBe('Cancel failed');
@@ -379,7 +379,7 @@ describe('Notifications Module', () => {
 
     it('should handle non-Error cancel exceptions', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce('cancel error string');
+      nk.sqlQuery.mockRejectedValueOnce('cancel error string');
       const result = await cancelScheduledNotification(nk as any, 'notif_456');
       expect(result.success).toBe(false);
       expect(result.error).toContain('cancel error string');
@@ -389,7 +389,7 @@ describe('Notifications Module', () => {
   describe('shouldSendNotification', () => {
     it('should return false when notifications are disabled', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([{ user_id: 'user_123', notifications_enabled: false }]);
+      nk.sqlQuery.mockResolvedValue([{ user_id: 'user_123', notifications_enabled: false }]);
 
       const result = await shouldSendNotification(nk as any, 'user_123', 'daily_reward');
       expect(result).toBe(false);
@@ -397,7 +397,7 @@ describe('Notifications Module', () => {
 
     it('should check type-specific preferences', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -411,7 +411,7 @@ describe('Notifications Module', () => {
 
     it('should check event type preferences', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -425,7 +425,7 @@ describe('Notifications Module', () => {
 
     it('should check pvp_challenge type preferences', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -439,7 +439,7 @@ describe('Notifications Module', () => {
 
     it('should check promotion type preferences', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -453,7 +453,7 @@ describe('Notifications Module', () => {
 
     it('should return true for custom type (default)', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -466,7 +466,7 @@ describe('Notifications Module', () => {
 
     it('should return true on error (fail open)', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
       const result = await shouldSendNotification(nk as any, 'user_123', 'event');
       expect(result).toBe(true);
     });
@@ -482,7 +482,7 @@ describe('Notifications Module', () => {
 
     it('should skip sending when user disabled notifications', async () => {
       const nk = createMockNk();
-      nk.dbQuery
+      nk.sqlQuery
         .mockResolvedValueOnce([
           {
             notification_id: 'n1',
@@ -503,7 +503,7 @@ describe('Notifications Module', () => {
 
     it('should fail when no device tokens found', async () => {
       const nk = createMockNk();
-      nk.dbQuery
+      nk.sqlQuery
         .mockResolvedValueOnce([
           {
             notification_id: 'n1',
@@ -528,7 +528,7 @@ describe('Notifications Module', () => {
   describe('sendDailyRewardNotification', () => {
     it('should fail when user disabled notifications', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([{ user_id: 'user_123', notifications_enabled: false }]);
+      nk.sqlQuery.mockResolvedValue([{ user_id: 'user_123', notifications_enabled: false }]);
 
       const result = await sendDailyRewardNotification(nk as any, 'user_123');
       expect(result.success).toBe(false);
@@ -536,7 +536,7 @@ describe('Notifications Module', () => {
 
     it('should fail when no device tokens', async () => {
       const nk = createMockNk();
-      nk.dbQuery
+      nk.sqlQuery
         .mockResolvedValueOnce([
           { user_id: 'user_123', notifications_enabled: true, daily_rewards_enabled: true },
         ])
@@ -551,7 +551,7 @@ describe('Notifications Module', () => {
   describe('sendEventNotification', () => {
     it('should fail when user disabled event notifications', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -567,7 +567,7 @@ describe('Notifications Module', () => {
   describe('sendPvpChallengeNotification', () => {
     it('should fail when user disabled pvp notifications', async () => {
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           user_id: 'user_123',
           notifications_enabled: true,
@@ -581,7 +581,7 @@ describe('Notifications Module', () => {
 
     it('should fail when no device tokens', async () => {
       const nk = createMockNk();
-      nk.dbQuery
+      nk.sqlQuery
         .mockResolvedValueOnce([
           {
             user_id: 'user_123',
@@ -601,7 +601,7 @@ describe('Notifications Module', () => {
     it('should return pending notifications from database', async () => {
       const { getPendingNotifications: getPending } = require('../notifications');
       const nk = createMockNk();
-      nk.dbQuery.mockResolvedValue([
+      nk.sqlQuery.mockResolvedValue([
         {
           notification_id: 'n1',
           user_id: 'u1',
@@ -625,7 +625,7 @@ describe('Notifications Module', () => {
       const result = await getPending(nk as any, 50);
       expect(result.length).toBe(2);
       expect(result[0].notification_id).toBe('n1');
-      expect(nk.dbQuery).toHaveBeenCalledWith(
+      expect(nk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('SELECT * FROM scheduled_notifications'),
         [50]
       );
@@ -636,13 +636,13 @@ describe('Notifications Module', () => {
       const nk = createMockNk();
 
       await getPending(nk as any);
-      expect(nk.dbQuery).toHaveBeenCalledWith(expect.any(String), [100]);
+      expect(nk.sqlQuery).toHaveBeenCalledWith(expect.any(String), [100]);
     });
 
     it('should return empty array on database error', async () => {
       const { getPendingNotifications: getPending } = require('../notifications');
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
 
       const result = await getPending(nk as any);
       expect(result).toEqual([]);
@@ -655,7 +655,7 @@ describe('Notifications Module', () => {
       const nk = createMockNk();
 
       await markSent(nk as any, 'notif_123', true);
-      expect(nk.dbQuery).toHaveBeenCalledWith(
+      expect(nk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE scheduled_notifications'),
         ['sent', null, 'notif_123']
       );
@@ -666,7 +666,7 @@ describe('Notifications Module', () => {
       const nk = createMockNk();
 
       await markSent(nk as any, 'notif_123', false, 'Token expired');
-      expect(nk.dbQuery).toHaveBeenCalledWith(
+      expect(nk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE scheduled_notifications'),
         ['failed', 'Token expired', 'notif_123']
       );
@@ -675,7 +675,7 @@ describe('Notifications Module', () => {
     it('should handle database errors gracefully', async () => {
       const { markNotificationSent: markSent } = require('../notifications');
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
 
       await expect(markSent(nk as any, 'notif_123', true)).resolves.toBeUndefined();
     });
@@ -696,7 +696,7 @@ describe('Notifications Module', () => {
         'device_tok',
         'sent'
       );
-      expect(nk.dbQuery).toHaveBeenCalledWith(
+      expect(nk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO notification_history'),
         ['notif_123', 'user_123', 'daily_reward', 'Title', 'Body', 'device_tok', 'sent', null]
       );
@@ -717,7 +717,7 @@ describe('Notifications Module', () => {
         'failed',
         'Send failed'
       );
-      expect(nk.dbQuery).toHaveBeenCalledWith(
+      expect(nk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO notification_history'),
         ['notif_456', 'user_456', 'event', 'Title', 'Body', 'device_tok', 'failed', 'Send failed']
       );
@@ -726,7 +726,7 @@ describe('Notifications Module', () => {
     it('should handle database errors gracefully', async () => {
       const { logNotificationHistory: logHistory } = require('../notifications');
       const nk = createMockNk();
-      nk.dbQuery.mockRejectedValueOnce(new Error('DB error'));
+      nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
 
       await expect(
         logHistory(nk as any, 'n1', 'u1', 'custom', 'T', 'B', 'tok', 'sent')

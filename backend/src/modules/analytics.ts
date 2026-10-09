@@ -6,6 +6,7 @@
 import { config } from '../config';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { toStorageValue } from '../utils/storage-helpers';
 import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 import {
   registerRpcWithMetrics,
@@ -143,6 +144,31 @@ function validateEventPayload(payload: string) {
   return validatePayload(ZodSchemas.track_event, payload, 'track_event');
 }
 
+/** Persist event authority across Nakama JavaScript runtime instances. */
+function persistAnalyticsEvent(nk: Runtime.Nakama, event: AnalyticsEvent): void {
+  if (typeof nk.storageWrite !== 'function') return; // Lightweight local test doubles.
+  nk.storageWrite([
+    {
+      collection: 'analytics_events',
+      key: event.id,
+      userId: event.userId,
+      value: toStorageValue(event),
+      permissionRead: 0,
+      permissionWrite: 0,
+    },
+  ]);
+}
+
+/** Read durable events for the summary instead of a single VM's memory. */
+function readSummaryEvents(nk: Runtime.Nakama, start: number, end: number): AnalyticsEvent[] {
+  if (typeof nk.sqlQuery !== 'function') return analyticsEvents;
+  const rows = nk.sqlQuery(
+    "SELECT value::text AS event_json FROM storage WHERE collection = 'analytics_events' AND (value->>'timestamp')::bigint >= $1 AND (value->>'timestamp')::bigint <= $2 ORDER BY create_time DESC LIMIT 100000",
+    [start, end]
+  ) as Array<{ event_json: string }>;
+  return rows.map((row) => JSON.parse(row.event_json) as AnalyticsEvent);
+}
+
 /**
  * Processes and stores an analytics event.
  */
@@ -164,7 +190,8 @@ function processEvent(
     sessionId,
   };
 
-  // Store event
+  // A success response must mean another runtime can read this event.
+  persistAnalyticsEvent(nk, event);
   analyticsEvents.push(event);
 
   // Trim old events if over limit
@@ -543,7 +570,14 @@ export function rpcGetAnalyticsSummary(
   const startTime = new Date(start_date).getTime();
   const endTime = new Date(end_date).getTime() + 86400000; // Include entire end date
 
-  const filteredEvents = analyticsEvents.filter(
+  let sourceEvents: AnalyticsEvent[];
+  try {
+    sourceEvents = readSummaryEvents(_nk, startTime, endTime);
+  } catch (error) {
+    logger.error(`Failed to read analytics summary: ${error}`);
+    return JSON.stringify({ success: false, error: 'Failed to read analytics summary' });
+  }
+  const filteredEvents = sourceEvents.filter(
     (e) => e.timestamp >= startTime && e.timestamp <= endTime
   );
 
@@ -641,6 +675,7 @@ export function rpcTrackRevenue(
     sessionId: '',
   };
 
+  persistAnalyticsEvent(_nk, revenueEvent);
   analyticsEvents.push(revenueEvent);
 
   // Record revenue metrics

@@ -233,8 +233,8 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Duplicate webhook deliveries are expected; check that recordWebhookOutcome is being
-# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4118; the duplicate
-# read-back via getRecordedWebhookOutcome sits at backend/src/modules/store.ts:3487).
+# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4123; the duplicate
+# read-back via getRecordedWebhookOutcome sits at backend/src/modules/store.ts:3492).
 # PromQL first (issue #1140): the duplicate outcome rate on the ledger counter
 curl -s 'http://prometheus:9090/api/v1/query' \
   -G --data-urlencode 'query=sum by (event_type) (rate(armored_archer_webhook_events_total{outcome="duplicate"}[1h]))' \

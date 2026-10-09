@@ -283,7 +283,8 @@ describe('Combat System Integration Tests', () => {
 
     test('should return error when not player turn', async () => {
       // Force a specific turn state where it's player A's turn
-      await setupMatchStateForTurn(activeMatchId, playerA.userId);
+      const state = await getMatchState(playerA, activeMatchId);
+      expect(state.current_turn_user_id).toBe(playerA.userId);
 
       // Player B tries to shoot during A's turn
       const payload = {
@@ -375,78 +376,13 @@ describe('Combat System Integration Tests', () => {
   });
 });
 
-// Helper function to setup match state for specific turn
-async function setupMatchStateForTurn(matchId: string, currentTurnUserId: string): Promise<void> {
-  const helper = testHelper;
-  const admin = await helper.getAdminClient();
-
-  // Read match to get full data
-  const matchObj = await helper.getStorageObject('pvp_matches', matchId, '');
-  if (!matchObj) throw new Error('Match not found');
-
-  const match = JSON.parse(matchObj.value);
-
-  // Get player stats
-  const creatorStats = await getPlayerStatsFromStorage(helper, match.creator_id);
-  const opponentStats = await getPlayerStatsFromStorage(helper, match.opponent_id);
-  const baseHealth = 100;
-  const maxHealth = baseHealth + creatorStats.level * 10;
-
-  const matchState = {
-    match_id: matchId,
-    turn: 1,
-    current_turn_user_id: currentTurnUserId,
-    creator_id: match.creator_id,
-    opponent_id: match.opponent_id,
-    creator_health: maxHealth,
-    opponent_health: maxHealth,
-    creator_stats: creatorStats,
-    opponent_stats: opponentStats,
-    status: 'active',
-    log: [],
-  };
-
-  await admin.storageWrite([
-    {
-      collection: 'pvp_match_states',
-      key: matchId,
-      userId: match.creator_id,
-      value: JSON.stringify(matchState),
-    },
-  ]);
-}
-
-async function getPlayerStatsFromStorage(helper: any, userId: string): Promise<any> {
-  const obj = await helper.getStorageObject('player_stats', userId, userId);
-  return obj
-    ? JSON.parse(obj.value)
-    : {
-        level: 1,
-        xp: 0,
-        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
-      };
-}
-
-// Helper to force complete a match
+// Fixture-only completion of a creator-owned match, without pretending the
+// client SDK exposes server storageWrite or reading under a server owner.
 async function forceCompleteMatch(matchId: string, winnerId: string): Promise<void> {
-  const helper = testHelper;
-  const admin = await helper.getAdminClient();
-
-  // Get match
-  const matchObj = await helper.getStorageObject('pvp_matches', matchId, '');
-  if (!matchObj) throw new Error('Match not found');
-
-  const match = JSON.parse(matchObj.value);
-  match.status = 'completed';
-  match.winner = winnerId;
-  match.updated_at = Date.now();
-
-  await admin.storageWrite([
-    {
-      collection: 'pvp_matches',
-      key: matchId,
-      userId: match.creator_id,
-      value: JSON.stringify(match),
-    },
-  ]);
+  const patch = { status: 'completed', winner: winnerId, updated_at: Date.now() };
+  const rows = await testHelper.sql(
+    "UPDATE storage SET value = value || $1::jsonb WHERE collection = 'pvp_matches' AND key = $2 AND user_id = $3 RETURNING key",
+    [JSON.stringify(patch), matchId, winnerId]
+  );
+  expect(rows).toHaveLength(1);
 }

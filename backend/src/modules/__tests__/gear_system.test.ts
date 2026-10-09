@@ -45,7 +45,8 @@ describe('gear_system', () => {
       const pveMetric = reg.getSingleMetric('armored_archer_pve_stages_completed_total');
       if (pveMetric && typeof (pveMetric as any).reset === 'function') (pveMetric as any).reset();
       const gearMetric = reg.getSingleMetric('armored_archer_gear_unlocks_total');
-      if (gearMetric && typeof (gearMetric as any).reset === 'function') (gearMetric as any).reset();
+      if (gearMetric && typeof (gearMetric as any).reset === 'function')
+        (gearMetric as any).reset();
     } catch {
       // Metrics may not exist yet, ignore
     }
@@ -63,7 +64,7 @@ describe('gear_system', () => {
       unlocked_modifier_pools: [],
       ...overrides,
     };
-    // Also store in testStorage for dbQuery mock
+    // Also store in testStorage for sqlQuery mock
     testStorage.set('player_inventory:test-user', JSON.stringify(inventory));
     return inventory;
   };
@@ -510,7 +511,9 @@ describe('gear_system', () => {
       rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
 
       const readCalls = (mockNk.storageRead as jest.Mock).mock.calls.flat();
-      const difficultyReads = readCalls.filter((obj: any) => obj?.collection === 'difficulty_state');
+      const difficultyReads = readCalls.filter(
+        (obj: any) => obj?.collection === 'difficulty_state'
+      );
       expect(difficultyReads).toEqual([]);
     });
 
@@ -523,9 +526,7 @@ describe('gear_system', () => {
         boss_defeated: false,
         difficulty: 'easy',
       });
-      const parsedEasy = JSON.parse(
-        rpcStageComplete(mockCtx, mockLogger, mockNk, easyPayload)
-      );
+      const parsedEasy = JSON.parse(rpcStageComplete(mockCtx, mockLogger, mockNk, easyPayload));
       expect(parsedEasy.success).toBe(true);
       expect(parsedEasy.drop_rate).toBeCloseTo(0.225, 3); // easy 0.5x untouched
       expect(parsedEasy.xp_gained).toBe(30); // round(60 * 0.5)
@@ -535,9 +536,7 @@ describe('gear_system', () => {
         boss_defeated: false,
         difficulty: 'normal', // legacy alias canonicalized to medium
       });
-      const parsedNormal = JSON.parse(
-        rpcStageComplete(mockCtx, mockLogger, mockNk, normalPayload)
-      );
+      const parsedNormal = JSON.parse(rpcStageComplete(mockCtx, mockLogger, mockNk, normalPayload));
       expect(parsedNormal.success).toBe(true);
       expect(parsedNormal.drop_rate).toBeCloseTo(0.45, 3); // medium 1.0x
       expect(parsedNormal.xp_gained).toBe(60);
@@ -1072,8 +1071,8 @@ describe('gear_system', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
-      // Make dbQuery throw on all attempts to simulate persistent DB failure
-      mockNk.dbQuery = jest.fn().mockImplementation(() => {
+      // Make sqlQuery throw on all attempts to simulate persistent DB failure
+      mockNk.sqlQuery = jest.fn().mockImplementation(() => {
         throw new Error('DB connection failed');
       });
 
@@ -1097,7 +1096,7 @@ describe('gear_system', () => {
 
       // First call throws synchronously, second succeeds
       let callCount = 0;
-      mockNk.dbQuery = jest.fn().mockImplementation(() => {
+      mockNk.sqlQuery = jest.fn().mockImplementation(() => {
         callCount++;
         if (callCount === 1) {
           throw new Error('DB connection failed');
@@ -1192,20 +1191,19 @@ describe('gear_system', () => {
       expect(parsed.gear).toBeDefined();
     });
 
-    it('should handle corrupted inventory data', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
-        {
-          collection: 'player_inventory',
-          key: 'test-user',
-          value: '{bad json',
-        },
-      ]);
+    it('should return DATABASE_ERROR when the gear insert fails', () => {
+      mockNk.sqlQuery = jest.fn().mockImplementation((query: string) => {
+        if (query.includes('INSERT INTO inventory_items')) {
+          throw new Error('db down');
+        }
+        return [];
+      });
 
       const payload = JSON.stringify({ stage_id: 'stage_1', boss_defeated: false });
       const result = rpcGenerateGear(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.error_code).toBe('INVALID_DATA');
+      expect(parsed.error_code).toBe('DATABASE_ERROR');
     });
   });
 
@@ -1725,10 +1723,7 @@ describe('gear_system', () => {
 
   // Use getSingleMetric like metrics_issue_1093.test.ts does, rather than
   // getMetricsAsJSON which can miss metrics that were re-registered after clear().
-  async function counterTotal(
-    name: string,
-    labels?: Record<string, string>
-  ): Promise<number> {
+  async function counterTotal(name: string, labels?: Record<string, string>): Promise<number> {
     try {
       const metric = getMetricsRegistry().getSingleMetric(name) as any;
       if (!metric) return 0;

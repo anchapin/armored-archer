@@ -1,4 +1,5 @@
 import { Runtime } from '../types/nakama';
+import { listLeaderboardRecords } from '../utils/leaderboard-list';
 
 /**
  * Test-only fixture RPC for integration tests (#1456).
@@ -66,12 +67,11 @@ function opDelete(nk: Runtime.Nakama, leaderboardId: string, body: FixturePayloa
 }
 
 function opList(nk: Runtime.Nakama, leaderboardId: string, body: FixturePayload): string {
-  const records = nk.leaderboardRecordList(
+  const { records } = listLeaderboardRecords(
+    nk,
     leaderboardId,
     body.owner_ids || [],
-    body.limit || 100,
-    '',
-    0
+    body.limit || 100
   );
   return JSON.stringify({ success: true, records: records || [] });
 }
@@ -130,6 +130,9 @@ export function registerTestFixtureRpcs(
     'TEST_FIXTURE_RPCS_ENABLED=true: registering test-only leaderboard fixture RPC. ' +
       'This must never be enabled outside CI.'
   );
-  initializer.registerRpc(TEST_FIXTURE_RPC_ID, rpcTestLeaderboardFixture);
+  // Literal id (not TEST_FIXTURE_RPC_ID): scripts/transpile-bundle.js finds
+  // RPC ids by scanning for registerRpc('<id>'; a constant here is invisible
+  // to it, so the RPC was never bridged and every call 404'd.
+  initializer.registerRpc('armored_archer/test_leaderboard_fixture', rpcTestLeaderboardFixture);
   return true;
 }

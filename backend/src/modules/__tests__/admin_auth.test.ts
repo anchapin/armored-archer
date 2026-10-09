@@ -216,7 +216,7 @@ function createMockNakama(): Runtime.Nakama {
   return {
     storageWrite: jest.fn(),
     storageList: jest.fn().mockReturnValue([]),
-    dbQuery: jest.fn().mockReturnValue([]),
+    sqlQuery: jest.fn().mockReturnValue([]),
     leaderboardRecordList: jest.fn().mockReturnValue([]),
   } as unknown as Runtime.Nakama;
 }
@@ -264,15 +264,20 @@ function deniedAuditEntries(
 ): Array<{ user_id: string; resource: string; action: string }> {
   // logAudit invokes nk.storageWrite with a batch array; take each write.
   const writes = (nk.storageWrite as jest.Mock).mock.calls.flatMap(
-    (call: unknown[]) =>
-      (call[0] as Array<{ collection: string; value: string } | undefined>) ?? []
+    (call: unknown[]) => (call[0] as Array<{ collection: string; value: string } | undefined>) ?? []
   );
   return writes
     .filter((write) => write.collection === 'audit_logs')
-    .map((write) => (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value))
-    .filter(
-      (entry) => entry.action === 'admin_rpc_access_denied' && entry.resource === rpcId
-    );
+    .map((write) =>
+      typeof write.value === 'string'
+        ? typeof write.value === 'string'
+          ? typeof write.value === 'string'
+            ? JSON.parse(write.value)
+            : write.value
+          : write.value
+        : write.value
+    )
+    .filter((entry) => entry.action === 'admin_rpc_access_denied' && entry.resource === rpcId);
 }
 
 const ORIGINAL_ADMIN_USER_IDS = process.env.ADMIN_USER_IDS;
@@ -397,8 +402,7 @@ describe('getAdminUserIds hardening (#1155)', () => {
 
   it('deduplicates entries that differ only in case', () => {
     setAdminUserIds(
-      `${CASEFUL_ADMIN_ID},${CASEFUL_ADMIN_ID.toUpperCase()},${CASEFUL_ADMIN_ID
-        .split('')
+      `${CASEFUL_ADMIN_ID},${CASEFUL_ADMIN_ID.toUpperCase()},${CASEFUL_ADMIN_ID.split('')
         .map((c) => (c >= 'a' && c <= 'f' ? c.toUpperCase() : c))
         .join('')}`
     );
@@ -636,7 +640,15 @@ describe('admin guard rejection metrics (issue #1141)', () => {
     );
     const entry = writes
       .filter((w) => w.collection === 'audit_logs')
-      .map((w) => (typeof w.value === 'string' ? (typeof w.value === 'string' ? (typeof w.value === 'string' ? JSON.parse(w.value) : w.value) : w.value) : w.value))
+      .map((w) =>
+        typeof w.value === 'string'
+          ? typeof w.value === 'string'
+            ? typeof w.value === 'string'
+              ? JSON.parse(w.value)
+              : w.value
+            : w.value
+          : w.value
+      )
       .find((e: { action: string }) => e.action === 'admin_rpc_access_denied');
     expect(entry.details.reason).toBe('caller_id_missing');
   });
@@ -676,10 +688,7 @@ describe('admin guard rejection metrics (issue #1141)', () => {
       expect(inner).not.toHaveBeenCalled();
     } finally {
       // Restore the real sink wiring done by metrics.ts at import time.
-      setAdminGuardMetricsCallbacks(
-        incrementAdminRpcAccessDenied,
-        setAdminAllowlistSize
-      );
+      setAdminGuardMetricsCallbacks(incrementAdminRpcAccessDenied, setAdminAllowlistSize);
     }
   });
 
@@ -796,9 +805,7 @@ describe('admin gate: allowlisted admin reaches the real handler', () => {
     expect(result.success).toBe(true);
     expect(result.dry_run).toBe(true);
     expect(result.season_id).toBe('season_1');
-    expect(deniedAuditEntries(mockNk, 'armored_archer/admin_trigger_season_event')).toHaveLength(
-      0
-    );
+    expect(deniedAuditEntries(mockNk, 'armored_archer/admin_trigger_season_event')).toHaveLength(0);
   });
 
   it('rollout_create_flag creates a feature flag behind the gate', async () => {
@@ -832,19 +839,14 @@ describe('admin gate: allowlisted admin reaches the real handler', () => {
   it('rpcGetMetrics returns the combined metrics dump behind the gate', async () => {
     const handler = handlers.get('armored_archer/metrics')!;
 
-    const result = (await handler(
-      createMockContext(ADMIN_ID),
-      mockLogger,
-      mockNk,
-      '{}'
-    )) as string;
+    const result = (await handler(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}')) as string;
 
     expect(result).not.toContain('Not authorized');
     expect(result).toContain('# Deployment metrics');
   });
 
   it('admin_query_matches executes the match query behind the gate', async () => {
-    (mockNk.dbQuery as jest.Mock)
+    (mockNk.sqlQuery as jest.Mock)
       .mockReturnValueOnce([{ total: 0 }]) // COUNT query
       .mockReturnValueOnce([]); // rows query
 

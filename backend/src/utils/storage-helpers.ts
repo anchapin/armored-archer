@@ -278,3 +278,73 @@ export function getStorageRawValue(value: unknown): string | null {
  * Alias of getStorageRawValue for inline use at call sites (ADR-0008).
  */
 export const asStorageJson = getStorageRawValue;
+
+/**
+ * Normalise the result of `nk.storageList`. The real Nakama JS runtime returns
+ * `{ objects, cursor }`; legacy mocks return a bare array. Always yields an array.
+ */
+export function normalizeStorageList(res: unknown): Runtime.StorageObject[] {
+  if (Array.isArray(res)) {
+    return res as Runtime.StorageObject[];
+  }
+  const list = (res || {}) as { objects?: Runtime.StorageObject[] | null };
+  return list.objects || [];
+}
+
+/**
+ * Leaderboard record metadata arrives as a pre-parsed object from the Nakama JS
+ * runtime but as a JSON string from mocks/older paths. Returns {} when absent or invalid.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors JSON.parse's untyped result
+export function parseRecordMetadata(metadata: unknown): Record<string, any> {
+  if (metadata === null || metadata === undefined || metadata === '') {
+    return {};
+  }
+  if (typeof metadata === 'object') {
+    return metadata as Record<string, string>;
+  }
+  if (typeof metadata === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(metadata);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/**
+ * Read a PvP match by id regardless of which participant is calling.
+ *
+ * `pvp_matches` objects are owned by the match creator (see rpcCreateMatch),
+ * so a storageRead keyed on the opponent's userId always comes back empty and
+ * the opponent sees "Match not found" on accept/combat/forfeit. Try the
+ * caller-owned read first (covers the creator, and keeps unit-test mocks that
+ * ignore userId working), then resolve the owner from the storage table.
+ */
+export function readPvpMatch(
+  nk: Runtime.Nakama,
+  matchId: string,
+  callerUserId: string
+): Runtime.StorageObject[] {
+  const own = nk.storageRead([{ collection: 'pvp_matches', key: matchId, userId: callerUserId }]);
+  if (own.length > 0 || typeof nk.sqlQuery !== 'function') {
+    return own;
+  }
+  let ownerId: string | undefined;
+  try {
+    const rows = nk.sqlQuery(
+      "SELECT user_id FROM storage WHERE collection = 'pvp_matches' AND key = $1 LIMIT 1",
+      [matchId]
+    ) as Array<{ user_id?: unknown }>;
+    const raw = rows && rows.length > 0 ? rows[0].user_id : undefined;
+    ownerId = raw === undefined || raw === null ? undefined : String(raw);
+  } catch {
+    return own;
+  }
+  if (!ownerId || ownerId === callerUserId) {
+    return own;
+  }
+  return nk.storageRead([{ collection: 'pvp_matches', key: matchId, userId: ownerId }]);
+}
