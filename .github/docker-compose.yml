@@ -40,6 +40,16 @@ services:
     networks:
       - ci-network
 
+  # Disposable receipt API contract fixture. No real provider credentials or
+  # receipts enter this isolated CI service.
+  receipt-fixture:
+    image: python:3.12-alpine
+    command: ["python", "/fixture/server.py"]
+    volumes:
+      - ${PWD}/backend/tests/fixtures/receipt-service.py:/fixture/server.py:ro
+    networks:
+      - ci-network
+
   # Nakama game server - standard heroiclabs image, wired to the postgres
   # service the same way backend/docker-compose.yml does it (migrate up, then
   # serve; DSN via the compose-network service hostname).
@@ -89,6 +99,8 @@ services:
       - ${PWD}/backend/nakama.ci.yml:/nakama/nakama.yml:ro
       - ${PWD}/backend/data/modules:/nakama/data/modules:ro
     depends_on:
+      receipt-fixture:
+        condition: service_started
       postgres:
         condition: service_healthy
     healthcheck:

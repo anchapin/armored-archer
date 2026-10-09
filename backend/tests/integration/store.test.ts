@@ -98,6 +98,16 @@ describe('Store System Integration Tests', () => {
       expect(result.product_id).toBe('com.armoredarcher.gems.small');
     });
 
+    test('should reject an unverified receipt without awarding currency', async () => {
+      await setCurrency(player, 25, 0);
+      const result = await rpcCall(player, 'armored_archer/validate_purchase', {
+        product_id: 'com.armoredarcher.gems.small', platform: 'ios',
+        transaction_receipt: 'unverified-fixture',
+      });
+      expect(result).toEqual(expect.objectContaining({ error_code: 'VALIDATION_FAILED' }));
+      expect((await getCurrency(player)).gems).toBe(25);
+    });
+
     test('should validate medium gem bundle purchase', async () => {
       await setCurrency(player, 50, 0);
 

@@ -2532,7 +2532,14 @@ const PENDING_PURCHASE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 /**
  * RevenueCat API configuration.
  */
-const REVENUECAT_API_BASE = 'https://api.revenuecat.com/v1';
+export function getRevenueCatApiBase(env: { [key: string]: string | undefined }): string {
+  // A fixed internal service is allowed only in the explicitly disposable CI
+  // fixture bundle. No arbitrary endpoint override or validation bypass.
+  return env.TEST_FIXTURE_RPCS_ENABLED === 'true' && env.CI_RECEIPT_FIXTURE === 'true'
+    ? 'http://receipt-fixture:8080/v1'
+    : 'https://api.revenuecat.com/v1';
+}
+const REVENUECAT_API_BASE = getRevenueCatApiBase(process.env);
 
 /**
  * Gets the RevenueCat API key from environment/config.

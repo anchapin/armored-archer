@@ -814,6 +814,7 @@ jobs:
           if [ ! -f .env ] || ! grep -q "^TEST_FIXTURE_RPCS_ENABLED=" .env; then
             echo "TEST_FIXTURE_RPCS_ENABLED=true" >> .env
           fi
+          echo 'CI_RECEIPT_FIXTURE=true' >> .env
           # Session encryption keys must also be non-default in production.
           # validateSessionKeys() in src/config/index.ts throws when any of
           # SESSION_ENCRYPTION_KEY, REFRESH_ENCRYPTION_KEY, or TOKEN_ENCRYPTION_KEY
