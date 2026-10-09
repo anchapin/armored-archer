@@ -225,7 +225,12 @@ describe('Matchmaker Integration Tests', () => {
         stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
       });
       // Creation needs both participants' stats; remove only after it succeeds.
-      const createResult = await createMatch(playerA, {
+      const creator = await testHelper.createTestAccount('missing_stats_creator');
+      await setupPlayerStats(creator, {
+        level: 10, xp: 2000,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+      });
+      const createResult = await createMatch(creator, {
         match_type: 'ranked', target_opponent_id: freshAccount.userId,
       });
       expect(createResult).toEqual(expect.objectContaining({ success: true }));
@@ -294,14 +299,17 @@ describe('Matchmaker Integration Tests', () => {
       expect(result.xp).toBe(2000);
     });
 
-    test('should return error when player stats not found', async () => {
+    test('should default power rating to zero when player stats are missing', async () => {
       const freshPlayer = await testHelper.createTestAccount('norank');
       // Account hooks initialize stats; delete the prerequisite explicitly.
       await testHelper.deleteStorageObjectsAnyOwner('player_stats', [freshPlayer.userId]);
       const payload = {};
       const result = await rpcCall(freshPlayer, 'armored_archer/get_player_rank', payload);
 
-      expect(result.error).toBe('Player stats not found');
+      expect(result.success).toBe(true);
+      expect(result.power_rating).toBe(0);
+      expect(result.level).toBe(0);
+      expect(result.xp).toBe(0);
     });
   });
 
@@ -392,7 +400,7 @@ describe('Matchmaker Integration Tests', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.success).toBeUndefined();
+      expect(result.success).toBe(false);
     });
 
     test('should query matches with admin endpoint', async () => {
