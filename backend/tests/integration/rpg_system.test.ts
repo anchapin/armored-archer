@@ -284,14 +284,13 @@ describe('RPG System Integration Tests', () => {
         'player_stats',
         player.userId,
         player.userId,
-        'invalid json data'
+        { level: 'invalid', xp: 0, stats: null }
       );
 
       const result = await rpcCall(player, 'armored_archer/get_player_stats', {});
 
       expect(result.error).toBeDefined();
-      // When parsing fails, it returns the default stats (empty object parsing)
-      // This depends on implementation; the actual behavior may vary
+      expect(result.error).toBe('Failed to read player stats');
     });
   });
 });

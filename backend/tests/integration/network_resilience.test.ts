@@ -164,7 +164,16 @@ describe('Network Resilience Integration Tests', () => {
         match_id: createResult.match.match_id,
       });
 
-      // Complete the match
+      // A client winner claim alone cannot settle an active match (ADR-0002).
+      // Play the first turn to persist combat state, then forfeit via the server.
+      const shot = await rpcCall(playerA, 'armored_archer/submit_combat_action', {
+        match_id: createResult.match.match_id, action_type: 'shoot', angle: 1.0,
+      });
+      expect(shot).toEqual(expect.objectContaining({ success: true }));
+      const forfeit = await rpcCall(playerB, 'armored_archer/player_disconnect', {
+        match_id: createResult.match.match_id, reason: 'voluntary',
+      });
+      expect(forfeit).toEqual(expect.objectContaining({ success: true, winner: playerA.userId }));
       const completeResult = await rpcCall(playerA, 'armored_archer/complete_match', {
         match_id: createResult.match.match_id,
         winner_id: playerA.userId,
@@ -173,7 +182,12 @@ describe('Network Resilience Integration Tests', () => {
       });
 
       expect(completeResult.success).toBe(true);
-      expect(completeResult.match.status).toBe('completed');
+      expect(completeResult.match_id).toBe(createResult.match.match_id);
+      const state = await rpcCall(playerA, 'armored_archer/get_match_state', {
+        match_id: createResult.match.match_id,
+      });
+      expect(state.status).toBe('completed');
+      expect(state.winner).toBe(playerA.userId);
     });
 
     test('should handle rapid match operations', async () => {
