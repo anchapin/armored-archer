@@ -349,10 +349,10 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
       // Verify slot is now empty
       const inventoryResult = await nakama.rpc(session, 'armored_archer/get_inventory', {});
-      expect(inventoryResult.payload.equipped_gear[testGearType]).toBeNull();
+      expect(inventoryResult.payload.equipped_gear).toEqual({});
     });
 
-    it('should only allow one item per slot', async () => {
+    it('should reject unowned gear without replacing equipped gear', async () => {
       const bowId1 = testGearId;
       const bowId2 = 'test_bow_2'; // Hypothetical second bow
 
@@ -369,8 +369,9 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       });
 
       expect(result.payload).toBeDefined();
-      // System should either succeed (replacement) or fail (slot occupied)
-      expect([true, false]).toContain(result.payload.success);
+      expect(result.payload.error).toBe('Gear not found in inventory');
+      const inventory = await nakama.rpc(session, 'armored_archer/get_inventory', {});
+      expect(inventory.payload.equipped_gear[testGearType]).toBe(bowId1);
     });
 
     it('should calculate stat bonuses from equipped gear', async () => {
@@ -437,22 +438,23 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       });
 
       expect(result.payload).toBeDefined();
-      expect(result.payload.success).toBe(false);
-      expect(result.payload.error).toContain('ability_points');
+      expect(result.payload.error).toBe('Not enough ability points');
     });
 
     it('should support allocating to different stats', async () => {
       const stats = ['attack', 'defense', 'dodge', 'crit_rate'];
-      const results = await Promise.all(
-        stats.map(stat =>
-          nakama.rpc(session, 'armored_archer/allocate_stats', {
-            stat_name: stat,
-            points: 1
-          })
-        )
-      );
-
-      for (const result of results) {
+      // Seed exactly the prerequisite points. Capped XP earns fewer than four.
+      await nakama.writeStorageObjects(session, [{
+        collection: 'player_stats', key: userId,
+        value: { level: 5, xp: 1000, ability_points: 4,
+          stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 } },
+        permission_read: 1, permission_write: 1,
+      }]);
+      // Independent read-modify-write RPCs must run sequentially here.
+      for (const stat of stats) {
+        const result = await nakama.rpc(session, 'armored_archer/allocate_stats', {
+          stat_name: stat, points: 1
+        });
         expect(result.payload.success).toBe(true);
       }
 
