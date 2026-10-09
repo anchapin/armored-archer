@@ -12,6 +12,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { listAllLeaderboardRecords } from '../utils/leaderboard-list';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import {
@@ -231,7 +232,7 @@ export async function captureRatingSnapshot(
   _seasonStartTime: number
 ): Promise<RatingSnapshot | null> {
   try {
-    const records = nk.leaderboardRecordList(seasonId, [], 10000, '', 0);
+    const records = listAllLeaderboardRecords(nk, seasonId, 10000);
     if (records.length === 0) {
       logger.info('No leaderboard entries for snapshot: season=%s', seasonId);
       return null;

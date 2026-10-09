@@ -26,16 +26,16 @@ Both alerts live in the settlement group of the alert rules — `SettlementDegra
 
 ## 🔗 Signal Chain (where the numbers come from)
 
-1. Settlement is server-declared (ADR-0002): `rpcCompleteMatch` resolves the terminal state, then claims the settled marker via the versioned write in `claimSettlementMarker`: matchmaker.ts:1095
-2. A genuine claim failure (not a lost race) audits the `settlement_claim_failed` channel: matchmaker.ts:2072
-3. …and increments the `claim_failed` outcome counter through `recordSettlementOutcome`: matchmaker.ts:1566
-4. The claim winner applies all effects in `applySettlementOutcome`: matchmaker.ts:2114
-5. A fully-applied settlement increments the `success` outcome: matchmaker.ts:1582
-6. If any post-claim effect throws, the wrapper in `processMatchResult` keeps the match settled: matchmaker.ts:1274
-7. …audits the `settlement_degraded` channel: matchmaker.ts:2460
-8. …and increments the `degraded` outcome counter: matchmaker.ts:2460
-9. Terminal draws settle through a separate unconditional persist in `settleDrawMatch`: matchmaker.ts:1542
-10. A draw persist failure increments the `persist_failed` outcome (and rethrows): matchmaker.ts:1566
+1. Settlement is server-declared (ADR-0002): `rpcCompleteMatch` resolves the terminal state, then claims the settled marker via the versioned write in `claimSettlementMarker`: matchmaker.ts:1100
+2. A genuine claim failure (not a lost race) audits the `settlement_claim_failed` channel: matchmaker.ts:2073
+3. …and increments the `claim_failed` outcome counter through `recordSettlementOutcome`: matchmaker.ts:1571
+4. The claim winner applies all effects in `applySettlementOutcome`: matchmaker.ts:2113
+5. A fully-applied settlement increments the `success` outcome: matchmaker.ts:1587
+6. If any post-claim effect throws, the wrapper in `processMatchResult` keeps the match settled: matchmaker.ts:1279
+7. …audits the `settlement_degraded` channel: matchmaker.ts:2461
+8. …and increments the `degraded` outcome counter: matchmaker.ts:2465
+9. Terminal draws settle through a separate unconditional persist in `settleDrawMatch`: matchmaker.ts:1547
+10. A draw persist failure increments the `persist_failed` outcome (and rethrows): matchmaker.ts:1571
 11. The counter is declared on the shared Prometheus registry: metrics.ts:142
 12. The increment helper and the `result` label vocabulary live beside it: metrics.ts:113
 

@@ -372,10 +372,15 @@ describe('Authentication Tests', () => {
         10000,
         false
       );
-      const session = await client.authenticateEmail(email, password, true, username);
-
-      expect(session).toBeDefined();
-      expect(session.username).toContain('🎮');
+      // The installed SDK Session constructor decodes JWT bytes as binary
+      // text and fails on Go's escaped non-BMP username. Test server auth and
+      // its actual UTF-8 JWT separately, rather than losing server coverage.
+      const session = await client.apiClient.authenticateEmail(
+        TEST_ADMIN_KEY, '', { email, password }, true, username
+      );
+      expect(session.token).toBeDefined();
+      const claims = JSON.parse(Buffer.from(session.token!.split('.')[1], 'base64url').toString('utf8'));
+      expect(claims.usn).toBe(username);
     });
   });
 });

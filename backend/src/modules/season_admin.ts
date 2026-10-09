@@ -1,3 +1,5 @@
+import { Runtime } from '../types/nakama';
+import { publishCurrentSeason, saveSeasonInfo } from '../utils/current-season';
 /**
  * Season Admin Tools module.
  * @fileoverview Provides admin RPC endpoints for season state inspection,
@@ -32,8 +34,13 @@
  *    - All mutations are audit-logged.
  */
 
-import { Runtime } from '../types/nakama';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { listAllLeaderboardRecords } from '../utils/leaderboard-list';
+import {
+  toStorageValue,
+  getStorageRawValue,
+  parseRecordMetadata,
+  normalizeStorageList,
+} from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
 import { applyCurrencyDelta, type CurrencyDelta } from './currency';
@@ -88,7 +95,7 @@ interface ValidationSummary {
 
 // --- Helpers ---
 
-function resolveSeason(seasonId?: string): SeasonInfo {
+function resolveSeason(nk: Runtime.Nakama, seasonId?: string): SeasonInfo {
   if (seasonId) {
     const match = seasonId.match(/^season_(\d+)$/);
     if (!match) {
@@ -107,19 +114,11 @@ function resolveSeason(seasonId?: string): SeasonInfo {
       duration_weeks: 4,
     };
   }
-  return getCurrentSeason();
+  return getCurrentSeason(nk);
 }
 
 function getAllLeaderboardRecords(nk: Runtime.Nakama, seasonId: string): LeaderboardRecord[] {
-  const BATCH_SIZE = 500;
-  let allRecords: LeaderboardRecord[] = [];
-  let cursor = '';
-  do {
-    const batch = nk.leaderboardRecordList(seasonId, [], BATCH_SIZE, cursor, 0);
-    allRecords = allRecords.concat(batch);
-    cursor = batch.length >= BATCH_SIZE ? String(batch[batch.length - 1]?.rank || '') : '';
-  } while (cursor !== '');
-  return allRecords;
+  return listAllLeaderboardRecords(nk, seasonId, Number.MAX_SAFE_INTEGER, 500);
 }
 
 function getTierForRank(rank: number): string {
@@ -161,12 +160,8 @@ export function validateOrphanedRewards(
   };
 
   try {
-    const rewards = nk.storageList(
-      '00000000-0000-0000-0000-000000000000',
-      'season_rewards_claimed',
-      100,
-      '',
-      ''
+    const rewards = normalizeStorageList(
+      nk.storageList('00000000-0000-0000-0000-000000000000', 'season_rewards_claimed', 100, '')
     );
 
     for (const obj of rewards) {
@@ -249,7 +244,7 @@ export function validateDecayConsistency(
 
   for (const record of records) {
     try {
-      const meta = record.metadata ? JSON.parse(record.metadata) : {};
+      const meta = parseRecordMetadata(record.metadata);
       if (meta.decayed !== 'true') continue;
 
       const lastActive = meta.last_active ? parseInt(meta.last_active, 10) : 0;
@@ -314,7 +309,7 @@ export function validateLeaderboardIntegrity(records: LeaderboardRecord[]): Vali
     prevScore = record.score;
 
     // Check for unparseable metadata
-    if (record.metadata) {
+    if (record.metadata && typeof record.metadata === 'string') {
       try {
         JSON.parse(record.metadata);
       } catch {
@@ -422,7 +417,7 @@ export function triggerEndSeason(
 ): { players_processed: number; old_season_id: string; new_season_id: string } {
   const SEASON_DURATION_MS = 28 * 24 * 60 * 60 * 1000;
   const SEASON_DURATION_WEEKS = 4;
-  const currentSeason = resolveSeason(seasonId);
+  const currentSeason = resolveSeason(nk, seasonId);
   const allRecords = getAllLeaderboardRecords(nk, currentSeason.season_id);
 
   if (dryRun) {
@@ -481,25 +476,11 @@ export function triggerEndSeason(
     duration_weeks: SEASON_DURATION_WEEKS,
   };
 
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: nextSeason.season_id,
-      userId: ctx.userId,
-      value: toStorageValue(nextSeason),
-    },
-  ]);
+  saveSeasonInfo(nk, ctx.userId, nextSeason);
 
   // Mark old season ended
   const oldSeason = { ...currentSeason, status: 'ended' };
-  nk.storageWrite([
-    {
-      collection: 'seasons',
-      key: oldSeason.season_id,
-      userId: ctx.userId,
-      value: toStorageValue(oldSeason),
-    },
-  ]);
+  saveSeasonInfo(nk, ctx.userId, oldSeason);
 
   // Create new leaderboard and seed players
   nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
@@ -507,7 +488,7 @@ export function triggerEndSeason(
   });
   for (const record of allRecords) {
     const softResetElo = calculateSoftResetElo(record.rank);
-    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    const metadata = parseRecordMetadata(record.metadata);
     nk.leaderboardRecordWrite(
       nextSeason.season_id,
       record.ownerId,
@@ -525,6 +506,8 @@ export function triggerEndSeason(
       }
     );
   }
+
+  publishCurrentSeason(nk, nextSeason);
 
   logAudit(
     nk,
@@ -559,7 +542,7 @@ export function triggerRecalculateDecay(
 
   for (const record of records) {
     try {
-      const meta = record.metadata ? JSON.parse(record.metadata) : {};
+      const meta = parseRecordMetadata(record.metadata);
       const lastActive = meta.last_active ? parseInt(meta.last_active, 10) : 0;
       if (!lastActive) continue;
 
@@ -698,8 +681,8 @@ export function rpcAdminGetSeasonState(
   }
 
   const request = validation.data || {};
-  const season = resolveSeason(request.season_id as string | undefined);
   const now = Date.now();
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const elapsedMs = now - season.start_time;
   const remainingMs = Math.max(0, season.end_time - now);
 
@@ -719,7 +702,7 @@ export function rpcAdminGetSeasonState(
 
     for (const r of records) {
       try {
-        const meta = r.metadata ? JSON.parse(r.metadata) : {};
+        const meta = parseRecordMetadata(r.metadata);
         if (meta.decayed === 'true') playersWithDecay++;
       } catch {
         // skip
@@ -905,7 +888,7 @@ function executeRecalculateRatings(
     if (record.score < decayConfig.minimum_rating) {
       corrected++;
       if (!dryRun) {
-        const meta = record.metadata ? JSON.parse(record.metadata) : {};
+        const meta = parseRecordMetadata(record.metadata);
         nk.leaderboardRecordWrite(
           seasonId,
           record.ownerId,
@@ -946,7 +929,12 @@ function executeTriggerAction(
     case 'recalculate_decay':
       return executeRecalculateDecay(nk, ctx, seasonId, dryRun);
     case 'fix_missing_rewards':
-      return executeFixMissingRewards(nk, seasonId, resolveSeason(seasonId).season_number, dryRun);
+      return executeFixMissingRewards(
+        nk,
+        seasonId,
+        resolveSeason(nk, seasonId).season_number,
+        dryRun
+      );
     case 'rebuild_prestige':
       return executeRebuildPrestige(nk, ctx, seasonId, playerIds ?? null, dryRun);
     case 'recalculate_ratings':
@@ -1031,7 +1019,7 @@ export function rpcAdminGetPlayerSeason(
 
   const request = validation.data;
   const userId = request.user_id as string;
-  const season = resolveSeason(request.season_id as string | undefined);
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const entry = getLeaderboardEntry(nk, userId, season.season_id);
   const prestige = getPlayerPrestigeRecord(nk, userId);
   const cosmetics = getPlayerCosmetics(nk, userId);
@@ -1071,7 +1059,7 @@ export function rpcAdminValidateSeason(
   }
 
   const request = validation.data || {};
-  const season = resolveSeason(request.season_id as string | undefined);
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const autoFix = (request.auto_fix as boolean) || false;
   const requestedChecks = request.checks as string[] | undefined;
 
@@ -1163,7 +1151,7 @@ export function rpcAdminTriggerSeasonEvent(
   const playerIds = request.player_ids as string[] | undefined;
   const confirmationToken = request.confirmation_token as string | undefined;
 
-  const season = resolveSeason(seasonId);
+  const season = resolveSeason(nk, seasonId);
 
   // Special handling for end_season due to confirmation token requirement
   if (action === 'end_season') {

@@ -1,0 +1,5 @@
+FROM python:3.12-alpine
+RUN apk add --no-cache openssl
+COPY receipt-service.py /fixture/server.py
+COPY receipt-start.sh /fixture/start.sh
+CMD ["sh", "/fixture/start.sh"]

@@ -43,7 +43,7 @@ async function processPendingNotifications(nk: Runtime.Nakama): Promise<void> {
 async function sendDailyRewardReminders(nk: Runtime.Nakama): Promise<void> {
   try {
     // Get all users who have daily rewards enabled
-    const users = (await nk.dbQuery(
+    const users = (await nk.sqlQuery(
       `SELECT u.id, u.username FROM users u
        JOIN notification_preferences np ON u.id = np.user_id
        WHERE np.daily_rewards_enabled = true`
@@ -79,7 +79,7 @@ export async function scheduleNextDailyReward(
   nextAvailableTime: Date
 ): Promise<void> {
   try {
-    await nk.dbQuery(
+    await nk.sqlQuery(
       `INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)
        VALUES ($1, 'daily_reward', '🎁 Daily Rewards Available!', 'Your daily rewards are ready to claim!', '{}', $2, 'pending')
        ON CONFLICT DO NOTHING`,
@@ -109,12 +109,12 @@ export async function notifyUsersAboutEvent(
 
     if (targetUserIds && targetUserIds.length > 0) {
       // Get specific users
-      users = (await nk.dbQuery(`SELECT id FROM users WHERE id = ANY($1)`, [targetUserIds])) as {
+      users = (await nk.sqlQuery(`SELECT id FROM users WHERE id = ANY($1)`, [targetUserIds])) as {
         id: string;
       }[];
     } else {
       // Get all users with events enabled
-      users = (await nk.dbQuery(
+      users = (await nk.sqlQuery(
         `SELECT u.id FROM users u
          JOIN notification_preferences np ON u.id = np.user_id
          WHERE np.events_enabled = true`

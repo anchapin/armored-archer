@@ -9,6 +9,7 @@ import {
   testStorage,
 } from '../../__mocks__/nakama';
 import {
+  getPlayerGearFromDB,
   recordBossDefeatInDB,
   getDefeatedBossesFromDB,
   getBossDefeatCount,
@@ -222,5 +223,27 @@ describe('gear_db modifier pool tracking', () => {
 
       expect(isUnlocked).toBe(false);
     });
+  });
+});
+
+
+describe('gear JSONB text transport', () => {
+  it('projects JSONB as text and preserves numeric gear stats', () => {
+    const nk = createMockNakama();
+    (nk.sqlQuery as jest.Mock).mockReturnValue([{
+      item_id: 'gear-1', gear_type: 'bow', name: 'Bow', rarity: 'common',
+      level: 1, created_at: '2026-10-09T00:00:00Z',
+      stats: JSON.stringify([{ name: 'attack', base_value: 10, value: 12 }]),
+      modifiers: JSON.stringify([]),
+    }]);
+    const gear = getPlayerGearFromDB(nk, 'owner-1');
+    expect(nk.sqlQuery).toHaveBeenCalledWith(
+      expect.stringContaining('stats::text AS stats'), ['owner-1']
+    );
+    expect(nk.sqlQuery).toHaveBeenCalledWith(
+      expect.stringContaining('modifiers::text AS modifiers'), ['owner-1']
+    );
+    expect(gear[0].stats).toEqual([{ name: 'attack', base_value: 10, value: 12 }]);
+    expect(gear[0].modifiers).toEqual([]);
   });
 });

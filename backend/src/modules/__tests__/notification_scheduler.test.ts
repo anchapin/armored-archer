@@ -25,7 +25,7 @@ jest.mock('../../config/logger', () => ({
 
 describe('notification_scheduler', () => {
   const mockNakama = {
-    dbQuery: jest.fn().mockResolvedValue([]),
+    sqlQuery: jest.fn().mockResolvedValue([]),
   } as any;
 
   beforeEach(() => {
@@ -36,32 +36,32 @@ describe('notification_scheduler', () => {
   describe('scheduleNextDailyReward', () => {
     it('should schedule next daily reward', async () => {
       await scheduleNextDailyReward(mockNakama, 'user1', new Date('2024-01-01T12:00:00Z'));
-      expect(mockNakama.dbQuery).toHaveBeenCalled();
+      expect(mockNakama.sqlQuery).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
-      mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('DB error'));
+      mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('DB error'));
       await expect(scheduleNextDailyReward(mockNakama, 'user1', new Date())).resolves.not.toThrow();
     });
   });
 
   describe('notifyUsersAboutEvent', () => {
     it('should notify specific users about event', async () => {
-      (mockNakama.dbQuery as jest.Mock)
+      (mockNakama.sqlQuery as jest.Mock)
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ id: 'user1' }]);
       await notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name', ['user1']);
-      expect(mockNakama.dbQuery).toHaveBeenCalledTimes(1);
+      expect(mockNakama.sqlQuery).toHaveBeenCalledTimes(1);
     });
 
     it('should notify all users with events enabled', async () => {
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([{ id: 'user1' }, { id: 'user2' }]);
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([{ id: 'user1' }, { id: 'user2' }]);
       await notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name');
       expect(notifications.sendEventNotification).toHaveBeenCalledTimes(2);
     });
 
     it('should handle errors gracefully', async () => {
-      mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('DB error'));
+      mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('DB error'));
       await expect(
         notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name')
       ).resolves.not.toThrow();
@@ -227,18 +227,18 @@ describe('notification_scheduler', () => {
 
   describe('notifyUsersAboutEvent with target users', () => {
     it('should query specific users when targetUserIds provided', async () => {
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([{ id: 'user1' }]);
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([{ id: 'user1' }]);
       await notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name', ['user1', 'user2']);
       // Should query for specific users
-      expect(mockNakama.dbQuery).toHaveBeenCalled();
+      expect(mockNakama.sqlQuery).toHaveBeenCalled();
       expect(notifications.sendEventNotification).toHaveBeenCalled();
     });
 
     it('should handle empty targetUserIds array', async () => {
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([]);
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([]);
       await notifyUsersAboutEvent(mockNakama, 'event1', 'Event Name', []);
       // Should fall through to the all-users query
-      expect(mockNakama.dbQuery).toHaveBeenCalled();
+      expect(mockNakama.sqlQuery).toHaveBeenCalled();
     });
   });
 
@@ -340,7 +340,7 @@ describe('notification_scheduler', () => {
       process.env.NODE_ENV = 'production';
 
       const { logger } = require('../../config/logger');
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([
         { id: 'user1', username: 'Player1' },
         { id: 'user2', username: 'Player2' },
       ]);
@@ -369,7 +369,7 @@ describe('notification_scheduler', () => {
         .mockResolvedValueOnce({ success: true })
         .mockResolvedValueOnce({ success: false });
 
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([
         { id: 'user1', username: 'Player1' },
         { id: 'user2', username: 'Player2' },
       ]);
@@ -383,7 +383,7 @@ describe('notification_scheduler', () => {
     });
 
     it('should handle errors in daily reward reminders', async () => {
-      mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('Query failed'));
+      mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('Query failed'));
 
       // Temporarily override NODE_ENV to test actual scheduler behavior
       const originalNodeEnv = process.env.NODE_ENV;
@@ -403,7 +403,7 @@ describe('notification_scheduler', () => {
     it('should log success with userId and nextAvailable time', async () => {
       const { logger } = require('../../config/logger');
       logger.info.mockClear();
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([]);
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([]);
       const nextTime = new Date('2024-06-15T09:00:00Z');
       await scheduleNextDailyReward(mockNakama, 'user-abc', nextTime);
 
@@ -416,10 +416,10 @@ describe('notification_scheduler', () => {
       );
     });
 
-    it('should log error with userId when dbQuery fails', async () => {
+    it('should log error with userId when sqlQuery fails', async () => {
       const { logger } = require('../../config/logger');
       logger.error.mockClear();
-      mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('DB write error'));
+      mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('DB write error'));
       await scheduleNextDailyReward(mockNakama, 'user-xyz', new Date());
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -477,7 +477,7 @@ describe('notification_scheduler', () => {
     it('should log event notification details', async () => {
       const { logger } = require('../../config/logger');
       logger.info.mockClear();
-      mockNakama.dbQuery = jest.fn().mockResolvedValue([{ id: 'user1' }]);
+      mockNakama.sqlQuery = jest.fn().mockResolvedValue([{ id: 'user1' }]);
       await notifyUsersAboutEvent(mockNakama, 'evt-42', 'Summer Fest', ['user1']);
 
       expect(logger.info).toHaveBeenCalledWith(
@@ -489,7 +489,7 @@ describe('notification_scheduler', () => {
     it('should log error with eventId when query fails', async () => {
       const { logger } = require('../../config/logger');
       logger.error.mockClear();
-      mockNakama.dbQuery = jest.fn().mockRejectedValue(new Error('Query fail'));
+      mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('Query fail'));
       await notifyUsersAboutEvent(mockNakama, 'evt-99', 'Winter Event');
 
       expect(logger.error).toHaveBeenCalledWith(

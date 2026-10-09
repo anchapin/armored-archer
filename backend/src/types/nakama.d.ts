@@ -7,6 +7,15 @@ import {
 } from './shared';
 
 declare namespace Runtime {
+  /** Result of nk.leaderboardRecordsList in the Nakama JS runtime. */
+  export interface LeaderboardRecordList {
+    records?: LeaderboardRecord[] | null;
+    ownerRecords?: LeaderboardRecord[] | null;
+    nextCursor?: string | null;
+    prevCursor?: string | null;
+    rankCount?: number;
+  }
+
   /**
    * Runtime context interface (extended version).
    *
@@ -126,7 +135,8 @@ declare namespace Runtime {
    * @method walletLedgerUpdate - Updates wallet ledger
    * @method leaderboardCreate - Creates a leaderboard
    * @method leaderboardDelete - Deletes a leaderboard
-   * @method leaderboardRecordList - Lists leaderboard records
+   * @method leaderboardRecordsList - Lists leaderboard records (real runtime API)
+   * @method leaderboardRecordList - Legacy name implemented only by Jest mocks; use utils/leaderboard-list
    * @method leaderboardRecordWrite - Writes a leaderboard record
    * @method notificationSend - Sends a notification
    * @method httpRequest - Makes an HTTP request
@@ -142,11 +152,11 @@ declare namespace Runtime {
     storageRead(objects: StorageRead[]): StorageObject[];
     storageWrite(objects: StorageWrite[]): void;
     storageList(
-      userId: string,
+      userId: string | undefined,
       collection: string,
       limit: number,
-      cursor: string,
-      filter: string
+      cursor?: string,
+      callerId?: string
     ): StorageObject[];
     accountGetId(userId: string): Account;
     walletUpdate(userId: string, changes: { [key: string]: number }): void;
@@ -168,6 +178,13 @@ declare namespace Runtime {
       cursor: string,
       expiry: number
     ): LeaderboardRecord[];
+    leaderboardRecordsList(
+      leaderboardId: string,
+      ownerIds?: string[],
+      limit?: number,
+      cursor?: string,
+      expiry?: number
+    ): LeaderboardRecordList;
     leaderboardRecordWrite(
       leaderboardId: string,
       owner: string,
@@ -208,7 +225,10 @@ declare namespace Runtime {
     ): StreamUserListResult[];
     streamCount(stream: Stream): number;
     storageDelete(objects: StorageRead[]): void;
-    dbQuery(query: string, params?: unknown[]): unknown[];
+    /** Run a SQL statement that returns rows (SELECT or ... RETURNING). */
+    sqlQuery(query: string, params?: unknown[]): unknown[];
+    /** Run a SQL statement that returns no rows. */
+    sqlExec(query: string, params?: unknown[]): { rowsAffected: number };
   }
 
   /**
