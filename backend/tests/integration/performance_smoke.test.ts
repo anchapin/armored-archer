@@ -15,6 +15,7 @@
 import { performance } from 'perf_hooks';
 import { Pool } from 'pg';
 import { testHelper, TestAccount } from './helpers';
+import { parseRpcPayload } from './rpc_payload';
 
 // Performance thresholds
 const PERFORMANCE_THRESHOLDS = {
@@ -147,6 +148,11 @@ describe('Performance Smoke Tests', () => {
       const endTime = performance.now();
       const duration = endTime - startTime;
 
+      const result = parseRpcPayload(response.payload);
+      if (result.error || result.success === false) {
+        throw new Error(String(result.error || 'RPC reported failure'));
+      }
+
       // Track response time
       if (!responseTimes.has(rpcId)) {
         responseTimes.set(rpcId, []);
@@ -156,7 +162,7 @@ describe('Performance Smoke Tests', () => {
       return {
         duration,
         success: true,
-        result: response.payload ? JSON.parse(response.payload as unknown as string) : {},
+        result,
       };
     } catch (error: any) {
       const endTime = performance.now();
