@@ -598,6 +598,54 @@ describe('matchmaker', () => {
       expect(parsed.total).toBe(2);
     });
 
+    it('scans all owners across pages without exposing other targeted or expired matches', () => {
+      mockNk.storageRead = jest.fn(() => [{ value: createPlayerStats() }]);
+      const object = (match: PvPMatch) => ({ value: match });
+      mockNk.storageList = jest
+        .fn()
+        .mockReturnValueOnce({
+          objects: [
+            object(createMatch({ match_id: 'own', creator_id: mockCtx.userId })),
+            object(createMatch({ match_id: 'private', opponent_id: 'someone-else' })),
+            object(createMatch({ match_id: 'expired', expires_at: Date.now() - 1 })),
+            { value: '{broken' },
+          ],
+          cursor: 'page-2',
+        })
+        .mockReturnValueOnce({
+          objects: [
+            object(createMatch({ match_id: 'public' })),
+            object(createMatch({ match_id: 'direct', opponent_id: mockCtx.userId })),
+            object(createMatch({ match_id: 'active', status: 'active' })),
+          ],
+        });
+      const result = JSON.parse(rpcListMatches(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result.matches.map((match: PvPMatch) => match.match_id).sort()).toEqual([
+        'direct',
+        'public',
+      ]);
+      expect(mockNk.storageList).toHaveBeenNthCalledWith(1, undefined, 'pvp_matches', 100, '');
+      expect(mockNk.storageList).toHaveBeenNthCalledWith(
+        2,
+        undefined,
+        'pvp_matches',
+        100,
+        'page-2'
+      );
+    });
+
+    it('bounds collection scanning and stops repeated cursors', () => {
+      mockNk.storageRead = jest.fn(() => [{ value: createPlayerStats() }]);
+      let page = 0;
+      mockNk.storageList = jest.fn(() => ({ objects: [], cursor: `page-${++page}` }));
+      const bounded = JSON.parse(rpcListMatches(mockCtx, mockLogger, mockNk, '{}'));
+      expect(bounded.scan_truncated).toBe(true);
+      expect(mockNk.storageList).toHaveBeenCalledTimes(10);
+      mockNk.storageList = jest.fn(() => ({ objects: [], cursor: 'same' }));
+      rpcListMatches(mockCtx, mockLogger, mockNk, '{}');
+      expect(mockNk.storageList).toHaveBeenCalledTimes(2);
+    });
+
     // Issue #902: list_matches must expose the canonical `power_rating`
     // field and keep `player_rank` as a deprecated alias for already-
     // shipped clients. Both fields must return the same value.
@@ -1088,8 +1136,7 @@ describe('matchmaker', () => {
               serveStaleMatch = false; // a concurrent settler won this object
               throw new Error('Storage write rejected - version check failed.');
             }
-            stored[key] =
-              typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
+            stored[key] = typeof w.value === 'string' ? w.value : JSON.stringify(w.value);
             versions[key] = String(Number(versions[key] || 0) + 1);
           });
           return writes.map((w) => ({ key: w.key, version: '1' }));
@@ -1318,9 +1365,14 @@ describe('matchmaker', () => {
         const match = createPunchUpMatch({ creator_health: 0 });
         installStatefulStorage(match);
 
-        const result = rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({
-          match_id: match.match_id,
-        }));
+        const result = rpcCompleteMatch(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({
+            match_id: match.match_id,
+          })
+        );
         const parsed = JSON.parse(result);
 
         expect(parsed.success).toBe(true);
@@ -1341,7 +1393,14 @@ describe('matchmaker', () => {
           .flat()
           .find((w: any) => w.collection === 'fairness_punch_up_losses');
         expect(telemetryWrite).toBeTruthy();
-        const event = (typeof telemetryWrite.value === 'string' ? (typeof telemetryWrite.value === 'string' ? (typeof telemetryWrite.value === 'string' ? JSON.parse(telemetryWrite.value) : telemetryWrite.value) : telemetryWrite.value) : telemetryWrite.value);
+        const event =
+          typeof telemetryWrite.value === 'string'
+            ? typeof telemetryWrite.value === 'string'
+              ? typeof telemetryWrite.value === 'string'
+                ? JSON.parse(telemetryWrite.value)
+                : telemetryWrite.value
+              : telemetryWrite.value
+            : telemetryWrite.value;
         expect(event.match_id).toBe(match.match_id);
         expect(event.loser_id).toBe('test-user-123');
         expect(event.winner_id).toBe('opponent-user');
@@ -1357,7 +1416,12 @@ describe('matchmaker', () => {
         installStatefulStorage(match);
 
         const parsed = JSON.parse(
-          rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({ match_id: match.match_id }))
+          rpcCompleteMatch(
+            mockCtx,
+            mockLogger,
+            mockNk,
+            JSON.stringify({ match_id: match.match_id })
+          )
         );
 
         // Ranked loss base XP 25 reduced by the punch-up loss factor (0.5):
@@ -1381,7 +1445,12 @@ describe('matchmaker', () => {
         installStatefulStorage(match);
 
         const parsed = JSON.parse(
-          rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({ match_id: match.match_id }))
+          rpcCompleteMatch(
+            mockCtx,
+            mockLogger,
+            mockNk,
+            JSON.stringify({ match_id: match.match_id })
+          )
         );
 
         expect(parsed.winner.user_id).toBe('test-user-123');
@@ -1403,7 +1472,12 @@ describe('matchmaker', () => {
         installStatefulStorage(match);
 
         const parsed = JSON.parse(
-          rpcCompleteMatch(mockCtx, mockLogger, mockNk, JSON.stringify({ match_id: match.match_id }))
+          rpcCompleteMatch(
+            mockCtx,
+            mockLogger,
+            mockNk,
+            JSON.stringify({ match_id: match.match_id })
+          )
         );
 
         const eloCall = (applyEloUpdates as jest.Mock).mock.calls[0];
@@ -1885,7 +1959,6 @@ describe('matchmaker', () => {
     });
   });
 
-
   // ==================== LEGACY DUEL RPC DECOMMISSION (issue #903) ====================
   // The correspondence-style duel engine RPCs (submit_turn,
   // get_async_match_state, forfeit_match) and their correspondence-era
@@ -1901,22 +1974,19 @@ describe('matchmaker', () => {
       'armored_archer/forfeit_match',
     ];
 
-    it.each(legacyRpcs)(
-      'does not register legacy RPC %s',
-      (rpcName) => {
-        // Matchmaker.ts must not export a register* function for these
-        // legacy RPCs, and index.ts must not register them on the
-        // initializer. Verifying the named export is absent is the
-        // strictest signal that the decommission is complete.
-        const matchmakerModule = require('../matchmaker');
-        const expectedRegisterName = `registerRpc${rpcName
-          .split('/')
-          .pop()
-          ?.replace(/^./, (c: string) => c.toUpperCase())
-          .replace(/_([a-z])/g, (_m: string, g: string) => g.toUpperCase())}`;
-        expect(matchmakerModule[expectedRegisterName]).toBeUndefined();
-      }
-    );
+    it.each(legacyRpcs)('does not register legacy RPC %s', (rpcName) => {
+      // Matchmaker.ts must not export a register* function for these
+      // legacy RPCs, and index.ts must not register them on the
+      // initializer. Verifying the named export is absent is the
+      // strictest signal that the decommission is complete.
+      const matchmakerModule = require('../matchmaker');
+      const expectedRegisterName = `registerRpc${rpcName
+        .split('/')
+        .pop()
+        ?.replace(/^./, (c: string) => c.toUpperCase())
+        .replace(/_([a-z])/g, (_m: string, g: string) => g.toUpperCase())}`;
+      expect(matchmakerModule[expectedRegisterName]).toBeUndefined();
+    });
   });
 
   describe('Punch-up Mechanics', () => {
@@ -2082,7 +2152,7 @@ describe('matchmaker', () => {
         },
       ];
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
 
       const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -2102,7 +2172,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({ match_type: 'ranked' }));
       const parsed = JSON.parse(result);
@@ -2128,7 +2198,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockImplementation(() => {
+      (nk.sqlQuery as jest.Mock).mockImplementation(() => {
         throw new Error('Database connection failed');
       });
 
@@ -2165,7 +2235,7 @@ describe('matchmaker', () => {
         },
       ];
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
 
       const result = rpcGetMatchHistory(ctx, logger, nk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -2182,7 +2252,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcGetMatchHistory(
         ctx,
@@ -2232,7 +2302,7 @@ describe('matchmaker', () => {
         updated_at: new Date('2024-01-15').toISOString(),
       };
 
-      (nk.dbQuery as jest.Mock).mockReturnValue([matchRow]);
+      (nk.sqlQuery as jest.Mock).mockReturnValue([matchRow]);
 
       const result = rpcGetMatchDetails(
         ctx,
@@ -2254,7 +2324,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValue([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValue([]);
 
       const result = rpcGetMatchDetails(
         ctx,
@@ -2285,7 +2355,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockImplementation(() => {
+      (nk.sqlQuery as jest.Mock).mockImplementation(() => {
         throw new Error('Database error');
       });
 
@@ -2331,7 +2401,7 @@ describe('matchmaker', () => {
         updated_at: new Date('2024-01-15').toISOString(),
       };
 
-      (nk.dbQuery as jest.Mock).mockReturnValue([matchRow]);
+      (nk.sqlQuery as jest.Mock).mockReturnValue([matchRow]);
 
       const result = rpcGetMatchDetails(
         ctx,
@@ -2376,7 +2446,7 @@ describe('matchmaker', () => {
         },
       ];
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 1 }]).mockReturnValueOnce(matchRows);
 
       const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -2394,7 +2464,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(ctx, logger, nk, JSON.stringify({ user_id: 'player1' }));
       const parsed = JSON.parse(result);
@@ -2408,7 +2478,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(
         ctx,
@@ -2426,7 +2496,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(
         ctx,
@@ -2461,7 +2531,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockImplementation(() => {
+      (nk.sqlQuery as jest.Mock).mockImplementation(() => {
         throw new Error('Database connection failed');
       });
 
@@ -2477,7 +2547,7 @@ describe('matchmaker', () => {
       const logger = createMockLogger();
       const nk = createMockNakama();
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
+      (nk.sqlQuery as jest.Mock).mockReturnValueOnce([{ total: 0 }]).mockReturnValueOnce([]);
 
       const result = rpcAdminQueryMatches(
         ctx,
@@ -2517,7 +2587,9 @@ describe('matchmaker', () => {
         season_id: 'season_1',
       }));
 
-      (nk.dbQuery as jest.Mock).mockReturnValueOnce([{ total: 15 }]).mockReturnValueOnce(matchRows);
+      (nk.sqlQuery as jest.Mock)
+        .mockReturnValueOnce([{ total: 15 }])
+        .mockReturnValueOnce(matchRows);
 
       const result = rpcAdminQueryMatches(
         ctx,

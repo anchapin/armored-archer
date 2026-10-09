@@ -288,7 +288,8 @@ export function rpcGetPlayerReports(
 
   // Self-listing (caller omitted user_id OR passed their own id) is the
   // player-callable path. Admins may pass a different id to inspect a victim.
-  const effectiveUserId = callerIsAdmin && requestedUserId !== undefined ? requestedUserId : sessionUserId;
+  const effectiveUserId =
+    callerIsAdmin && requestedUserId !== undefined ? requestedUserId : sessionUserId;
   const reports = getReportsForUser(effectiveUserId);
 
   // Enhance reports with match details when available
@@ -299,7 +300,7 @@ export function rpcGetPlayerReports(
 
     try {
       // Try to fetch match details from the database
-      const matchResult = nk.dbQuery(
+      const matchResult = nk.sqlQuery(
         `
         SELECT
           match_id,

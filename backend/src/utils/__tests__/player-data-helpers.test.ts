@@ -85,12 +85,23 @@ describe('player-data-helpers', () => {
       expect(parsePlayerStatsValue(true)).toBeNull();
     });
 
-    it('should return arrays as-is since they are objects', () => {
-      expect(parsePlayerStatsValue([])).toEqual([]);
+    it.each([
+      {},
+      { level: 'five', xp: 0, stats: {} },
+      { level: 0, xp: 0, stats: {} },
+      { level: 1, xp: -1, stats: {} },
+      { level: 1, xp: 0, stats: null },
+      { level: 1, xp: Infinity, stats: {} },
+    ])('rejects malformed stored stats %j', (value) => {
+      expect(parsePlayerStatsValue(value)).toBeNull();
     });
 
-    it('should return arrays as-is since they are objects', () => {
-      expect(parsePlayerStatsValue([])).toEqual([]);
+    it('should reject arrays as malformed stats', () => {
+      expect(parsePlayerStatsValue([])).toBeNull();
+    });
+
+    it('should reject arrays as malformed stats', () => {
+      expect(parsePlayerStatsValue([])).toBeNull();
     });
   });
 

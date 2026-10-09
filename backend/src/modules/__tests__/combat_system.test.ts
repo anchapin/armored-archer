@@ -283,11 +283,15 @@ describe('combat_system', () => {
         consecutive_timeouts: 0,
       };
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = jest.fn((objects) => [
         {
-          collection: 'pvp_match_states',
+          collection: objects[0].collection,
           key: 'match-123',
-          value: JSON.stringify(matchState),
+          value: JSON.stringify(
+            objects[0].collection === 'pvp_matches'
+              ? createMockMatch({ status: 'active' })
+              : matchState
+          ),
         },
       ]);
 
@@ -296,6 +300,68 @@ describe('combat_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.match_id).toBe('match-123');
+    });
+
+    it('reads the creator-owned state for the opponent', async () => {
+      mockCtx.userId = 'opponent-user';
+      mockNk.sqlQuery = jest.fn(() => [{ user_id: 'creator-user' }]);
+      mockNk.storageRead = jest.fn((objects) => {
+        const object = objects[0];
+        if (object.userId !== 'creator-user') return [];
+        return [
+          {
+            value:
+              object.collection === 'pvp_matches'
+                ? createMockMatch()
+                : { match_id: 'match-123', turn: 2 },
+          },
+        ];
+      });
+      const result = JSON.parse(
+        await rpcGetMatchState(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ match_id: 'match-123' })
+        )
+      );
+      expect(result.turn).toBe(2);
+      expect(mockNk.storageRead).toHaveBeenLastCalledWith([
+        { collection: 'pvp_match_states', key: 'match-123', userId: 'creator-user' },
+      ]);
+    });
+
+    it('rejects outsiders before reading private combat state', async () => {
+      mockCtx.userId = 'outsider';
+      mockNk.storageRead = jest.fn(() => [{ value: createMockMatch() }]);
+      const result = JSON.parse(
+        await rpcGetMatchState(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ match_id: 'match-123' })
+        )
+      );
+      expect(result.error).toBe('Not a participant in this match');
+      expect(mockNk.storageRead).toHaveBeenCalledTimes(1);
+    });
+
+    it('projects an active match initial turn without overwriting combat storage', async () => {
+      mockNk.storageRead = jest.fn((objects) =>
+        objects[0].collection === 'pvp_matches' ? [{ value: createMockMatch() }] : []
+      );
+      const result = JSON.parse(
+        await rpcGetMatchState(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ match_id: 'match-123' })
+        )
+      );
+      expect(result.turn).toBe(1);
+      expect(result.current_turn_user_id).toBe('creator-user');
+      expect(result.creator_health).toBeGreaterThan(0);
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
     });
 
     it('should return error when match state not found', async () => {
@@ -603,7 +669,13 @@ describe('combat_system', () => {
           const written = call[0].find((obj: any) => obj.collection === collection);
           if (written) {
             return typeof written.value === 'string'
-              ? (typeof written.value === 'string' ? (typeof written.value === 'string' ? (typeof written.value === 'string' ? JSON.parse(written.value) : written.value) : written.value) : written.value)
+              ? typeof written.value === 'string'
+                ? typeof written.value === 'string'
+                  ? typeof written.value === 'string'
+                    ? JSON.parse(written.value)
+                    : written.value
+                  : written.value
+                : written.value
               : written.value;
           }
         }
@@ -2152,20 +2224,13 @@ describe('combat_system', () => {
     return (await getMetricsRegistry().getMetricsAsJSON()) as RegisteredMetric[];
   }
 
-  async function counterTotal(
-    name: string,
-    labels?: Record<string, string>
-  ): Promise<number> {
+  async function counterTotal(name: string, labels?: Record<string, string>): Promise<number> {
     const metrics = await allMetrics();
     const metric = metrics.find((m) => m.name === name);
     if (!metric) return 0;
     const samples = metric.values ?? [];
     return samples
-      .filter((s) =>
-        labels
-          ? Object.entries(labels).every(([k, v]) => s.labels[k] === v)
-          : true
-      )
+      .filter((s) => (labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true))
       .reduce((sum, s) => sum + s.value, 0);
   }
 
@@ -2181,9 +2246,7 @@ describe('combat_system', () => {
       .filter(
         (s) =>
           s.metricName === `${histogramName}_count` &&
-          (labels
-            ? Object.entries(labels).every(([k, v]) => s.labels[k] === v)
-            : true)
+          (labels ? Object.entries(labels).every(([k, v]) => s.labels[k] === v) : true)
       )
       .reduce((sum, s) => sum + s.value, 0);
   }
@@ -2222,8 +2285,7 @@ describe('combat_system', () => {
       mockNk.storageRead = jest.fn((objects: any[]) =>
         objects
           .map((obj) => {
-            const val =
-              mockStorage.get(`${obj.collection}:${obj.key}`) ?? mockStorage.get(obj.key);
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) ?? mockStorage.get(obj.key);
             if (!val) return null;
             return { collection: obj.collection, key: obj.key, value: val };
           })
@@ -2244,10 +2306,9 @@ describe('combat_system', () => {
         action_type: 'shoot',
         result: 'hit',
       });
-      const beforeDamage = await histogramObservationCount(
-        'armored_archer_combat_damage_dealt',
-        { target_type: 'opponent' }
-      );
+      const beforeDamage = await histogramObservationCount('armored_archer_combat_damage_dealt', {
+        target_type: 'opponent',
+      });
 
       await rpcSubmitCombatAction(
         mockCtx,
@@ -2260,10 +2321,9 @@ describe('combat_system', () => {
         action_type: 'shoot',
         result: 'hit',
       });
-      const afterDamage = await histogramObservationCount(
-        'armored_archer_combat_damage_dealt',
-        { target_type: 'opponent' }
-      );
+      const afterDamage = await histogramObservationCount('armored_archer_combat_damage_dealt', {
+        target_type: 'opponent',
+      });
 
       expect(afterActions - beforeActions).toBe(1);
       expect(afterDamage - beforeDamage).toBe(1);
@@ -2296,7 +2356,7 @@ describe('combat_system', () => {
 
   // Issue #1107: persistMatchResult failure must be surfaced at all three
   // settlement call sites instead of being silently swallowed and reported
-  // as a successful match save. These three tests inject a dbQuery failure
+  // as a successful match save. These three tests inject a sqlQuery failure
   // that mimics the production persist failure (DB outage, schema mismatch,
   // quota) and assert (a) the RPC envelope carries PERSIST_FAILED,
   // (b) no match_completed notification is sent, and (c) an audit_logs
@@ -2338,9 +2398,7 @@ describe('combat_system', () => {
       mockNk.storageRead = jest.fn((objects: any[]) =>
         objects
           .map((obj) => {
-            const val =
-              mockStorage.get(`${obj.collection}:${obj.key}`) ??
-              mockStorage.get(obj.key);
+            const val = mockStorage.get(`${obj.collection}:${obj.key}`) ?? mockStorage.get(obj.key);
             if (!val) return null;
             return { collection: obj.collection, key: obj.key, value: val };
           })
@@ -2353,23 +2411,21 @@ describe('combat_system', () => {
       });
     };
 
-    const failMatchResultsInsert = (
-      beforeStorage: Map<string, string>
-    ): jest.Mock => {
+    const failMatchResultsInsert = (beforeStorage: Map<string, string>): jest.Mock => {
       // Capture the snapshot of storage so the mock can detect new writes
-      // (used to assert audit_logs was written). dbQuery throws on the
+      // (used to assert audit_logs was written). sqlQuery throws on the
       // match_results INSERT specifically — all other queries fall through
       // to the default jest.fn() (which is what the real mock would have
       // returned, an empty array).
       const writtenKeysBefore = new Set(beforeStorage.keys());
-      const dbQuery = jest.fn((query: string) => {
+      const sqlQuery = jest.fn((query: string) => {
         if (query.includes(MATCH_RESULTS_INSERT)) {
           throw new Error('simulated DB outage: connection refused');
         }
         return [];
       });
-      mockNk.dbQuery = dbQuery as unknown as typeof mockNk.dbQuery;
-      return dbQuery;
+      mockNk.sqlQuery = sqlQuery as unknown as typeof mockNk.sqlQuery;
+      return sqlQuery;
     };
 
     const findAuditWrite = (
@@ -2380,8 +2436,7 @@ describe('combat_system', () => {
       for (const call of calls) {
         const written = call[0].find((obj: any) => obj.collection === collection);
         if (!written) continue;
-        const value =
-          typeof written.value === 'string' ? JSON.parse(written.value) : written.value;
+        const value = typeof written.value === 'string' ? JSON.parse(written.value) : written.value;
         if (value?.action === actionName) return value;
       }
       return undefined;
@@ -2402,7 +2457,7 @@ describe('combat_system', () => {
         beforeStorage.set(k, v);
       }
 
-      const dbQuery = failMatchResultsInsert(beforeStorage);
+      const sqlQuery = failMatchResultsInsert(beforeStorage);
       mockNk.notificationSend = jest.fn();
 
       const result = await rpcSubmitCombatAction(
@@ -2425,16 +2480,15 @@ describe('combat_system', () => {
       expect(parsed.error).toBe('Match settlement could not be saved');
       expect(parsed.error_code).toBe('PERSIST_FAILED');
 
-      // The persist call was attempted (and threw) — dbQuery was reached.
-      const matchResultsCalls = dbQuery.mock.calls.filter((c) =>
+      // The persist call was attempted (and threw) — sqlQuery was reached.
+      const matchResultsCalls = sqlQuery.mock.calls.filter((c) =>
         (c[0] as string).includes(MATCH_RESULTS_INSERT)
       );
       expect(matchResultsCalls.length).toBeGreaterThan(0);
 
       // No match_completed notification was sent — players would otherwise
       // be told the match was permanently saved when the row never landed.
-      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock
-        .calls as any[][];
+      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock.calls as any[][];
       const matchCompleted = notificationCalls.find((c) =>
         (c[1] as any)?.subtopic?.includes('match_completed')
       );
@@ -2470,7 +2524,7 @@ describe('combat_system', () => {
         beforeStorage.set(k, v);
       }
 
-      const dbQuery = failMatchResultsInsert(beforeStorage);
+      const sqlQuery = failMatchResultsInsert(beforeStorage);
       mockNk.notificationSend = jest.fn();
 
       const result = await rpcSubmitCombatAction(
@@ -2494,13 +2548,12 @@ describe('combat_system', () => {
       expect(parsed.forfeit).toBeUndefined();
       expect(parsed.winner).toBeUndefined();
 
-      const matchResultsCalls = dbQuery.mock.calls.filter((c) =>
+      const matchResultsCalls = sqlQuery.mock.calls.filter((c) =>
         (c[0] as string).includes(MATCH_RESULTS_INSERT)
       );
       expect(matchResultsCalls.length).toBeGreaterThan(0);
 
-      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock
-        .calls as any[][];
+      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock.calls as any[][];
       const matchCompleted = notificationCalls.find((c) =>
         (c[1] as any)?.subtopic?.includes('match_completed')
       );
@@ -2529,7 +2582,7 @@ describe('combat_system', () => {
         beforeStorage.set(k, v);
       }
 
-      const dbQuery = failMatchResultsInsert(beforeStorage);
+      const sqlQuery = failMatchResultsInsert(beforeStorage);
       mockNk.notificationSend = jest.fn();
 
       const result = await rpcPlayerDisconnect(
@@ -2548,13 +2601,12 @@ describe('combat_system', () => {
       expect(parsed.forfeit).toBeUndefined();
       expect(parsed.winner).toBeUndefined();
 
-      const matchResultsCalls = dbQuery.mock.calls.filter((c) =>
+      const matchResultsCalls = sqlQuery.mock.calls.filter((c) =>
         (c[0] as string).includes(MATCH_RESULTS_INSERT)
       );
       expect(matchResultsCalls.length).toBeGreaterThan(0);
 
-      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock
-        .calls as any[][];
+      const notificationCalls = (mockNk.notificationSend as jest.Mock).mock.calls as any[][];
       const matchCompleted = notificationCalls.find((c) =>
         (c[1] as any)?.subtopic?.includes('match_completed')
       );
