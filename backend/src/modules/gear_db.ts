@@ -166,8 +166,8 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
       name,
       rarity,
       level,
-      stats,
-      modifiers,
+      stats::text AS stats,
+      modifiers::text AS modifiers,
       created_at
     FROM inventory_items
     WHERE user_id = $1
