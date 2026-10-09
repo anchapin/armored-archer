@@ -676,21 +676,29 @@ export function rpcGetMatchState(
 
     const request = validation.data;
 
-    const stateObjects = nk.storageRead([
-      {
-        collection: 'pvp_match_states',
-        key: request.match_id,
-        userId: ctx.userId,
-      },
-    ]);
-
-    if (stateObjects.length === 0) {
-      return JSON.stringify({
-        error: 'Match state not found',
-      });
+    const matchObjects = readPvpMatch(nk, request.match_id, ctx.userId);
+    if (matchObjects.length === 0) return JSON.stringify({ error: 'Match state not found' });
+    const parsed = safeParse<PvPMatch>(
+      getStorageRawValue(matchObjects[0].value) ?? '',
+      null,
+      logger,
+      'rpcGetMatchState:match'
+    );
+    if (!parsed.success || !parsed.data)
+      return JSON.stringify({ error: 'Failed to parse match data' });
+    const match = parsed.data;
+    if (match.creator_id !== ctx.userId && match.opponent_id !== ctx.userId) {
+      return JSON.stringify({ error: 'Not a participant in this match' });
     }
-
-    return getStorageRawValue(stateObjects[0].value) ?? '';
+    const stateObjects = nk.storageRead([
+      { collection: 'pvp_match_states', key: request.match_id, userId: match.creator_id },
+    ]);
+    if (stateObjects.length > 0) return getStorageRawValue(stateObjects[0].value) ?? '';
+    if (match.status !== 'active') return JSON.stringify({ error: 'Match state not found' });
+    // Before the first shot, project the initial state without writing. A read
+    // must not race a combat action and overwrite its newly persisted turn.
+    const state = getOrCreateMatchState(nk, request.match_id, match, logger);
+    return JSON.stringify(state);
   });
 }
 

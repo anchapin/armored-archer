@@ -283,11 +283,15 @@ describe('combat_system', () => {
         consecutive_timeouts: 0,
       };
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = jest.fn((objects) => [
         {
-          collection: 'pvp_match_states',
+          collection: objects[0].collection,
           key: 'match-123',
-          value: JSON.stringify(matchState),
+          value: JSON.stringify(
+            objects[0].collection === 'pvp_matches'
+              ? createMockMatch({ status: 'active' })
+              : matchState
+          ),
         },
       ]);
 
@@ -296,6 +300,68 @@ describe('combat_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.match_id).toBe('match-123');
+    });
+
+    it('reads the creator-owned state for the opponent', async () => {
+      mockCtx.userId = 'opponent-user';
+      mockNk.sqlQuery = jest.fn(() => [{ user_id: 'creator-user' }]);
+      mockNk.storageRead = jest.fn((objects) => {
+        const object = objects[0];
+        if (object.userId !== 'creator-user') return [];
+        return [
+          {
+            value:
+              object.collection === 'pvp_matches'
+                ? createMockMatch()
+                : { match_id: 'match-123', turn: 2 },
+          },
+        ];
+      });
+      const result = JSON.parse(
+        await rpcGetMatchState(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ match_id: 'match-123' })
+        )
+      );
+      expect(result.turn).toBe(2);
+      expect(mockNk.storageRead).toHaveBeenLastCalledWith([
+        { collection: 'pvp_match_states', key: 'match-123', userId: 'creator-user' },
+      ]);
+    });
+
+    it('rejects outsiders before reading private combat state', async () => {
+      mockCtx.userId = 'outsider';
+      mockNk.storageRead = jest.fn(() => [{ value: createMockMatch() }]);
+      const result = JSON.parse(
+        await rpcGetMatchState(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ match_id: 'match-123' })
+        )
+      );
+      expect(result.error).toBe('Not a participant in this match');
+      expect(mockNk.storageRead).toHaveBeenCalledTimes(1);
+    });
+
+    it('projects an active match initial turn without overwriting combat storage', async () => {
+      mockNk.storageRead = jest.fn((objects) =>
+        objects[0].collection === 'pvp_matches' ? [{ value: createMockMatch() }] : []
+      );
+      const result = JSON.parse(
+        await rpcGetMatchState(
+          mockCtx,
+          mockLogger,
+          mockNk,
+          JSON.stringify({ match_id: 'match-123' })
+        )
+      );
+      expect(result.turn).toBe(1);
+      expect(result.current_turn_user_id).toBe('creator-user');
+      expect(result.creator_health).toBeGreaterThan(0);
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
     });
 
     it('should return error when match state not found', async () => {
