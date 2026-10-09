@@ -752,6 +752,19 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # The integration suite includes the real client measurement gate. A
+      # checked-in stub is not a measurement; generate it in this job too.
+      - name: Setup Godot for real integration benchmark
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot-integration
+          chmod +x /tmp/godot-integration/Godot_v4.6-stable_linux.x86_64
+
+      - name: Generate real client performance snapshot
+        run: |
+          rm -f backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json
+          GODOT_BINARY=/tmp/godot-integration/Godot_v4.6-stable_linux.x86_64 bash scripts/run-headless-performance-benchmark.sh
+
       # Rolling 30-day flake history (issue #1144). restore-keys prefix-match
       # picks up the most recent prior run's file; the summary step below
       # appends this run's per-test pass/fail and prunes entries older than

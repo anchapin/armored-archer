@@ -182,7 +182,10 @@ describe('Network Resilience Integration Tests', () => {
       });
 
       expect(completeResult.success).toBe(true);
-      expect(completeResult.match_id).toBe(createResult.match.match_id);
+      // Fresh settlement returns the match object; idempotent replay returns
+      // match_id instead. This case is the fresh-settlement path.
+      expect(completeResult.match.match_id).toBe(createResult.match.match_id);
+      expect(completeResult.match.status).toBe('completed');
       const state = await rpcCall(playerA, 'armored_archer/get_match_state', {
         match_id: createResult.match.match_id,
       });
