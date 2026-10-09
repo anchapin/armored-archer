@@ -15,7 +15,6 @@
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import { Client } from '@heroiclabs/nakama-js';
-import { testHelper } from './helpers';
 
 // Test configuration
 const NAKAMA_HOST = process.env.NAKAMA_HOST || 'localhost';
@@ -62,11 +61,12 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
     userId = session.user_id!;
     sessionToken = session.token!;
 
-    await testHelper.initialize();
-    await testHelper.writeStorageObject('player_stats', userId, userId, {
-      level: 1, xp: 0, ability_points: 0,
-      stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
-    });
+    await nakama.writeStorageObjects(session, [{
+      collection: 'player_stats', key: userId,
+      value: { level: 1, xp: 0, ability_points: 0,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 } },
+      permission_read: 1, permission_write: 1,
+    }]);
     console.log(`[Setup] Authenticated user: ${userId}`);
   });
 
