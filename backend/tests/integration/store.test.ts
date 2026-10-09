@@ -10,6 +10,11 @@ describe('Store System Integration Tests', () => {
     player = await testHelper.createTestAccount('store_player');
   }, 120000);
 
+  beforeEach(async () => {
+    // Fresh owner prevents cached currency from an earlier case masking seeds.
+    player = await testHelper.createTestAccount('store_case');
+  });
+
   afterEach(async () => {
     // Clean up currency and purchases
     await testHelper.deleteStorageObject('player_currency', player.userId, player.userId);
@@ -87,10 +92,20 @@ describe('Store System Integration Tests', () => {
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
 
-      expect(result.success).toBe(true);
+      expect(result).toEqual(expect.objectContaining({ success: true }));
       expect(result.gems_awarded).toBe(100);
       expect(result.new_balance).toBe(100);
       expect(result.product_id).toBe('com.armoredarcher.gems.small');
+    });
+
+    test('should reject an unverified receipt without awarding currency', async () => {
+      await setCurrency(player, 25, 0);
+      const result = await rpcCall(player, 'armored_archer/validate_purchase', {
+        product_id: 'com.armoredarcher.gems.small', platform: 'ios',
+        transaction_receipt: 'unverified-fixture',
+      });
+      expect(result).toEqual(expect.objectContaining({ error_code: 'VALIDATION_FAILED' }));
+      expect((await getCurrency(player)).gems).toBe(25);
     });
 
     test('should validate medium gem bundle purchase', async () => {
@@ -294,7 +309,8 @@ describe('Store System Integration Tests', () => {
         player.userId
       );
       expect(storageObj).not.toBeNull();
-      const storedCurrency = JSON.parse(storageObj!.value);
+      const storedCurrency = typeof storageObj!.value === 'string'
+        ? JSON.parse(storageObj!.value) : storageObj!.value;
       expect(storedCurrency.gems).toBe(350);
     });
 
@@ -346,19 +362,21 @@ describe('Store System Integration Tests', () => {
       await setCurrency(player, 0, 0);
 
       // Buy small bundle
-      await rpcCall(player, 'armored_archer/validate_purchase', {
+      const firstPurchase = await rpcCall(player, 'armored_archer/validate_purchase', {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'r1',
+        transaction_receipt: 'receipt_accumulate_1',
       });
 
+      expect(firstPurchase).toEqual(expect.objectContaining({ success: true }));
       // Buy another small bundle
-      await rpcCall(player, 'armored_archer/validate_purchase', {
+      const secondPurchase = await rpcCall(player, 'armored_archer/validate_purchase', {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'r2',
+        transaction_receipt: 'receipt_accumulate_2',
       });
 
+      expect(secondPurchase).toEqual(expect.objectContaining({ success: true }));
       // Should have 200 gems now
       let currency = await getCurrency(player);
       expect(currency.gems).toBe(200);

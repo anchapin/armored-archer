@@ -502,15 +502,17 @@ describe('Analytics System Integration Tests', () => {
 
     test('should filter analytics summary by event names', async () => {
       // Track specific events
-      await rpcCall(player, 'armored_archer/track_event', {
+      const trackedOne = await rpcCall(player, 'armored_archer/track_event', {
         event_name: 'filtered_event_1',
         platform: 'android',
       });
-      await rpcCall(player, 'armored_archer/track_event', {
+      const trackedTwo = await rpcCall(player, 'armored_archer/track_event', {
         event_name: 'filtered_event_2',
         platform: 'android',
       });
 
+      expect(trackedOne).toEqual(expect.objectContaining({ success: true }));
+      expect(trackedTwo).toEqual(expect.objectContaining({ success: true }));
       const today = new Date().toISOString().split('T')[0];
       const payload = {
         start_date: today,
@@ -521,7 +523,12 @@ describe('Analytics System Integration Tests', () => {
       const result = await rpcCall(player, 'armored_archer/get_analytics_summary', payload);
 
       expect(result.success).toBe(true);
-      expect(result.summary.events['filtered_event_1']).toBeDefined();
+      expect(result).toEqual(expect.objectContaining({
+        success: true,
+        summary: expect.objectContaining({
+          events: expect.objectContaining({ filtered_event_1: expect.any(Object) }),
+        }),
+      }));
     });
 
     test('should return unique user count in summary', async () => {

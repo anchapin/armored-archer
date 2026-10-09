@@ -212,7 +212,7 @@ describe('Error Handling Tests', () => {
       test('should return error for non-existent gear ID', async () => {
         const result = await rpcCall(player, 'armored_archer/equip_gear', {
           gear_id: 'nonexistent_gear_12345',
-          slot: 'weapon',
+          slot: 'bow',
         });
 
         expect(result.error).toBe('Gear not found in inventory');
@@ -232,11 +232,12 @@ describe('Error Handling Tests', () => {
           }
         }
 
+        expect(armorGear).not.toBeNull();
         if (armorGear) {
-          // Try to equip armor as weapon
+          // Try to equip armor in the bow slot
           const result = await rpcCall(player, 'armored_archer/equip_gear', {
             gear_id: armorGear.id,
-            slot: 'weapon',
+            slot: 'bow',
           });
 
           expect(result.error).toBe('Gear type does not match slot');
@@ -379,7 +380,7 @@ describe('Error Handling Tests', () => {
     test('should provide descriptive error messages', async () => {
       const result = await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: 'fake_gear_id',
-        slot: 'weapon',
+        slot: 'bow',
       });
 
       expect(result.error).toBeDefined();
@@ -391,10 +392,12 @@ describe('Error Handling Tests', () => {
         inject_sql: "'; DROP TABLE player_inventory; --",
       });
 
-      // Should return error without exposing SQL or internal details
-      expect(result.error).toBeDefined();
-      expect(result.error).not.toContain('SQL');
-      expect(result.error).not.toContain('database');
+      // Unknown fields are stripped by the schema. An injection-shaped
+      // unused field must not change the normal inventory response.
+      const baseline = await rpcCall(player, 'armored_archer/get_inventory', {});
+      expect(result).toEqual(baseline);
+      expect(JSON.stringify(result)).not.toContain('DROP TABLE');
+      expect(JSON.stringify(result)).not.toContain('stackTrace');
     });
   });
 

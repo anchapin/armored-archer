@@ -5,6 +5,7 @@
 
 import { getStructuredLogger } from '../index';
 import { Runtime } from '../types/nakama';
+import { normalizeStorageList } from '../utils/storage-helpers';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -68,13 +69,11 @@ export function rpcSubmitSurvey(
   const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
 
   // Check rate limit by listing recent submissions
-  const storageObjects = nk.storageList(
-    ctx.userId,
-    SURVEY_COLLECTION,
-    100,
-    '',
-    `${surveyType}_${ctx.userId}`
-  );
+  // storageList's 5th arg is callerId, not a key filter: filter keys here.
+  const surveyKeyPrefix = `${surveyType}_`;
+  const storageObjects = normalizeStorageList(
+    nk.storageList(ctx.userId, SURVEY_COLLECTION, 100, '')
+  ).filter((obj) => String(obj.key || '').startsWith(surveyKeyPrefix));
   const recentSubmissions = storageObjects.filter(
     (obj: any) => obj.updateTime !== null && new Date(obj.updateTime).getTime() > twentyFourHoursAgo
   );
@@ -142,13 +141,11 @@ export function rpcGetSurveyStatus(
   const now = Date.now();
 
   // Find most recent submission of this type
-  const storageObjects = nk.storageList(
-    ctx.userId,
-    SURVEY_COLLECTION,
-    1,
-    '',
-    `${surveyType}_${ctx.userId}`
-  );
+  // storageList's 5th arg is callerId, not a key filter: filter keys here.
+  const surveyKeyPrefix = `${surveyType}_`;
+  const storageObjects = normalizeStorageList(
+    nk.storageList(ctx.userId, SURVEY_COLLECTION, 100, '')
+  ).filter((obj) => String(obj.key || '').startsWith(surveyKeyPrefix));
   let eligible = true;
   let cooldownRemainingSec = 0;
 

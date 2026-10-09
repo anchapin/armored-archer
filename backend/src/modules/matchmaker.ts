@@ -6,7 +6,12 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import {
+  toStorageValue,
+  getStorageRawValue,
+  normalizeStorageList,
+  readPvpMatch,
+} from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import {
   isPlayerFlagged,
@@ -216,9 +221,36 @@ function matchPassesFilter(match: PvPMatch, userId: string, request: ListMatches
   if (match.status !== 'pending') return false;
   if (request.match_type && match.match_type !== request.match_type) return false;
   if (match.creator_id === userId) return false;
+  if (match.opponent_id && match.opponent_id !== userId) return false;
+  if (match.expires_at !== undefined && match.expires_at <= Date.now()) return false;
   if (request.min_rank !== undefined && match.creator_rank < request.min_rank) return false;
   if (request.max_rank !== undefined && match.creator_rank > request.max_rank) return false;
   return true;
+}
+
+/** Append only available matches visible to this requester from a storage page. */
+function appendVisibleMatches(
+  objects: Runtime.StorageObject[],
+  userId: string,
+  request: ListMatchesRequest,
+  logger: Runtime.Logger,
+  matches: PvPMatch[]
+): void {
+  for (const object of objects) {
+    const matchResult = safeParse<PvPMatch>(
+      getStorageRawValue(object.value) ?? '',
+      null,
+      logger,
+      'rpcListMatches:match'
+    );
+    if (!matchResult.success || !matchResult.data) {
+      logger.warn('Skipping corrupted match record for user: %s', userId);
+      continue;
+    }
+    if (matchPassesFilter(matchResult.data, userId, request)) {
+      matches.push(matchResult.data);
+    }
+  }
 }
 
 /**
@@ -291,26 +323,27 @@ export function rpcListMatches(
   const playerStats = playerStatsResult.data;
   const playerRank = calculateRank(playerStats);
 
-  const matches = nk.storageList(ctx.userId, 'pvp_matches', limit, '', '');
-
   const filteredMatches: PvPMatch[] = [];
-
-  for (const object of matches) {
-    const matchResult = safeParse<PvPMatch>(
-      getStorageRawValue(object.value) ?? '',
-      null,
+  let cursor = '';
+  let scanTruncated = false;
+  // Undefined omits the owner filter; empty strings are parsed as invalid UUIDs.
+  // Server storageList's owner argument is a filter, not the caller. Matches
+  // belong to their creators, so scan across owners and enforce visibility
+  // ourselves. Bound the scan to 1,000 records per request, including records
+  // rejected by the filters; never let a full collection stall the runtime.
+  for (let page = 0; page < 10; page++) {
+    const result = nk.storageList(undefined, 'pvp_matches', 100, cursor);
+    appendVisibleMatches(
+      normalizeStorageList(result),
+      ctx.userId,
+      request,
       logger,
-      'rpcListMatches:match'
+      filteredMatches
     );
-    if (!matchResult.success || !matchResult.data) {
-      logger.warn('Skipping corrupted match record for user: %s', ctx.userId);
-      continue;
-    }
-    const match = matchResult.data;
-
-    if (matchPassesFilter(match, ctx.userId, request)) {
-      filteredMatches.push(match);
-    }
+    const nextCursor = (result as { cursor?: string }).cursor;
+    if (!nextCursor || nextCursor === cursor) break;
+    cursor = nextCursor;
+    scanTruncated = page === 9;
   }
 
   filteredMatches.sort((a, b) => b.created_at - a.created_at);
@@ -324,6 +357,7 @@ export function rpcListMatches(
     power_rating: playerRank,
     player_rank: playerRank,
     total: filteredMatches.length,
+    scan_truncated: scanTruncated,
   });
 }
 
@@ -453,13 +487,19 @@ export function rpcCreateMatch(
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
-    const targetStats = nk.storageRead([
-      {
-        collection: 'player_stats',
-        key: request.target_opponent_id,
-        userId: request.target_opponent_id,
-      },
-    ]);
+    // Nakama throws for a non-UUID owner id; treat that as an unknown player.
+    let targetStats: Runtime.StorageObject[];
+    try {
+      targetStats = nk.storageRead([
+        {
+          collection: 'player_stats',
+          key: request.target_opponent_id,
+          userId: request.target_opponent_id,
+        },
+      ]);
+    } catch {
+      targetStats = [];
+    }
 
     if (targetStats.length === 0) {
       return JSON.stringify({
@@ -708,13 +748,7 @@ export function rpcAcceptMatch(
     });
   }
 
-  const objects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: request.match_id,
-      userId: ctx.userId,
-    },
-  ]);
+  const objects = readPvpMatch(nk, request.match_id, ctx.userId);
 
   if (objects.length === 0) {
     return JSON.stringify({
@@ -1607,13 +1641,7 @@ function getAndValidateMatch(
   logger: Runtime.Logger,
   options?: { allowCompleted?: boolean }
 ): { match?: PvPMatch; error?: string } {
-  const objects = nk.storageRead([
-    {
-      collection: 'pvp_matches',
-      key: request.match_id,
-      userId: ctx.userId,
-    },
-  ]);
+  const objects = readPvpMatch(nk, request.match_id, ctx.userId);
 
   if (objects.length === 0) {
     return { error: 'Match not found' };
@@ -2150,7 +2178,7 @@ function applySettlementOutcome(
 
   // Process ranked match Elo and record updates
   if (match.match_type === 'ranked') {
-    const currentSeason = getCurrentSeason();
+    const currentSeason = getCurrentSeason(nk);
     const rankedUpdates = processRankedMatchUpdates(
       nk,
       ctx,
@@ -2181,7 +2209,7 @@ function applySettlementOutcome(
   // below are the pure Elo results from processRankedMatchUpdates.
 
   // Get season information for position tracking
-  const currentSeason = getCurrentSeason();
+  const currentSeason = getCurrentSeason(nk);
   const winnerOldSeasonEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
   const winnerOldSeasonPosition = winnerOldSeasonEntry ? winnerOldSeasonEntry.rank : 0;
   const loserOldSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);
@@ -2715,6 +2743,53 @@ export function registerRpcGetMatchHistory(initializer: Runtime.Initializer): vo
 }
 
 /**
+ * Appends the optional created_at range filter to a match_results query, runs
+ * a COUNT(*) over the filtered set, then runs the page itself ordered newest
+ * first. The count is taken BEFORE ORDER BY is appended: Postgres rejects an
+ * aggregate ordered by a bare column (SQLSTATE 42803).
+ *
+ * @param opts.stripJoins - drop LEFT JOINs from the count query (they only add
+ *   display columns and never change the row count)
+ */
+function runPagedMatchResultsQuery(
+  nk: Runtime.Nakama,
+  baseQuery: string,
+  params: any[],
+  startIndex: number,
+  opts: {
+    range: { start_date?: string | number; end_date?: string | number };
+    limit: number;
+    offset: number;
+    stripJoins?: boolean;
+  }
+): { total: number; rows: any[] } {
+  const { range, limit, offset, stripJoins } = opts;
+  let query = baseQuery;
+  let paramIndex = startIndex;
+  if (range.start_date) {
+    query += ` AND mr.created_at >= $${paramIndex}`;
+    params.push(new Date(range.start_date).toISOString());
+    paramIndex++;
+  }
+  if (range.end_date) {
+    query += ` AND mr.created_at <= $${paramIndex}`;
+    params.push(new Date(range.end_date).toISOString());
+    paramIndex++;
+  }
+
+  let countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
+  if (stripJoins) {
+    countQuery = countQuery.replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
+  }
+  const countResult = nk.sqlQuery(countQuery, params) as any[];
+  const total = Number(countResult[0]?.total) || 0;
+
+  query += ` ORDER BY mr.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  const rows = nk.sqlQuery(query, [...params, limit, offset]) as any[];
+  return { total, rows };
+}
+
+/**
  * Retrieves a player's match history with optional filtering.
  *
  * Queries the match_results database table for historical match data.
@@ -2775,7 +2850,7 @@ export function rpcGetMatchHistory(
         mr.creator_health_remaining,
         mr.opponent_health_remaining
       FROM match_results mr
-      WHERE mr.creator_id = $1 OR mr.opponent_id = $1
+      WHERE (mr.creator_id = $1 OR mr.opponent_id = $1)
     `;
 
     const params: any[] = [ctx.userId];
@@ -2788,31 +2863,11 @@ export function rpcGetMatchHistory(
       paramIndex++;
     }
 
-    // Add optional date range filter
-    if (request.start_date) {
-      query += ` AND mr.created_at >= $${paramIndex}`;
-      params.push(new Date(request.start_date).toISOString());
-      paramIndex++;
-    }
-    if (request.end_date) {
-      query += ` AND mr.created_at <= $${paramIndex}`;
-      params.push(new Date(request.end_date).toISOString());
-      paramIndex++;
-    }
-
-    query += ` ORDER BY mr.created_at DESC`;
-
-    // Get total count first
-    const countQuery = query.replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM');
-    const countResult = nk.dbQuery(countQuery, params) as any[];
-    const total = countResult[0]?.total || 0;
-
-    // Add pagination
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit);
-    params.push(offset);
-
-    const result = nk.dbQuery(query, params) as any[];
+    const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
+      range: request,
+      limit,
+      offset,
+    });
 
     const matches = result.map((row: any) => {
       const isVictory = row.winner_id === ctx.userId;
@@ -2946,7 +3001,7 @@ export function rpcGetMatchDetails(
       WHERE mr.match_id = $1
     `;
 
-    const result = nk.dbQuery(query, [match_id]) as any[];
+    const result = nk.sqlQuery(query, [match_id]) as any[];
 
     if (!result || result.length === 0) {
       return JSON.stringify({
@@ -3169,32 +3224,12 @@ export function rpcAdminQueryMatches(
       paramIndex++;
     }
 
-    // Add date range filter
-    if (request.start_date) {
-      query += ` AND mr.created_at >= $${paramIndex}`;
-      params.push(new Date(request.start_date).toISOString());
-      paramIndex++;
-    }
-    if (request.end_date) {
-      query += ` AND mr.created_at <= $${paramIndex}`;
-      params.push(new Date(request.end_date).toISOString());
-      paramIndex++;
-    }
-
-    // Get total count first
-    const countQuery = query
-      .replace(/SELECT[\s\S]+?FROM/, 'SELECT COUNT(*) as total FROM')
-      .replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
-    const countResult = nk.dbQuery(countQuery, params) as any[];
-    const total = countResult[0]?.total || 0;
-
-    // Add ordering and pagination
-    query += ` ORDER BY mr.created_at DESC`;
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit);
-    params.push(offset);
-
-    const result = nk.dbQuery(query, params) as any[];
+    const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
+      stripJoins: true,
+      range: request,
+      limit,
+      offset,
+    });
 
     const matches = result.map((row: any) => ({
       match_id: row.match_id,

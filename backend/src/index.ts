@@ -580,32 +580,18 @@ const InitModule: InitModule = function (
     registerRpcLoadBuild(initializer);
     registerRpcGetBuilds(initializer);
     registerRpcGetPlayerStats(initializer);
-    registerRpcListMatches(initializer);
     registerRpcCreateMatch(initializer);
     registerRpcAcceptMatch(initializer);
-    registerRpcCompleteMatch(initializer);
-    registerRpcGetMatchHistory(initializer);
-    registerRpcGetMatchDetails(initializer);
-    registerRpcAdminQueryMatches(initializer);
     registerRpcSubmitCombatAction(initializer);
     registerRpcGetMatchState(initializer);
-    registerRpcPlayerDisconnect(initializer);
-    registerRpcGetSeasonInfo(initializer);
     registerRpcGetLeaderboard(initializer);
     // update_rank is intentionally NOT registered — removed in issue #1076
     // (client-declared winners must not mutate Elo; ADR-0002: only
     // complete_match's server-declared settlement path may).
-    registerRpcGetSeasonRewards(initializer);
-    registerRpcClaimSeasonRewards(initializer);
-    registerRpcEndSeason(initializer);
-    registerRpcGetSeasonHistory(initializer);
     // Sole registration of get_player_rank (issue #871): season_leaderboard's
     // consolidated handler — explicit power_rating / ladder_rating / standing
     // fields plus legacy rank/rating aliases.
     registerRpcGetPlayerRank(initializer);
-    registerRpcGetPlayerCosmetics(initializer);
-    registerRpcGetPrestigeProgress(initializer);
-    registerRpcGetProjectedNextSeasonElo(initializer);
     registerRpcValidatePurchase(initializer);
     registerRpcGetCurrency(initializer);
     registerRpcSpendGems(initializer);
@@ -614,9 +600,6 @@ const InitModule: InitModule = function (
     registerRpcCheckSubscriptions(initializer);
     registerRpcAppLaunchCheck(initializer);
     registerRpcRevenueCatWebhook(initializer);
-    registerRpcRestorePurchases(initializer);
-    registerRpcPurchaseCosmetic(initializer);
-    registerRpcGetCosmeticCatalog(initializer);
     registerRpcGetOwnedCosmetics(initializer);
     registerRpcEquipCosmetic(initializer);
     registerRpcUnequipCosmetic(initializer);
@@ -631,16 +614,12 @@ const InitModule: InitModule = function (
     registerRpcGetInventory(initializer);
     registerRpcUnlockModifierPool(initializer);
     registerRpcStageComplete(initializer);
-    registerRpcGetUnlockedModifiers(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
     // registerRpcCompleteStage removed — `armored_archer/complete_stage` was
     // decommissioned and consolidated into `stage_complete` in issue #1069.
     registerRpcGetCompletedStages(initializer);
     registerRpcGetCampaignProgress(initializer);
-    registerRpcJoinPool(initializer);
-    registerRpcLeavePool(initializer);
-    registerRpcGetQueueStatus(initializer);
     registerRpcSyncDifficulty(initializer);
     registerRpcTrackMatchOutcome(initializer);
     registerRpcGetPlayerPerformance(initializer);
@@ -648,6 +627,33 @@ const InitModule: InitModule = function (
     registerRpcGetSurveyStatus(initializer);
     registerRpcCleanupTestUser(initializer);
   }
+
+  // RPCs with no rate-limited variant. These used to live only in the
+  // `else` branch above, so with config.rateLimit.enabled=true (CI and
+  // production) they were never registered and every call hit the bridge
+  // stub ("RPC ... was not registered by InitModule"). Register them in
+  // both modes.
+  registerRpcListMatches(initializer);
+  registerRpcCompleteMatch(initializer);
+  registerRpcGetMatchHistory(initializer);
+  registerRpcGetMatchDetails(initializer);
+  registerRpcAdminQueryMatches(initializer);
+  registerRpcPlayerDisconnect(initializer);
+  registerRpcGetSeasonInfo(initializer);
+  registerRpcGetSeasonRewards(initializer);
+  registerRpcClaimSeasonRewards(initializer);
+  registerRpcEndSeason(initializer);
+  registerRpcGetSeasonHistory(initializer);
+  registerRpcGetPlayerCosmetics(initializer);
+  registerRpcGetPrestigeProgress(initializer);
+  registerRpcGetProjectedNextSeasonElo(initializer);
+  registerRpcRestorePurchases(initializer);
+  registerRpcPurchaseCosmetic(initializer);
+  registerRpcGetCosmeticCatalog(initializer);
+  registerRpcGetUnlockedModifiers(initializer);
+  registerRpcJoinPool(initializer);
+  registerRpcLeavePool(initializer);
+  registerRpcGetQueueStatus(initializer);
 
   // Test-only fixture RPCs: registered only when TEST_FIXTURE_RPCS_ENABLED=true
   // is baked into the bundle env (CI integration job). See test_fixtures.ts.
