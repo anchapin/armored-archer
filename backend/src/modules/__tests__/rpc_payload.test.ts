@@ -1,4 +1,4 @@
-import { parseRpcPayload } from '../integration/rpc_payload';
+import { parseRpcPayload } from '../../../tests/integration/rpc_payload';
 
 describe('parseRpcPayload', () => {
   it('keeps an already-decoded successful response', () => {
