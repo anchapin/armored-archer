@@ -401,7 +401,11 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(inventory.payload.equipped_gear[testGearType]).toBe(testGearId);
       const equipped = inventory.payload.gear.find((gear: any) => gear.id === testGearId);
       expect(equipped.stats.length).toBeGreaterThan(0);
-      expect(equipped.stats.every((stat: any) => typeof stat.value === 'number')).toBe(true);
+      for (const stat of equipped.stats) {
+        expect(stat).toEqual(expect.objectContaining({
+          name: expect.any(String), value: expect.any(Number),
+        }));
+      }
     });
   });
 
@@ -559,7 +563,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       const results = await Promise.all(promises);
 
       for (const result of results) {
-        expect(result.payload.success).toBe(true);
+        expect(result.payload).toEqual(expect.objectContaining({ success: true }));
       }
 
       // Verify all stages completed
