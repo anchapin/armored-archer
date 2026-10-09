@@ -71,6 +71,13 @@ describe('Matchmaker Integration Tests', () => {
     return response.payload;
   }
 
+  // Use the explicit CI allowlisted operator for guarded debug queries.
+  async function rpcCallAsAdmin(rpcId: string, payload: any): Promise<any> {
+    const { client, session } = await testHelper.getAdminClient();
+    const response = await client.rpc(session, rpcId, payload);
+    return response.payload;
+  }
+
   // Helper to create a match and track its ID for cleanup
   async function createMatch(account: TestAccount, payload: any): Promise<any> {
     const result = await rpcCall(account, 'armored_archer/create_match', payload);
@@ -403,13 +410,19 @@ describe('Matchmaker Integration Tests', () => {
       expect(result.success).toBe(false);
     });
 
+    test('should reject player sessions for admin query', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', { limit: 10 });
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Not authorized');
+    });
+
     test('should query matches with admin endpoint', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         user_id: playerA.userId,
         limit: 10,
       });
 
-      expect(result.success).toBe(true);
+      expect(result).toEqual(expect.objectContaining({ success: true }));
       expect(Array.isArray(result.matches)).toBe(true);
       expect(result.total).toBeGreaterThan(0);
       expect(result.page).toBe(1);
@@ -418,7 +431,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should filter admin query by match type', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         match_type: 'ranked',
         limit: 10,
       });
@@ -433,7 +446,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should filter admin query by end reason', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         end_reason: 'health_zero',
         limit: 10,
       });
@@ -448,7 +461,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should handle pagination in admin query', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         limit: 5,
         offset: 0,
       });
@@ -459,7 +472,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should include usernames in admin query results', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         user_id: playerA.userId,
         limit: 10,
       });

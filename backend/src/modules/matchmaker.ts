@@ -326,12 +326,13 @@ export function rpcListMatches(
   const filteredMatches: PvPMatch[] = [];
   let cursor = '';
   let scanTruncated = false;
+  // Undefined omits the owner filter; empty strings are parsed as invalid UUIDs.
   // Server storageList's owner argument is a filter, not the caller. Matches
   // belong to their creators, so scan across owners and enforce visibility
   // ourselves. Bound the scan to 1,000 records per request, including records
   // rejected by the filters; never let a full collection stall the runtime.
   for (let page = 0; page < 10; page++) {
-    const result = nk.storageList('', 'pvp_matches', 100, cursor);
+    const result = nk.storageList(undefined, 'pvp_matches', 100, cursor);
     appendVisibleMatches(
       normalizeStorageList(result),
       ctx.userId,

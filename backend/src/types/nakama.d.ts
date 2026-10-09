@@ -152,7 +152,7 @@ declare namespace Runtime {
     storageRead(objects: StorageRead[]): StorageObject[];
     storageWrite(objects: StorageWrite[]): void;
     storageList(
-      userId: string,
+      userId: string | undefined,
       collection: string,
       limit: number,
       cursor?: string,

@@ -624,8 +624,14 @@ describe('matchmaker', () => {
         'direct',
         'public',
       ]);
-      expect(mockNk.storageList).toHaveBeenNthCalledWith(1, '', 'pvp_matches', 100, '');
-      expect(mockNk.storageList).toHaveBeenNthCalledWith(2, '', 'pvp_matches', 100, 'page-2');
+      expect(mockNk.storageList).toHaveBeenNthCalledWith(1, undefined, 'pvp_matches', 100, '');
+      expect(mockNk.storageList).toHaveBeenNthCalledWith(
+        2,
+        undefined,
+        'pvp_matches',
+        100,
+        'page-2'
+      );
     });
 
     it('bounds collection scanning and stops repeated cursors', () => {
