@@ -20,7 +20,7 @@ describe('Gear System Integration Tests', () => {
     await testHelper.deleteStorageObject('player_inventory', player.userId, player.userId);
     for (const stageId of claimedStages) {
       await testHelper.deleteStorageObject(
-        'stage_completion_claims', player.userId, `${player.userId}:${stageId}`
+        'stage_completion_claims', `${player.userId}:${stageId}`, player.userId
       );
     }
     claimedStages.clear();
