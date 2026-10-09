@@ -172,7 +172,7 @@ describe('Matchmaker Integration Tests', () => {
   describe('rpcAcceptMatch', () => {
     let matchId: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       // Create a match where playerA invites playerB
       const createPayload = {
         match_type: 'ranked',
@@ -221,32 +221,24 @@ describe('Matchmaker Integration Tests', () => {
     test('should return error when player stats not found', async () => {
       const freshAccount = await testHelper.createTestAccount('fresh_acceptor');
       await setupPlayerStats(freshAccount, {
-        level: 5,
-        xp: 100,
-        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 },
+        level: 10, xp: 2000,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
       });
-
-      // Delete the stats we just wrote to simulate missing
-      await testHelper.deleteStorageObject(
-        'player_stats',
-        freshAccount.userId,
-        freshAccount.userId
-      );
-
-      const createPayload = {
-        match_type: 'ranked',
-        target_opponent_id: freshAccount.userId,
-      };
-      const createResult = await createMatch(playerA, createPayload);
-      const acceptPayload = { match_id: createResult.match.match_id };
-      const result = await rpcCall(freshAccount, 'armored_archer/accept_match', acceptPayload);
-
+      // Creation needs both participants' stats; remove only after it succeeds.
+      const createResult = await createMatch(playerA, {
+        match_type: 'ranked', target_opponent_id: freshAccount.userId,
+      });
+      expect(createResult.success).toBe(true);
+      await testHelper.deleteStorageObject('player_stats', freshAccount.userId, freshAccount.userId);
+      const result = await rpcCall(freshAccount, 'armored_archer/accept_match', {
+        match_id: createResult.match.match_id,
+      });
       expect(result.error).toBe('Player stats not found');
     });
   });
 
   describe('rpcListMatches', () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
       // Create matches for listing
       // Match 1: pending ranked by a third user
       await createMatchForUser('list_other1', playerA.userId, { match_type: 'ranked' });
