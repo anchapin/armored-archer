@@ -52,7 +52,16 @@ describe('logAudit', () => {
     expect(callArg.collection).toBe('audit_logs');
     expect(callArg.userId).toBe('user123');
     expect(callArg.key).toMatch(/^audit_/);
-    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
+    const value =
+      typeof callArg.value === 'string'
+        ? typeof callArg.value === 'string'
+          ? typeof callArg.value === 'string'
+            ? typeof callArg.value === 'string'
+              ? JSON.parse(callArg.value)
+              : callArg.value
+            : callArg.value
+          : callArg.value
+        : callArg.value;
     expect(value.action).toBe('gain_xp');
     expect(value.resource).toBe('stats');
     expect(value.result).toBe('success');
@@ -72,7 +81,16 @@ describe('logAudit', () => {
     );
 
     const callArg = mockStorageWrite.mock.calls[0][0][0];
-    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
+    const value =
+      typeof callArg.value === 'string'
+        ? typeof callArg.value === 'string'
+          ? typeof callArg.value === 'string'
+            ? typeof callArg.value === 'string'
+              ? JSON.parse(callArg.value)
+              : callArg.value
+            : callArg.value
+          : callArg.value
+        : callArg.value;
     expect(value.result).toBe('failure');
     expect(value.error).toBe('Not found');
   });
@@ -128,7 +146,16 @@ describe('logAudit', () => {
     const after = Date.now();
 
     const callArg = mockStorageWrite.mock.calls[0][0][0];
-    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
+    const value =
+      typeof callArg.value === 'string'
+        ? typeof callArg.value === 'string'
+          ? typeof callArg.value === 'string'
+            ? typeof callArg.value === 'string'
+              ? JSON.parse(callArg.value)
+              : callArg.value
+            : callArg.value
+          : callArg.value
+        : callArg.value;
     expect(value.timestamp).toBeGreaterThanOrEqual(before);
     expect(value.timestamp).toBeLessThanOrEqual(after);
   });
@@ -181,14 +208,14 @@ describe('rpcQueryAuditLogs', () => {
     );
     const parsed = JSON.parse(result);
     expect(parsed.success).toBe(true);
-    expect(mockStorageList).toHaveBeenCalledWith(callerId, 'audit_logs', 50, '', '');
+    expect(mockStorageList).toHaveBeenCalledWith(callerId, 'audit_logs', 50, '');
   });
 
   it('scopes queries with no user_id to the caller', () => {
     const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{}');
     const parsed = JSON.parse(result);
     expect(parsed.success).toBe(true);
-    expect(mockStorageList).toHaveBeenCalledWith(callerId, 'audit_logs', 50, '', '');
+    expect(mockStorageList).toHaveBeenCalledWith(callerId, 'audit_logs', 50, '');
   });
 
   it('rejects a user_id belonging to another user and audit-logs the attempt', () => {
@@ -201,14 +228,29 @@ describe('rpcQueryAuditLogs', () => {
     expect(parsed.count).toBe(0);
     // The victim's storage is never read.
     expect(mockStorageList).not.toHaveBeenCalled();
-    expect(mockStorageList).not.toHaveBeenCalledWith('user-b', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    expect(mockStorageList).not.toHaveBeenCalledWith(
+      'user-b',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
 
     // The attempt is recorded in the CALLER's audit trail (not the victim's).
     expect(mockStorageWrite).toHaveBeenCalledTimes(1);
     const callArg = mockStorageWrite.mock.calls[0][0][0];
     expect(callArg.collection).toBe('audit_logs');
     expect(callArg.userId).toBe(callerId);
-    const value = typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? (typeof callArg.value === 'string' ? JSON.parse(callArg.value) : callArg.value) : callArg.value) : callArg.value) : callArg.value;
+    const value =
+      typeof callArg.value === 'string'
+        ? typeof callArg.value === 'string'
+          ? typeof callArg.value === 'string'
+            ? typeof callArg.value === 'string'
+              ? JSON.parse(callArg.value)
+              : callArg.value
+            : callArg.value
+          : callArg.value
+        : callArg.value;
     expect(value.user_id).toBe(callerId);
     expect(value.action).toBe('query_audit_logs');
     expect(value.result).toBe('failure');
@@ -331,7 +373,6 @@ describe('rpcQueryAuditLogs', () => {
       expect.anything(),
       'audit_logs',
       25,
-      expect.anything(),
       expect.anything()
     );
   });
@@ -342,20 +383,13 @@ describe('rpcQueryAuditLogs', () => {
       expect.anything(),
       'audit_logs',
       50,
-      expect.anything(),
       expect.anything()
     );
   });
 
   it('passes cursor to storageList', () => {
     const result = rpcQueryAuditLogs(mockCtx, mockLogger as any, mockNk, '{"cursor":"next_page"}');
-    expect(mockStorageList).toHaveBeenCalledWith(
-      expect.anything(),
-      'audit_logs',
-      50,
-      'next_page',
-      expect.anything()
-    );
+    expect(mockStorageList).toHaveBeenCalledWith(expect.anything(), 'audit_logs', 50, 'next_page');
   });
 
   it('skips malformed entries', () => {

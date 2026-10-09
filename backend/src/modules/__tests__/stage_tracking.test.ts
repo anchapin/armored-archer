@@ -65,7 +65,7 @@ const createMockLogger = () => ({
 const createMockNk = () => ({
   storageRead: jest.fn().mockReturnValue([]),
   storageWrite: jest.fn(),
-  dbQuery: jest.fn().mockReturnValue([]),
+  sqlQuery: jest.fn().mockReturnValue([]),
 });
 
 /**

@@ -34,6 +34,16 @@ describe('Matchmaker Integration Tests', () => {
     });
   }, 120000);
 
+  beforeEach(async () => {
+    // Restore prerequisites so rank-gap tests don't contaminate later matches.
+    for (const player of [playerA, playerB, playerC]) {
+      await setupPlayerStats(player, {
+        level: 10, xp: 2000,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+      });
+    }
+  });
+
   afterEach(async () => {
     // Clean up matches created during this test
     try {
@@ -58,6 +68,13 @@ describe('Matchmaker Integration Tests', () => {
   // Helper to call RPC and parse JSON
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
     const response = await account.client.rpc(account.session, rpcId, payload);
+    return response.payload;
+  }
+
+  // Use the explicit CI allowlisted operator for guarded debug queries.
+  async function rpcCallAsAdmin(rpcId: string, payload: any): Promise<any> {
+    const { client, session } = await testHelper.getAdminClient();
+    const response = await client.rpc(session, rpcId, payload);
     return response.payload;
   }
 
@@ -88,11 +105,11 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should create match with punch-up when allowed', async () => {
-      // Lower playerC's level to create rank gap
+      // Challenger rank 118 faces target 128, within the 5-15 punch-up window.
       await setupPlayerStats(playerC, {
-        level: 5,
-        xp: 500,
-        stats: { attack: 15, defense: 10, dodge: 8, crit_rate: 6 },
+        level: 11,
+        xp: 2100,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
       });
 
       const payload = {
@@ -130,7 +147,8 @@ describe('Matchmaker Integration Tests', () => {
       };
       const result = await rpcCall(playerA, 'armored_archer/create_match', payload);
 
-      expect(result.error).toBe('Rank difference too large for direct challenge');
+      expect(result.error).toBe('Rank difference too large. Maximum allowed is 15.');
+      expect(result.rank_difference).toBeGreaterThan(result.max_allowed);
     });
 
     test('should create open match when no target specified', async () => {
@@ -161,7 +179,7 @@ describe('Matchmaker Integration Tests', () => {
   describe('rpcAcceptMatch', () => {
     let matchId: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       // Create a match where playerA invites playerB
       const createPayload = {
         match_type: 'ranked',
@@ -210,32 +228,29 @@ describe('Matchmaker Integration Tests', () => {
     test('should return error when player stats not found', async () => {
       const freshAccount = await testHelper.createTestAccount('fresh_acceptor');
       await setupPlayerStats(freshAccount, {
-        level: 5,
-        xp: 100,
-        stats: { attack: 10, defense: 10, dodge: 5, crit_rate: 5 },
+        level: 10, xp: 2000,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
       });
-
-      // Delete the stats we just wrote to simulate missing
-      await testHelper.deleteStorageObject(
-        'player_stats',
-        freshAccount.userId,
-        freshAccount.userId
-      );
-
-      const createPayload = {
-        match_type: 'ranked',
-        target_opponent_id: freshAccount.userId,
-      };
-      const createResult = await createMatch(playerA, createPayload);
-      const acceptPayload = { match_id: createResult.match.match_id };
-      const result = await rpcCall(freshAccount, 'armored_archer/accept_match', acceptPayload);
-
+      // Creation needs both participants' stats; remove only after it succeeds.
+      const creator = await testHelper.createTestAccount('missing_stats_creator');
+      await setupPlayerStats(creator, {
+        level: 10, xp: 2000,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+      });
+      const createResult = await createMatch(creator, {
+        match_type: 'ranked', target_opponent_id: freshAccount.userId,
+      });
+      expect(createResult).toEqual(expect.objectContaining({ success: true }));
+      await testHelper.deleteStorageObjectsAnyOwner('player_stats', [freshAccount.userId]);
+      const result = await rpcCall(freshAccount, 'armored_archer/accept_match', {
+        match_id: createResult.match.match_id,
+      });
       expect(result.error).toBe('Player stats not found');
     });
   });
 
   describe('rpcListMatches', () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
       // Create matches for listing
       // Match 1: pending ranked by a third user
       await createMatchForUser('list_other1', playerA.userId, { match_type: 'ranked' });
@@ -266,7 +281,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should filter by min_rank and max_rank', async () => {
-      const payload = { min_rank: 0, max_rank: 1000 };
+      const payload = { min_rank: 1, max_rank: 1000 };
       const result = await rpcCall(playerA, 'armored_archer/list_matches', payload);
       expect(result.success).toBe(true);
       expect(Array.isArray(result.matches)).toBe(true);
@@ -291,13 +306,17 @@ describe('Matchmaker Integration Tests', () => {
       expect(result.xp).toBe(2000);
     });
 
-    test('should return error when player stats not found', async () => {
+    test('should default power rating to zero when player stats are missing', async () => {
       const freshPlayer = await testHelper.createTestAccount('norank');
-      // No stats set
+      // Account hooks initialize stats; delete the prerequisite explicitly.
+      await testHelper.deleteStorageObjectsAnyOwner('player_stats', [freshPlayer.userId]);
       const payload = {};
       const result = await rpcCall(freshPlayer, 'armored_archer/get_player_rank', payload);
 
-      expect(result.error).toBe('Player stats not found');
+      expect(result.success).toBe(true);
+      expect(result.power_rating).toBe(0);
+      expect(result.level).toBe(0);
+      expect(result.xp).toBe(0);
     });
   });
 
@@ -388,16 +407,22 @@ describe('Matchmaker Integration Tests', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.success).toBeUndefined();
+      expect(result.success).toBe(false);
+    });
+
+    test('should reject player sessions for admin query', async () => {
+      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', { limit: 10 });
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Not authorized');
     });
 
     test('should query matches with admin endpoint', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         user_id: playerA.userId,
         limit: 10,
       });
 
-      expect(result.success).toBe(true);
+      expect(result).toEqual(expect.objectContaining({ success: true }));
       expect(Array.isArray(result.matches)).toBe(true);
       expect(result.total).toBeGreaterThan(0);
       expect(result.page).toBe(1);
@@ -406,7 +431,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should filter admin query by match type', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         match_type: 'ranked',
         limit: 10,
       });
@@ -421,7 +446,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should filter admin query by end reason', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         end_reason: 'health_zero',
         limit: 10,
       });
@@ -436,7 +461,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should handle pagination in admin query', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         limit: 5,
         offset: 0,
       });
@@ -447,7 +472,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should include usernames in admin query results', async () => {
-      const result = await rpcCall(playerA, 'armored_archer/admin_query_matches', {
+      const result = await rpcCallAsAdmin('armored_archer/admin_query_matches', {
         user_id: playerA.userId,
         limit: 10,
       });

@@ -56,9 +56,9 @@ describe('Network Resilience Integration Tests', () => {
 
     test('should handle session refresh', async () => {
       // Test session refresh capability
-      const session = await playerA.client.refreshSession(playerA.refreshToken);
+      const session = await playerA.client.sessionRefresh(playerA.session);
       expect(session.token).toBeDefined();
-      expect(session.refreshToken).toBeDefined();
+      expect(session.refresh_token).toBeDefined();
     });
 
     test('should handle multiple concurrent RPC calls', async () => {
@@ -104,9 +104,13 @@ describe('Network Resilience Integration Tests', () => {
       // Create a new account without stats
       const newAccount = await testHelper.createTestAccount('no_stats');
 
-      const result = await rpcCall(newAccount, 'armored_archer/get_player_rank', {});
+      await testHelper.sql(
+        "DELETE FROM storage WHERE collection = 'player_stats' AND key = $1::text AND user_id = $1::uuid",
+        [newAccount.userId]
+      );
+      const result = await rpcCall(newAccount, 'armored_archer/get_player_stats', {});
 
-      // Should return error about missing stats
+      // Rank defaults to zero without stats; the stats RPC reports absence.
       expect(result.error).toBeDefined();
       expect(result.error).toContain('not found');
     });
@@ -160,7 +164,16 @@ describe('Network Resilience Integration Tests', () => {
         match_id: createResult.match.match_id,
       });
 
-      // Complete the match
+      // A client winner claim alone cannot settle an active match (ADR-0002).
+      // Play the first turn to persist combat state, then forfeit via the server.
+      const shot = await rpcCall(playerA, 'armored_archer/submit_combat_action', {
+        match_id: createResult.match.match_id, action_type: 'shoot', angle: 1.0,
+      });
+      expect(shot).toEqual(expect.objectContaining({ success: true }));
+      const forfeit = await rpcCall(playerB, 'armored_archer/player_disconnect', {
+        match_id: createResult.match.match_id, reason: 'voluntary',
+      });
+      expect(forfeit).toEqual(expect.objectContaining({ success: true, winner: playerA.userId }));
       const completeResult = await rpcCall(playerA, 'armored_archer/complete_match', {
         match_id: createResult.match.match_id,
         winner_id: playerA.userId,
@@ -169,7 +182,15 @@ describe('Network Resilience Integration Tests', () => {
       });
 
       expect(completeResult.success).toBe(true);
+      // Fresh settlement returns the match object; idempotent replay returns
+      // match_id instead. This case is the fresh-settlement path.
+      expect(completeResult.match.match_id).toBe(createResult.match.match_id);
       expect(completeResult.match.status).toBe('completed');
+      const state = await rpcCall(playerA, 'armored_archer/get_match_state', {
+        match_id: createResult.match.match_id,
+      });
+      expect(state.status).toBe('completed');
+      expect(state.winner).toBe(playerA.userId);
     });
 
     test('should handle rapid match operations', async () => {
@@ -265,8 +286,10 @@ describe('Network Resilience Integration Tests', () => {
 
       const matchId = createResult.match.match_id;
 
-      // Simulate reconnection by getting the match again
-      const listResult = await rpcCall(playerA, 'armored_archer/list_matches', {});
+      // Refresh the opponent session, then rediscover the creator-owned open
+      // match. Own matches are deliberately excluded by list_matches.
+      playerB.session = await playerB.client.sessionRefresh(playerB.session);
+      const listResult = await rpcCall(playerB, 'armored_archer/list_matches', {});
 
       // The match should still be available
       const match = listResult.matches.find((m: any) => m.match_id === matchId);
