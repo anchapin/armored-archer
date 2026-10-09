@@ -2178,7 +2178,7 @@ function applySettlementOutcome(
 
   // Process ranked match Elo and record updates
   if (match.match_type === 'ranked') {
-    const currentSeason = getCurrentSeason();
+    const currentSeason = getCurrentSeason(nk);
     const rankedUpdates = processRankedMatchUpdates(
       nk,
       ctx,
@@ -2209,7 +2209,7 @@ function applySettlementOutcome(
   // below are the pure Elo results from processRankedMatchUpdates.
 
   // Get season information for position tracking
-  const currentSeason = getCurrentSeason();
+  const currentSeason = getCurrentSeason(nk);
   const winnerOldSeasonEntry = getLeaderboardEntry(nk, request.winner_id, currentSeason.season_id);
   const winnerOldSeasonPosition = winnerOldSeasonEntry ? winnerOldSeasonEntry.rank : 0;
   const loserOldSeasonEntry = getLeaderboardEntry(nk, request.loser_id, currentSeason.season_id);

@@ -5,6 +5,7 @@
 
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
+import { resolveCurrentSeason } from '../utils/current-season';
 import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
 import {
   readAndParseStorage,
@@ -74,8 +75,6 @@ const DEFAULT_DECAY_CONFIG: RatingDecayConfig = {
   minimum_rating: 1000, // Rating floor
   max_decay_loss: 200, // Maximum points that can be lost per decay check
 };
-
-const SEASON_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // Storage keys
 const STORAGE_KEY_DECAY_CONFIG = 'rating_decay_config';
@@ -440,20 +439,8 @@ export function getDaysInactive(lastActiveTimestamp: number): number {
  * @param nk - Nakama server interface
  * @returns Current season info
  */
-export function getCurrentSeasonInfo(_nk: Runtime.Nakama): SeasonInfo {
-  const now = Date.now();
-  const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
-  const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
-  const seasonEndTime = seasonStartTime + SEASON_DURATION_MS;
-
-  return {
-    season_id: `season_${seasonNumber}`,
-    season_number: seasonNumber,
-    start_time: seasonStartTime,
-    end_time: seasonEndTime,
-    status: 'active',
-    duration_weeks: 4,
-  };
+export function getCurrentSeasonInfo(nk: Runtime.Nakama): SeasonInfo {
+  return resolveCurrentSeason(nk) as SeasonInfo;
 }
 
 /**

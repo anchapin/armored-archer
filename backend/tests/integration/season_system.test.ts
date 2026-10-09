@@ -444,9 +444,10 @@ describe('Season System Integration Tests', () => {
     });
 
     test('should create new leaderboard for new season (admin)', async () => {
-      const oldSeason = getCurrentSeasonInfo();
+      const current = await rpcCall(playerA, 'armored_archer/get_season_info', {});
+      const oldSeason = current.season;
 
-      // Write to old season leaderboard
+      // Write to the actual published season, not a clock-derived test guess.
       await seedSeasonRecord(oldSeason.season_id, playerA.userId, playerA.username, 1500, 0, {});
 
       const result = await rpcCallAsAdmin('armored_archer/end_season', {});

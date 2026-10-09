@@ -1,3 +1,5 @@
+import { Runtime } from '../types/nakama';
+import { publishCurrentSeason } from '../utils/current-season';
 /**
  * Season Admin Tools module.
  * @fileoverview Provides admin RPC endpoints for season state inspection,
@@ -32,7 +34,6 @@
  *    - All mutations are audit-logged.
  */
 
-import { Runtime } from '../types/nakama';
 import { listAllLeaderboardRecords } from '../utils/leaderboard-list';
 import {
   toStorageValue,
@@ -94,7 +95,7 @@ interface ValidationSummary {
 
 // --- Helpers ---
 
-function resolveSeason(seasonId?: string): SeasonInfo {
+function resolveSeason(nk: Runtime.Nakama, seasonId?: string): SeasonInfo {
   if (seasonId) {
     const match = seasonId.match(/^season_(\d+)$/);
     if (!match) {
@@ -113,7 +114,7 @@ function resolveSeason(seasonId?: string): SeasonInfo {
       duration_weeks: 4,
     };
   }
-  return getCurrentSeason();
+  return getCurrentSeason(nk);
 }
 
 function getAllLeaderboardRecords(nk: Runtime.Nakama, seasonId: string): LeaderboardRecord[] {
@@ -416,7 +417,7 @@ export function triggerEndSeason(
 ): { players_processed: number; old_season_id: string; new_season_id: string } {
   const SEASON_DURATION_MS = 28 * 24 * 60 * 60 * 1000;
   const SEASON_DURATION_WEEKS = 4;
-  const currentSeason = resolveSeason(seasonId);
+  const currentSeason = resolveSeason(nk, seasonId);
   const allRecords = getAllLeaderboardRecords(nk, currentSeason.season_id);
 
   if (dryRun) {
@@ -519,6 +520,8 @@ export function triggerEndSeason(
       }
     );
   }
+
+  publishCurrentSeason(nk, nextSeason);
 
   logAudit(
     nk,
@@ -692,7 +695,7 @@ export function rpcAdminGetSeasonState(
   }
 
   const request = validation.data || {};
-  const season = resolveSeason(request.season_id as string | undefined);
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const now = Date.now();
   const elapsedMs = now - season.start_time;
   const remainingMs = Math.max(0, season.end_time - now);
@@ -940,7 +943,12 @@ function executeTriggerAction(
     case 'recalculate_decay':
       return executeRecalculateDecay(nk, ctx, seasonId, dryRun);
     case 'fix_missing_rewards':
-      return executeFixMissingRewards(nk, seasonId, resolveSeason(seasonId).season_number, dryRun);
+      return executeFixMissingRewards(
+        nk,
+        seasonId,
+        resolveSeason(nk, seasonId).season_number,
+        dryRun
+      );
     case 'rebuild_prestige':
       return executeRebuildPrestige(nk, ctx, seasonId, playerIds ?? null, dryRun);
     case 'recalculate_ratings':
@@ -1025,7 +1033,7 @@ export function rpcAdminGetPlayerSeason(
 
   const request = validation.data;
   const userId = request.user_id as string;
-  const season = resolveSeason(request.season_id as string | undefined);
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const entry = getLeaderboardEntry(nk, userId, season.season_id);
   const prestige = getPlayerPrestigeRecord(nk, userId);
   const cosmetics = getPlayerCosmetics(nk, userId);
@@ -1065,7 +1073,7 @@ export function rpcAdminValidateSeason(
   }
 
   const request = validation.data || {};
-  const season = resolveSeason(request.season_id as string | undefined);
+  const season = resolveSeason(nk, request.season_id as string | undefined);
   const autoFix = (request.auto_fix as boolean) || false;
   const requestedChecks = request.checks as string[] | undefined;
 
@@ -1157,7 +1165,7 @@ export function rpcAdminTriggerSeasonEvent(
   const playerIds = request.player_ids as string[] | undefined;
   const confirmationToken = request.confirmation_token as string | undefined;
 
-  const season = resolveSeason(seasonId);
+  const season = resolveSeason(nk, seasonId);
 
   // Special handling for end_season due to confirmation token requirement
   if (action === 'end_season') {

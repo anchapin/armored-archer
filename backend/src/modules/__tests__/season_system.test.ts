@@ -245,13 +245,17 @@ describe('season_system', () => {
 
     it('should return error when rewards already claimed', () => {
       mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
-      mockNk.storageRead = jest.fn().mockReturnValue([
-        {
-          collection: 'season_rewards_claimed',
-          key: 'season_1_test-user',
-          value: JSON.stringify({ claimed_at: Date.now() }),
-        },
-      ]);
+      mockNk.storageRead = jest.fn((objects) =>
+        objects[0].collection === 'season_rewards_claimed'
+          ? [
+              {
+                collection: 'season_rewards_claimed',
+                key: 'season_1_test-user',
+                value: JSON.stringify({ claimed_at: Date.now() }),
+              },
+            ]
+          : []
+      );
 
       const payload = JSON.stringify({});
       const result = rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, payload);

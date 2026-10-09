@@ -1512,7 +1512,7 @@ function persistMatchResult(
     }
 
     const loserId = winnerId === match.creator_id ? match.opponent_id : match.creator_id;
-    const currentSeason = getCurrentSeason();
+    const currentSeason = getCurrentSeason(nk);
 
     // Calculate match duration
     const durationSeconds = Math.floor((Date.now() - match.created_at) / 1000);
