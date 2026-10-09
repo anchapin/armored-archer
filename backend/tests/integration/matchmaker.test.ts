@@ -228,8 +228,8 @@ describe('Matchmaker Integration Tests', () => {
       const createResult = await createMatch(playerA, {
         match_type: 'ranked', target_opponent_id: freshAccount.userId,
       });
-      expect(createResult.success).toBe(true);
-      await testHelper.deleteStorageObject('player_stats', freshAccount.userId, freshAccount.userId);
+      expect(createResult).toEqual(expect.objectContaining({ success: true }));
+      await testHelper.deleteStorageObjectsAnyOwner('player_stats', [freshAccount.userId]);
       const result = await rpcCall(freshAccount, 'armored_archer/accept_match', {
         match_id: createResult.match.match_id,
       });
@@ -269,7 +269,7 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should filter by min_rank and max_rank', async () => {
-      const payload = { min_rank: 0, max_rank: 1000 };
+      const payload = { min_rank: 1, max_rank: 1000 };
       const result = await rpcCall(playerA, 'armored_archer/list_matches', payload);
       expect(result.success).toBe(true);
       expect(Array.isArray(result.matches)).toBe(true);
@@ -296,7 +296,8 @@ describe('Matchmaker Integration Tests', () => {
 
     test('should return error when player stats not found', async () => {
       const freshPlayer = await testHelper.createTestAccount('norank');
-      // No stats set
+      // Account hooks initialize stats; delete the prerequisite explicitly.
+      await testHelper.deleteStorageObjectsAnyOwner('player_stats', [freshPlayer.userId]);
       const payload = {};
       const result = await rpcCall(freshPlayer, 'armored_archer/get_player_rank', payload);
 
