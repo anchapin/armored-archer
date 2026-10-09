@@ -34,6 +34,16 @@ describe('Matchmaker Integration Tests', () => {
     });
   }, 120000);
 
+  beforeEach(async () => {
+    // Restore prerequisites so rank-gap tests don't contaminate later matches.
+    for (const player of [playerA, playerB, playerC]) {
+      await setupPlayerStats(player, {
+        level: 10, xp: 2000,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
+      });
+    }
+  });
+
   afterEach(async () => {
     // Clean up matches created during this test
     try {
@@ -88,11 +98,11 @@ describe('Matchmaker Integration Tests', () => {
     });
 
     test('should create match with punch-up when allowed', async () => {
-      // Lower playerC's level to create rank gap
+      // Challenger rank 118 faces target 128, within the 5-15 punch-up window.
       await setupPlayerStats(playerC, {
-        level: 5,
-        xp: 500,
-        stats: { attack: 15, defense: 10, dodge: 8, crit_rate: 6 },
+        level: 11,
+        xp: 2100,
+        stats: { attack: 25, defense: 20, dodge: 15, crit_rate: 12 },
       });
 
       const payload = {
@@ -130,7 +140,8 @@ describe('Matchmaker Integration Tests', () => {
       };
       const result = await rpcCall(playerA, 'armored_archer/create_match', payload);
 
-      expect(result.error).toBe('Rank difference too large for direct challenge');
+      expect(result.error).toBe('Rank difference too large. Maximum allowed is 15.');
+      expect(result.rank_difference).toBeGreaterThan(result.max_allowed);
     });
 
     test('should create open match when no target specified', async () => {
