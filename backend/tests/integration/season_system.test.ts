@@ -4,6 +4,7 @@ describe('Season System Integration Tests', () => {
   let playerA: TestAccount;
   let playerB: TestAccount;
   let playerC: TestAccount;
+  const rewardFixtureOwners: string[] = [];
 
   beforeAll(async () => {
     await testHelper.initialize();
@@ -38,7 +39,7 @@ describe('Season System Integration Tests', () => {
       await leaderboardFixture({
         op: 'delete',
         leaderboard_id: season.season_id,
-        owner_ids: [playerA.userId, playerB.userId, playerC.userId],
+        owner_ids: [playerA.userId, playerB.userId, playerC.userId, ...rewardFixtureOwners],
       });
       await testHelper.deleteStorageObjectsAnyOwner(
         'season_rewards_claimed',
@@ -297,11 +298,11 @@ describe('Season System Integration Tests', () => {
     test('should return rewards based on rank', async () => {
       const season = getCurrentSeasonInfo();
 
-      // Player A at rank 15 (legendary tier)
+      // Three seeded players occupy ranks 1-3, all legendary.
       await seedSeasonRecord(season.season_id, playerA.userId, playerA.username, 1900, 0, {});
-      // Player B at rank 30 (epic tier)
+      // Lower score determines rank 2, not rank 30.
       await seedSeasonRecord(season.season_id, playerB.userId, playerB.username, 1700, 0, {});
-      // Player C at rank 75 (rare tier)
+      // Lower score determines rank 3, not rank 75.
       await seedSeasonRecord(season.season_id, playerC.userId, playerC.username, 1400, 0, {});
 
       const resultA = await rpcCall(playerA, 'armored_archer/get_season_rewards', {});
@@ -309,15 +310,17 @@ describe('Season System Integration Tests', () => {
       expect(resultA.rewards).toBeDefined();
       expect(resultA.rewards.rank_tier).toBe('legendary');
       expect(resultA.rewards.coins).toBeGreaterThan(5000);
-      expect(resultA.rewards.gems).toBe(500);
+      expect(resultA.rewards.gems).toBe(600);
       expect(resultA.rewards.cosmetics).toBeDefined();
       expect(resultA.rewards.cosmetics.title).toContain('Champion');
 
       const resultB = await rpcCall(playerB, 'armored_archer/get_season_rewards', {});
-      expect(resultB.rewards.rank_tier).toBe('epic');
+      expect(resultB.rank).toBe(2);
+      expect(resultB.rewards.rank_tier).toBe('legendary');
 
       const resultC = await rpcCall(playerC, 'armored_archer/get_season_rewards', {});
-      expect(resultC.rewards.rank_tier).toBe('rare');
+      expect(resultC.rank).toBe(3);
+      expect(resultC.rewards.rank_tier).toBe('legendary');
     });
 
     test('should return null rewards when no leaderboard entry', async () => {
@@ -330,51 +333,29 @@ describe('Season System Integration Tests', () => {
 
     test('should calculate correct tier thresholds', async () => {
       const season = getCurrentSeasonInfo();
-
-      // Test rank 10 (legendary max)
-      const playerTop = await testHelper.createTestAccount('top_rank');
-      await seedSeasonRecord(season.season_id, playerTop.userId, playerTop.username, 2000, 0, {});
-      const resultTop = await rpcCall(playerTop, 'armored_archer/get_season_rewards', {});
-      expect(resultTop.rewards.rank_tier).toBe('legendary');
-
-      // Test rank 50 (epic max)
-      const playerEpic = await testHelper.createTestAccount('epic_rank');
-      await seedSeasonRecord(season.season_id, playerEpic.userId, playerEpic.username, 1800, 0, {});
-      const resultEpic = await rpcCall(playerEpic, 'armored_archer/get_season_rewards', {});
-      expect(resultEpic.rewards.rank_tier).toBe('epic');
-
-      // Test rank 100 (rare max)
-      const playerRare = await testHelper.createTestAccount('rare_rank');
-      await seedSeasonRecord(season.season_id, playerRare.userId, playerRare.username, 1600, 0, {});
-      const resultRare = await rpcCall(playerRare, 'armored_archer/get_season_rewards', {});
-      expect(resultRare.rewards.rank_tier).toBe('rare');
-
-      // Test rank 500 (uncommon max)
-      const playerUncommon = await testHelper.createTestAccount('uncommon_rank');
-      await seedSeasonRecord(
-        season.season_id,
-        playerUncommon.userId,
-        playerUncommon.username,
-        1300,
-        0,
-        {}
-      );
-      const resultUncommon = await rpcCall(playerUncommon, 'armored_archer/get_season_rewards', {});
-      expect(resultUncommon.rewards.rank_tier).toBe('uncommon');
-
-      // Test rank 1000 (common)
-      const playerCommon = await testHelper.createTestAccount('common_rank');
-      await seedSeasonRecord(
-        season.season_id,
-        playerCommon.userId,
-        playerCommon.username,
-        1100,
-        0,
-        {}
-      );
-      const resultCommon = await rpcCall(playerCommon, 'armored_archer/get_season_rewards', {});
-      expect(resultCommon.rewards.rank_tier).toBe('common');
-    });
+      const players: TestAccount[] = [];
+      // Actual ranked records are required; score values do not declare ranks.
+      for (let offset = 0; offset < 501; offset += 10) {
+        const batch = await Promise.all(Array.from(
+          { length: Math.min(10, 501 - offset) },
+          (_, index) => testHelper.createTestAccount(`reward_${offset + index}`)
+        ));
+        players.push(...batch);
+        rewardFixtureOwners.push(...batch.map(player => player.userId));
+        await Promise.all(batch.map((player, index) => seedSeasonRecord(
+          season.season_id, player.userId, player.username, 100000 - offset - index, 0, {}
+        )));
+      }
+      for (const [rank, tier] of [
+        [10, 'legendary'], [11, 'epic'], [50, 'epic'], [51, 'rare'],
+        [100, 'rare'], [101, 'uncommon'], [500, 'uncommon'], [501, 'common'],
+      ] as const) {
+        const result = await rpcCall(players[rank - 1], 'armored_archer/get_season_rewards', {});
+        expect(result.success).toBe(true);
+        expect(result.rank).toBe(rank);
+        expect(result.rewards.rank_tier).toBe(tier);
+      }
+    }, 120000);
   });
 
   describe('rpcClaimSeasonRewards', () => {
