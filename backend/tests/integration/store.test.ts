@@ -362,19 +362,21 @@ describe('Store System Integration Tests', () => {
       await setCurrency(player, 0, 0);
 
       // Buy small bundle
-      await rpcCall(player, 'armored_archer/validate_purchase', {
+      const firstPurchase = await rpcCall(player, 'armored_archer/validate_purchase', {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'r1',
+        transaction_receipt: 'receipt_accumulate_1',
       });
 
+      expect(firstPurchase).toEqual(expect.objectContaining({ success: true }));
       // Buy another small bundle
-      await rpcCall(player, 'armored_archer/validate_purchase', {
+      const secondPurchase = await rpcCall(player, 'armored_archer/validate_purchase', {
         product_id: 'com.armoredarcher.gems.small',
         platform: 'ios',
-        transaction_receipt: 'r2',
+        transaction_receipt: 'receipt_accumulate_2',
       });
 
+      expect(secondPurchase).toEqual(expect.objectContaining({ success: true }));
       // Should have 200 gems now
       let currency = await getCurrency(player);
       expect(currency.gems).toBe(200);
