@@ -238,16 +238,16 @@ describe('RPG System Integration Tests', () => {
       expect(allocateResult.success).toBe(true);
       expect(allocateResult.player_stats.stats.attack).toBe(13); // base 10 + 3
 
-      // Create a new client for same user to verify persistence
-      const newAccount = await testHelper.createTestAccount('rpg_player_2');
-      // We can't use same userId easily with createTestAccount, but we can directly read storage
+      // Read the owner's persisted record through the storage API, separate from
+      // the allocate response and cached stats RPC.
       const storageObj = await testHelper.getStorageObject(
         'player_stats',
         player.userId,
         player.userId
       );
       expect(storageObj).not.toBeNull();
-      const storedStats = JSON.parse(storageObj!.value);
+      const storedStats = typeof storageObj!.value === 'string'
+        ? JSON.parse(storageObj!.value) : storageObj!.value;
       expect(storedStats.stats.attack).toBe(13);
     });
   });

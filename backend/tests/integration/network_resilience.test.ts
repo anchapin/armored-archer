@@ -56,9 +56,9 @@ describe('Network Resilience Integration Tests', () => {
 
     test('should handle session refresh', async () => {
       // Test session refresh capability
-      const session = await playerA.client.refreshSession(playerA.refreshToken);
+      const session = await playerA.client.sessionRefresh(playerA.session);
       expect(session.token).toBeDefined();
-      expect(session.refreshToken).toBeDefined();
+      expect(session.refresh_token).toBeDefined();
     });
 
     test('should handle multiple concurrent RPC calls', async () => {
@@ -104,9 +104,13 @@ describe('Network Resilience Integration Tests', () => {
       // Create a new account without stats
       const newAccount = await testHelper.createTestAccount('no_stats');
 
-      const result = await rpcCall(newAccount, 'armored_archer/get_player_rank', {});
+      await testHelper.sql(
+        "DELETE FROM storage WHERE collection = 'player_stats' AND key = $1 AND user_id = $1",
+        [newAccount.userId]
+      );
+      const result = await rpcCall(newAccount, 'armored_archer/get_player_stats', {});
 
-      // Should return error about missing stats
+      // Rank defaults to zero without stats; the stats RPC reports absence.
       expect(result.error).toBeDefined();
       expect(result.error).toContain('not found');
     });

@@ -294,7 +294,8 @@ describe('Store System Integration Tests', () => {
         player.userId
       );
       expect(storageObj).not.toBeNull();
-      const storedCurrency = JSON.parse(storageObj!.value);
+      const storedCurrency = typeof storageObj!.value === 'string'
+        ? JSON.parse(storageObj!.value) : storageObj!.value;
       expect(storedCurrency.gems).toBe(350);
     });
 
