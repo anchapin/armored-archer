@@ -473,19 +473,15 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should unequip accessory correctly', async () => {
-      let accessoryGear: any = null;
-      let attempts = 0;
-      while (!accessoryGear && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_acc_uneq',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'amulet') {
-          accessoryGear = result.gear;
-        }
-        attempts++;
-      }
-      expect(accessoryGear).not.toBeNull();
+      // Seed the prerequisite type deterministically; this tests unequip,
+      // not whether twenty independent random rolls happen to yield an amulet.
+      const [row] = await testHelper.sql(
+        `INSERT INTO inventory_items (user_id, gear_type, name, rarity, level, stats, modifiers)
+         VALUES ($1, 'amulet', 'Fixture Amulet', 'common', 1, $2::jsonb, '[]'::jsonb)
+         RETURNING item_id`,
+        [player.userId, JSON.stringify([{ name: 'dodge', base_value: 5, value: 5 }])]
+      );
+      const accessoryGear = { id: row.item_id };
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: accessoryGear.id,

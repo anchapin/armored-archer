@@ -456,9 +456,12 @@ describe('Season System Integration Tests', () => {
       const oldRecords = await listSeasonRecords(oldSeason.season_id);
       expect(oldRecords.length).toBeGreaterThan(0);
 
-      // Check that new season leaderboard exists but is empty
+      // End-season deliberately seeds participants with soft-reset ratings.
       const newRecords = await listSeasonRecords(newSeason.season_id);
-      expect(newRecords.length).toBe(0);
+      const seeded = newRecords.find(record => record.ownerId === playerA.userId);
+      expect(seeded).toBeDefined();
+      expect(Number(seeded.metadata.previous_season_rank)).toBeGreaterThan(0);
+      expect(Number(seeded.metadata.wins)).toBe(0);
     });
 
     test('should increment season number (admin)', async () => {
