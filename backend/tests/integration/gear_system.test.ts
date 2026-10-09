@@ -2,6 +2,7 @@ import { testHelper, TestAccount } from './helpers';
 
 describe('Gear System Integration Tests', () => {
   let player: TestAccount;
+  const claimedStages = new Set<string>();
 
   beforeAll(async () => {
     await testHelper.initialize();
@@ -17,6 +18,12 @@ describe('Gear System Integration Tests', () => {
       await testHelper.sql(`DELETE FROM ${table} WHERE user_id = $1`, [player.userId]);
     }
     await testHelper.deleteStorageObject('player_inventory', player.userId, player.userId);
+    for (const stageId of claimedStages) {
+      await testHelper.deleteStorageObject(
+        'stage_completion_claims', player.userId, `${player.userId}:${stageId}`
+      );
+    }
+    claimedStages.clear();
   });
 
   afterAll(async () => {
@@ -26,6 +33,7 @@ describe('Gear System Integration Tests', () => {
 
   // Helper to call RPC and parse JSON
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
+    if (rpcId === 'armored_archer/stage_complete') claimedStages.add(payload.stage_id);
     const response = await account.client.rpc(account.session, rpcId, payload);
     return response.payload;
   }
@@ -187,7 +195,7 @@ describe('Gear System Integration Tests', () => {
       expect(result.success).toBe(true);
       expect(result.inventory.gear.length).toBe(1);
       expect(result.inventory.equipped_gear).toEqual({});
-      expect(result.inventory.unlocked_modifier_pools).toEqual([]);
+      expect((await getInventory(freshPlayer)).unlocked_modifier_pools).toEqual([]);
     });
   });
 
@@ -430,7 +438,7 @@ describe('Gear System Integration Tests', () => {
         slot: 'bow',
       });
       expect(result.success).toBe(true);
-      expect(result.equipped_gear.bow).toBeUndefined();
+      expect(result.equipped_gear.bow == null).toBe(true);
 
       // Verify unequipped
       inventory = await getInventory(player);
@@ -618,7 +626,9 @@ describe('Gear System Integration Tests', () => {
       expect(result1.boss_defeat_count).toBe(1);
 
       // Second defeat
-      const result2 = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      const result2 = await rpcCall(player, 'armored_archer/stage_complete', {
+        ...payload, stage_id: 'stage_wind_boss_second',
+      });
       expect(result2.boss_defeat_count).toBe(2);
 
       // Verify via get_unlocked_modifiers
@@ -647,9 +657,11 @@ describe('Gear System Integration Tests', () => {
         boss_id: 'boss_wind',
       };
 
-      // Defeat the same boss twice
+      // Separate stage completions can defeat the same boss; replaying one is rejected.
       await rpcCall(player, 'armored_archer/stage_complete', payload);
-      await rpcCall(player, 'armored_archer/stage_complete', payload);
+      await rpcCall(player, 'armored_archer/stage_complete', {
+        ...payload, stage_id: 'stage_wind_boss_second',
+      });
 
       // Get modifiers - should only have piercing_arrow once
       const result = await rpcCall(player, 'armored_archer/get_unlocked_modifiers', {});
