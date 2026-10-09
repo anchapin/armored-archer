@@ -492,7 +492,8 @@ describe('Season System Integration Tests', () => {
 
 // Helper to get player currency
 async function getPlayerCurrency(account: TestAccount): Promise<any> {
-  const result = await rpcCall(account, 'armored_archer/get_currency', {});
+  const response = await account.client.rpc(account.session, 'armored_archer/get_currency', {});
+  const result = response.payload as any;
   if (result.error) {
     throw new Error(result.error);
   }
