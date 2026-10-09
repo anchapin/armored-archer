@@ -105,7 +105,7 @@ describe('Network Resilience Integration Tests', () => {
       const newAccount = await testHelper.createTestAccount('no_stats');
 
       await testHelper.sql(
-        "DELETE FROM storage WHERE collection = 'player_stats' AND key = $1 AND user_id = $1",
+        "DELETE FROM storage WHERE collection = 'player_stats' AND key = $1::text AND user_id = $1::uuid",
         [newAccount.userId]
       );
       const result = await rpcCall(newAccount, 'armored_archer/get_player_stats', {});

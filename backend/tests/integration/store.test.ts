@@ -92,7 +92,7 @@ describe('Store System Integration Tests', () => {
 
       const result = await rpcCall(player, 'armored_archer/validate_purchase', payload);
 
-      expect(result.success).toBe(true);
+      expect(result).toEqual(expect.objectContaining({ success: true }));
       expect(result.gems_awarded).toBe(100);
       expect(result.new_balance).toBe(100);
       expect(result.product_id).toBe('com.armoredarcher.gems.small');
