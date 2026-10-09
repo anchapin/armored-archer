@@ -592,7 +592,7 @@ jobs:
       # dev stack (backend/docker-compose.yml) binds permanently; reusing it
       # made parallel act runs fail with "port already allocated" (#858).
       postgres:
-        image: postgres:15-alpine
+        image: public.ecr.aws/docker/library/postgres:15-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
