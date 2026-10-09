@@ -982,6 +982,28 @@ jobs:
             PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
           done
 
+      # The allowlist is embedded at build time. Bootstrap a real CI account,
+      # rebuild this disposable bundle, then restart before privileged tests.
+      # Production guard code is unchanged and remains fail-closed.
+      - name: Bootstrap CI admin identity and reload allowlisted bundle
+        env:
+          CI: 'true'
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: |
+          cd backend
+          node scripts/ci-admin-identity.js
+          npm run build:full
+          cd ..
+          docker compose -f .github/docker-compose.yml restart nakama
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:7350/healthcheck >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ci_nakama --tail 50
+          exit 1
+
       # Jest's own exit code is deliberately NOT the job gate (issue #1144):
       # continue-on-error lets the jest-junit reporter finish writing
       # backend/test-results/junit.xml so every downstream signal step has
