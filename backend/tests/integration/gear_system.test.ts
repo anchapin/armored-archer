@@ -2,7 +2,6 @@ import { testHelper, TestAccount } from './helpers';
 
 describe('Gear System Integration Tests', () => {
   let player: TestAccount;
-  const claimedStages = new Set<string>();
 
   beforeAll(async () => {
     await testHelper.initialize();
@@ -11,19 +10,12 @@ describe('Gear System Integration Tests', () => {
     player = await testHelper.createTestAccount('gear_player');
   }, 120000);
 
-  afterEach(async () => {
-    // Inventory, loadout, boss defeats and modifier pools live in SQL tables
-    // (gear_db.ts), not storage, so clear them directly between tests.
-    for (const table of ['loadout', 'inventory_items', 'boss_defeats', 'unlocked_modifier_pools']) {
-      await testHelper.sql(`DELETE FROM ${table} WHERE user_id = $1`, [player.userId]);
-    }
-    await testHelper.deleteStorageObject('player_inventory', player.userId, player.userId);
-    for (const stageId of claimedStages) {
-      await testHelper.deleteStorageObject(
-        'stage_completion_claims', `${player.userId}:${stageId}`, player.userId
-      );
-    }
-    claimedStages.clear();
+  beforeEach(async () => {
+    // A fresh owner isolates SQL inventory and durable completion claims.
+    // Client-side deletes cannot remove server-only claim objects.
+    player = await testHelper.createTestAccount(
+      `gear_player_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    );
   });
 
   afterAll(async () => {
@@ -33,7 +25,6 @@ describe('Gear System Integration Tests', () => {
 
   // Helper to call RPC and parse JSON
   async function rpcCall(account: TestAccount, rpcId: string, payload: any): Promise<any> {
-    if (rpcId === 'armored_archer/stage_complete') claimedStages.add(payload.stage_id);
     const response = await account.client.rpc(account.session, rpcId, payload);
     return response.payload;
   }
@@ -623,7 +614,7 @@ describe('Gear System Integration Tests', () => {
 
       // First defeat
       const result1 = await rpcCall(player, 'armored_archer/stage_complete', payload);
-      expect(result1.boss_defeat_count).toBe(1);
+      expect(result1).toMatchObject({ success: true, boss_defeat_count: 1 });
 
       // Second defeat
       const result2 = await rpcCall(player, 'armored_archer/stage_complete', {
