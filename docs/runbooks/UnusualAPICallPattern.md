@@ -45,7 +45,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Counter Source
 
 ```bash
-# The canonical RPC counter is defined in metrics.ts:27 (armored_archer_rpc_calls_total)
+# The canonical RPC counter is defined in metrics.ts#rpcCallsTotal (armored_archer_rpc_calls_total)
 grep -n "armored_archer_rpc_calls_total\|recordRpcLatency" backend/src/modules/metrics.ts backend/src/modules/rpc_latency_tracker.ts | head -20
 
 # Coverage — confirm all RPCs flow through the tracker

@@ -182,11 +182,12 @@ gh issue create --repo anchapin/armored-archer \
   --label "priority:high,revenue,payments" \
   --body "Triggered by PaymentProcessingFailures. Status page: <link>"
 
-# 3. Disable the strict fail-closed fallback if it is harming UX
-# backend/src/modules/store.ts:1148 — validatePurchaseWithRevenueCat is wrapped in withCircuitBreaker
-# (its fail-closed fallback sits at store.ts:2480); temporarily
-# return success on an open circuit *only* for one-off IAPs you have manually validated.
-# (Default is to fail closed. Flip only after product sign-off.)
+# 3. Keep validation fail-closed during the outage.
+# backend/src/modules/store.ts#validateWithRevenueCat rejects unconfigured keys
+# and failed validation responses. store.ts#validatePurchaseWithRevenueCat
+# propagates that failure; store.ts#rpcValidatePurchase queues the receipt
+# through store.ts#addToPendingQueue rather than granting unverified gems.
+# Do not bypass receipt validation. Reconcile queued purchases after recovery.
 ```
 
 ### Scenario 2: Webhook Secret Mismatch
@@ -233,8 +234,8 @@ docker exec postgres psql -U postgres -c \
 
 ```bash
 # Duplicate webhook deliveries are expected; check that recordWebhookOutcome is being
-# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts:4123; the duplicate
-# read-back via getRecordedWebhookOutcome sits at backend/src/modules/store.ts:3492).
+# called from rpcRevenueCatWebhook (see backend/src/modules/store.ts#rpcRevenueCatWebhook; the duplicate
+# read-back via getRecordedWebhookOutcome sits at backend/src/modules/store.ts#getRecordedWebhookOutcome).
 # PromQL first (issue #1140): the duplicate outcome rate on the ledger counter
 curl -s 'http://prometheus:9090/api/v1/query' \
   -G --data-urlencode 'query=sum by (event_type) (rate(armored_archer_webhook_events_total{outcome="duplicate"}[1h]))' \
