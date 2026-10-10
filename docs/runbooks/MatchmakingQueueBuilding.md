@@ -47,8 +47,8 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Matchmaker Source
 
 ```bash
-# Queue instrumentation lives in health_monitor.ts:71 (armored_archer_health_match_queue_size)
-# and metrics.ts:118 (armored_archer_match_queue_size)
+# Queue instrumentation lives in health_monitor.ts#healthCheckMatchQueue (armored_archer_health_match_queue_size)
+# and metrics.ts#matchQueueSize (armored_archer_match_queue_size)
 grep -n "healthCheckMatchQueue\|matchQueueSize\|setMatchQueueSize" backend/src/modules/health_monitor.ts backend/src/modules/metrics.ts | head -10
 
 # Matchmaker module — look for rank, punch-up matching, and any recent tweaks

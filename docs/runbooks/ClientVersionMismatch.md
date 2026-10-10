@@ -40,7 +40,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 ### 2. Inspect the Signal Source
 
 ```bash
-# Active users counter is updated via updateActiveUsersCount in metrics.ts:649
+# Active users counter is updated via updateActiveUsersCount in metrics.ts#updateActiveUsersCount
 # The client_version label is attached by the client telemetry layer
 grep -n "updateActiveUsersCount\|active_users" backend/src/modules/metrics.ts | head -10
 

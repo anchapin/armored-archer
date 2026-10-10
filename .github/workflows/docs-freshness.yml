@@ -185,4 +185,6 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Audit runbook citations against current backend source
-        run: bash scripts/audit-runbook-citations.sh
+        run: |
+          bash scripts/test-runbook-citations.sh
+          bash scripts/audit-runbook-citations.sh

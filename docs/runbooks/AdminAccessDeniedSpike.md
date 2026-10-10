@@ -20,18 +20,18 @@
 **Duration**: 1 minute
 **Impact**: `ADMIN_USER_IDS` is unset or blank, so every admin RPC rejects every caller (fail-closed per ADR-0006). No operator can use admin tooling until the env var is fixed and the server restarts.
 
-Both alerts live in the security group of the alert rules (alerts.yml:240 and alerts.yml:253) and route to the `security-alerts` receiver (Slack `#armored-archer-security` + security-team email).
+Both alerts live in the security group of the alert rules (alerts.yml) and route to the `security-alerts` receiver (Slack `#armored-archer-security` + security-team email).
 
 ---
 
 ## 🔗 Signal Chain (where the numbers come from)
 
-1. The gate wrapper (`withAdminGuard`) rejects the call and computes the rejection reason: admin_auth.ts:297
-2. The reason label distinguishes a merely-non-allowlisted caller from one with no user id at all (`AdminAccessDeniedReason`): admin_auth.ts:309
-3. The rejection counter is incremented through the injected metric sink: admin_auth.ts:323
-4. The counter and gauge are declared on the shared Prometheus registry: metrics.ts:360 and metrics.ts:369
-5. The sinks are wired from the metrics module at load time (dependency injection, no import cycle): metrics.ts:383
-6. The allowlist is force-resolved once at server startup so the gauge exists from boot: index.ts:246
+1. The gate wrapper (`withAdminGuard`) rejects the call and computes the rejection reason: admin_auth.ts#withAdminGuard
+2. The reason label distinguishes a merely-non-allowlisted caller from one with no user id at all (`AdminAccessDeniedReason`): admin_auth.ts#AdminAccessDeniedReason
+3. The rejection counter is incremented through the injected metric sink: admin_auth.ts#emitAccessDeniedMetric
+4. The counter and gauge are declared on the shared Prometheus registry: metrics.ts#adminRpcAccessDeniedTotal and metrics.ts#adminAllowlistSize
+5. The sinks are wired from the metrics module at load time (dependency injection, no import cycle): metrics.ts#registerRpcMetrics
+6. The allowlist is force-resolved once at server startup so the gauge exists from boot: index.ts#getAdminUserIds
 
 The reason vocabulary is shared verbatim between the counter label, the winston log fields, and the audit entry details, so all three sinks stay joinable during forensics.
 
@@ -161,7 +161,7 @@ The allowlist is parsed once and frozen; editing the env var mid-flight does not
 
 ```bash
 # Did a recent deploy touch the guard or the env plumbing?
-git log --oneline --since="2 hours ago" -- backend/src/modules/admin_auth.ts backend/src/metrics.ts
+git log --oneline --since="2 hours ago" -- backend/src/modules/admin_auth.ts backend/src/modules/metrics.ts
 
 # Overall RPC error rate at the same moment (rules out a general incident)
 curl -s 'http://prometheus:9090/api/v1/query' \
