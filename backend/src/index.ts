@@ -10,6 +10,7 @@ import { initializeTracing } from './config/tracing';
 import { getAdminUserIds } from './modules/admin_auth';
 import { initializeAlerting } from './modules/alerting';
 import { registerAnalyticsEndpoints } from './modules/analytics';
+import { initAntiCheatCleanup } from './modules/anti_cheat';
 import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import { registerRpcRunBalanceSession } from './modules/balance_session';
@@ -675,6 +676,10 @@ const InitModule: InitModule = function (
   logSystemEvent('info', 'Armored Archer server module initialized');
 
   logSystemEvent('info', 'Armored Archer server module initialized');
+
+  // Start the anti-cheat cleanup job (issue #1422).  The interval is .unref()-
+  // ed inside initAntiCheatCleanup() so it cannot hold the process open.
+  initAntiCheatCleanup();
 };
 
 function rpcHealthCheckWrapper(

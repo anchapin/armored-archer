@@ -689,16 +689,41 @@ export function getLeaderboardAntiCheatStats(): {
   };
 }
 
-// Cleanup job to prevent memory leaks (only in production, not during tests)
-const _antiCheatCleanupInterval =
-  process.env.NODE_ENV !== 'test'
-    ? setInterval(cleanupExpiredRequests, 60000) // Every minute
-    : (null as unknown as NodeJS.Timeout);
+// Module-level handle for the cleanup interval (lazily initialized).
+// NOT created at import-time to avoid orphaning handles when tests
+// re-require the module (issue #1422).
+let _antiCheatCleanupInterval: NodeJS.Timeout | null = null;
 
-/** Clear the anti-cheat cleanup interval (for test teardown). */
+/**
+ * Start the anti-cheat cleanup job. Safe to call multiple times — only the
+ * first call creates the interval; subsequent calls are no-ops.
+ *
+ * Call this from `backend/src/index.ts` at server startup.  The interval is
+ * `.unref()`-ed so it will not prevent the process from exiting on its own.
+ *
+ * @returns The interval handle (for symmetry; callers that want to stop the
+ *          job should use `stopAntiCheatCleanup()` instead).
+ */
+export function initAntiCheatCleanup(): NodeJS.Timeout {
+  if (_antiCheatCleanupInterval !== null) {
+    return _antiCheatCleanupInterval; // Already started.
+  }
+
+  _antiCheatCleanupInterval = setInterval(cleanupExpiredRequests, 60000); // Every minute
+  // SAFETY NET (criterion 3): .unref() ensures the interval cannot hold the
+  // process open on its own.  Even if stopAntiCheatCleanup() is never called
+  // the process will still exit cleanly.
+  _antiCheatCleanupInterval.unref();
+
+  return _antiCheatCleanupInterval;
+}
+
+/** Stop the anti-cheat cleanup interval. Idempotent — safe to call even if
+ *  the interval was never started. */
 export function stopAntiCheatCleanup(): void {
-  if (_antiCheatCleanupInterval) {
+  if (_antiCheatCleanupInterval !== null) {
     clearInterval(_antiCheatCleanupInterval);
+    _antiCheatCleanupInterval = null;
   }
 }
 

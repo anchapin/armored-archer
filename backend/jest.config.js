@@ -225,6 +225,9 @@ module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       tsconfig: {
+        // Keep LCOV locations on TypeScript source lines, not emitted JS.
+        sourceMap: true,
+        inlineSources: true,
         module: 'commonjs',
         target: 'ES2020',
         esModuleInterop: true,
