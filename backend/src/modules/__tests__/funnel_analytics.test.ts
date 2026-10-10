@@ -100,6 +100,28 @@ describe('Funnel Analytics Module', () => {
   });
 
   describe('processFunnelEvent', () => {
+    it('preserves first-completion timestamps across distinct steps and repeats (#1419)', () => {
+      const clock = jest.spyOn(Date, 'now');
+      try {
+        clock.mockReturnValue(1000);
+        processFunnelEvent(mockNk, mockLogger, 'user_123', 'first_session');
+        clock.mockReturnValue(2000);
+        processFunnelEvent(mockNk, mockLogger, 'user_123', 'pve_stage_completed');
+        clock.mockReturnValue(3000);
+        processFunnelEvent(mockNk, mockLogger, 'user_123', 'pvp_match_completed');
+        clock.mockReturnValue(4000);
+        processFunnelEvent(mockNk, mockLogger, 'user_123', 'pve_stage_completed');
+        const records = mockNk.storageRead([{ key: 'player_funnel_state', userId: 'user_123' }]);
+        const state = JSON.parse(records[0].value);
+        expect(state.install_timestamp).toBe(1000);
+        expect(state.first_pve_timestamp).toBe(2000);
+        expect(state.first_pvp_timestamp).toBe(3000);
+        expect(state.first_purchase_timestamp).toBeNull();
+      } finally {
+        clock.mockRestore();
+      }
+    });
+
     it('should ignore events not in the funnel mapping', () => {
       processFunnelEvent(mockNk, mockLogger, 'user_123', 'some_random_event');
       expect(mockNk.storageRead).not.toHaveBeenCalled();
