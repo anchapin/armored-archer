@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runbook Citation Freshness Audit (issue #1148, #1425)
 #
-# Walks docs/runbooks/*.md and verifies every code citation against the
+# Walks docs/runbooks/*.md and docs/adr/*.md and verifies every code citation against the
 # current backend source:
 #   1. <file>.ts[#symbol] / <file>.yml[#symbol] citations — when a symbol is
 #      given (file#symbol or file:line#symbol) the audit checks that the
@@ -39,8 +39,9 @@ cd "$REPO_ROOT"
 
 python3 - <<'PYEOF'
 import glob, os, re, sys
+from urllib.parse import unquote, urlsplit
 
-runbooks = sorted(glob.glob("docs/runbooks/*.md"))
+runbooks = sorted(glob.glob("docs/runbooks/*.md") + glob.glob("docs/adr/*.md"))
 fails, passes, legacy = [], 0, 0
 
 def read(p):
@@ -49,7 +50,7 @@ def read(p):
 
 def resolve_src(name):
     cands = [name] if name.startswith("backend/") else (
-        [f"backend/{name}"] if name.endswith(".yml") else
+        [f"backend/{name}", name] if name.endswith(".yml") else
         [f"backend/src/modules/{name}", f"backend/src/{name}", name]
     )
     for c in cands:
@@ -89,6 +90,22 @@ def check(label, ok, detail, is_legacy=False):
     if is_legacy and ok:
         legacy += 1
 
+# ADR index is a bijection with the numbered ADR files.
+adr_files = set(glob.glob("docs/adr/[0-9][0-9][0-9][0-9]-*.md"))
+index = "docs/adr/README.md"
+if adr_files or os.path.isfile(index):
+    index_text = "\n".join(read(index)) if os.path.isfile(index) else ""
+    rows = re.findall(r"\|\s*\[(\d{4})\]\(([^)]+)\)", index_text)
+    indexed = []
+    for number, target in rows:
+        path = os.path.normpath(os.path.join("docs/adr", target))
+        indexed.append(path)
+        check(f"ADR index {number}", path in adr_files and os.path.basename(path).startswith(number + "-"),
+              f"index row points at missing or mismatched ADR: {target}")
+    for path in sorted(adr_files):
+        check(f"ADR index coverage {path}", indexed.count(path) == 1,
+              f"expected exactly one index row, found {indexed.count(path)}")
+
 for rb in runbooks:
     lines = read(rb)
     joined, buf = [], ""
@@ -101,6 +118,18 @@ for rb in runbooks:
             buf = ""
     if buf:
         joined.append(buf)
+
+    # Relative Markdown links must stay inside the checkout and exist.
+    for i, ln in enumerate(lines, 1):
+        for target in re.findall(r"!?\[[^]\n]*\]\(([^)\s]+)(?:\s+[^)]*)?\)", ln):
+            target = target.strip("<>")
+            parsed = urlsplit(target)
+            if parsed.scheme or parsed.netloc or not parsed.path:
+                continue
+            path = os.path.normpath(os.path.join(os.path.dirname(rb), unquote(parsed.path)))
+            inside = os.path.commonpath([os.path.abspath(path), os.getcwd()]) == os.getcwd()
+            check(f"{rb}:{i} relative link {target}", inside and os.path.exists(path),
+                  "relative link target missing or outside repository")
 
     # --- A. Citation patterns ---
     # Symbol-anchored citations (primary format, #1425):
@@ -222,7 +251,7 @@ if fails:
         print(f"  {prefix} {label}: {detail}")
 else:
     print("BROKEN CITATIONS: 0")
-print(f"PASS: {passes} checks across {len(runbooks)} runbooks")
+print(f"PASS: {passes} checks across {len(runbooks)} runbook/ADR documents")
 if legacy > 0:
     print(f"LEGACY: {legacy} passes on uncaptured line-number citations (migrate to symbol anchoring)")
 sys.exit(1 if fails else 0)

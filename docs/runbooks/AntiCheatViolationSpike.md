@@ -216,7 +216,6 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 - [Anti-cheat module](../../backend/src/modules/anti_cheat.ts)
 - [Anti-cheat audit module](../../backend/src/modules/anti_cheat_audit.ts)
 - [Fairness Telemetry](../../backend/src/modules/fairness_telemetry.ts)
-- [QA Dispute Resolution Guide](../QA_DISPUTE_RESOLUTION_GUIDE.md)
 - Grafana → *Security / Anti-cheat* dashboard: `http://grafana:3000/d/armored-archer-security`
 
 ---

@@ -176,7 +176,7 @@ curl -s http://alertmanager:9093/api/v2/alerts | \
 - [Metrics module](../../backend/src/modules/metrics.ts)
 - [App Submission Checklist](../APP_SUBMISSION_CHECKLIST.md)
 - [Deployment](../DEPLOYMENT.md)
-- [iOS App Store Guide](../APP_STORE_IOS)
+- [iOS App Store Guide](../APP_STORE_IOS.md)
 - [Android App Store Guide](../APP_STORE_ANDROID.md)
 - [SuspiciousLoginActivity runbook](./SuspiciousLoginActivity.md)
 
