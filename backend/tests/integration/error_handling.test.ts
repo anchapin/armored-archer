@@ -219,29 +219,22 @@ describe('Error Handling Tests', () => {
       });
 
       test('should return error for gear type mismatch', async () => {
-        // Generate armor
-        let armorGear: any = null;
-        for (let i = 0; i < 20; i++) {
-          const result = await rpcCall(player, 'armored_archer/generate_gear', {
-            stage_id: `stage_armor_${i}`,
-            boss_defeated: false,
-          });
-          if (result.success && result.gear.type === 'armor') {
-            armorGear = result.gear;
-            break;
-          }
-        }
+        const generated = await rpcCall(player, 'armored_archer/generate_gear', {
+          stage_id: 'stage_type_mismatch',
+          boss_defeated: false,
+        });
+        expect(generated.success).toBe(true);
+        expect(generated.gear).toBeDefined();
 
-        expect(armorGear).not.toBeNull();
-        if (armorGear) {
-          // Try to equip armor in the bow slot
-          const result = await rpcCall(player, 'armored_archer/equip_gear', {
-            gear_id: armorGear.id,
-            slot: 'bow',
-          });
+        // Any generated item works: choose a valid slot with a different type
+        // instead of depending on randomly drawing armor within 20 attempts.
+        const wrongSlot = generated.gear.type === 'bow' ? 'armor' : 'bow';
+        const result = await rpcCall(player, 'armored_archer/equip_gear', {
+          gear_id: generated.gear.id,
+          slot: wrongSlot,
+        });
 
-          expect(result.error).toBe('Gear type does not match slot');
-        }
+        expect(result.error).toBe('Gear type does not match slot');
       });
     });
 
