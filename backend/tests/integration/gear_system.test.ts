@@ -38,6 +38,24 @@ describe('Gear System Integration Tests', () => {
     return result;
   }
 
+  // Slot operations require a known type, not a lucky random drop. Keep
+  // randomness in rpcGenerateGear tests and use the real SQL inventory here.
+  async function seedSlotGear(type: 'bow' | 'armor' | 'amulet'): Promise<{ id: string }> {
+    const stats = {
+      bow: [{ name: 'damage', base_value: 10, value: 10 }],
+      armor: [{ name: 'defense', base_value: 10, value: 10 }],
+      amulet: [{ name: 'dodge', base_value: 5, value: 5 }],
+    };
+    const [row] = await testHelper.sql(
+      `INSERT INTO inventory_items (user_id, gear_type, name, rarity, level, stats, modifiers)
+       VALUES ($1, $2::gear_type, $3, 'common', 1, $4::jsonb, '[]'::jsonb)
+       RETURNING item_id`,
+      [player.userId, type, `Fixture ${type}`, JSON.stringify(stats[type])]
+    );
+    expect(row).toHaveProperty('item_id');
+    return { id: row.item_id };
+  }
+
   describe('rpcGenerateGear', () => {
     test('should generate gear with valid stage_id', async () => {
       const payload = { stage_id: 'stage_1', boss_defeated: false };
@@ -257,21 +275,8 @@ describe('Gear System Integration Tests', () => {
 
   describe('rpcEquipGear', () => {
     test('should equip gear to correct slot', async () => {
-      // Generate weapon gear
-      // We need to ensure we get a weapon; may need multiple attempts
-      let weaponGear: any = null;
-      let attempts = 0;
-      while (!weaponGear && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_weapon',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'bow') {
-          weaponGear = result.gear;
-        }
-        attempts++;
-      }
-      expect(weaponGear).not.toBeNull();
+      // Seed a weapon to isolate equip behavior
+      const weaponGear = await seedSlotGear('bow');
 
       const payload = { gear_id: weaponGear.id, slot: 'bow' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
@@ -281,19 +286,7 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should equip armor to correct slot', async () => {
-      let armorGear: any = null;
-      let attempts = 0;
-      while (!armorGear && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_armor',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'armor') {
-          armorGear = result.gear;
-        }
-        attempts++;
-      }
-      expect(armorGear).not.toBeNull();
+      const armorGear = await seedSlotGear('armor');
 
       const payload = { gear_id: armorGear.id, slot: 'armor' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
@@ -303,19 +296,7 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should equip accessory to correct slot', async () => {
-      let accessoryGear: any = null;
-      let attempts = 0;
-      while (!accessoryGear && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_accessory',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'amulet') {
-          accessoryGear = result.gear;
-        }
-        attempts++;
-      }
-      expect(accessoryGear).not.toBeNull();
+      const accessoryGear = await seedSlotGear('amulet');
 
       const payload = { gear_id: accessoryGear.id, slot: 'amulet' };
       const result = await rpcCall(player, 'armored_archer/equip_gear', payload);
@@ -348,34 +329,10 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should replace previously equipped gear in same slot', async () => {
-      // Generate two weapons
-      let weapon1: any = null;
-      let attempts = 0;
-      while (!weapon1 && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_w1',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'bow') {
-          weapon1 = result.gear;
-        }
-        attempts++;
-      }
-      expect(weapon1).not.toBeNull();
+      // Seed two distinct weapons
+      const weapon1 = await seedSlotGear('bow');
 
-      let weapon2: any = null;
-      attempts = 0;
-      while (!weapon2 && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_w2',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'bow' && result.gear.id !== weapon1.id) {
-          weapon2 = result.gear;
-        }
-        attempts++;
-      }
-      expect(weapon2).not.toBeNull();
+      const weapon2 = await seedSlotGear('bow');
       expect(weapon2.id !== weapon1.id).toBe(true);
 
       // Equip first weapon
@@ -400,20 +357,8 @@ describe('Gear System Integration Tests', () => {
 
   describe('rpcUnequipGear', () => {
     test('should unequip gear from slot', async () => {
-      // Generate and equip weapon
-      let weaponGear: any = null;
-      let attempts = 0;
-      while (!weaponGear && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_eq_uneq',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'bow') {
-          weaponGear = result.gear;
-        }
-        attempts++;
-      }
-      expect(weaponGear).not.toBeNull();
+      // Seed and equip weapon
+      const weaponGear = await seedSlotGear('bow');
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: weaponGear.id,
@@ -444,19 +389,7 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should unequip armor correctly', async () => {
-      let armorGear: any = null;
-      let attempts = 0;
-      while (!armorGear && attempts < 20) {
-        const result = await rpcCall(player, 'armored_archer/generate_gear', {
-          stage_id: 'stage_armor_uneq',
-          boss_defeated: false,
-        });
-        if (result.success && result.gear.type === 'armor') {
-          armorGear = result.gear;
-        }
-        attempts++;
-      }
-      expect(armorGear).not.toBeNull();
+      const armorGear = await seedSlotGear('armor');
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: armorGear.id,
@@ -473,15 +406,7 @@ describe('Gear System Integration Tests', () => {
     });
 
     test('should unequip accessory correctly', async () => {
-      // Seed the prerequisite type deterministically; this tests unequip,
-      // not whether twenty independent random rolls happen to yield an amulet.
-      const [row] = await testHelper.sql(
-        `INSERT INTO inventory_items (user_id, gear_type, name, rarity, level, stats, modifiers)
-         VALUES ($1, 'amulet', 'Fixture Amulet', 'common', 1, $2::jsonb, '[]'::jsonb)
-         RETURNING item_id`,
-        [player.userId, JSON.stringify([{ name: 'dodge', base_value: 5, value: 5 }])]
-      );
-      const accessoryGear = { id: row.item_id };
+      const accessoryGear = await seedSlotGear('amulet');
 
       await rpcCall(player, 'armored_archer/equip_gear', {
         gear_id: accessoryGear.id,
