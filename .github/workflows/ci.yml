@@ -588,6 +588,15 @@ jobs:
             -Dsonar.sq.newCode.overallCoverageGoal=70
             -Dsonar.sq.newCode.overallNewTechnicalDebt=5
 
+      - name: Run Python port-preflight coverage
+        env:
+          COVERAGE_FILE: /tmp/compose-port.coverage
+        run: |
+          python3 -m pip install coverage==7.16.2
+          python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests -p 'test_compose_ports.py'
+          python3 -m coverage report --include='scripts/check_compose_ports.py' --fail-under=80
+          python3 -m coverage xml --include='scripts/check_compose_ports.py' -o coverage-python.xml
+
       - name: Run SonarCloud Scanner for Game Scripts
         # Note: GDScript requires SonarQube server with community plugin
         if: env.ACT != 'true'
@@ -600,6 +609,7 @@ jobs:
           args: >
             -Dsonar.sources=autoloads,scenes,scripts
             -Dsonar.language=js
+            -Dsonar.python.coverage.reportPaths=coverage-python.xml
             -Dsonar.javascript.lcov.reportPaths=
             -Dsonar.exclusions=**/node_modules/**,**/backend/**,**/tests/**,**/test/**,.git
             -Dsonar.qualitygate.wait=true

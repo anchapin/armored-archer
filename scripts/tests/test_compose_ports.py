@@ -132,6 +132,28 @@ class ComposePortsTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 PORTS.run(["python3", "-c", "raise SystemExit(1)"], directory)
 
+    def test_main_conflict_reports_failure(self):
+        config = {"name": "backend", "services": {"db": {"ports": [{"published": "5433"}]}}}
+
+        def fake_run(argv, cwd):
+            if "config" in argv:
+                return json.dumps(config)
+            if "-ltnp" in argv:
+                return "LISTEN 0 128 0.0.0.0:5433 0.0.0.0:* users:pid=12"
+            return ""
+
+        with patch("sys.argv", ["check"]), patch.object(PORTS, "run", side_effect=fake_run):
+            self.assertEqual(PORTS.main(), 1)
+
+    def test_successful_subprocess_output(self):
+        self.assertEqual(PORTS.run(["python3", "-c", "print('ok')"], "."), "ok\n")
+
+    def test_unsupported_protocol_rejected(self):
+        with self.assertRaises(ValueError):
+            PORTS.desired_binds(
+                {"services": {"test": {"ports": [{"published": "80", "protocol": "sctp"}]}}}
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
