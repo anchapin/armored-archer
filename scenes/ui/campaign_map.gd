@@ -15,20 +15,20 @@ var design_tokens: Node
 var player_stats: Node
 
 # --- Node References ---
-@onready var chapter_title: Label = $ChapterTitle
-@onready var progress_message_label: Label = $ProgressMessageLabel
-@onready var stages_container: VBoxContainer = $StagesContainer
-@onready var chapter_label: Label = $ChapterLabel
-@onready var progress_label: Label = $ProgressLabel
-@onready var progress_bar_background: ColorRect = $ProgressBarContainer/ProgressBarBackground
-@onready var progress_bar_fill: ColorRect = $ProgressBarContainer/ProgressBarFill
-@onready var progress_percent: Label = $ProgressBarContainer/ProgressPercent
-@onready var boss_unlock_info: Panel = $BossUnlockInfo
-@onready var boss_unlock_label: Label = $BossUnlockInfo/BossUnlockLabel
-@onready var boss_requirements_panel: Panel = $BossRequirementsPanel
-@onready var boss_requirements_label: Label = $BossRequirementsPanel/BossRequirementsLabel
-@onready var prev_chapter_button: Button = $ChapterNav/PrevChapterButton
-@onready var next_chapter_button: Button = $ChapterNav/NextChapterButton
+@onready var chapter_title: Label = $SafeAreaContainer/ScrollContainer/Content/ChapterTitle
+@onready var progress_message_label: Label = $SafeAreaContainer/ScrollContainer/Content/ProgressMessageLabel
+@onready var stages_container: VBoxContainer = $SafeAreaContainer/ScrollContainer/Content/StagesContainer
+@onready var chapter_label: Label = $SafeAreaContainer/ScrollContainer/Content/ChapterLabel
+@onready var progress_label: Label = $SafeAreaContainer/ScrollContainer/Content/ProgressLabel
+@onready var progress_bar_background: ColorRect = $SafeAreaContainer/ScrollContainer/Content/ProgressBarContainer/ProgressBarBackground
+@onready var progress_bar_fill: ColorRect = $SafeAreaContainer/ScrollContainer/Content/ProgressBarContainer/ProgressBarFill
+@onready var progress_percent: Label = $SafeAreaContainer/ScrollContainer/Content/ProgressBarContainer/ProgressPercent
+@onready var boss_unlock_info: Panel = $SafeAreaContainer/ScrollContainer/Content/BossUnlockInfo
+@onready var boss_unlock_label: Label = $SafeAreaContainer/ScrollContainer/Content/BossUnlockInfo/BossUnlockLabel
+@onready var boss_requirements_panel: Panel = $SafeAreaContainer/ScrollContainer/Content/BossRequirementsPanel
+@onready var boss_requirements_label: Label = $SafeAreaContainer/ScrollContainer/Content/BossRequirementsPanel/BossRequirementsLabel
+@onready var prev_chapter_button: Button = $SafeAreaContainer/ScrollContainer/Content/ChapterNav/PrevChapterButton
+@onready var next_chapter_button: Button = $SafeAreaContainer/ScrollContainer/Content/ChapterNav/NextChapterButton
 
 # --- Scene Constants ---
 const MAIN_SCENE = preload("res://scenes/main.tscn")
@@ -78,7 +78,7 @@ func _ready() -> void:
 	CampaignManager.chapter_unlocked.connect(_on_chapter_unlocked)
 
 	# Connect back button
-	$BackButton.pressed.connect(_on_back_button_pressed)
+	$SafeAreaContainer/ScrollContainer/Content/BackButton.pressed.connect(_on_back_button_pressed)
 
 	# Connect chapter navigation buttons
 	prev_chapter_button.pressed.connect(_on_prev_chapter_pressed)
@@ -119,7 +119,7 @@ func update_chapter_display() -> void:
 			# Show locked chapter with requirements
 			var req_data = CampaignManager.get_chapter_unlock_requirement(current_chapter)
 			var description = req_data.get("description", "Locked")
-			chapter_title.text = "%s \u1F512 (%s)" % [chapter_name, description]
+			chapter_title.text = "%s [Locked] (%s)" % [chapter_name, description]
 
 	# Update chapter label with chapter number
 	var chapter_index = available_chapters.find(current_chapter)
@@ -261,7 +261,8 @@ func build_stage_buttons() -> void:
 
 func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {}) -> Button:
 	var button = Button.new()
-	button.custom_minimum_size = Vector2(400, 60)
+	button.custom_minimum_size = Vector2(0, 60)
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	# Get colors from DesignTokens if available
 	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
@@ -315,10 +316,7 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 		button.disabled = true
 		button.text = button_text + " (Locked)"
 		# Use disabled color
-		if theme_manager:
-			button.modulate = theme_manager.get_text_disabled_color()
-		else:
-			button.modulate = Color(1, 1, 1, 0.5)
+		button.add_theme_color_override("font_disabled_color", Color("#383833"))
 	elif is_completed:
 		button.text = "\u2713 " + button_text
 		button.modulate = success_color
@@ -327,10 +325,7 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 		if not level_met:
 			button.disabled = true
 			button.text = button_text + " (Lvl %d required)" % level_req
-			if theme_manager:
-				button.modulate = theme_manager.get_text_disabled_color()
-			else:
-				button.modulate = Color(1, 1, 1, 0.5)
+			button.add_theme_color_override("font_disabled_color", Color("#383833"))
 		else:
 			button.text = button_text
 			button.modulate = diff_color
@@ -348,7 +343,7 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 
 	# Add locked marker if stage has level requirement not met
 	if is_marker_locked and not is_unlocked:
-		button.text += " \u1F512"  # Lock emoji
+		button.text += " [Locked]"  # Text marker works with the bundled fonts
 		button.tooltip_text = "Requires Level %d" % level_req
 
 	# Add available marker for new content
@@ -356,9 +351,15 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 		button.text += " \u2713"  # Checkmark
 
 	# Add visual progress indicator - status circle
-	var status_icon = _create_status_icon(is_completed, is_unlocked, level_met, stage_data.get("boss"))
+	# "boss" is null for normal stages and a boss id String otherwise; coerce to bool
+	var is_boss_stage: bool = true if stage_data.get("boss") else false
+	var status_icon = _create_status_icon(is_completed, is_unlocked, level_met, is_boss_stage)
 	button.add_child(status_icon)
-	status_icon.position = Vector2(button.custom_minimum_size.x - 25, 10)
+	status_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	status_icon.offset_left = -24
+	status_icon.offset_right = -8
+	status_icon.offset_top = 8
+	status_icon.offset_bottom = 24
 
 	# Only enable button press if unlocked and level requirement is met
 	if is_unlocked and level_met:
@@ -370,6 +371,8 @@ func _create_status_icon(is_completed: bool, is_unlocked: bool, level_met: bool,
 	"""Creates a visual status icon for the stage button."""
 	var icon = ColorRect.new()
 	icon.custom_minimum_size = Vector2(16, 16)
+	icon.size = Vector2(16, 16)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	if is_completed:
 		# Completed - green checkmark circle
@@ -499,15 +502,18 @@ func _apply_theme() -> void:
 
 	var colors = theme_manager.get_theme_colors()
 	var is_dark = theme_manager.is_dark_mode()
+	prev_chapter_button.add_theme_color_override("font_disabled_color", colors["on_surface"])
+	next_chapter_button.add_theme_color_override("font_disabled_color", colors["on_surface"])
 
 	# Apply background color
-	theme_manager.apply_background(self)
+	get_node("Background").color = colors["surface"]
 
 	# Apply colors to labels if they exist
 	if chapter_title:
 		chapter_title.modulate = colors["on_surface"]
 	if progress_message_label:
-		progress_message_label.modulate = colors["on_surface_variant"]
+		progress_message_label.modulate = Color.WHITE
+		progress_message_label.add_theme_color_override("font_color", colors["on_surface_variant"])
 	if chapter_label:
 		chapter_label.modulate = colors["on_surface"]
 	if progress_label:
@@ -517,12 +523,12 @@ func _apply_theme() -> void:
 
 	# Style progress bar background
 	if progress_bar_background:
-		progress_bar_background.color = colors["surface_container_high"]
+		progress_bar_background.color = colors["surface_high"]
 
 	# Style boss unlock panel
 	if boss_unlock_info:
 		boss_unlock_info.modulate = Color(1, 1, 1, 0)  # Initially hidden
-		boss_unlock_info.self_modulate = colors["surface_container_lowest"]
+		boss_unlock_info.self_modulate = colors["surface_lowest"]
 	if boss_unlock_label:
 		boss_unlock_label.modulate = colors["on_surface"]
 
@@ -560,7 +566,7 @@ func _tween_counter(label: Label, target_value: int, duration: float) -> void:
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.tween_method(_update_counter.bind(label), current_value, target_value, duration)
 
-func _update_counter(label: Label, value: int) -> void:
+func _update_counter(value: int, label: Label) -> void:
 	"""Updates the counter label with formatted value."""
 	label.text = "%d%%" % value
 

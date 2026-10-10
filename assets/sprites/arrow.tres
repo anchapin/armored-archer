@@ -1,6 +1,7 @@
-[gd_resource type="PlaceholderTexture2D" load_steps=2 format=3 uid="uid://arrow_sprite"]
+[gd_resource type="AtlasTexture" load_steps=2 format=3 uid="uid://arrow_sprite"]
 
-[ext_resource type="Texture2D" uid="uid://c1n3tupywf2le" path="res://assets/sprites/equipment/arrows/iron.png" id="1_arrow_sprite"]
+[ext_resource type="Texture2D" path="res://assets/sprites/equipment/arrows/iron.png" id="1_src"]
 
 [resource]
-resource = ExtResource("1_arrow_sprite")
+atlas = ExtResource("1_src")
+region = Rect2(0, 0, 32, 32)

@@ -74,10 +74,10 @@ func test_main_menu_right_panel_buttons_include_center_content_segment() -> void
 	)
 	# And must declare the corrected paths.
 	for needle in [
-		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/ShopButton",
-		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/BuyGemsButton",
-		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/SettingsButton",
-		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/QuitButton",
+		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/ShopButton",
+		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/BuyGemsButton",
+		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/SettingsButton",
+		"$SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/QuitButton",
 	]:
 		assert_true(
 			script_text.contains(needle),

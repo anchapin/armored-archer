@@ -23,10 +23,10 @@ const NetworkConsts := preload("res://autoloads/const.gd")
 @onready var play_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons/PlayButton
 @onready var loadout_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons/LoadoutButton
 @onready var pvp_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/LeftPanel/ActionButtons/PvpButton
-@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/ShopButton
-@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/BuyGemsButton
-@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/SettingsButton
-@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/QuitButton
+@onready var shop_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/ShopButton
+@onready var buy_gems_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/BuyGemsButton
+@onready var settings_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/SettingsButton
+@onready var quit_button: ArcheryBaseButton = $SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons/QuitButton
 
 @onready var character_preview: Control = $SafeAreaContainer/MainContainer/CenterContent/CharacterPreview
 @onready var menu_container: Control = $SafeAreaContainer/MainContainer

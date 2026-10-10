@@ -160,7 +160,7 @@ func test_constants_match_acceptance_criteria() -> void:
 		"MAX_AUTH_DURATION_SEC must be <15s")
 	assert_eq(NetworkConsts.AUTH_RETRY_DELAYS, [1.0, 2.0, 4.0],
 		"delays must be 1s/2s/4s (3 attempts)")
-	assert_eq(NetworkConsts.HEALTH_GATE_PATH, "/v2/health",
+	assert_eq(NetworkConsts.HEALTH_GATE_PATH, "/healthcheck",
 		"health gate path must match Nakama endpoint")
 	assert_eq(NetworkConsts.DEFAULT_SERVER_KEY, "defaultkey",
 		"client default key must match backend runtime.http_key (data/nakama.yml:14)")

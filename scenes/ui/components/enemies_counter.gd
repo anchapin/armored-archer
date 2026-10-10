@@ -7,9 +7,10 @@ var enemies_remaining: int = 0
 var total_enemies: int = 0
 
 func _ready() -> void:
-	var spawner = get_node_or_null("/root/Main/EnemySpawner")
+	var spawner = get_node_or_null("/root/EnemySpawner")
 	if spawner and spawner.has_signal("enemy_count_changed"):
 		spawner.enemy_count_changed.connect(_on_enemy_count_changed)
+		_on_enemy_count_changed(spawner.active_enemies.size(), spawner.total_enemies_for_stage)
 func _on_enemy_count_changed(remaining: int, total: int) -> void:
 	enemies_remaining = remaining
 	total_enemies = total

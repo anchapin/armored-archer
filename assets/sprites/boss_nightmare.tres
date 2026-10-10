@@ -1,4 +1,7 @@
-[gd_resource type="PlaceholderTexture2D" format=3]
+[gd_resource type="AtlasTexture" load_steps=2 format=3 uid="uid://boss_nightmare_sprite"]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/enemies/shadow_runner_idle_down_0.png" id="1_src"]
 
 [resource]
-size = Vector2(64, 64)
+atlas = ExtResource("1_src")
+region = Rect2(0, 0, 32, 32)

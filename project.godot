@@ -97,7 +97,7 @@ window/size/viewport_height=360
 window/size/resizable=false
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/stretch/scale_mode="integer"
+window/stretch/scale_mode="fractional"
 window/vsync/use_vsync=false
 # Disabled global theme due to stylebox errors - themes applied per-scene
 #window/theme/theme="res://themes/gilded_quest_theme.tres"

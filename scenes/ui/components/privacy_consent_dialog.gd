@@ -9,10 +9,10 @@ signal consent_given()
 const CONSENT_FILE := "user://privacy_consent.json"
 const PRIVACY_POLICY_URL := "https://anchapin.github.io/armored-archer/docs/privacy-policy.html"
 
-@onready var accept_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/AcceptButton
-@onready var view_policy_button: ArcheryBaseButton = $SafeAreaContainer/VBoxContainer/ViewPolicyButton
-@onready var title_label: Label = $SafeAreaContainer/VBoxContainer/TitleLabel
-@onready var summary_label: RichTextLabel = $SafeAreaContainer/VBoxContainer/SummaryLabel
+@onready var accept_button: ArcheryBaseButton = $SafeAreaContainer/ScrollContainer/VBoxContainer/AcceptButton
+@onready var view_policy_button: ArcheryBaseButton = $SafeAreaContainer/ScrollContainer/VBoxContainer/ViewPolicyButton
+@onready var title_label: Label = $SafeAreaContainer/ScrollContainer/VBoxContainer/TitleLabel
+@onready var summary_label: RichTextLabel = $SafeAreaContainer/ScrollContainer/VBoxContainer/SummaryLabel
 
 
 func _ready() -> void:
