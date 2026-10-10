@@ -184,7 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Audit runbook citations against current backend source
+      - name: Audit runbook and ADR citations, index and relative links
         run: |
           bash scripts/test-runbook-citations.sh
           bash scripts/audit-runbook-citations.sh

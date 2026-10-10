@@ -19,21 +19,21 @@ constrain how every RPC handler in `backend/src` may be written:
    `"RPC <name> returned a non-string result; async handlers are unsupported"`. A promise
    *never settles* because nothing drains the microtask queue, so the RPC hangs rather than
    erroring cleanly. This is enforced defensively at the two registration seams:
-   `registerRpcWithRateLimit` (`backend/src/utils/rateLimiter.ts:205`) and the metrics
-   wrapper (`backend/src/modules/metrics.ts:576`), both of which throw on a non-string
+   `createRateLimitedRpcHandler` (`backend/src/utils/rateLimiter.ts#createRateLimitedRpcHandler`) and the metrics
+   wrapper (`backend/src/modules/metrics.ts#wrapRpcWithMetrics`), both of which throw on a non-string
    result.
 2. **No async I/O of any kind.** Because nothing drives `await`, the runtime also cannot
    perform outbound HTTP (`fetch`, RevenueCat verification/refund/history calls) or
    promise-based Redis (`ioredis`). Code paths that need them are unreachable in production
    and are retained only as dead branches for a future sync-HTTP layer. The authoritative
    substitute is **durable Nakama storage**, which is synchronous — see `processRefund`
-   (`backend/src/modules/store.ts:457`), whose durable storage markers make the refund path
+   (`backend/src/modules/store.ts#processRefund`), whose durable storage markers make the refund path
    fully sync.
 3. **`crypto` is a stub.** goja's `crypto.createHash().digest('hex')` silently returns the
    **empty string**. Code that depends on it produces empty hashes with no error; because
    every value then shares a hash, uniqueness checks see every subsequent value as a
-   duplicate. `sha256Hex` (`backend/src/modules/store.ts:16`) therefore falls back to
-   `globalThis.crypto.subtle.digest` (WebCrypto). This fallback is mandatory — without it
+   duplicate. `sha256Hex` (`backend/src/modules/store.ts#sha256Hex`) therefore uses a
+   deterministic FNV-1a-style fallback in the sync runtime. This fallback is mandatory - without it
    every receipt after the first fails as `Duplicate receipt detected`.
 
 A fourth, separate constraint governs storage values: goja's `storageWrite` accepts **plain
@@ -64,7 +64,7 @@ the build-time env snapshot and latency-measurement notes
 `backend/scripts/validate-nakama-bundle.js`, and the `--socket.server_key` note in
 `backend/docker-compose.yml`.
 
-One further reference, `.github/docker-compose.yml:47` (`Config file (issue #1135 /
+One further reference, `.github/docker-compose.yml#js_entrypoint` (`Config file (issue #1135 /
 fix/ci-infrastructure)`), concerns CI `js_entrypoint` wiring — a third topic that is
 neither a goja constraint nor plausibly the RTT issue. It is **out of scope here** and was
 left alone; it most likely refers to a PR rather than the issue, and resolving it requires
@@ -82,16 +82,16 @@ Concretely:
   external I/O must be redesigned around durable storage, not made `async`. Marking a
   handler `async` is a defect even when the `async` keyword carries no `await` — the
   wrapper's return type alone breaks the contract (this is the exact bug in the
-  `rpcValidatePurchaseWrapper` cluster-4 note at `backend/src/index.ts:803`).
+  `rpcValidatePurchaseWrapper` cluster-4 note at `backend/src/index.ts#rpcValidatePurchaseWrapper`).
 - **Wrapper functions stay sync even when the wrapped module function is sync.** The
   `async` keyword is inherited by the return value, not merely by the body.
 - **No outbound HTTP or promise-based Redis on an RPC path.** Unreachable branches are kept
   behind an explicit short-circuit with a logged reason and a returned error/empty result of
   the correct shape, so callers degrade predictably. The representative sites, each carrying
-  an `ADR-0008` comment: the Redis receipt fast-path (`store.ts:175`), the no-API-key
-  receipt short-circuit (`store.ts:2576`), refund listing (`store.ts:2852`), subscription
-  listing (`store.ts:2913`), restore-purchases history (`store.ts:3029`), and the webhook
-  `SETNX` lock (`store.ts:3959`).
+  an `ADR-0008` comment: the Redis receipt fast-path (`store.ts#isReceiptAlreadyUsed`), the no-API-key
+  receipt short-circuit (`store.ts#validateWithRevenueCat`), refund listing (`store.ts#rpcCheckRefunds`), subscription
+  listing (`store.ts#rpcCheckSubscriptions`), restore-purchases history (`store.ts#rpcRestorePurchases`), and the webhook
+  `SETNX` lock (`store.ts#rpcRevenueCatWebhook`).
 - **Hash receipts via `sha256Hex`**, never `crypto.createHash` directly.
 - **Write storage values through `backend/src/utils/storage-helpers.ts`**, passing objects,
   never raw JSON strings.
