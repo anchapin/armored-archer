@@ -134,7 +134,7 @@ for rb in runbooks:
                   is_legacy=False)
 
         # Legacy line-number citations: file:line (no symbol) — marked as LEGACY
-        for m in re.finditer(r"([A-Za-z0-9_./-]+\.(?:ts|yml)):(\d+)(?!#)", ln):
+        for m in re.finditer(r"([A-Za-z0-9_./-]+\.(?:ts|yml)):(\d+)(?![0-9#])", ln):
             frag = m.group(1)
             lineno = int(m.group(2))
             path = resolve_src(frag)
