@@ -12,7 +12,9 @@
 extends Node
 
 # --- Singleton Instance ---
-static var _instance: UIAutomation
+# Typed as Node: the autoload name is not a class_name, and adding class_name
+# UIAutomation would collide with the autoload singleton of the same name (#1434).
+static var _instance: Node
 
 # --- Animation Settings ---
 const DEFAULT_DURATION: float = 0.3
@@ -49,9 +51,9 @@ func _exit_tree() -> void:
 # STATIC ACCESS
 # =============================================================================
 
-static func get_instance() -> UIAutomation:
+static func get_instance() -> Node:
 	if _instance == null:
-		var auto = UIAutomation.new()
+		var auto: Node = load("res://autoloads/UIAutomation.gd").new()
 		# Add to scene tree if not already
 		var root = Engine.get_main_loop().root
 		root.add_child(auto)

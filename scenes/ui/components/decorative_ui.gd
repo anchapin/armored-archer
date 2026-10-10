@@ -253,7 +253,7 @@ static func create_status_indicator(status: String = "inactive", width: int = 40
 ## Returns: ColorRect
 static func create_header_accent(parent: Node, height: int = 3) -> ColorRect:
 	var accent = ColorRect.new()
-	accent.custom_minimum_height = height
+	accent.custom_minimum_size = Vector2(0, height)
 	accent.anchor_left = 0
 	accent.anchor_right = 1
 	accent.anchor_top = 0

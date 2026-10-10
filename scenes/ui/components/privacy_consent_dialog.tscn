@@ -11,7 +11,7 @@ script = ExtResource("1_script")
 [node name="Background" type="ColorRect" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.7)
+color = Color(0.055, 0.055, 0.055, 1)
 
 [node name="SafeAreaContainer" type="MarginContainer" parent="."]
 anchor_right = 1.0
@@ -21,17 +21,23 @@ theme_override_constants/margin_right = 32
 theme_override_constants/margin_top = 32
 theme_override_constants/margin_bottom = 32
 
-[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="SafeAreaContainer"]
 layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SafeAreaContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 alignment = 1
 theme_override_constants/separation = 16
 
-[node name="TitleLabel" type="Label" parent="SafeAreaContainer/VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="SafeAreaContainer/ScrollContainer/VBoxContainer"]
 layout_mode = 2
 text = "Privacy Notice"
-horizontal_alignment = 1
+horizontal_size_flags_horizontal = 3
+alignment = 1
 
-[node name="SummaryLabel" type="RichTextLabel" parent="SafeAreaContainer/VBoxContainer"]
+[node name="SummaryLabel" type="RichTextLabel" parent="SafeAreaContainer/ScrollContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 200)
 bbcode_enabled = true
@@ -47,13 +53,13 @@ See our full Privacy Policy for details."
 fit_content = true
 scroll_following = true
 
-[node name="ViewPolicyButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+[node name="ViewPolicyButton" type="Button" parent="SafeAreaContainer/ScrollContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(120, 40)
 text = "View Privacy Policy"
 script = ExtResource("2_base_button")
 
-[node name="AcceptButton" type="Button" parent="SafeAreaContainer/VBoxContainer"]
+[node name="AcceptButton" type="Button" parent="SafeAreaContainer/ScrollContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(120, 40)
 text = "I Accept"

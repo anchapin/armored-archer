@@ -20,7 +20,8 @@ const MAX_AUTH_DURATION_SEC: float = 12.0
 const AUTH_RETRY_DELAYS: Array = [1.0, 2.0, 4.0]
 # Bound on the pre-auth health probe (issue #908 health-gate)
 const HEALTH_CHECK_TIMEOUT_SEC: float = 4.0
-const HEALTH_GATE_PATH: String = "/v2/health"
+# Nakama's real health endpoint is GET /healthcheck (apigrpc.proto, rpc Healthcheck); /v2/health 404s (#1444).
+const HEALTH_GATE_PATH: String = "/healthcheck"
 const DEVICE_AUTH_PATH: String = "/v2/account/authenticate/device"
 const SESSION_REFRESH_PATH: String = "/v2/account/session/refresh"
 # Default server key — must match backend/data/nakama.yml runtime.http_key

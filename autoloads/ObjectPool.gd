@@ -167,8 +167,7 @@ func _initialize_pools() -> void:
 	for i in range(max(adjusted_arrow_pool, 5)):
 		var arrow = _arrow_scene.instantiate()
 		arrow.set_process(false)
-		arrow.set_physics_process(false)
-		arrow.visible = false
+		_park_pooled_node(arrow)
 		_arrow_pool.append(arrow)
 		add_child(arrow)
 
@@ -255,6 +254,7 @@ func get_arrow() -> Node:
 		add_child(arrow)
 
 	arrow.set_process(true)
+	arrow.process_mode = Node.PROCESS_MODE_INHERIT
 	arrow.set_physics_process(true)
 	arrow.visible = true
 	_active_arrows.append(arrow)
@@ -267,8 +267,7 @@ func return_arrow(arrow: Node) -> void:
 		return
 
 	arrow.set_process(false)
-	arrow.set_physics_process(false)
-	arrow.visible = false
+	_park_pooled_node(arrow)
 
 	# Reset arrow state if it has a setup method
 	if arrow.has_method("reset_pooled_state"):
@@ -300,9 +299,10 @@ func _prewarm_enemy_pool(scene_path: String, scene: PackedScene, count: int) -> 
 	var pool_data: Dictionary = _get_or_create_enemy_pool(scene_path, scene)
 	for i in range(count):
 		var enemy = scene.instantiate()
-		enemy.set_process(false)
-		enemy.set_physics_process(false)
-		enemy.visible = false
+		# PROCESS_MODE_DISABLED, not set_physics_process(false): Godot re-enables
+		# _physics_process on NOTIFICATION_READY, so pooled enemies used to wake up
+		# inside the pool, stack next to the player and attack (#1446).
+		_park_pooled_node(enemy)
 		enemy.set_meta("_pool_scene_key", scene_path)
 		pool_data["available"].append(enemy)
 		add_child(enemy)
@@ -334,6 +334,7 @@ func get_enemy(scene: PackedScene = null) -> Node:
 		enemy.set_meta("_pool_scene_key", scene_path)
 		add_child(enemy)
 
+	enemy.process_mode = Node.PROCESS_MODE_INHERIT
 	enemy.set_process(true)
 	enemy.set_physics_process(true)
 	enemy.visible = true
@@ -352,9 +353,7 @@ func return_enemy(enemy: Node) -> void:
 	if not is_instance_valid(enemy):
 		return
 
-	enemy.set_process(false)
-	enemy.set_physics_process(false)
-	enemy.visible = false
+	_park_pooled_node(enemy)
 
 	if enemy.has_method("reset_pooled_state"):
 		enemy.reset_pooled_state()
@@ -1218,3 +1217,13 @@ func _exit_tree() -> void:
 	_charge_effect_scene = null
 	_damage_popup_scene = null
 	_arrow_trail_scene = null
+
+
+## Take a pooled node fully out of play: no process/physics callbacks, removed
+## from physics (default disable_mode), and hidden. Survives NOTIFICATION_READY.
+func _park_pooled_node(node: Node) -> void:
+	node.process_mode = Node.PROCESS_MODE_DISABLED
+	node.set_process(false)
+	node.set_physics_process(false)
+	if "visible" in node:
+		node.visible = false

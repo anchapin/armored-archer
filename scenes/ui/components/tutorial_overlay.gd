@@ -4,10 +4,10 @@
 extends Control
 
 # --- Node References ---
-@onready var title_label: Label = $VBoxContainer/TitleLabel
-@onready var description_label: Label = $VBoxContainer/DescriptionLabel
-@onready var progress_label: Label = $VBoxContainer/ProgressLabel
-@onready var skip_button: Button = $VBoxContainer/SkipButton
+@onready var title_label: Label = $PanelContainer/VBoxContainer/TitleLabel
+@onready var description_label: Label = $PanelContainer/VBoxContainer/DescriptionLabel
+@onready var progress_label: Label = $PanelContainer/VBoxContainer/ProgressLabel
+@onready var skip_button: Button = $PanelContainer/VBoxContainer/SkipButton
 @onready var panel: PanelContainer = $PanelContainer
 @onready var content_container: VBoxContainer = $PanelContainer/VBoxContainer
 
@@ -137,9 +137,9 @@ func _update_position() -> void:
 			panel.anchor_right = 1.0
 			panel.anchor_bottom = 0.0
 			panel.offset_left = -200.0
-			panel.offset_top = 20.0
+			panel.offset_top = 80.0
 			panel.offset_right = -20.0
-			panel.offset_bottom = 150.0
+			panel.offset_bottom = 210.0
 		"bottom_left":
 			panel.anchor_left = 0.0
 			panel.anchor_top = 1.0
@@ -176,6 +176,19 @@ func _update_position() -> void:
 			panel.offset_top = -100.0
 			panel.offset_right = 150.0
 			panel.offset_bottom = 100.0
+
+	# Issue #1449: when step text makes the panel taller or wider than its
+	# offsets, grow toward the middle of the screen so corner panels never
+	# clip off the edge they are pinned to.
+	panel.grow_horizontal = _grow_for_anchor(panel.anchor_left)
+	panel.grow_vertical = _grow_for_anchor(panel.anchor_top)
+
+func _grow_for_anchor(anchor: float) -> Control.GrowDirection:
+	if anchor <= 0.25:
+		return Control.GROW_DIRECTION_END
+	if anchor >= 0.75:
+		return Control.GROW_DIRECTION_BEGIN
+	return Control.GROW_DIRECTION_BOTH
 
 func _on_skip_pressed() -> void:
 	skip_requested.emit()

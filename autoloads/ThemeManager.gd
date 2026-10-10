@@ -121,6 +121,7 @@ func get_theme_colors() -> Dictionary:
 		"surface_dim": ArcherDesignTokens.COLOR_SURFACE_DIM,
 		"surface_bright": ArcherDesignTokens.COLOR_SURFACE_BRIGHT,
 		"on_surface": ArcherDesignTokens.COLOR_ON_SURFACE,
+		"on_surface_variant": ArcherDesignTokens.COLOR_ON_SURFACE_VARIANT,
 		"primary": ArcherDesignTokens.COLOR_PRIMARY,
 		"primary_container": ArcherDesignTokens.COLOR_PRIMARY_CONTAINER,
 		"primary_dim": ArcherDesignTokens.COLOR_PRIMARY_DIM,

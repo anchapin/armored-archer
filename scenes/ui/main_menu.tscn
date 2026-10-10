@@ -60,7 +60,7 @@ layout_mode = 2
 [node name="GemIcon" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GemContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "💎"
+text = "Gems"
 horizontal_alignment = 2
 
 [node name="GemLabel" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GemContainer" unique_id=254623995]
@@ -75,7 +75,7 @@ layout_mode = 2
 [node name="GoldIcon" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GoldContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "🪙"
+text = "Gold"
 horizontal_alignment = 2
 
 [node name="GoldLabel" type="Label" parent="SafeAreaContainer/MainContainer/TopBar/TopBarContent/GoldContainer" unique_id=254623996]
@@ -140,8 +140,8 @@ offset_left = -100.0
 offset_top = -150.0
 offset_right = 100.0
 offset_bottom = 150.0
-theme_override_font_sizes/font_size = 72
-text = "🏹"
+theme_override_font_sizes/font_size = 24
+text = "Archer"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -150,28 +150,32 @@ layout_mode = 2
 theme_override_constants/separation = 12
 custom_minimum_size = Vector2(200, 0)
 
-[node name="ShopButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=795248628]
+[node name="ActionButtons" type="VBoxContainer" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ShopButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons" unique_id=795248628]
 custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
 text = "SHOP"
 script = ExtResource("3_m1kxf")
 button_type = "primary"
 
-[node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=1407197976]
+[node name="BuyGemsButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons" unique_id=1407197976]
 custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
 text = "BUY GEMS"
 script = ExtResource("3_m1kxf")
 button_type = "primary"
 
-[node name="SettingsButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=1540766148]
+[node name="SettingsButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons" unique_id=1540766148]
 custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
 text = "SETTINGS"
 script = ExtResource("3_m1kxf")
 button_type = "primary"
 
-[node name="QuitButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel" unique_id=1460653037]
+[node name="QuitButton" type="Button" parent="SafeAreaContainer/MainContainer/CenterContent/RightPanel/ActionButtons" unique_id=1460653037]
 custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
 text = "QUIT"
