@@ -872,8 +872,10 @@ jobs:
       # has the correct entrypoint scripts for Nakama (like the local dev stack).
       - name: Start Nakama and Postgres via docker-compose
         run: |
-          # Start postgres and nakama using the CI docker-compose file
-          docker compose -f .github/docker-compose.yml up -d
+          # Pull one image at a time to avoid anonymous registry rate bursts.
+          docker compose --parallel 1 -f .github/docker-compose.yml pull
+          # Use the verified local images without another implicit pull.
+          docker compose -f .github/docker-compose.yml up -d --pull never
           # Wait for both services to be healthy
           echo "Waiting for services to be healthy..."
           for i in {1..60}; do
