@@ -106,9 +106,9 @@
     "tsx": "^4.23.15",
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
-    "webpack": "^5.111.0",
+    "webpack": "^5.111.1",
     "webpack-bundle-analyzer": "^5.4.0",
-    "webpack-cli": "^7.0.0"
+    "webpack-cli": "^7.2.3"
   },
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",
