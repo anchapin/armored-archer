@@ -45,6 +45,14 @@ jest.mock('../../config/logger', () => ({
   },
 }));
 
+// Keep the healthy-path assertions independent of the CI host's load.
+jest.mock('os', () => ({
+  ...jest.requireActual('os'),
+  cpus: jest.fn(),
+  totalmem: jest.fn(),
+  freemem: jest.fn(),
+}));
+
 jest.mock('child_process', () => ({
   execSync: jest
     .fn()
@@ -67,6 +75,10 @@ describe('health_monitor', () => {
   beforeEach(() => {
     stopHealthMonitoring();
     jest.clearAllMocks();
+    const os = require('os');
+    os.cpus.mockReturnValue([{ times: { user: 20, nice: 0, sys: 10, idle: 70, irq: 0 } }]);
+    os.totalmem.mockReturnValue(1000);
+    os.freemem.mockReturnValue(600);
   });
 
   afterEach(() => {
@@ -179,19 +191,13 @@ describe('health_monitor', () => {
     });
 
     it('should report healthy as true when all metrics are below critical thresholds', () => {
-      // This test can be flaky due to system load, so we skip the healthy check
-      // and just verify the metrics exist and have valid values
       const status = getHealthStatus();
 
-      // Verify metrics are present and have valid values (0-100 for most metrics)
-      expect(status.metrics.cpuUsage).toBeGreaterThanOrEqual(0);
-      expect(status.metrics.cpuUsage).toBeLessThanOrEqual(100);
-      expect(status.metrics.memoryUsage).toBeGreaterThanOrEqual(0);
-      expect(status.metrics.memoryUsage).toBeLessThanOrEqual(100);
-      expect(status.metrics.diskUsage).toBeGreaterThanOrEqual(0);
-      expect(status.metrics.diskUsage).toBeLessThanOrEqual(100);
-      expect(status.metrics.dbConnections).toBeGreaterThanOrEqual(0);
-      expect(status.metrics.dbConnections).toBeLessThanOrEqual(100);
+      expect(status.healthy).toBe(true);
+      expect(status.metrics.cpuUsage).toBe(30);
+      expect(status.metrics.memoryUsage).toBe(40);
+      expect(status.metrics.diskUsage).toBe(50);
+      expect(status.metrics.dbConnections).toBe(0);
     });
 
     it('should report healthy as false when cpu exceeds critical threshold', () => {
