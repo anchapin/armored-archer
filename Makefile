@@ -491,7 +491,7 @@ duplicate-code-check:
 	@cd backend && npm run detect-duplicate || true
 	@echo ""
 	@echo "$(BLUE)Checking for duplicate code in GDScript and Python...$(RESET)"
-	@npm run detect-duplicate -- autoloads/ scripts/ scenes/ || true
+	@backend/node_modules/.bin/jscpd --config .jscpd.json autoloads/ scripts/ scenes/ || true
 	@echo ""
 	@echo "$(GREEN)✓ Duplicate code check complete$(RESET)"
 
@@ -503,7 +503,7 @@ duplicate-code-check-ci:
 	@cd backend && npm run detect-duplicate:ci
 	@echo ""
 	@echo "$(BLUE)Checking GDScript and Python...$(RESET)"
-	@npm run detect-duplicate:ci -- autoloads/ scripts/ scenes/
+	@backend/node_modules/.bin/jscpd --config .jscpd.json autoloads/ scripts/ scenes/
 	@echo ""
 	@echo "$(GREEN)✓ No duplicate code detected above threshold$(RESET)"
 
