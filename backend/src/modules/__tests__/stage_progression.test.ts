@@ -82,11 +82,7 @@ import {
 } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
 import { rpcStageComplete } from '../gear_system';
-import {
-  recordStageClaim,
-  recordStageCompleteOutcome,
-  observeStageClaimSeconds,
-} from '../metrics';
+import { recordStageClaim, recordStageCompleteOutcome, observeStageClaimSeconds } from '../metrics';
 import { resetRateLimiting } from '../rate_limit';
 
 describe('stage_progression — consolidated stage_complete RPC (issue #1069)', () => {
@@ -102,13 +98,13 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       ...overrides,
     });
 
-  /** Index of the first dbQuery call matching a SQL fragment. */
+  /** Index of the first sqlQuery call matching a SQL fragment. */
   const firstDbCallMatching = (fragment: string): number =>
-    (mockNk.dbQuery as jest.Mock).mock.calls.findIndex(([q]) => String(q).includes(fragment));
+    (mockNk.sqlQuery as jest.Mock).mock.calls.findIndex(([q]) => String(q).includes(fragment));
 
-  /** Number of dbQuery calls matching a SQL fragment. */
+  /** Number of sqlQuery calls matching a SQL fragment. */
   const dbCallCount = (fragment: string): number =>
-    (mockNk.dbQuery as jest.Mock).mock.calls.filter(([q]) => String(q).includes(fragment)).length;
+    (mockNk.sqlQuery as jest.Mock).mock.calls.filter(([q]) => String(q).includes(fragment)).length;
 
   /** storageWrite calls whose objects include the given collection. */
   const writesToCollection = (collection: string): unknown[][] =>
@@ -137,7 +133,7 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       expect(result.loot.dropped).toBe(true);
 
       const storageWriteMock = mockNk.storageWrite as jest.Mock;
-      const dbQueryMock = mockNk.dbQuery as jest.Mock;
+      const dbQueryMock = mockNk.sqlQuery as jest.Mock;
 
       const claimCallIdx = storageWriteMock.mock.calls.findIndex((calls: any[]) =>
         calls[0].some((obj: any) => obj.collection === 'stage_completion_claims')
@@ -302,12 +298,7 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       seedCompletion(3, 2000);
 
       const result = JSON.parse(
-        rpcStageComplete(
-          mockCtx,
-          mockLogger,
-          mockNk,
-          basePayload({ stars_earned: 2, score: 1000 })
-        )
+        rpcStageComplete(mockCtx, mockLogger, mockNk, basePayload({ stars_earned: 2, score: 1000 }))
       );
 
       expect(result.success).toBe(true);
@@ -327,12 +318,7 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       seedCompletion(1, 500);
 
       const result = JSON.parse(
-        rpcStageComplete(
-          mockCtx,
-          mockLogger,
-          mockNk,
-          basePayload({ stars_earned: 3, score: 1500 })
-        )
+        rpcStageComplete(mockCtx, mockLogger, mockNk, basePayload({ stars_earned: 3, score: 1500 }))
       );
 
       expect(result.success).toBe(true);
@@ -343,9 +329,8 @@ describe('stage_progression — consolidated stage_complete RPC (issue #1069)', 
       expect(result.loot.dropped).toBe(true);
       expect(result.xp_gained).toBe(30); // easy tier, no verified boss
 
-      const stored = JSON.parse(
-        testStorage.get('stage_completion:test-user') as string
-      ).completions['1_1'];
+      const stored = JSON.parse(testStorage.get('stage_completion:test-user') as string)
+        .completions['1_1'];
       expect(stored.stars_earned).toBe(3);
       expect(stored.score).toBe(1500);
       expect(stored.completed_at).toBe('2024-01-01T00:00:00Z'); // preserved

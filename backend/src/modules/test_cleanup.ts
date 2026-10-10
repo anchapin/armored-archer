@@ -81,7 +81,7 @@ export async function rpcCleanupUserStorage(
 
   for (const table of pgTables) {
     try {
-      await nk.dbQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
+      await nk.sqlQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     } catch (err) {
       logger.info(`${table} delete: ${(err as Error).message}`);
     }

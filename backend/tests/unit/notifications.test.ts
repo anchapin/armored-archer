@@ -24,7 +24,7 @@ import {
 
 // Mock Runtime.Nakama interface
 const createMockNk = (overrides: Record<string, unknown> = {}): any => ({
-  dbQuery: jest.fn().mockResolvedValue([]),
+  sqlQuery: jest.fn().mockResolvedValue([]),
   storageRead: jest.fn().mockResolvedValue([]),
   storageWrite: jest.fn().mockReturnValue([]),
   ...overrides,
@@ -156,18 +156,18 @@ describe('notifications', () => {
   describe('registerDeviceToken', () => {
     it('should register device token successfully', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([{ token_id: '123' }]),
+        sqlQuery: jest.fn().mockResolvedValue([{ token_id: '123' }]),
       });
 
       const result = await registerDeviceToken(mockNk, 'user123', 'token123', 'android');
 
       expect(result.success).toBe(true);
-      expect(mockNk.dbQuery).toHaveBeenCalled();
+      expect(mockNk.sqlQuery).toHaveBeenCalled();
     });
 
     it('should return error on database failure', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await registerDeviceToken(mockNk, 'user123', 'token123', 'ios');
@@ -188,7 +188,7 @@ describe('notifications', () => {
 
     it('should return error on failure', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await removeDeviceToken(mockNk, 'token123');
@@ -200,7 +200,7 @@ describe('notifications', () => {
   describe('getUserDeviceTokens', () => {
     it('should return empty array when no tokens exist', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([]),
+        sqlQuery: jest.fn().mockResolvedValue([]),
       });
 
       const result = await getUserDeviceTokens(mockNk, 'user123');
@@ -210,7 +210,7 @@ describe('notifications', () => {
 
     it('should return device tokens when they exist', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
+        sqlQuery: jest.fn().mockResolvedValue([
           { device_token: 'token1', platform: 'android', fcm_token: 'fcm1' },
           { device_token: 'token2', platform: 'ios', fcm_token: 'fcm2' },
         ]),
@@ -225,7 +225,7 @@ describe('notifications', () => {
 
     it('should return empty array on error', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await getUserDeviceTokens(mockNk, 'user123');
@@ -237,7 +237,7 @@ describe('notifications', () => {
   describe('getNotificationPreferences', () => {
     it('should return null when no preferences exist and insert fails', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await getNotificationPreferences(mockNk, 'user123');
@@ -247,7 +247,7 @@ describe('notifications', () => {
 
     it('should return preferences when they exist', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([
             { user_id: 'user123', daily_rewards_enabled: true, events_enabled: true },
@@ -263,7 +263,7 @@ describe('notifications', () => {
     it('should create default preferences when none exist', async () => {
       let callCount = 0;
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockImplementation(() => {
+        sqlQuery: jest.fn().mockImplementation(() => {
           callCount++;
           if (callCount === 1) return Promise.resolve([]);
           return Promise.resolve([{ user_id: 'user123', daily_rewards_enabled: true }]);
@@ -317,7 +317,7 @@ describe('notifications', () => {
 
     it('should return error on database failure', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await updateNotificationPreferences(mockNk, 'user123', {
@@ -331,7 +331,7 @@ describe('notifications', () => {
   describe('scheduleNotification', () => {
     it('should schedule notification successfully', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([{ notification_id: 'notif123' }]),
+        sqlQuery: jest.fn().mockResolvedValue([{ notification_id: 'notif123' }]),
       });
 
       const result = await scheduleNotification(
@@ -349,7 +349,7 @@ describe('notifications', () => {
 
     it('should return error on failure', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await scheduleNotification(
@@ -376,7 +376,7 @@ describe('notifications', () => {
 
     it('should return error on failure', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await cancelScheduledNotification(mockNk, 'notif123');
@@ -388,7 +388,7 @@ describe('notifications', () => {
   describe('getPendingNotifications', () => {
     it('should return pending notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([{ notification_id: '1', user_id: 'user1', title: 'Test' }]),
       });
@@ -400,7 +400,7 @@ describe('notifications', () => {
 
     it('should return empty array on error', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('DB Error')),
       });
 
       const result = await getPendingNotifications(mockNk);
@@ -415,7 +415,7 @@ describe('notifications', () => {
 
       await markNotificationSent(mockNk, 'notif123', true);
 
-      expect(mockNk.dbQuery).toHaveBeenCalled();
+      expect(mockNk.sqlQuery).toHaveBeenCalled();
     });
 
     it('should mark notification as failed', async () => {
@@ -423,7 +423,7 @@ describe('notifications', () => {
 
       await markNotificationSent(mockNk, 'notif123', false, 'Error message');
 
-      expect(mockNk.dbQuery).toHaveBeenCalled();
+      expect(mockNk.sqlQuery).toHaveBeenCalled();
     });
   });
 
@@ -442,14 +442,14 @@ describe('notifications', () => {
         'sent'
       );
 
-      expect(mockNk.dbQuery).toHaveBeenCalled();
+      expect(mockNk.sqlQuery).toHaveBeenCalled();
     });
   });
 
   describe('shouldSendNotification', () => {
     it('should return true when no preferences exist', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockRejectedValue(new Error('No prefs')),
+        sqlQuery: jest.fn().mockRejectedValue(new Error('No prefs')),
       });
 
       const result = await shouldSendNotification(mockNk, 'user123', 'daily_reward');
@@ -459,7 +459,7 @@ describe('notifications', () => {
 
     it('should return false when notifications disabled', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([
             { user_id: 'user123', notifications_enabled: false, daily_rewards_enabled: true },
@@ -473,7 +473,7 @@ describe('notifications', () => {
 
     it('should check type-specific preferences', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([
+        sqlQuery: jest.fn().mockResolvedValue([
           {
             user_id: 'user123',
             notifications_enabled: true,
@@ -496,7 +496,7 @@ describe('notifications', () => {
 
     it('should return true for unknown type', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([
             { user_id: 'user123', notifications_enabled: true, daily_rewards_enabled: false },
@@ -512,7 +512,7 @@ describe('notifications', () => {
   describe('processScheduledNotifications', () => {
     it('should process pending notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockResolvedValue([]),
+        sqlQuery: jest.fn().mockResolvedValue([]),
         storageRead: jest.fn().mockResolvedValue([]),
         storageWrite: jest.fn().mockReturnValue([]),
       });
@@ -527,7 +527,7 @@ describe('notifications', () => {
   describe('sendDailyRewardNotification', () => {
     it('should return error when user disabled daily reward notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([
             { user_id: 'user123', notifications_enabled: true, daily_rewards_enabled: false },
@@ -542,7 +542,7 @@ describe('notifications', () => {
     it('should return error when no device tokens', async () => {
       let callCount = 0;
       const mockNk = createMockNk({
-        dbQuery: jest.fn().mockImplementation(() => {
+        sqlQuery: jest.fn().mockImplementation(() => {
           callCount++;
           if (callCount === 1) {
             return Promise.resolve([
@@ -563,7 +563,7 @@ describe('notifications', () => {
   describe('sendEventNotification', () => {
     it('should return error when user disabled event notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([
             { user_id: 'user123', notifications_enabled: true, events_enabled: false },
@@ -579,7 +579,7 @@ describe('notifications', () => {
   describe('sendPvpChallengeNotification', () => {
     it('should return error when user disabled PvP notifications', async () => {
       const mockNk = createMockNk({
-        dbQuery: jest
+        sqlQuery: jest
           .fn()
           .mockResolvedValue([
             { user_id: 'user123', notifications_enabled: true, pvp_challenges_enabled: false },

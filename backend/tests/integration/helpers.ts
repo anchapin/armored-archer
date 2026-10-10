@@ -390,9 +390,12 @@ export class IntegrationTestHelper {
    * Get storage object directly.
    */
   async getStorageObject(collection: string, key: string, user_id: string): Promise<any | null> {
-    const { client, session } = await this.getAdminClient();
+    // Client APIs enforce read permissions even for the CI operator. Read
+    // private fixture records through their owner's authenticated session.
+    const owner = this.accounts.find((account) => account.userId === user_id);
+    if (!owner) throw new Error('Storage fixture owner session not available');
     const request = { object_ids: [{ collection, key, user_id }] };
-    const results = await client.readStorageObjects(session, request as any);
+    const results = await owner.client.readStorageObjects(owner.session, request as any);
     return results.objects && results.objects.length > 0 ? results.objects[0] : null;
   }
 

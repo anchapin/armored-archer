@@ -5,7 +5,14 @@
 
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
-import { readAndParseStorage, toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { resolveCurrentSeason } from '../utils/current-season';
+import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
+import {
+  readAndParseStorage,
+  toStorageValue,
+  getStorageRawValue,
+  parseRecordMetadata,
+} from '../utils/storage-helpers';
 import { calculateRank } from './rank';
 import { SeasonInfo } from './season_system';
 import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
@@ -69,8 +76,6 @@ const DEFAULT_DECAY_CONFIG: RatingDecayConfig = {
   max_decay_loss: 200, // Maximum points that can be lost per decay check
 };
 
-const SEASON_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
 // Storage keys
 const STORAGE_KEY_DECAY_CONFIG = 'rating_decay_config';
 const STORAGE_KEY_SEASON_ARCHIVE = 'season_archive';
@@ -89,7 +94,7 @@ export async function applyDailyDecay(
   logger?: Runtime.Logger
 ): Promise<{ affected: number; total_loss: number }> {
   const decayConfig = getDecayConfig(nk);
-  const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
+  const leaderboardRecords = listLeaderboardRecords(nk, seasonId, [], 1000).records;
 
   // Batch last-active lookups for every record up-front so the decay sweep
   // costs ONE storageRead regardless of leaderboard size (issue #1089).
@@ -116,7 +121,7 @@ export async function applyDailyDecay(
       const actualLoss = record.score - newRating;
 
       // Update leaderboard with decayed rating
-      const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+      const metadata = parseRecordMetadata(record.metadata);
       nk.leaderboardRecordWrite(seasonId, record.ownerId, record.username, newRating, 0, {
         ...metadata,
         original_rating: String(record.score),
@@ -156,7 +161,7 @@ export async function getTopPlayers(
   mode: '1v1' | '2v2' | null = null,
   limit: number = 100
 ): Promise<SeasonRanking[]> {
-  const records = nk.leaderboardRecordList(seasonId, [], limit, '', 0);
+  const records = listLeaderboardRecords(nk, seasonId, [], limit).records;
   const decayConfig = getDecayConfig(nk);
 
   // Batch last-active lookups for every record up-front; one storageRead
@@ -170,7 +175,7 @@ export async function getTopPlayers(
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    const metadata = parseRecordMetadata(record.metadata);
 
     const lastActiveData = lastActiveMap.get(record.ownerId) ?? 0;
     const daysInactive = getDaysInactive(lastActiveData);
@@ -219,28 +224,28 @@ export async function getTopPlayers(
  * @param playerId - Player ID
  * @returns Player's rank or null if not found
  */
-export async function getPlayerRank(
+export function getPlayerRank(
   nk: Runtime.Nakama,
   seasonId: string,
   playerId: string
-): Promise<{ rank: number; entry: SeasonRanking } | null> {
-  const records = nk.leaderboardRecordList(seasonId, [playerId], 1, '', 0);
+): { rank: number; entry: SeasonRanking } | null {
+  const records = listLeaderboardRecords(nk, seasonId, [playerId], 1).records;
 
   if (records.length === 0) {
     return null;
   }
 
   const record = records[0];
-  const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+  const metadata = parseRecordMetadata(record.metadata);
   const decayConfig = getDecayConfig(nk);
 
   // Need to recalculate rank based on decayed ratings
-  const allRecords = nk.leaderboardRecordList(seasonId, [], 1000, '', 0);
+  const allRecords = listLeaderboardRecords(nk, seasonId, [], 1000).records;
 
   // Collect every ownerId we need a last-active timestamp for (target + the
   // other players we'll compare against) and batch the lookup — one
   // storageRead instead of one per record (issue #1089).
-  const lastActiveMap = await getPlayersLastActiveBatch(
+  const lastActiveMap = getPlayersLastActiveBatch(
     nk,
     collectOwnerIdsForRank(record.ownerId, playerId, allRecords)
   );
@@ -316,7 +321,7 @@ export async function recordSeasonCompletion(
   const winner = topPlayers.length > 0 ? topPlayers[0] : null;
 
   // Get total players in season
-  const leaderboardRecords = nk.leaderboardRecordList(seasonId, [], 10000, '', 0);
+  const leaderboardRecords = listAllLeaderboardRecords(nk, seasonId, 10000);
 
   const archive: SeasonArchive = {
     season_id: seasonId,
@@ -434,20 +439,8 @@ export function getDaysInactive(lastActiveTimestamp: number): number {
  * @param nk - Nakama server interface
  * @returns Current season info
  */
-export function getCurrentSeasonInfo(_nk: Runtime.Nakama): SeasonInfo {
-  const now = Date.now();
-  const seasonNumber = Math.floor(now / SEASON_DURATION_MS) + 1;
-  const seasonStartTime = (seasonNumber - 1) * SEASON_DURATION_MS;
-  const seasonEndTime = seasonStartTime + SEASON_DURATION_MS;
-
-  return {
-    season_id: `season_${seasonNumber}`,
-    season_number: seasonNumber,
-    start_time: seasonStartTime,
-    end_time: seasonEndTime,
-    status: 'active',
-    duration_weeks: 4,
-  };
+export function getCurrentSeasonInfo(nk: Runtime.Nakama): SeasonInfo {
+  return resolveCurrentSeason(nk) as SeasonInfo;
 }
 
 /**
@@ -575,10 +568,10 @@ export async function getPlayerLastActive(nk: Runtime.Nakama, playerId: string):
  * @param playerIds - Player IDs to fetch (duplicates are collapsed; order is preserved)
  * @returns Map of player ID -> last-active timestamp in ms (0 if unknown)
  */
-export async function getPlayersLastActiveBatch(
+export function getPlayersLastActiveBatch(
   nk: Runtime.Nakama,
   playerIds: string[]
-): Promise<Map<string, number>> {
+): Map<string, number> {
   const result = new Map<string, number>();
   if (playerIds.length === 0) {
     return result;
@@ -848,12 +841,12 @@ export async function rpcGetSeasonHistory(
  *   "rating": 1450     // deprecated alias of ladder_rating
  * }
  */
-export async function rpcGetPlayerRank(
+export function rpcGetPlayerRank(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Get player rank called for user: %s', ctx.userId);
 
   // Validate payload (using schema from validation module)
@@ -891,7 +884,7 @@ export async function rpcGetPlayerRank(
     }
 
     const currentSeason = getCurrentSeasonInfo(nk);
-    const rankResult = await getPlayerRank(nk, currentSeason.season_id, ctx.userId);
+    const rankResult = getPlayerRank(nk, currentSeason.season_id, ctx.userId);
 
     if (!rankResult) {
       return JSON.stringify({

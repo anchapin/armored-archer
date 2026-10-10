@@ -23,7 +23,7 @@ describe('GearBalance', () => {
     mockCtx = {
       storageWrite: jest.fn().mockResolvedValue(undefined),
       storageRead: jest.fn().mockResolvedValue([]),
-      storageList: jest.fn().mockResolvedValue([]),
+      storageList: jest.fn().mockReturnValue([]),
       env: {},
     };
   });
@@ -337,7 +337,7 @@ describe('GearBalance', () => {
         },
       ];
 
-      mockCtx.storageList = jest.fn().mockResolvedValue(mockObjects as any);
+      mockCtx.storageList = jest.fn().mockReturnValue(mockObjects as any);
 
       const stats = await getGearUsageStats(mockCtx as Runtime, 'user-123');
 

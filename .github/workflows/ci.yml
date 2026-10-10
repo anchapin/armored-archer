@@ -71,13 +71,13 @@ jobs:
             # Baseline mode: fails only on clones not already recorded in
             # backend/.jscpd-baseline.json, so the gate keeps its strictness across
             # the jscpd 4 -> 5 detector change. The absolute `threshold` in
-            # .jscpd.json remains as a coarse backstop. Regenerate with:
-            #   cd backend && npx jscpd --config .jscpd.json \\
+            # .jscpd.backend.json remains as a coarse backstop. Regenerate with:
+            #   cd backend && npx jscpd --config .jscpd.backend.json \\
             #     --baseline .jscpd-baseline.json --update-baseline
             # The GDScript/Python pass stays informational (|| true).
             run: |
-              npx jscpd --config .jscpd.json --baseline .jscpd-baseline.json --fail-on-new-clones 0
-              npx jscpd --config .jscpd.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
+              npx jscpd --config .jscpd.backend.json --baseline .jscpd-baseline.json --fail-on-new-clones 0
+              npx jscpd --config ../.jscpd.client.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
 
           - name: Tech debt report and critical check
             run: |
@@ -138,7 +138,8 @@ jobs:
       # Note: Using port 5432 (container) mapped to host port 5432
       # For act local testing, use: act -j backend-test --job-timeout=30m
       postgres:
-        image: postgres:14-alpine
+        # Docker Official Image mirror avoids shared-runner Docker Hub pull limits.
+        image: public.ecr.aws/docker/library/postgres:14-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
@@ -451,7 +452,8 @@ jobs:
       # Note: Using unique port 5434 to avoid conflicts with backend-test job (5432) when running act in parallel
       # For act local testing, use: act -j sonarcloud --job-timeout=30m
       postgres:
-        image: postgres:14-alpine
+        # Docker Official Image mirror avoids shared-runner Docker Hub pull limits.
+        image: public.ecr.aws/docker/library/postgres:14-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
@@ -590,7 +592,7 @@ jobs:
       # dev stack (backend/docker-compose.yml) binds permanently; reusing it
       # made parallel act runs fail with "port already allocated" (#858).
       postgres:
-        image: postgres:15-alpine
+        image: public.ecr.aws/docker/library/postgres:15-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
@@ -752,6 +754,19 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # The integration suite includes the real client measurement gate. A
+      # checked-in stub is not a measurement; generate it in this job too.
+      - name: Setup Godot for real integration benchmark
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot-integration
+          chmod +x /tmp/godot-integration/Godot_v4.6-stable_linux.x86_64
+
+      - name: Generate real client performance snapshot
+        run: |
+          rm -f backend/tests/fixtures/performance/generated/headless_benchmark.snapshot.json
+          GODOT_BINARY=/tmp/godot-integration/Godot_v4.6-stable_linux.x86_64 bash scripts/run-headless-performance-benchmark.sh
+
       # Rolling 30-day flake history (issue #1144). restore-keys prefix-match
       # picks up the most recent prior run's file; the summary step below
       # appends this run's per-test pass/fail and prunes entries older than
@@ -801,6 +816,7 @@ jobs:
           if [ ! -f .env ] || ! grep -q "^TEST_FIXTURE_RPCS_ENABLED=" .env; then
             echo "TEST_FIXTURE_RPCS_ENABLED=true" >> .env
           fi
+          echo 'CI_RECEIPT_FIXTURE=true' >> .env
           # Session encryption keys must also be non-default in production.
           # validateSessionKeys() in src/config/index.ts throws when any of
           # SESSION_ENCRYPTION_KEY, REFRESH_ENCRYPTION_KEY, or TOKEN_ENCRYPTION_KEY
@@ -856,8 +872,10 @@ jobs:
       # has the correct entrypoint scripts for Nakama (like the local dev stack).
       - name: Start Nakama and Postgres via docker-compose
         run: |
-          # Start postgres and nakama using the CI docker-compose file
-          docker compose -f .github/docker-compose.yml up -d
+          # Pull one image at a time to avoid anonymous registry rate bursts.
+          docker compose --parallel 1 -f .github/docker-compose.yml pull
+          # Use the verified local images without another implicit pull.
+          docker compose -f .github/docker-compose.yml up -d --pull never
           # Wait for both services to be healthy
           echo "Waiting for services to be healthy..."
           for i in {1..60}; do
@@ -982,6 +1000,28 @@ jobs:
             PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
           done
 
+      # The allowlist is embedded at build time. Bootstrap a real CI account,
+      # rebuild this disposable bundle, then restart before privileged tests.
+      # Production guard code is unchanged and remains fail-closed.
+      - name: Bootstrap CI admin identity and reload allowlisted bundle
+        env:
+          CI: 'true'
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: |
+          cd backend
+          node scripts/ci-admin-identity.js
+          npm run build:full
+          cd ..
+          docker compose -f .github/docker-compose.yml restart nakama
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:7350/healthcheck >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ci_nakama --tail 50
+          exit 1
+
       # Jest's own exit code is deliberately NOT the job gate (issue #1144):
       # continue-on-error lets the jest-junit reporter finish writing
       # backend/test-results/junit.xml so every downstream signal step has
@@ -1004,6 +1044,12 @@ jobs:
           TEST_DB_NAME: nakama
           CI: 'true'
         run: npm run test:integration
+
+      # Server-side context for failing RPCs: handler errors are logged by
+      # Nakama, not returned to the client, so surface them in the job log.
+      - name: Dump Nakama runtime errors after integration tests
+        if: always()
+        run: docker logs ci_nakama 2>&1 | grep -E '"level":"(error|warn)"' | tail -150 || true
 
       # Pass-rate + flake signal surface and the job's status gate (issue
       # #1144). Parses the junit XML, computes pass/fail/skip counts and

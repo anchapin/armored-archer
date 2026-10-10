@@ -1,7 +1,7 @@
 import { Counter } from 'prom-client';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, normalizeStorageList } from '../utils/storage-helpers';
 import { isAdminUser } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -202,7 +202,9 @@ export function rpcQueryAuditLogs(
   const effectiveUserId: string = callerIsAdmin && user_id !== undefined ? user_id : ctx.userId;
 
   try {
-    const storageObjects = nk.storageList(effectiveUserId, 'audit_logs', limit, cursor || '', '');
+    const storageObjects = normalizeStorageList(
+      nk.storageList(effectiveUserId, 'audit_logs', limit, cursor || '')
+    );
 
     const logs = filterAuditEntries(
       storageObjects,

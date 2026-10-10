@@ -85,7 +85,7 @@ describe('match_replay', () => {
   describe('rpcGetMatchReplay', () => {
     it('should retrieve match replay data successfully', async () => {
       const mockMatch = createMockMatchResult();
-      mockNk.dbQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
 
       const payload = JSON.stringify({ match_id: 'match_test_123' });
       const result = await rpcGetMatchReplay(mockCtx, mockLogger, mockNk, payload);
@@ -95,13 +95,13 @@ describe('match_replay', () => {
       expect(response.replay).toBeDefined();
       expect(response.replay.match_id).toBe('match_test_123');
       expect(response.replay.total_turns).toBe(10);
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(expect.stringContaining('SELECT'), [
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(expect.stringContaining('SELECT'), [
         'match_test_123',
       ]);
     });
 
     it('should return error when match not found', async () => {
-      mockNk.dbQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockResolvedValue([]);
 
       const payload = JSON.stringify({ match_id: 'nonexistent_match' });
       const result = await rpcGetMatchReplay(mockCtx, mockLogger, mockNk, payload);
@@ -122,13 +122,13 @@ describe('match_replay', () => {
 
     it('should increment replay access count', async () => {
       const mockMatch = createMockMatchResult();
-      mockNk.dbQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
 
       const payload = JSON.stringify({ match_id: 'match_test_123' });
       await rpcGetMatchReplay(mockCtx, mockLogger, mockNk, payload);
 
       // Check that increment_replay_access was called
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('increment_replay_access'),
         ['match_test_123']
       );
@@ -141,7 +141,7 @@ describe('match_replay', () => {
         createMockMatchResult({ match_id: 'match_1' }),
         createMockMatchResult({ match_id: 'match_2' }),
       ];
-      mockNk.dbQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({});
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -156,7 +156,7 @@ describe('match_replay', () => {
 
     it('should filter by match type', async () => {
       const mockMatches = [createMockMatchResult({ match_id: 'match_1', match_type: 'ranked' })];
-      mockNk.dbQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({ match_type: 'ranked', limit: 10 });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -164,7 +164,7 @@ describe('match_replay', () => {
 
       expect(response.success).toBe(true);
       expect(response.limit).toBe(10);
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('match_type ='),
         expect.arrayContaining(['ranked'])
       );
@@ -172,14 +172,14 @@ describe('match_replay', () => {
 
     it('should filter by QA flagged only', async () => {
       const mockMatches = [createMockMatchResult({ match_id: 'match_1', qa_flagged: true })];
-      mockNk.dbQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({ qa_flagged_only: true });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
       const response = JSON.parse(result);
 
       expect(response.success).toBe(true);
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('qa_flagged = true'),
         expect.any(Array)
       );
@@ -187,21 +187,21 @@ describe('match_replay', () => {
 
     it('should filter by player ID', async () => {
       const mockMatches = [createMockMatchResult({ match_id: 'match_1' })];
-      mockNk.dbQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockResolvedValue(mockMatches);
 
       const payload = JSON.stringify({ player_id: 'creator-user' });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
       const response = JSON.parse(result);
 
       expect(response.success).toBe(true);
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('(creator_id ='),
         expect.arrayContaining(['creator-user', 'creator-user'])
       );
     });
 
     it('should apply pagination', async () => {
-      mockNk.dbQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockResolvedValue([]);
 
       const payload = JSON.stringify({ limit: 25, offset: 50 });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -213,7 +213,7 @@ describe('match_replay', () => {
     });
 
     it('should reject limit > 100', async () => {
-      mockNk.dbQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockResolvedValue([]);
 
       const payload = JSON.stringify({ limit: 200 });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -227,7 +227,7 @@ describe('match_replay', () => {
 
   describe('rpcFlagMatchForQa', () => {
     it('should flag a match for QA investigation', async () => {
-      mockNk.dbQuery.mockResolvedValue([{ flag_match_for_qa: true }]);
+      mockNk.sqlQuery.mockResolvedValue([{ flag_match_for_qa: true }]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -238,14 +238,14 @@ describe('match_replay', () => {
 
       expect(response.success).toBe(true);
       expect(response.message).toContain('flagged');
-      expect(mockNk.dbQuery).toHaveBeenCalledWith('SELECT flag_match_for_qa($1, $2)', [
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith('SELECT flag_match_for_qa($1, $2)', [
         'match_test_123',
         'Suspicious damage values',
       ]);
     });
 
     it('should return error when match not found', async () => {
-      mockNk.dbQuery.mockResolvedValue([{ flag_match_for_qa: false }]);
+      mockNk.sqlQuery.mockResolvedValue([{ flag_match_for_qa: false }]);
 
       const payload = JSON.stringify({
         match_id: 'nonexistent_match',
@@ -270,7 +270,7 @@ describe('match_replay', () => {
 
   describe('rpcAddDebugNotes', () => {
     it('should add debug notes to a match', async () => {
-      mockNk.dbQuery.mockResolvedValue([{ match_id: 'match_test_123' }]);
+      mockNk.sqlQuery.mockResolvedValue([{ match_id: 'match_test_123' }]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -281,7 +281,7 @@ describe('match_replay', () => {
 
       expect(response.success).toBe(true);
       expect(response.message).toContain('added');
-      expect(mockNk.dbQuery).toHaveBeenCalledWith(
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE match_results'),
         expect.arrayContaining([
           expect.stringContaining('Player reported unusual behavior'),
@@ -291,7 +291,7 @@ describe('match_replay', () => {
     });
 
     it('should return error when match not found', async () => {
-      mockNk.dbQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockResolvedValue([]);
 
       const payload = JSON.stringify({
         match_id: 'nonexistent_match',
@@ -317,7 +317,7 @@ describe('match_replay', () => {
   describe('rpcReconstructMatchState', () => {
     it('should reconstruct match state at specific turn', async () => {
       const mockMatch = createMockMatchResult();
-      mockNk.dbQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -338,7 +338,7 @@ describe('match_replay', () => {
       const mockMatch = createMockMatchResult({
         replay_data: JSON.stringify({ turn_snapshots: [] }),
       });
-      mockNk.dbQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',

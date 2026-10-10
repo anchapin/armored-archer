@@ -466,7 +466,7 @@ export const createMockNakama = (): Runtime.Nakama => {
   return {
     httpRequest: jest.fn(httpRequestViaFetchMock),
     storageRead: storageReadMock,
-    dbQuery: dbQueryMock,
+    sqlQuery: dbQueryMock,
     notificationSend: jest.fn(),
     storageWrite: jest.fn(
       (objects: { collection: string; key: string; userId?: string; value: unknown }[]) => {
@@ -476,8 +476,7 @@ export const createMockNakama = (): Runtime.Nakama => {
           // Nakama's goja storageWrite accepts a plain object (it stringifies
           // internally); normalize to the JSON string the old string-based
           // map/reads expect (ADR-0008).
-          const normalized =
-            typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
+          const normalized = typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
           testStorage.set(key, normalized);
           storageWriteCalls.push({
             collection: obj.collection,

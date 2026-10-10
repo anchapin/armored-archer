@@ -379,7 +379,7 @@ export async function rpcGetMatchReplay(
 
     const request = validation.data;
 
-    const result = await nk.dbQuery(
+    const result = await nk.sqlQuery(
       `SELECT
         match_id, creator_id, opponent_id, winner_id, loser_id,
         match_type, total_turns, duration_seconds, end_reason,
@@ -407,7 +407,7 @@ export async function rpcGetMatchReplay(
     const creatorStats = parsePlayerStats(match.creator_stats_at_match, logger, 'creator_stats');
     const opponentStats = parsePlayerStats(match.opponent_stats_at_match, logger, 'opponent_stats');
 
-    await nk.dbQuery('SELECT increment_replay_access($1)', [request.match_id]);
+    await nk.sqlQuery('SELECT increment_replay_access($1)', [request.match_id]);
 
     const replayDataResponse = buildMatchReplayData(
       match,
@@ -515,7 +515,7 @@ export async function rpcListMatchReplays(
     const whereClause = conditions.join(' AND ');
 
     // Query match replays
-    const result = await nk.dbQuery(
+    const result = await nk.sqlQuery(
       `SELECT
         match_id, creator_id, opponent_id, match_type,
         created_at, total_turns, duration_seconds,
@@ -607,7 +607,7 @@ export async function rpcFlagMatchForQa(
 
     const request = validation.data;
 
-    const result = await nk.dbQuery('SELECT flag_match_for_qa($1, $2)', [
+    const result = await nk.sqlQuery('SELECT flag_match_for_qa($1, $2)', [
       request.match_id,
       request.reason,
     ]);
@@ -679,7 +679,7 @@ export async function rpcAddDebugNotes(
 
     const request = validation.data;
 
-    const result = await nk.dbQuery(
+    const result = await nk.sqlQuery(
       `UPDATE match_results
        SET debug_notes = COALESCE(debug_notes, '') || $1,
            updated_at = NOW()
@@ -756,7 +756,7 @@ export async function rpcReconstructMatchState(
 
     const request = validation.data;
 
-    const result = await nk.dbQuery(
+    const result = await nk.sqlQuery(
       `SELECT
         match_id, creator_id, opponent_id, winner_id, match_type,
         combat_log, replay_data, creator_stats_at_match, opponent_stats_at_match

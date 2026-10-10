@@ -283,7 +283,7 @@ export function registerRpcGetNotificationStatus(initializer: InitModule): void 
     async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
         const initialized = isFirebaseInitialized();
-        const deviceTokens = (await nk.dbQuery(
+        const deviceTokens = (await nk.sqlQuery(
           `SELECT COUNT(*) as count FROM device_tokens WHERE user_id = $1`,
           [ctx.userId!]
         )) as { count: number }[];

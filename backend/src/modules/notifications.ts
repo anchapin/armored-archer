@@ -270,7 +270,7 @@ export async function registerDeviceToken(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Use raw SQL for device tokens table
-    await nk.dbQuery(
+    await nk.sqlQuery(
       `INSERT INTO device_tokens (user_id, device_token, platform, app_version, fcm_token, updated_at, last_used_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
        ON CONFLICT (device_token) DO UPDATE SET
@@ -301,7 +301,7 @@ export async function removeDeviceToken(
   deviceToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await nk.dbQuery(`DELETE FROM device_tokens WHERE device_token = $1`, [deviceToken]);
+    await nk.sqlQuery(`DELETE FROM device_tokens WHERE device_token = $1`, [deviceToken]);
 
     logger.info('Device token removed', { deviceToken });
     return { success: true };
@@ -320,7 +320,7 @@ export async function getUserDeviceTokens(
   userId: string
 ): Promise<{ deviceToken: string; platform: string; fcmToken: string }[]> {
   try {
-    const result = await nk.dbQuery(
+    const result = await nk.sqlQuery(
       `SELECT device_token, platform, fcm_token FROM device_tokens WHERE user_id = $1`,
       [userId]
     );
@@ -350,13 +350,13 @@ export async function getNotificationPreferences(
   userId: string
 ): Promise<{ user_id: string; [key: string]: unknown } | null> {
   try {
-    const result = await nk.dbQuery(`SELECT * FROM notification_preferences WHERE user_id = $1`, [
+    const result = await nk.sqlQuery(`SELECT * FROM notification_preferences WHERE user_id = $1`, [
       userId,
     ]);
 
     if (result.length === 0) {
       // Create default preferences
-      const insertResult = await nk.dbQuery(
+      const insertResult = await nk.sqlQuery(
         `INSERT INTO notification_preferences (user_id) VALUES ($1) RETURNING *`,
         [userId]
       );
@@ -437,7 +437,7 @@ export async function updateNotificationPreferences(
     updates.push(`updated_at = NOW()`);
     values.push(userId);
 
-    await nk.dbQuery(
+    await nk.sqlQuery(
       `UPDATE notification_preferences SET ${updates.join(', ')} WHERE user_id = $${paramIndex}`,
       values
     );
@@ -464,7 +464,7 @@ export async function scheduleNotification(
   data: Record<string, string> = {}
 ): Promise<{ success: boolean; notificationId?: string; error?: string }> {
   try {
-    const result = (await nk.dbQuery(
+    const result = (await nk.sqlQuery(
       `INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending')
        RETURNING notification_id`,
@@ -488,7 +488,7 @@ export async function cancelScheduledNotification(
   notificationId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await nk.dbQuery(
+    await nk.sqlQuery(
       `UPDATE scheduled_notifications SET status = 'cancelled', updated_at = NOW() 
        WHERE notification_id = $1 AND status = 'pending'`,
       [notificationId]
@@ -511,7 +511,7 @@ export async function getPendingNotifications(
   limit: number = 100
 ): Promise<any[]> {
   try {
-    const result = await nk.dbQuery(
+    const result = await nk.sqlQuery(
       `SELECT * FROM scheduled_notifications 
        WHERE status = 'pending' AND scheduled_for <= NOW()
        ORDER BY scheduled_for ASC
@@ -535,7 +535,7 @@ export async function markNotificationSent(
   errorMessage?: string
 ): Promise<void> {
   try {
-    await nk.dbQuery(
+    await nk.sqlQuery(
       `UPDATE scheduled_notifications 
        SET status = $1, sent_at = NOW(), error_message = $2, updated_at = NOW()
        WHERE notification_id = $3`,
@@ -561,7 +561,7 @@ export async function logNotificationHistory(
   errorMessage?: string
 ): Promise<void> {
   try {
-    await nk.dbQuery(
+    await nk.sqlQuery(
       `INSERT INTO notification_history 
        (notification_id, user_id, notification_type, title, body, device_token, status, error_message)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
