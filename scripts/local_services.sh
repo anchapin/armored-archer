@@ -40,6 +40,7 @@ check_prerequisites() {
 
 # Start services
 start_services() {
+    "$SCRIPT_DIR/check-ports.sh"
     echo -e "${BLUE}Starting local services (Nakama + PostgreSQL)...${NC}"
     cd "$BACKEND_DIR"
     docker compose up -d

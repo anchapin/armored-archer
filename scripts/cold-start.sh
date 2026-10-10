@@ -194,6 +194,11 @@ if [ -n "$sentinel_vars" ]; then
     exit 1
 fi
 
+# Verify resolved ports after .env setup, before builds or pulls.
+if ! "$SCRIPT_DIR/check-ports.sh"; then
+    exit 1
+fi
+
 # --- 3. Compiled Nakama bundle (issue #996) ---------------------------------
 # backend/data/modules/ is build output (npm run build:full) and is no longer
 # tracked in git. On a fresh checkout the bundle is absent, while

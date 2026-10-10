@@ -119,6 +119,32 @@ jobs:
         if: always() && env.ACT == 'true'
         run: echo "Skipping artifact uploads in act environment"
 
+  compose-port-preflight:
+    name: Compose Port Preflight Regressions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check shell entrypoint syntax
+        run: bash -n scripts/check-ports.sh scripts/local_services.sh scripts/cold-start.sh
+      - name: Run port preflight regressions
+        run: python3 -m unittest discover -s scripts/tests -p 'test_compose_ports.py' -v
+      - name: Validate resolved compose port models
+        run: |
+          python3 - <<'PY'
+          import importlib.util
+          import json
+          import subprocess
+          spec = importlib.util.spec_from_file_location('ports', 'scripts/check_compose_ports.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          for cwd, args in [('backend', []), ('.', ['-f', '.github/docker-compose.yml', '-p', 'ci-armored-archer'])]:
+              output = subprocess.check_output(['docker', 'compose', *args, 'config', '--format', 'json'], cwd=cwd, text=True)
+              config = json.loads(output)
+              binds = module.desired_binds(config)
+              assert binds, 'No published binds found'
+              print(f'{cwd}: {len(binds)} resolved binds validated')
+          PY
+
   backend-rpc-registration:
     name: Verify RPC Registration Parity
     runs-on: ubuntu-latest
