@@ -229,7 +229,10 @@ module.exports = {
         target: 'ES2020',
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
-        moduleResolution: 'bundler'
+        moduleResolution: 'bundler',
+        // Keep LCOV locations on TypeScript source lines, not emitted JS.
+        sourceMap: true,
+        inlineSources: true
       }
     }],
     // Transform JS files with Babel for ES module support
