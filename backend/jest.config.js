@@ -225,14 +225,14 @@ module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       tsconfig: {
+        // Keep LCOV locations on TypeScript source lines, not emitted JS.
+        sourceMap: true,
+        inlineSources: true,
         module: 'commonjs',
         target: 'ES2020',
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
-        moduleResolution: 'bundler',
-        // Keep LCOV locations on TypeScript source lines, not emitted JS.
-        sourceMap: true,
-        inlineSources: true
+        moduleResolution: 'bundler'
       }
     }],
     // Transform JS files with Babel for ES module support
