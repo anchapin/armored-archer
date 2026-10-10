@@ -24,7 +24,8 @@
 services:
   # PostgreSQL database - matches CI port 5432 (not local dev's 5433)
   postgres:
-    image: postgres:14-alpine
+    # Docker Official Image mirror avoids shared-runner Docker Hub pull limits.
+    image: public.ecr.aws/docker/library/postgres:14-alpine
     container_name: ci_postgres
     environment:
       POSTGRES_USER: postgres
@@ -37,6 +38,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ci-network
+
+  # Disposable receipt API contract fixture. No real provider credentials or
+  # receipts enter this isolated CI service.
+  receipt-fixture:
+    build:
+      context: ${PWD}/backend/tests/fixtures
+      dockerfile: Dockerfile.receipt
+    volumes:
+      - receipt-cert:/fixture-cert
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket,ssl; c=ssl.create_default_context(cafile='/fixture-cert/cert.pem'); c.wrap_socket(socket.create_connection(('localhost',8080)),server_hostname='receipt-fixture').close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     networks:
       - ci-network
 
@@ -88,7 +105,10 @@ services:
     volumes:
       - ${PWD}/backend/nakama.ci.yml:/nakama/nakama.yml:ro
       - ${PWD}/backend/data/modules:/nakama/data/modules:ro
+      - receipt-cert:/fixture-cert:ro
     depends_on:
+      receipt-fixture:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     healthcheck:
@@ -104,6 +124,7 @@ services:
       # `npm run build:full` so they are embedded. The values below match what
       # is injected by the CI workflow's "Inject required env vars into .env"
       # step so local dev matches CI behavior.
+      SSL_CERT_FILE: /fixture-cert/cert.pem
       NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
       HMAC_SECRET: ci-test-secret-do-not-use-in-production
     networks:
@@ -112,3 +133,6 @@ services:
 networks:
   ci-network:
     driver: bridge
+
+volumes:
+  receipt-cert:

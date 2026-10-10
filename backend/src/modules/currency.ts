@@ -264,14 +264,21 @@ function bridgeLegacyWalletIntoLedger(
   try {
     const account = nk.accountGetId(userId);
     if (account && account.wallet) {
-      const parsedWallet = safeParse<Record<string, unknown>>(
-        account.wallet,
-        null,
-        logger,
-        'currency:wallet_bridge'
-      );
-      if (parsedWallet.success && parsedWallet.data) {
-        wallet = parsedWallet.data;
+      // The Nakama JS runtime hands back account.wallet already decoded (an
+      // object); older runtimes and the test mocks pass a JSON string.
+      const rawWallet = account.wallet as unknown;
+      if (typeof rawWallet === 'object') {
+        wallet = rawWallet as Record<string, unknown>;
+      } else {
+        const parsedWallet = safeParse<Record<string, unknown>>(
+          String(rawWallet),
+          null,
+          logger,
+          'currency:wallet_bridge'
+        );
+        if (parsedWallet.success && parsedWallet.data) {
+          wallet = parsedWallet.data;
+        }
       }
     }
   } catch (error) {

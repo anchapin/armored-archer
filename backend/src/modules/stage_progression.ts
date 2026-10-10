@@ -309,7 +309,7 @@ export interface StageCompletionResult {
  * @param logger - Nakama logger instance
  * @returns Whether this was new/improved/no-improvement plus previous best
  */
-export function applyStageCompletion(
+function applyStageCompletionAttempt(
   nk: Runtime.Nakama,
   userId: string,
   stageId: string,
@@ -395,9 +395,30 @@ export function applyStageCompletion(
       key: userId,
       userId,
       value: toStorageValue(storageData),
-      version,
+      version: version ?? '*',
     },
   ]);
 
   return result;
+}
+
+/** Retry only the versioned completion-map merge, before any reward side effects. */
+export function applyStageCompletion(
+  ...args: Parameters<typeof applyStageCompletionAttempt>
+): StageCompletionResult {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return applyStageCompletionAttempt(...args);
+    } catch (error) {
+      // This exact Nakama conflict means the map changed since our read.
+      // Re-read and merge, never re-run claim or reward processing.
+      if (
+        !String(error).includes('Storage write rejected - version check failed') ||
+        attempt === 4
+      ) {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Stage completion merge attempts exhausted');
 }

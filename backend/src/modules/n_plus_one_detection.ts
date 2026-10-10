@@ -32,6 +32,7 @@
 import { Counter, Histogram, Gauge, Registry } from 'prom-client';
 import { logger as appLogger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { normalizeStorageList } from '../utils/storage-helpers';
 
 // --- Configuration ---
 
@@ -719,7 +720,7 @@ export function wrapStorageList(
   return trackQuery(
     operationName,
     'storage',
-    () => nk.storageList(userId, collection, limit, cursor, ''),
+    () => normalizeStorageList(nk.storageList(userId, collection, limit, cursor)),
     { collection, userId }
   );
 }

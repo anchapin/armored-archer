@@ -15,6 +15,7 @@
 import { performance } from 'perf_hooks';
 import { Pool } from 'pg';
 import { testHelper, TestAccount } from './helpers';
+import { parseRpcPayload } from './rpc_payload';
 
 // Performance thresholds
 const PERFORMANCE_THRESHOLDS = {
@@ -147,6 +148,11 @@ describe('Performance Smoke Tests', () => {
       const endTime = performance.now();
       const duration = endTime - startTime;
 
+      const result = parseRpcPayload(response.payload);
+      if (result.error || result.success === false) {
+        throw new Error(String(result.error || 'RPC reported failure'));
+      }
+
       // Track response time
       if (!responseTimes.has(rpcId)) {
         responseTimes.set(rpcId, []);
@@ -156,7 +162,7 @@ describe('Performance Smoke Tests', () => {
       return {
         duration,
         success: true,
-        result: response.payload ? JSON.parse(response.payload as unknown as string) : {},
+        result,
       };
     } catch (error: any) {
       const endTime = performance.now();
@@ -242,7 +248,10 @@ describe('Performance Smoke Tests', () => {
       expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
-      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
+      // Percentiles are ordered against percentiles, not the arithmetic mean.
+      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.p50Ms);
+      expect(metrics.p95Ms).toBeLessThanOrEqual(metrics.p99Ms);
+      expect(metrics.p99Ms).toBeLessThanOrEqual(metrics.maxMs);
       expect(metrics.p95Ms).toBeLessThan(5000);
     }, 30000);
 
@@ -269,7 +278,10 @@ describe('Performance Smoke Tests', () => {
       expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
-      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
+      // Percentiles are ordered against percentiles, not the arithmetic mean.
+      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.p50Ms);
+      expect(metrics.p95Ms).toBeLessThanOrEqual(metrics.p99Ms);
+      expect(metrics.p99Ms).toBeLessThanOrEqual(metrics.maxMs);
       expect(metrics.p95Ms).toBeLessThan(5000);
     }, 30000);
 
@@ -296,7 +308,10 @@ describe('Performance Smoke Tests', () => {
       expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
-      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
+      // Percentiles are ordered against percentiles, not the arithmetic mean.
+      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.p50Ms);
+      expect(metrics.p95Ms).toBeLessThanOrEqual(metrics.p99Ms);
+      expect(metrics.p99Ms).toBeLessThanOrEqual(metrics.maxMs);
       expect(metrics.p95Ms).toBeLessThan(5000);
     }, 30000);
 
@@ -323,7 +338,10 @@ describe('Performance Smoke Tests', () => {
       expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
-      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
+      // Percentiles are ordered against percentiles, not the arithmetic mean.
+      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.p50Ms);
+      expect(metrics.p95Ms).toBeLessThanOrEqual(metrics.p99Ms);
+      expect(metrics.p99Ms).toBeLessThanOrEqual(metrics.maxMs);
       expect(metrics.p95Ms).toBeLessThan(5000);
     }, 30000);
 
@@ -350,7 +368,10 @@ describe('Performance Smoke Tests', () => {
       expect(metrics.averageMs).toBeLessThan(15000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
-      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
+      // Percentiles are ordered against percentiles, not the arithmetic mean.
+      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.p50Ms);
+      expect(metrics.p95Ms).toBeLessThanOrEqual(metrics.p99Ms);
+      expect(metrics.p99Ms).toBeLessThanOrEqual(metrics.maxMs);
       expect(metrics.p95Ms).toBeLessThan(5000);
     }, 30000);
 
@@ -381,7 +402,10 @@ describe('Performance Smoke Tests', () => {
       expect(metrics.averageMs).toBeLessThan(5000);
       expect(typeof metrics.p95Ms).toBe('number');
       expect(Number.isFinite(metrics.p95Ms)).toBe(true);
-      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.averageMs);
+      // Percentiles are ordered against percentiles, not the arithmetic mean.
+      expect(metrics.p95Ms).toBeGreaterThanOrEqual(metrics.p50Ms);
+      expect(metrics.p95Ms).toBeLessThanOrEqual(metrics.p99Ms);
+      expect(metrics.p99Ms).toBeLessThanOrEqual(metrics.maxMs);
     }, 30000);
   });
 
