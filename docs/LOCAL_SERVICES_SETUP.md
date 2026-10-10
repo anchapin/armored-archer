@@ -265,3 +265,27 @@ docker-compose up -d
 - [Environment Configuration](../backend/ENVIRONMENTS.md) - Environment-specific setup
 - [Nakama Documentation](https://heroiclabs.com/docs/nakama/) - Server reference
 - [Docker Compose Documentation](https://docs.docker.com/compose/) - Container orchestration
+
+### Compose host-port preflight
+
+The startup entrypoints run `scripts/check-ports.sh` before starting services.
+The script needs Docker Compose v2, Python 3, and `ss` (iproute2). It reads
+`docker compose config --format json` from the same working directory as the
+startup command, then checks every resolved TCP and UDP host bind, including
+observability ports. It does not guess ports from `backend/.env`: a variable
+only changes a bind when the compose file actually interpolates it.
+
+Use `scripts/check-ports.sh --profile ci` for `.github/docker-compose.yml` and
+the `ci-armored-archer` project. The default is the backend dev compose project.
+`--all` is accepted for compatibility; all binds are always checked.
+
+A conflict prints the service, address, host port, protocol, and available
+socket process or container information. Stop the conflicting process or
+change its host bind. The script does not kill processes or pick other ports.
+Binds already owned by the same compose project and service are allowed, so
+starting an already-running stack remains idempotent. Failure to resolve the
+compose configuration or inspect sockets/containers stops startup rather than
+reporting a port as free. This is a preflight, not a reservation: a process can
+still claim a port between the check and Docker's bind.
+
+Exit codes: 0 passed, 1 conflict, 2 inspection/configuration unavailable.
