@@ -132,7 +132,7 @@ beforeEach(() => {
     minimum_rating: 1000,
     max_decay_loss: 200,
   });
-  mockSeasonLeaderboard.getSeasonArchive.mockResolvedValue({});
+  mockSeasonLeaderboard.getSeasonArchive.mockReturnValue({});
   mockSeasonLeaderboard.getDaysInactive.mockReturnValue(0);
   mockSeasonLeaderboard.calculateDecayAmount.mockReturnValue(0);
 
@@ -211,6 +211,21 @@ describe('registerRpc', () => {
 // =================== admin_get_season_state Tests ===================
 
 describe('rpcAdminGetSeasonState', () => {
+  it('reports archived status from the real synchronous storage reader (#1419)', () => {
+    const realModule = jest.requireActual('../season_leaderboard');
+    mockSeasonLeaderboard.getSeasonArchive.mockImplementation(realModule.getSeasonArchive);
+    mockNk.storageRead.mockImplementation((requests: any[]) =>
+      requests.some((request) => request.collection === 'season_archive')
+        ? [{ value: { season_1: { season_id: 'season_1', rewards_distributed: true } } }]
+        : []
+    );
+    const archive = realModule.getSeasonArchive(mockNk);
+    expect(archive).not.toBeInstanceOf(Promise);
+    expect(archive.season_1.rewards_distributed).toBe(true);
+    const result = JSON.parse(rpcAdminGetSeasonState(mockCtx, mockLogger, mockNk, '{}'));
+    expect(result.archive_status).toEqual({ archived: true, rewards_distributed: true });
+  });
+
   it('returns current season info with empty leaderboard', () => {
     const result = JSON.parse(rpcAdminGetSeasonState(mockCtx, mockLogger, mockNk, '{}'));
     expect(result.success).toBe(true);
@@ -261,8 +276,8 @@ describe('rpcAdminGetSeasonState', () => {
     expect(result.season.number).toBe(5);
   });
 
-  it('reports archive status when season is archived', async () => {
-    mockSeasonLeaderboard.getSeasonArchive.mockResolvedValue({
+  it('reports archive status when season is archived', () => {
+    mockSeasonLeaderboard.getSeasonArchive.mockReturnValue({
       season_1: {
         season_id: 'season_1',
         season_number: 1,
@@ -278,8 +293,7 @@ describe('rpcAdminGetSeasonState', () => {
 
     const result = JSON.parse(rpcAdminGetSeasonState(mockCtx, mockLogger, mockNk, '{}'));
     expect(result.success).toBe(true);
-    // Archive check is async, so it may or may not be populated in sync tests
-    // The important thing is it doesn't crash
+    expect(result.archive_status).toEqual({ archived: true, rewards_distributed: true });
   });
 
   it('reports decay config', () => {
