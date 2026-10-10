@@ -53,7 +53,7 @@ var _is_refreshing: bool = false  # Track if current request is a refresh
 # node and the ONLY node wired to the persistent _on_http_request_completed
 # handler, so auth/refresh responses (and only those) drive session signals.
 # `_rpc_http_request` carries send_rpc/send_rpc_async traffic (serialized by
-# _rpc_busy + the async queue) and `_probe_http_request` carries /v2/health
+# _rpc_busy + the async queue) and `_probe_http_request` carries /healthcheck
 # probes; neither is connected to the session handler, so an RPC 2xx without
 # a token key or a probe's empty 200 body can never emit session_created(false)
 # (the cold-start "Connection Failed" flash while auth is still in progress).
@@ -347,7 +347,7 @@ func _generate_device_id() -> void:
 var is_authenticating: bool = false
 
 # --- Authentication ---
-# Issue #908: auth is now gated by a /v2/health probe AND bounded by MAX_AUTH_DURATION_SEC,
+# Issue #908: auth is now gated by a /healthcheck probe AND bounded by MAX_AUTH_DURATION_SEC,
 # with up to 3 attempts at delays 1s/2s/4s before we raise auth_blocked (the UI shows the
 # error panel). Both layers are required: the health gate stops us from sending a doomed
 # authenticate/device request into a black hole, and the outer timer caps total wait time.
@@ -364,7 +364,7 @@ func authenticate_device() -> void:
 	# emit auth_blocked and stop trying so the UI gets an actionable error.
 	_start_auth_outer_timer()
 
-	# Issue #908 — health-gate: probe /v2/health before authenticating. If the probe
+	# Issue #908 — health-gate: probe /healthcheck before authenticating. If the probe
 	# fails we short-circuit to auth_blocked with an operator-actionable message.
 	if not _last_health_check_passed:
 		_run_health_gate_then_auth()
@@ -413,45 +413,47 @@ func authenticate_device() -> void:
 
 # ==================== ISSUE #908: HEALTH-GATE + BOUNDED RETRY ====================
 
-## Runs a synchronous-feeling /v2/health probe. Resolves true if Nakama answered
+## Runs a synchronous-feeling /healthcheck probe. Resolves true if Nakama answered
 ## 200 within HEALTH_CHECK_TIMEOUT_SEC, false otherwise. Never throws.
 ## Issue #1108: probes fire on the dedicated _probe_http_request node, so the
 ## empty 200 body of a healthy probe never reaches _on_http_request_completed
 ## (which parsed it as a failed auth response and emitted
 ## session_created(false, 'Failed to parse server response') during cold start).
+var _health_probe_busy: bool = false
+
 func _probe_health() -> bool:
-	if _probe_http_request == null:
+	if _probe_http_request == null or _health_probe_busy:
 		return false
+	_health_probe_busy = true
 	var url: String = "%s%s" % [base_url, NetworkConsts.HEALTH_GATE_PATH]
 	var timer: Timer = Timer.new()
 	timer.wait_time = NetworkConsts.HEALTH_CHECK_TIMEOUT_SEC
 	timer.one_shot = true
 	add_child(timer)
-	var result: Array = []
-	var done: bool = false
-	var _t1 = timer.timeout.connect(func():
-		if not done:
-			done = true
-			if _probe_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
-				_probe_http_request.cancel_request()
-	, CONNECT_ONE_SHOT)
-	var _t2 = _probe_http_request.request_completed.connect(func(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray):
-		if not done:
-			done = true
-			result = [code]
-	, CONNECT_ONE_SHOT)
+	# Dictionaries are shared by callbacks; scalar closure assignments are not.
+	var state: Dictionary = {"done": false, "healthy": false}
+	var on_timeout: Callable = func():
+		if not state.done:
+			state.done = true
+			_probe_http_request.cancel_request()
+	var on_completed: Callable = func(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray):
+		if not state.done:
+			state.healthy = result == HTTPRequest.RESULT_SUCCESS and code == 200
+			state.done = true
+	var _t1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
+	var _t2 = _probe_http_request.request_completed.connect(on_completed, CONNECT_ONE_SHOT)
 	var err: Error = _probe_http_request.request(url, PackedStringArray(), HTTPClient.METHOD_GET, "")
-	if err != OK:
-		timer.queue_free()
-		return false
-	timer.start()
-	while not done:
-		await get_tree().process_frame
+	if err == OK:
+		timer.start()
+		while not state.done:
+			await get_tree().process_frame
+	# Remove callbacks even on timeout/request errors, before a later probe can fire.
+	if _probe_http_request.request_completed.is_connected(on_completed):
+		_probe_http_request.request_completed.disconnect(on_completed)
+	timer.stop()
 	timer.queue_free()
-	if result.is_empty():
-		return false
-	var code: int = result[0]
-	return code >= 200 and code < 300
+	_health_probe_busy = false
+	return state.healthy
 
 ## Health-gate wrapper: probes first; on failure emits auth_blocked and stops.
 ## On success, clears the gate flag and re-issues authenticate_device().
@@ -576,7 +578,7 @@ func _emit_auth_blocked(reason: String, guidance: String) -> void:
 	push_warning("NetworkManager: auth blocked — %s" % reason)
 	auth_blocked.emit(reason, guidance)
 
-## Public: returns true if the most recent /v2/health probe succeeded.
+## Public: returns true if the most recent /healthcheck probe succeeded.
 func health_check() -> bool:
 	_last_health_check_passed = await _probe_health()
 	return _last_health_check_passed
