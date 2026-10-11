@@ -6,6 +6,7 @@
 
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { observedSqlQuery } from '../utils/sql-observability';
 import { GearItem, GearModifier } from './gear_system';
 
 /**
@@ -105,7 +106,7 @@ export function insertGearItem(
     // Convert modifiers array to JSONB
     const modifiersJson = JSON.stringify(gear.modifiers);
 
-    const result = nk.sqlQuery(query, [
+    const result = observedSqlQuery(nk, 'gear_db.insertGearItem', query, [
       userId,
       gear.type,
       gear.name,
@@ -175,7 +176,9 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
   `;
 
   try {
-    const result = nk.sqlQuery(query, [userId]) as GearItemRow[];
+    const result = observedSqlQuery(nk, 'gear_db.getPlayerGearFromDB', query, [
+      userId,
+    ]) as GearItemRow[];
 
     if (!result || result.length === 0) {
       return [];
@@ -231,7 +234,9 @@ export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Load
   `;
 
   try {
-    const result = nk.sqlQuery(query, [userId]) as LoadoutRow[];
+    const result = observedSqlQuery(nk, 'gear_db.getPlayerLoadoutFromDB', query, [
+      userId,
+    ]) as LoadoutRow[];
 
     if (!result || result.length === 0) {
       return {
@@ -293,7 +298,10 @@ export function equipItemInDB(
 
   let gearType: string | null = null;
   try {
-    const verifyResult = nk.sqlQuery(verifyQuery, [itemId, userId]) as any[];
+    const verifyResult = observedSqlQuery(nk, 'gear_db.equipItemInDB', verifyQuery, [
+      itemId,
+      userId,
+    ]) as any[];
     if (!verifyResult || verifyResult.length === 0) {
       return {
         success: false,
@@ -328,7 +336,7 @@ export function equipItemInDB(
   `;
 
   try {
-    nk.sqlQuery(upsertQuery, [userId, itemId]);
+    observedSqlQuery(nk, 'gear_db.equipItemInDB', upsertQuery, [userId, itemId]);
     return { success: true };
   } catch (error) {
     return {
@@ -361,7 +369,7 @@ export function unequipItemInDB(
   `;
 
   try {
-    nk.sqlQuery(query, [userId]);
+    observedSqlQuery(nk, 'gear_db.unequipItemInDB', query, [userId]);
     return { success: true };
   } catch (error) {
     return {
@@ -444,7 +452,10 @@ export function recordBossDefeatInDB(
   let defeatCount = 1;
 
   try {
-    const checkResult = nk.sqlQuery(checkQuery, [userId, bossId]) as any[];
+    const checkResult = observedSqlQuery(nk, 'gear_db.recordBossDefeatInDB', checkQuery, [
+      userId,
+      bossId,
+    ]) as any[];
 
     if (checkResult && checkResult.length > 0) {
       defeatCount = checkResult[0].defeat_count + 1;
@@ -463,7 +474,10 @@ export function recordBossDefeatInDB(
       RETURNING defeat_count
     `;
 
-    const upsertResult = nk.sqlQuery(upsertQuery, [userId, bossId]) as any[];
+    const upsertResult = observedSqlQuery(nk, 'gear_db.recordBossDefeatInDB', upsertQuery, [
+      userId,
+      bossId,
+    ]) as any[];
     if (upsertResult && upsertResult.length > 0) {
       defeatCount = upsertResult[0].defeat_count;
     }
@@ -498,7 +512,9 @@ export function getDefeatedBossesFromDB(nk: Runtime.Nakama, userId: string): str
   `;
 
   try {
-    const result = nk.sqlQuery(query, [userId]) as BossDefeatRow[];
+    const result = observedSqlQuery(nk, 'gear_db.getDefeatedBossesFromDB', query, [
+      userId,
+    ]) as BossDefeatRow[];
     if (!result || result.length === 0) {
       return [];
     }
@@ -524,7 +540,10 @@ export function getBossDefeatCount(nk: Runtime.Nakama, userId: string, bossId: s
   `;
 
   try {
-    const result = nk.sqlQuery(query, [userId, bossId]) as BossDefeatRow[];
+    const result = observedSqlQuery(nk, 'gear_db.getBossDefeatCount', query, [
+      userId,
+      bossId,
+    ]) as BossDefeatRow[];
     if (result && result.length > 0) {
       return result[0].defeat_count;
     }
@@ -565,7 +584,10 @@ export function unlockModifierPoolInDB(
   `;
 
   try {
-    const checkResult = nk.sqlQuery(checkQuery, [userId, modifierId]) as any[];
+    const checkResult = observedSqlQuery(nk, 'gear_db.unlockModifierPoolInDB', checkQuery, [
+      userId,
+      modifierId,
+    ]) as any[];
 
     if (checkResult && checkResult.length > 0) {
       return {
@@ -580,7 +602,12 @@ export function unlockModifierPoolInDB(
       VALUES ($1, $2, $3, $4)
     `;
 
-    nk.sqlQuery(insertQuery, [userId, modifierId, unlockReason, sourceBossId || null]);
+    observedSqlQuery(nk, 'gear_db.unlockModifierPoolInDB', insertQuery, [
+      userId,
+      modifierId,
+      unlockReason,
+      sourceBossId || null,
+    ]);
 
     return {
       success: true,
@@ -610,7 +637,9 @@ export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: strin
   `;
 
   try {
-    const result = nk.sqlQuery(query, [userId]) as UnlockedModifierPoolRow[];
+    const result = observedSqlQuery(nk, 'gear_db.getUnlockedModifierPoolsFromDB', query, [
+      userId,
+    ]) as UnlockedModifierPoolRow[];
     if (!result || result.length === 0) {
       return [];
     }
@@ -640,7 +669,10 @@ export function isModifierPoolUnlocked(
   `;
 
   try {
-    const result = nk.sqlQuery(query, [userId, modifierId]) as UnlockedModifierPoolRow[];
+    const result = observedSqlQuery(nk, 'gear_db.isModifierPoolUnlocked', query, [
+      userId,
+      modifierId,
+    ]) as UnlockedModifierPoolRow[];
     return result && result.length > 0;
   } catch (error) {
     logger.error('Failed to check if modifier pool is unlocked', { error: String(error) });
