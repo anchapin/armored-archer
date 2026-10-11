@@ -121,6 +121,14 @@ func _finish() -> void:
 	if _died_at >= 0.0 and _died_at < _min_alive:
 		_fail("player died before minimum combat duration")
 		return
+	var spawner: Node = root.get_node("EnemySpawner")
+	if not _won and (spawner.current_chapter != 1 or spawner.current_stage != 1 or spawner.max_waves != 4):
+		_fail("active spawner lost selected campaign context")
+		return
+	for enemy in spawner.active_enemies:
+		if enemy.get_script().resource_path != "res://scenes/enemies/scout_enemy.gd" or enemy.max_health != 30 or enemy.damage != 8 or enemy.move_speed != 10.0:
+			_fail("active enemy differs from configured1_1 archetype/stats")
+			return
 	if _max_enemies == 0:
 		_fail("no enemies active after combat resumed")
 		return
