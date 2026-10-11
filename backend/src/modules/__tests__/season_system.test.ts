@@ -1661,6 +1661,88 @@ describe('season_system', () => {
       expect(finalSentinel.status).toBe('ended');
     });
 
+    it('fails closed on sentinel SQL failure instead of re-crediting completed players', () => {
+      const players = buildPlayers();
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
+      mockNk.walletUpdate = jest.fn();
+      mockNk.leaderboardRecordWrite = jest.fn();
+      installCrashOnKthCurrency('player-3');
+      const first = JSON.parse(rpcEndSeason(mockCtx, mockLogger, mockNk, '{}'));
+      expect(first.success).toBe(false);
+      const seasonId = first.season_id;
+      const before = JSON.parse(testStorage.get('player_currency:player-1')!);
+      const counts: Record<string, number> = {};
+      mockNk.storageWrite = jest.fn((objs: any[]) => {
+        for (const w of objs) {
+          const key = `${w.collection}:${w.key}`;
+          counts[key] = (counts[key] || 0) + 1;
+          testStorage.set(key, storageValueText(w.value));
+        }
+        return [];
+      });
+      mockNk.sqlQuery = jest.fn(() => {
+        throw new Error('owner lookup failed');
+      });
+      mockNk.metricsCounterAdd = jest.fn();
+      const retry = JSON.parse(rpcEndSeason(mockCtx, mockLogger, mockNk, '{}'));
+      const after = JSON.parse(testStorage.get('player_currency:player-1')!);
+      expect(retry).toEqual({
+        success: false,
+        error: 'Season end recovery state could not be read',
+        error_code: 'SEASON_RECOVERY_FAILED',
+      });
+      expect(counts).toEqual({});
+      expect(after).toEqual(before);
+      expect(
+        JSON.parse(testStorage.get(`seasons:${seasonId}`)!).end_distribution.generation_token
+      ).toBe(first.generation_token);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Database query failed: rpc=%s op=%s',
+        'armored_archer/end_season',
+        'season.end_sentinel_owner'
+      );
+      expect(mockNk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'season.end_sentinel_owner', rpc: 'armored_archer/end_season' },
+        1
+      );
+    });
+
+    it.each(['storage', 'parse'])('fails closed when sentinel %s read fails', (failure) => {
+      const players = buildPlayers();
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
+      const read = mockNk.storageRead;
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects.some((o) => o.collection === 'seasons')) {
+          if (failure === 'storage') throw new Error('private storage details');
+          return [{ value: '{broken' }] as any;
+        }
+        return read(objects);
+      });
+      mockNk.storageWrite = jest.fn();
+      const response = JSON.parse(rpcEndSeason(mockCtx, mockLogger, mockNk, '{}'));
+      expect(response.error_code).toBe('SEASON_RECOVERY_FAILED');
+      expect(response.success).toBe(false);
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
+      expect(JSON.stringify(response)).not.toContain('private');
+    });
+
+    it('does not credit players when the opening recovery sentinel cannot be saved', () => {
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(buildPlayers());
+      mockNk.storageWrite = jest.fn(() => {
+        throw new Error('private write details');
+      });
+      const response = JSON.parse(rpcEndSeason(mockCtx, mockLogger, mockNk, '{}'));
+      expect(response).toEqual({
+        success: false,
+        error: 'Season end recovery state could not be saved',
+        error_code: 'SEASON_RECOVERY_FAILED',
+      });
+      expect(mockNk.storageWrite).toHaveBeenCalledTimes(1);
+      expect(testStorage.size).toBe(0);
+      expect(JSON.stringify(response)).not.toContain('private');
+    });
+
     it('per-player completion marker prevents re-credit when sentinel resume-index lags', () => {
       // Force a scenario where the sentinel checkpoint is stale (next_index
       // says 0 but a per-player marker from this run already exists). The
