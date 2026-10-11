@@ -67,3 +67,14 @@ The seven notification RPC names stay unchanged. Their handlers now return strin
 Preference reads use an atomic upsert; updates create defaults when needed and return success only after a row is persisted. Timezone names are checked against PostgreSQL's catalog, quiet-hour syntax and timestamp calendar values are validated, and input uses typed schemas. Persistence ceilings are 65,536 payload characters, 4,096 token/title/body/identifier characters, 128 app-version/timezone characters. These are protective database/RPC limits, not FCM delivery limits. Existing external/mobile consumers were not located in the repository, so compatibility still needs observation.
 
 Scheduling success means a durable pending row with `notificationId`, not a sent push. Status preserves `{firebaseEnabled, registeredDevices}` but reports `firebaseEnabled:false`: Stage 1 does not initialize a transport or claim worker health. The legacy async Firebase/scheduler modules remain unchanged and outside the RPC dependency graph. Quiet-hour dispatch, fail-closed preference checks during dispatch, durable claims/retries, per-token outcomes, provider acceptance versus delivered acknowledgements, old pending-row cutover and worker deployment belong to Stage 2 and are not enabled here. No schema migration is included.
+
+### Inventory read failure contract
+
+`get_inventory` now supplies a strict read context to the existing gear database
+helpers. SQL exceptions in gear, loadout or modifier-pool reads produce a
+`DATABASE_ERROR` RPC response, never a successful empty inventory. Each failed
+query records one safe error log and one native `db_errors_total{op,rpc}` metric.
+A genuinely absent inventory remains successful. The RPC reads modifier pools
+once instead of twice. Other callers retain their prior fallback semantics;
+reward, equip, combat, optional enrichment and replay behavior are not changed.
+This is another slice of #1462, not its completion. No schema change.

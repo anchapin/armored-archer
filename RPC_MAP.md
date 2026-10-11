@@ -139,7 +139,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Generate Gear | GearManager | `rpcGenerateGear()` in `gear_system.ts` | `catalog` + `inventory` tables (PostgreSQL) | `/rpc/armored_archer/generate_gear` |
 | Equip Gear | GearManager | `rpcEquipGear()` in `gear_system.ts` | `loadout` table (PostgreSQL) | `/rpc/armored_archer/equip_gear` |
 | Unequip Gear | GearManager | `rpcUnequipGear()` in `gear_system.ts` | `loadout` table (PostgreSQL) | `/rpc/armored_archer/unequip_gear` |
-| Get Inventory | GearManager | `rpcGetInventory()` in `gear_system.ts` | `inventory` + `loadout` tables (PostgreSQL) | `/rpc/armored_archer/get_inventory` |
+| Get Inventory | GearManager | `rpcGetInventory()` in `gear_system.ts` | `inventory_items` + `loadout` + `unlocked_modifier_pools` tables (PostgreSQL); SQL read failures return `DATABASE_ERROR`, not empty success | `/rpc/armored_archer/get_inventory` |
 | Unlock Modifier Pool | GearManager | `rpcUnlockModifierPool()` in `gear_system.ts` | `unlocked_modifiers` storage (custom collection) | `/rpc/armored_archer/unlock_modifier_pool` |
 | Get Unlocked Modifiers | GearManager | `rpcGetUnlockedModifiers()` in `gear_system.ts` | `unlocked_modifiers` storage (custom collection) | `/rpc/armored_archer/get_unlocked_modifiers` |
 

@@ -1158,24 +1158,6 @@ export function getPlayerInventory(
 }
 
 /**
- * Retrieves unlocked modifier pools from Nakama storage.
- * This function is kept for backwards compatibility but now delegates to database.
- *
- * @param nk - Nakama server interface
- * @param userId - ID of the player
- * @param logger - Nakama logger instance
- * @returns Array of unlocked modifier pool IDs
- */
-function getUnlockedModifierPoolsFromStorage(
-  nk: Runtime.Nakama,
-  userId: string,
-  _logger: Runtime.Logger
-): string[] {
-  // Now delegates to database function for consistency
-  return getUnlockedModifierPoolsFromDB(nk, userId);
-}
-
-/**
  * Retrieves player's inventory from database and Nakama storage.
  * Returns gear items, equipped loadout, and unlocked modifier pools.
  *
@@ -1198,18 +1180,16 @@ export function rpcGetInventory(
     return createValidationErrorResponse('get_inventory', validation.error);
   }
 
-  // Get gear and loadout from database
-  const dbInventory = getFullInventoryFromDB(nk, ctx.userId);
-
-  // Get unlocked modifier pools from Nakama storage
-  const unlockedModifierPools = getUnlockedModifierPoolsFromStorage(nk, ctx.userId, logger);
-
-  return JSON.stringify({
-    success: true,
-    gear: dbInventory.gear,
-    equipped_gear: dbInventory.equipped_gear,
-    unlocked_modifier_pools: unlockedModifierPools,
-  });
+  try {
+    const inventory = getFullInventoryFromDB(nk, ctx.userId, {
+      rpc: 'armored_archer/get_inventory',
+      logger,
+    });
+    return JSON.stringify({ success: true, ...inventory });
+  } catch {
+    // The SQL observer already records fixed RPC/op labels without driver text.
+    return createErrorResponse('DATABASE_ERROR', 'Failed to retrieve inventory');
+  }
 }
 
 /**
