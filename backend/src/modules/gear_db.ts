@@ -9,6 +9,12 @@ import { Runtime } from '../types/nakama';
 import { observedSqlQuery } from '../utils/sql-observability';
 import { GearItem, GearModifier } from './gear_system';
 
+/** Strict callers distinguish a failed read from a legitimate empty inventory. */
+export interface InventoryReadContext {
+  rpc: string;
+  logger: Runtime.Logger;
+}
+
 /**
  * Database row interface for gear items.
  */
@@ -159,7 +165,11 @@ function jsonbArray(value: unknown): unknown[] {
  * @param userId - ID of the player
  * @returns Array of gear items
  */
-export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearItem[] {
+export function getPlayerGearFromDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  context?: InventoryReadContext
+): GearItem[] {
   const query = `
     SELECT
       item_id,
@@ -176,9 +186,13 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
   `;
 
   try {
-    const result = observedSqlQuery(nk, 'gear_db.getPlayerGearFromDB', query, [
-      userId,
-    ]) as GearItemRow[];
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.getPlayerGearFromDB',
+      query,
+      [userId],
+      context
+    ) as GearItemRow[];
 
     if (!result || result.length === 0) {
       return [];
@@ -201,6 +215,7 @@ export function getPlayerGearFromDB(nk: Runtime.Nakama, userId: string): GearIte
       timestamp: new Date(row.created_at).getTime(),
     }));
   } catch (error) {
+    if (context) throw error;
     logger.error('Failed to retrieve player gear', { error: String(error) });
     return [];
   }
@@ -221,7 +236,11 @@ export interface Loadout {
   amulet_item_id: string | null;
 }
 
-export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Loadout {
+export function getPlayerLoadoutFromDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  context?: InventoryReadContext
+): Loadout {
   const query = `
     SELECT
       helm_item_id,
@@ -234,9 +253,13 @@ export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Load
   `;
 
   try {
-    const result = observedSqlQuery(nk, 'gear_db.getPlayerLoadoutFromDB', query, [
-      userId,
-    ]) as LoadoutRow[];
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.getPlayerLoadoutFromDB',
+      query,
+      [userId],
+      context
+    ) as LoadoutRow[];
 
     if (!result || result.length === 0) {
       return {
@@ -257,6 +280,7 @@ export function getPlayerLoadoutFromDB(nk: Runtime.Nakama, userId: string): Load
       amulet_item_id: row.amulet_item_id || null,
     };
   } catch (error) {
+    if (context) throw error;
     logger.error('Failed to retrieve player loadout', { error: String(error) });
     return {
       helm_item_id: null,
@@ -392,10 +416,14 @@ export interface FullInventoryData {
   unlocked_modifier_pools: string[];
 }
 
-export function getFullInventoryFromDB(nk: Runtime.Nakama, userId: string): FullInventoryData {
-  const gear = getPlayerGearFromDB(nk, userId);
-  const loadout = getPlayerLoadoutFromDB(nk, userId);
-  const unlockedModifierPools = getUnlockedModifierPoolsFromDB(nk, userId);
+export function getFullInventoryFromDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  context?: InventoryReadContext
+): FullInventoryData {
+  const gear = getPlayerGearFromDB(nk, userId, context);
+  const loadout = getPlayerLoadoutFromDB(nk, userId, context);
+  const unlockedModifierPools = getUnlockedModifierPoolsFromDB(nk, userId, context);
 
   // Convert loadout to equipped_gear mapping
   const equipped_gear: { [slot: string]: string | null } = {
@@ -629,7 +657,11 @@ export function unlockModifierPoolInDB(
  * @param userId - ID of the player
  * @returns Array of unlocked modifier pool IDs
  */
-export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: string): string[] {
+export function getUnlockedModifierPoolsFromDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  context?: InventoryReadContext
+): string[] {
   const query = `
     SELECT modifier_id FROM unlocked_modifier_pools
     WHERE user_id = $1
@@ -637,14 +669,19 @@ export function getUnlockedModifierPoolsFromDB(nk: Runtime.Nakama, userId: strin
   `;
 
   try {
-    const result = observedSqlQuery(nk, 'gear_db.getUnlockedModifierPoolsFromDB', query, [
-      userId,
-    ]) as UnlockedModifierPoolRow[];
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.getUnlockedModifierPoolsFromDB',
+      query,
+      [userId],
+      context
+    ) as UnlockedModifierPoolRow[];
     if (!result || result.length === 0) {
       return [];
     }
     return result.map((row: UnlockedModifierPoolRow) => row.modifier_id);
   } catch (error) {
+    if (context) throw error;
     logger.error('Failed to retrieve unlocked modifier pools', { error: String(error) });
     return [];
   }
