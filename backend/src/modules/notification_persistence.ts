@@ -56,16 +56,16 @@ export function registerDeviceToken(
     'notification_register_device',
     `INSERT INTO device_tokens (user_id, device_token, platform, app_version, fcm_token, updated_at, last_used_at)
      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-     ON CONFLICT (device_token) DO UPDATE SET user_id = EXCLUDED.user_id,
+     ON CONFLICT (device_token) DO UPDATE SET
        platform = EXCLUDED.platform, app_version = EXCLUDED.app_version,
        fcm_token = EXCLUDED.fcm_token, updated_at = NOW(), last_used_at = NOW()
+     WHERE device_tokens.user_id = EXCLUDED.user_id
      RETURNING token_id`,
     [userId, deviceToken, platform, appVersion || null, fcmToken || null],
     context
   );
-  if (!rows.length) throw new Error('Notification token persistence returned no row');
-  // Existing transfer behavior retained. Token proof/transfer policy needs separate review.
-  return { success: true };
+  // Conflict with another owner is a safe unsuccessful result. Never transfer here.
+  return { success: rows.length > 0 };
 }
 export function removeDeviceToken(
   nk: Runtime.Nakama,

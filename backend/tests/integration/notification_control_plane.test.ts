@@ -41,6 +41,29 @@ describe('Notification synchronous control plane', () => {
       firebaseEnabled: false,
       registeredDevices: 1,
     });
+    expect(
+      (
+        await rpc(other, 'register_device_token', {
+          deviceToken,
+          platform: 'android',
+          fcmToken: 'foreign',
+        })
+      ).success
+    ).toBe(false);
+    const tokenRows = await testHelper.sql(
+      'SELECT user_id, platform, fcm_token FROM device_tokens WHERE device_token = $1',
+      [deviceToken]
+    );
+    expect(tokenRows[0]).toEqual({ user_id: owner.userId, platform: 'ios', fcm_token: null });
+    expect(
+      (
+        await rpc(owner, 'register_device_token', {
+          deviceToken,
+          platform: 'ios',
+          fcmToken: 'owner-refreshed',
+        })
+      ).success
+    ).toBe(true);
     const prefs = await rpc(owner, 'get_notification_preferences', {});
     expect(prefs.success).toBe(true);
     expect(prefs.preferences.timezone).toBe('UTC');

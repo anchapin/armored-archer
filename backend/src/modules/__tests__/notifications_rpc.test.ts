@@ -180,7 +180,6 @@ describe('Synchronous notification RPC control plane', () => {
     expect(nk.sqlQuery).not.toHaveBeenCalled();
   });
   test.each([
-    'register_device_token',
     'get_notification_preferences',
     'update_notification_preferences',
     'schedule_notification',
@@ -293,6 +292,14 @@ describe('Synchronous notification RPC control plane', () => {
     );
     const ids = [...source.matchAll(/registerRpc\(\s*'([^']+)'/g)].map((m: any) => m[1]);
     expect(ids.sort()).toEqual(names.map((n) => 'armored_archer_' + n).sort());
+  });
+  test('registration cannot reassign a globally unique token or overwrite foreign metadata', () => {
+    call('register_device_token');
+    const sql = nk.sqlQuery.mock.calls[0][0];
+    expect(sql).toContain('WHERE device_tokens.user_id = EXCLUDED.user_id');
+    expect(sql).not.toContain('SET user_id = EXCLUDED.user_id');
+    nk.sqlQuery.mockReturnValue([]);
+    expect(call('register_device_token')).toEqual({ success: false });
   });
   test('metric failure cannot replace SQL failure', () => {
     nk.sqlQuery.mockImplementation(() => {
