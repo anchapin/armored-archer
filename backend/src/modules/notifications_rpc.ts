@@ -1,21 +1,21 @@
 import { logger } from '../config/logger';
-import { InitModule, Runtime } from '../types/nakama';
+import { Runtime } from '../types/nakama';
 import {
-  initializeFirebase,
-  isFirebaseInitialized,
   registerDeviceToken,
   removeDeviceToken,
   getNotificationPreferences,
   updateNotificationPreferences,
   scheduleNotification,
   cancelScheduledNotification,
-  getNotificationTemplate,
-} from './notifications';
+  getRegisteredDeviceCount,
+} from './notification_persistence';
+import { getNotificationTemplate } from './notification_templates';
+import { NotificationInputError, parseNotificationInput } from './notification_validation';
 
 /**
- * Issue #1106: Stop leaking raw internal error strings to the client.
+ * Keep persistence errors generic at the synchronous RPC boundary.
  *
- * Logs the full error server-side (ops needs the trace), but only returns a
+ * Logs a fixed RPC/code label without driver text or private parameters; returns a
  * stable `error_code` + generic `error` to the caller. NEVER include
  * `String(error)` or any internal detail in the response body — that's how
  * SQL fragments, TypeError messages, and connection strings escape the
@@ -27,7 +27,16 @@ function safeErrorResponse(
   logger: Runtime.Logger,
   errorCode: string
 ): string {
-  logger.error(`RPC ${rpcName} failed`, { error });
+  if (error instanceof NotificationInputError) {
+    return JSON.stringify({
+      success: false,
+      error: error.message,
+      error_code: 'INVALID_ARGUMENT',
+      rpc_name: rpcName,
+    });
+  }
+  // Deliberately omit driver errors, tokens and payloads from logs.
+  logger.error('RPC %s failed: code=%s', rpcName, errorCode);
   return JSON.stringify({
     success: false,
     error: 'Internal error; see server logs',
@@ -40,12 +49,32 @@ function safeErrorResponse(
  * Register RPC: Register device token for push notifications
  * Payload: { "deviceToken": string, "platform": "android" | "ios", "appVersion"?: string }
  */
-export function registerRpcRegisterDeviceToken(initializer: InitModule): void {
+type SyncRpc = (
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+) => string;
+type SyncNotificationInitializer = { registerRpc(name: string, handler: SyncRpc): void };
+
+function authError(): string {
+  return JSON.stringify({
+    success: false,
+    error: 'Authentication required',
+    error_code: 'AUTH_REQUIRED',
+  });
+}
+
+export function registerRpcRegisterDeviceToken(initializer: SyncNotificationInitializer): void {
   initializer.registerRpc(
     'armored_archer_register_device_token',
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const { deviceToken, platform, appVersion, fcmToken } = JSON.parse(payload);
+        if (!ctx.userId) return authError();
+        const { deviceToken, platform, appVersion, fcmToken } = parseNotificationInput(
+          payload,
+          'register'
+        );
 
         if (!deviceToken || !platform) {
           return JSON.stringify({ success: false, error: 'Missing deviceToken or platform' });
@@ -55,13 +84,10 @@ export function registerRpcRegisterDeviceToken(initializer: InitModule): void {
           return JSON.stringify({ success: false, error: 'Invalid platform' });
         }
 
-        const result = await registerDeviceToken(
+        const result = registerDeviceToken(
           nk,
-          ctx.userId!,
-          deviceToken,
-          platform,
-          appVersion,
-          fcmToken
+          { userId: ctx.userId, deviceToken, platform, appVersion, fcmToken },
+          { rpc: 'armored_archer_register_device_token', logger }
         );
 
         return JSON.stringify(result);
@@ -81,18 +107,22 @@ export function registerRpcRegisterDeviceToken(initializer: InitModule): void {
  * Register RPC: Remove device token
  * Payload: { "deviceToken": string }
  */
-export function registerRpcRemoveDeviceToken(initializer: InitModule): void {
+export function registerRpcRemoveDeviceToken(initializer: SyncNotificationInitializer): void {
   initializer.registerRpc(
     'armored_archer_remove_device_token',
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const { deviceToken } = JSON.parse(payload);
+        if (!ctx.userId) return authError();
+        const { deviceToken } = parseNotificationInput(payload, 'remove');
 
         if (!deviceToken) {
           return JSON.stringify({ success: false, error: 'Missing deviceToken' });
         }
 
-        const result = await removeDeviceToken(nk, deviceToken);
+        const result = removeDeviceToken(nk, ctx.userId, deviceToken, {
+          rpc: 'armored_archer_remove_device_token',
+          logger,
+        });
         return JSON.stringify(result);
       } catch (error) {
         return safeErrorResponse(
@@ -110,13 +140,19 @@ export function registerRpcRemoveDeviceToken(initializer: InitModule): void {
  * Register RPC: Get notification preferences
  * Payload: {}
  */
-export function registerRpcGetNotificationPreferences(initializer: InitModule): void {
+export function registerRpcGetNotificationPreferences(
+  initializer: SyncNotificationInitializer
+): void {
   initializer.registerRpc(
     'armored_archer_get_notification_preferences',
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const prefs = await getNotificationPreferences(nk, ctx.userId!);
+        if (!ctx.userId) return authError();
+        parseNotificationInput(payload, 'empty');
+        const prefs = getNotificationPreferences(nk, ctx.userId, {
+          rpc: 'armored_archer_get_notification_preferences',
+          logger,
+        });
 
         if (!prefs) {
           return JSON.stringify({
@@ -155,14 +191,17 @@ export function registerRpcGetNotificationPreferences(initializer: InitModule): 
  * Register RPC: Update notification preferences
  * Payload: { "dailyRewardsEnabled"?: boolean, "eventsEnabled"?: boolean, ... }
  */
-export function registerRpcUpdateNotificationPreferences(initializer: InitModule): void {
+export function registerRpcUpdateNotificationPreferences(
+  initializer: SyncNotificationInitializer
+): void {
   initializer.registerRpc(
     'armored_archer_update_notification_preferences',
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const preferences = JSON.parse(payload);
+        if (!ctx.userId) return authError();
+        const preferences = parseNotificationInput(payload, 'preferences');
 
-        // Validate boolean fields
+        // Schema validation has already checked boolean values.
         const validFields = [
           'dailyRewardsEnabled',
           'eventsEnabled',
@@ -181,7 +220,10 @@ export function registerRpcUpdateNotificationPreferences(initializer: InitModule
           }
         }
 
-        const result = await updateNotificationPreferences(nk, ctx.userId!, preferences);
+        const result = updateNotificationPreferences(nk, ctx.userId, preferences, {
+          rpc: 'armored_archer_update_notification_preferences',
+          logger,
+        });
         return JSON.stringify(result);
       } catch (error) {
         return safeErrorResponse(
@@ -199,12 +241,16 @@ export function registerRpcUpdateNotificationPreferences(initializer: InitModule
  * Register RPC: Schedule a notification
  * Payload: { "type": "daily_reward" | "event" | "pvp_challenge" | "promotion" | "custom", "title": string, "body": string, "scheduledFor": ISO date string }
  */
-export function registerRpcScheduleNotification(initializer: InitModule): void {
+export function registerRpcScheduleNotification(initializer: SyncNotificationInitializer): void {
   initializer.registerRpc(
     'armored_archer_schedule_notification',
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const { type, title, body, scheduledFor, data } = JSON.parse(payload);
+        if (!ctx.userId) return authError();
+        const { type, title, body, scheduledFor, data } = parseNotificationInput(
+          payload,
+          'schedule'
+        );
 
         if (!type || !scheduledFor) {
           return JSON.stringify({ success: false, error: 'Missing type or scheduledFor' });
@@ -220,14 +266,17 @@ export function registerRpcScheduleNotification(initializer: InitModule): void {
         const notificationTitle = title || template.title;
         const notificationBody = body || template.body;
 
-        const result = await scheduleNotification(
+        const result = scheduleNotification(
           nk,
-          ctx.userId!,
-          type,
-          notificationTitle,
-          notificationBody,
-          new Date(scheduledFor),
-          data || {}
+          {
+            userId: ctx.userId,
+            type,
+            title: notificationTitle,
+            body: notificationBody,
+            scheduledFor: new Date(scheduledFor),
+            data: data || {},
+          },
+          { rpc: 'armored_archer_schedule_notification', logger }
         );
 
         return JSON.stringify(result);
@@ -247,18 +296,22 @@ export function registerRpcScheduleNotification(initializer: InitModule): void {
  * Register RPC: Cancel a scheduled notification
  * Payload: { "notificationId": string }
  */
-export function registerRpcCancelNotification(initializer: InitModule): void {
+export function registerRpcCancelNotification(initializer: SyncNotificationInitializer): void {
   initializer.registerRpc(
     'armored_archer_cancel_notification',
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const { notificationId } = JSON.parse(payload);
+        if (!ctx.userId) return authError();
+        const { notificationId } = parseNotificationInput(payload, 'cancel');
 
         if (!notificationId) {
           return JSON.stringify({ success: false, error: 'Missing notificationId' });
         }
 
-        const result = await cancelScheduledNotification(nk, notificationId);
+        const result = cancelScheduledNotification(nk, ctx.userId, notificationId, {
+          rpc: 'armored_archer_cancel_notification',
+          logger,
+        });
         return JSON.stringify(result);
       } catch (error) {
         return safeErrorResponse(
@@ -276,21 +329,21 @@ export function registerRpcCancelNotification(initializer: InitModule): void {
  * Register RPC: Get notification status
  * Payload: {}
  */
-export function registerRpcGetNotificationStatus(initializer: InitModule): void {
+export function registerRpcGetNotificationStatus(initializer: SyncNotificationInitializer): void {
   initializer.registerRpc(
     'armored_archer_get_notification_status',
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
+    (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
-        const initialized = isFirebaseInitialized();
-        const deviceTokens = (await nk.sqlQuery(
-          `SELECT COUNT(*) as count FROM device_tokens WHERE user_id = $1`,
-          [ctx.userId!]
-        )) as { count: number }[];
-
+        if (!ctx.userId) return authError();
+        parseNotificationInput(payload, 'empty');
+        const count = getRegisteredDeviceCount(nk, ctx.userId, {
+          rpc: 'armored_archer_get_notification_status',
+          logger,
+        });
         return JSON.stringify({
-          firebaseEnabled: initialized,
-          registeredDevices: deviceTokens[0]?.count || 0,
+          // No worker is configured by Stage 1. This is not delivery readiness.
+          firebaseEnabled: false,
+          registeredDevices: count,
         });
       } catch (error) {
         return safeErrorResponse(
@@ -307,7 +360,7 @@ export function registerRpcGetNotificationStatus(initializer: InitModule): void 
 /**
  * Register all notification RPCs
  */
-export function registerNotificationEndpoints(initializer: InitModule): void {
+export function registerNotificationEndpoints(initializer: SyncNotificationInitializer): void {
   registerRpcRegisterDeviceToken(initializer);
   registerRpcRemoveDeviceToken(initializer);
   registerRpcGetNotificationPreferences(initializer);
@@ -323,6 +376,6 @@ export function registerNotificationEndpoints(initializer: InitModule): void {
  * Initialize notification system
  */
 export function initializeNotifications(): void {
-  initializeFirebase();
-  logger.info('Notification system initialized');
+  // Delivery initialization is intentionally outside the synchronous Nakama bundle.
+  logger.info('Notification persistence initialized; push delivery not initialized');
 }

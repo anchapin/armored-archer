@@ -218,18 +218,18 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 
 | Feature | Client Caller | Server Handler | Storage Ownership | Deployment Path |
 |----------|---------------|----------------|-------------------|------------------|
-| Register Device Token | NotificationManager | `registerRpcRegisterDeviceToken()` in `notifications_rpc.ts` | `device_tokens` table (PostgreSQL) + `notification_preferences` storage (custom collection) | `/rpc/armored_archer_register_device_token` |
+| Register Device Token | NotificationManager | `registerRpcRegisterDeviceToken()` in `notifications_rpc.ts` | `device_tokens` table (PostgreSQL) + `notification_preferences` table (PostgreSQL) | `/rpc/armored_archer_register_device_token` |
 | Remove Device Token | NotificationManager | `registerRpcRemoveDeviceToken()` in `notifications_rpc.ts` | `device_tokens` table (PostgreSQL) | `/rpc/armored_archer_remove_device_token` |
-| Get Notification Preferences | NotificationManager | `registerRpcGetNotificationPreferences()` in `notifications_rpc.ts` | `notification_preferences` storage (custom collection) | `/rpc/armored_archer_get_notification_preferences` |
-| Update Notification Preferences | NotificationManager | `registerRpcUpdateNotificationPreferences()` in `notifications_rpc.ts` | `notification_preferences` storage (custom collection) | `/rpc/armored_archer_update_notification_preferences` |
-| Schedule Notification | NotificationManager | `registerRpcScheduleNotification()` in `notifications_rpc.ts` | `scheduled_notifications` storage (custom collection) | `/rpc/armored_archer_schedule_notification` |
-| Cancel Scheduled Notification | NotificationManager | `registerRpcCancelNotification()` in `notifications_rpc.ts` | `scheduled_notifications` storage (custom collection) | `/rpc/armored_archer_cancel_notification` |
+| Get Notification Preferences | NotificationManager | `registerRpcGetNotificationPreferences()` in `notifications_rpc.ts` | `notification_preferences` table (PostgreSQL) | `/rpc/armored_archer_get_notification_preferences` |
+| Update Notification Preferences | NotificationManager | `registerRpcUpdateNotificationPreferences()` in `notifications_rpc.ts` | `notification_preferences` table (PostgreSQL) | `/rpc/armored_archer_update_notification_preferences` |
+| Schedule Notification | NotificationManager | `registerRpcScheduleNotification()` in `notifications_rpc.ts` | `scheduled_notifications` table (PostgreSQL) | `/rpc/armored_archer_schedule_notification` |
+| Cancel Scheduled Notification | NotificationManager | `registerRpcCancelNotification()` in `notifications_rpc.ts` | `scheduled_notifications` table (PostgreSQL) | `/rpc/armored_archer_cancel_notification` |
 | Get Notification Status | NotificationManager | `registerRpcGetNotificationStatus()` in `notifications_rpc.ts` | `device_tokens` table (PostgreSQL) | `/rpc/armored_archer_get_notification_status` |
 
 **Storage Schema:**
 - `device_tokens` table (PostgreSQL): `{ user_id, device_token, platform, fcm_token, app_version, registered_at }`
-- `notification_preferences` collection: `{ user_id, daily_rewards_enabled, events_enabled, pvp_challenges_enabled, promotions_enabled, notifications_enabled, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, timezone }`
-- `scheduled_notifications` collection: `{ user_id, notification_id, type, title, body, scheduled_for, data, status }`
+- `notification_preferences` table: `{ user_id, daily_rewards_enabled, events_enabled, pvp_challenges_enabled, promotions_enabled, notifications_enabled, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, timezone }`
+- `scheduled_notifications` table: `{ user_id, notification_id, type, title, body, scheduled_for, data, status }`
 
 **Deployment Notes:**
 - Requires Firebase Cloud Messaging (FCM) configuration
@@ -656,3 +656,11 @@ Draft recovery contract (#1462): `rpcEndSeason` returns `success:false` and
 opening sentinel cannot be saved. No player rewards are written on these
 failures. Existing absent-sentinel and successful-resume paths are unchanged.
 This contract requires owner review before the draft PR is ready or merged.
+
+## Notification control plane: Stage 1
+
+The seven notification RPC names stay unchanged. Their handlers now return strings synchronously per ADR-0008, using `notification_persistence.ts` and `notification_templates.ts`, with no Firebase Admin or timer import on this path. SQL failures propagate through `observedSqlQuery` with fixed RPC/operation labels and safe error responses; logs omit raw driver text and private parameters. Authenticated user IDs scope all reads and writes, including deletion and cancellation. Absent and foreign token/notification rows have identical unsuccessful responses. Registration rejects cross-user takeover of a globally unique device token atomically, without changing foreign metadata. Same-owner refresh remains allowed. An email-code verified transfer flow is follow-up scope and is not implemented here.
+
+Preference reads use an atomic upsert; updates create defaults when needed and return success only after a row is persisted. Timezone names are checked against PostgreSQL's catalog, quiet-hour syntax and timestamp calendar values are validated, and input uses typed schemas. Persistence ceilings are 65,536 payload characters, 4,096 token/title/body/identifier characters, 128 app-version/timezone characters. These are protective database/RPC limits, not FCM delivery limits. Existing external/mobile consumers were not located in the repository, so compatibility still needs observation.
+
+Scheduling success means a durable pending row with `notificationId`, not a sent push. Status preserves `{firebaseEnabled, registeredDevices}` but reports `firebaseEnabled:false`: Stage 1 does not initialize a transport or claim worker health. The legacy async Firebase/scheduler modules remain unchanged and outside the RPC dependency graph. Quiet-hour dispatch, fail-closed preference checks during dispatch, durable claims/retries, per-token outcomes, provider acceptance versus delivered acknowledgements, old pending-row cutover and worker deployment belong to Stage 2 and are not enabled here. No schema migration is included.
