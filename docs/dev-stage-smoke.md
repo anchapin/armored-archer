@@ -35,3 +35,9 @@ and fetches on later connection as well. It disconnects its signals on exit.
 SeasonManager's disconnected error contract and NetworkManager auth/fail-closed
 behavior are unchanged. Connectivity lifecycle coverage uses a narrow stub test;
 real backend-present Godot verification remains outstanding.
+
+Arrow contact return deactivates the arrow immediately but defers pool parking
+until after the physics callback. Duplicate contact/return requests are ignored
+until parking completes. This prevents CollisionObject process-mode changes
+inside physics callbacks. Regression coverage includes an actual overlap with
+a static wall and exactly one pool entry after return.
