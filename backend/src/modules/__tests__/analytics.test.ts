@@ -816,22 +816,57 @@ describe('Analytics Module - Analytics Enabled', () => {
       expect(result.summary.events['durable-only']).toEqual({ count: 1, unique_users: 1 });
       expect(result.summary.total_events).toBe(1);
     });
-    it('reports a read failure rather than an empty successful summary', () => {
+    it('records a failed summary read with RPC context, without exposing query details', () => {
+      const failure = new Error('private driver details');
       const nk = {
         sqlQuery: jest.fn(() => {
-          throw new Error('read failed');
+          throw failure;
+        }),
+        metricsCounterAdd: jest.fn(),
+      } as any;
+      mockLogger.error.mockClear();
+      const response = JSON.parse(
+        rpcGetAnalyticsSummary(
+          mockCtx,
+          mockLogger as any,
+          nk,
+          JSON.stringify({ start_date: '2026-10-09', end_date: '2026-10-09' })
+        )
+      );
+      expect(response).toEqual({ success: false, error: 'Failed to read analytics summary' });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Database query failed: rpc=%s op=%s',
+        'armored_archer/get_analytics_summary',
+        'analytics.summary'
+      );
+      expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(1);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'analytics.summary', rpc: 'armored_archer/get_analytics_summary' },
+        1
+      );
+      expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain('private');
+      expect(JSON.stringify(response)).not.toContain('private');
+    });
+    it('still fails the summary when database error metrics are unavailable', () => {
+      const nk = {
+        sqlQuery: jest.fn(() => {
+          throw new Error('query failed');
+        }),
+        metricsCounterAdd: jest.fn(() => {
+          throw new Error('metric failed');
         }),
       } as any;
-      expect(
-        JSON.parse(
-          rpcGetAnalyticsSummary(
-            mockCtx,
-            mockLogger as any,
-            nk,
-            JSON.stringify({ start_date: '2026-10-09', end_date: '2026-10-09' })
-          )
-        ).success
-      ).toBe(false);
+      const response = JSON.parse(
+        rpcGetAnalyticsSummary(
+          mockCtx,
+          mockLogger as any,
+          nk,
+          JSON.stringify({ start_date: '2026-10-09', end_date: '2026-10-09' })
+        )
+      );
+      expect(response.success).toBe(false);
+      expect(response.error).toBe('Failed to read analytics summary');
     });
   });
 
