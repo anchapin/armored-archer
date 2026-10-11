@@ -17,3 +17,10 @@ shows110after two same-tick10hits,100after a later10hit,0withGameOverafter letha
 damage, then120/120onretry. These are injected damage checks, not enemy balance
 or a human playthrough. Enemy/player simulation while the game-over panel is up,
 proper pause controls and real backend rewards remain separate follow-ons.
+
+A final stationary smoke recheck died at53seconds after the cooldown repair.
+No balance or survival threshold changed. The combat harness now exercises public
+movement input around a small route while existing auto-shoot runs. Three
+consecutive60/60runs pass without errors. This checks functioning controls/combat
+under movement, not whether a motionless player is invulnerable. Failed runs keep
+the failure code and clean up rather than quitting before resource teardown.

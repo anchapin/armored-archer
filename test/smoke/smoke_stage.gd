@@ -8,6 +8,7 @@ var _died_at: float = -1.0
 var _won: bool = false
 var _playing: bool = false
 var _max_enemies: int = 0
+var _exit_code: int = 0
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -19,7 +20,8 @@ func _initialize() -> void:
 
 func _fail(reason: String) -> void:
 	printerr("SMOKE FAIL: " + reason)
-	quit(1)
+	_exit_code = 1
+	_cleanup_and_quit()
 
 func _start_configured_stage() -> void:
 	# The wrapper supplies a fresh, temporary user-data directory.
@@ -111,6 +113,12 @@ func _process(delta: float) -> bool:
 	_elapsed += delta
 	var spawner: Node = root.get_node("EnemySpawner")
 	_max_enemies = max(_max_enemies, spawner.active_enemies.size())
+	if _died_at < 0.0 and current_scene and current_scene.has_node("Player"):
+		var player: Node2D = current_scene.get_node("Player")
+		# Move around a small central route using the public touch binding.
+		# This is input, not a teleport, stat change or invulnerability override.
+		var destination := Vector2(80.0 * cos(_elapsed / 3.0), 100.0 * sin(_elapsed / 3.0))
+		player.set_virtual_move_direction(player.position.direction_to(destination))
 	if _won or _elapsed >= _seconds or (_died_at >= 0.0 and _elapsed - _died_at > 1.0):
 		_finish()
 		return false
@@ -149,4 +157,4 @@ func _cleanup_and_quit() -> void:
 	OS.delay_msec(200)
 	await create_timer(0.2).timeout
 	print("SMOKE PASS")
-	quit(0)
+	quit(_exit_code)
