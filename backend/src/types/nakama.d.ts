@@ -136,12 +136,9 @@ declare namespace Runtime {
    * @method leaderboardCreate - Creates a leaderboard
    * @method leaderboardDelete - Deletes a leaderboard
    * @method leaderboardRecordsList - Lists leaderboard records (real runtime API)
-   * @method leaderboardRecordList - Legacy name implemented only by Jest mocks; use utils/leaderboard-list
    * @method leaderboardRecordWrite - Writes a leaderboard record
    * @method notificationSend - Sends a notification
    * @method httpRequest - Makes an HTTP request
-   * @method uuidGenerateV4 - Generates a UUID
-   * @method userIdGetFromUsername - Gets user ID from username
    * @method streamUserJoin - Joins a stream
    * @method streamUserLeave - Leaves a stream
    * @method streamUserKick - Kicks from a stream
@@ -171,13 +168,6 @@ declare namespace Runtime {
     ): void;
     leaderboardDelete(id: string): void;
     leaderboardRecordDelete(leaderboardId: string, owner: string): void;
-    leaderboardRecordList(
-      leaderboardId: string,
-      ownerIds: string[],
-      limit: number,
-      cursor: string,
-      expiry: number
-    ): LeaderboardRecord[];
     leaderboardRecordsList(
       leaderboardId: string,
       ownerIds?: string[],
@@ -211,8 +201,6 @@ declare namespace Runtime {
       timeout?: number,
       insecure?: boolean
     ): { code: number; body: string; headers: { [key: string]: string } };
-    uuidGenerateV4(): string;
-    userIdGetFromUsername(username: string): string;
     streamUserJoin(stream: Stream, presences: Presence[]): void;
     streamUserLeave(stream: Stream, presences: Presence[]): void;
     streamUserKick(stream: Stream, presences: Presence[]): void;

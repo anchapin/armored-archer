@@ -217,7 +217,7 @@ function createMockNakama(): Runtime.Nakama {
     storageWrite: jest.fn(),
     storageList: jest.fn().mockReturnValue([]),
     sqlQuery: jest.fn().mockReturnValue([]),
-    leaderboardRecordList: jest.fn().mockReturnValue([]),
+    leaderboardRecordsList: jest.fn().mockReturnValue([]),
   } as unknown as Runtime.Nakama;
 }
 
@@ -786,7 +786,7 @@ describe('admin gate: allowlisted admin reaches the real handler', () => {
   it('admin_trigger_season_event end_season dry-run executes behind the gate', async () => {
     // The confirmation_token === season_id check alone was the old (guessable)
     // guard — the admin gate must now sit in front of it (issue #1075).
-    (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue([
+    (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([
       { rank: 1, ownerId: 'player-1', score: 1500, metadata: '{}', username: 'player-1' },
     ]);
 

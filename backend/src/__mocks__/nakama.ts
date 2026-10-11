@@ -463,7 +463,7 @@ export const createMockNakama = (): Runtime.Nakama => {
     return [];
   });
 
-  return {
+  return ({
     httpRequest: jest.fn(httpRequestViaFetchMock),
     storageRead: storageReadMock,
     sqlQuery: dbQueryMock,
@@ -497,7 +497,7 @@ export const createMockNakama = (): Runtime.Nakama => {
         return [];
       }
     ),
-    leaderboardRecordList: jest.fn(
+    leaderboardRecordsList: jest.fn(
       (
         _id: string,
         _ownerIds: string[],
@@ -539,7 +539,7 @@ export const createMockNakama = (): Runtime.Nakama => {
       user: { id: userId, username: 'TestPlayer' },
       wallet: testWallets.get(userId) ?? '{}',
     })),
-  } as unknown as Runtime.Nakama;
+  } satisfies Partial<Record<keyof Runtime.Nakama, unknown>>) as unknown as Runtime.Nakama;
 };
 
 // Simple exported mocks for convenience in tests

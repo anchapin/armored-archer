@@ -25,7 +25,7 @@ import {
 } from '../season_leaderboard';
 import { Runtime } from '../../types/nakama';
 
-/** Minimal shape of nk.leaderboardRecordList entries used by this module. */
+/** Minimal shape of nk.leaderboardRecordsList entries used by this module. */
 interface MockLeaderboardRecord {
   ownerId: string;
   username: string;
@@ -134,7 +134,7 @@ describe('season_leaderboard_core', () => {
 
     // Leaderboard list semantics: ownerIds filter when provided, else all
     // records (assumed pre-sorted by score desc), capped at limit.
-    mockNk.leaderboardRecordList = jest.fn(
+    mockNk.leaderboardRecordsList = jest.fn(
       (
         _id: string,
         ownerIds: string[],
