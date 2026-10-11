@@ -2197,6 +2197,7 @@ describe('matchmaker', () => {
       const ctx = createMockContext();
       const logger = createMockLogger();
       const nk = createMockNakama();
+      nk.metricsCounterAdd = jest.fn();
 
       (nk.sqlQuery as jest.Mock).mockImplementation(() => {
         throw new Error('Database connection failed');
@@ -2207,6 +2208,8 @@ describe('matchmaker', () => {
 
       expect(parsed.success).toBe(false);
       expect(parsed.error).toBe('Failed to retrieve match history');
+      expect(logger.error).toHaveBeenCalledWith('Database query failed: rpc=%s op=%s', 'armored_archer/get_match_history', 'match_results.count');
+      expect(nk.metricsCounterAdd).toHaveBeenCalledWith('db_errors_total', { op: 'match_results.count', rpc: 'armored_archer/get_match_history' }, 1);
     });
 
     it('should identify losses correctly when opponent wins', () => {
@@ -2354,6 +2357,7 @@ describe('matchmaker', () => {
       const ctx = createMockContext();
       const logger = createMockLogger();
       const nk = createMockNakama();
+      nk.metricsCounterAdd = jest.fn();
 
       (nk.sqlQuery as jest.Mock).mockImplementation(() => {
         throw new Error('Database error');
@@ -2364,6 +2368,8 @@ describe('matchmaker', () => {
 
       expect(parsed.success).toBe(false);
       expect(parsed.error).toBe('Failed to retrieve match details');
+      expect(logger.error).toHaveBeenCalledWith('Database query failed: rpc=%s op=%s', 'armored_archer/get_match_details', 'match_results.details');
+      expect(nk.metricsCounterAdd).toHaveBeenCalledWith('db_errors_total', { op: 'match_results.details', rpc: 'armored_archer/get_match_details' }, 1);
     });
 
     it('should handle unparsable combat_log gracefully', () => {

@@ -23,3 +23,9 @@ this slice. No database schema, migration or transaction changes.
 The native metric API is documented by the official runtime interface pinned
 for this repository's Nakama version:
 https://github.com/heroiclabs/nakama-common/blob/v1.31.0/index.d.ts
+
+Second slice: matchmaker's paged history/admin queries and match details use the
+same observer. Those RPCs already return failure on SQL exceptions. The observer
+now accepts their fixed RPC IDs and native logger; metrics carry both `op` and
+`rpc` tags. No authorization, query filters, pagination or response changes.
+Other modules and gear read-fallback semantics remain outstanding.

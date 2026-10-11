@@ -6,6 +6,7 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { observedSqlQuery } from '../utils/sql-observability';
 import {
   toStorageValue,
   getStorageRawValue,
@@ -2753,6 +2754,7 @@ export function registerRpcGetMatchHistory(initializer: Runtime.Initializer): vo
  */
 function runPagedMatchResultsQuery(
   nk: Runtime.Nakama,
+  sqlContext: { rpc: string; logger: Runtime.Logger },
   baseQuery: string,
   params: any[],
   startIndex: number,
@@ -2781,11 +2783,23 @@ function runPagedMatchResultsQuery(
   if (stripJoins) {
     countQuery = countQuery.replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
   }
-  const countResult = nk.sqlQuery(countQuery, params) as any[];
+  const countResult = observedSqlQuery(
+    nk,
+    'match_results.count',
+    countQuery,
+    params,
+    sqlContext
+  ) as any[];
   const total = Number(countResult[0]?.total) || 0;
 
   query += ` ORDER BY mr.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  const rows = nk.sqlQuery(query, [...params, limit, offset]) as any[];
+  const rows = observedSqlQuery(
+    nk,
+    'match_results.page',
+    query,
+    [...params, limit, offset],
+    sqlContext
+  ) as any[];
   return { total, rows };
 }
 
@@ -2863,11 +2877,18 @@ export function rpcGetMatchHistory(
       paramIndex++;
     }
 
-    const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
-      range: request,
-      limit,
-      offset,
-    });
+    const { total, rows: result } = runPagedMatchResultsQuery(
+      nk,
+      { rpc: 'armored_archer/get_match_history', logger },
+      query,
+      params,
+      paramIndex,
+      {
+        range: request,
+        limit,
+        offset,
+      }
+    );
 
     const matches = result.map((row: any) => {
       const isVictory = row.winner_id === ctx.userId;
@@ -3001,7 +3022,10 @@ export function rpcGetMatchDetails(
       WHERE mr.match_id = $1
     `;
 
-    const result = nk.sqlQuery(query, [match_id]) as any[];
+    const result = observedSqlQuery(nk, 'match_results.details', query, [match_id], {
+      rpc: 'armored_archer/get_match_details',
+      logger,
+    }) as any[];
 
     if (!result || result.length === 0) {
       return JSON.stringify({
@@ -3224,12 +3248,19 @@ export function rpcAdminQueryMatches(
       paramIndex++;
     }
 
-    const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
-      stripJoins: true,
-      range: request,
-      limit,
-      offset,
-    });
+    const { total, rows: result } = runPagedMatchResultsQuery(
+      nk,
+      { rpc: 'armored_archer/admin_query_matches', logger },
+      query,
+      params,
+      paramIndex,
+      {
+        stripJoins: true,
+        range: request,
+        limit,
+        offset,
+      }
+    );
 
     const matches = result.map((row: any) => ({
       match_id: row.match_id,
