@@ -52,3 +52,16 @@ func test_real_lethal_damage_advances_progress_on_normal_juice_path() -> void:
 	await get_tree().create_timer(1.2).timeout
 	assert_false(enemy.visible)
 	assert_eq(EnemySpawner.enemies_defeated, 1)
+
+func test_physical_arrow_contact_records_lethal_enemy_defeat() -> void:
+	EnemySpawner.spawn_enemy()
+	var enemy: Node = EnemySpawner.active_enemies[0]
+	enemy.global_position = Vector2(10000, 10000)
+	var arrow: Node = ObjectPool.get_arrow()
+	arrow.setup(enemy.global_position, Vector2.RIGHT, enemy.current_health, 0.0)
+	for _i in range(6):
+		await get_tree().physics_frame
+	assert_eq(EnemySpawner.enemies_defeated, 1)
+	assert_eq(counter.text, "Enemies: 1 / 18 (5%)")
+	assert_false(arrow.is_active)
+	await get_tree().create_timer(1.2).timeout
