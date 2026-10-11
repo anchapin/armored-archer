@@ -45,3 +45,18 @@ with driver text and match ID is removed. Tests preserve successful enrichment,
 report fallback, and metric-failure behavior. Authorization and report ownership
 are unchanged. This deliberately does not convert optional-detail failures into
 a failed reports RPC or claim that the broader read-fallback issue is finished.
+
+Draft for owner review: season-end recovery fails closed when the sentinel owner
+SQL query, storage read or JSON parsing fails, or when the opening sentinel
+cannot persist. A local five-player crash/retry probe on main 7fe9ab91 showed
+that a failed SQL owner lookup was treated as absent state: a new generation
+credited an already-completed player's coins from 8500 to 17000 and gems from
+600 to 1200. This is a reproduced unit-level path, not evidence of a live
+incident. The regression now requires a failed RPC and unchanged player balances
+and sentinel token; reverting the production fix makes that regression fail.
+
+This draft does not make the whole reward operation transactional. Per-player
+completion-marker read failures, failures after a currency write but before its
+marker, concurrent invocations, and captured-player-list drift still need
+separate review. No reward amount, auth, schema, migration or transaction change.
+Do not mark the draft ready or merge it without Alex's review.

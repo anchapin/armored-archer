@@ -4,6 +4,7 @@
  */
 
 import { Runtime } from '../types/nakama';
+import { observedSqlQuery } from '../utils/sql-observability';
 import {
   resolveCurrentSeason,
   publishCurrentSeason,
@@ -168,41 +169,42 @@ function generateSeasonEndToken(): string {
 /**
  * Reads the persisted season sentinel from the `seasons` collection. Returns
  * the parsed `end_distribution` and the surrounding season info if both are
- * present, otherwise null (the season has never been through `rpcEndSeason`).
+ * present, otherwise null for absent distribution state. Read/parse failures
+ * propagate so the RPC cannot mistake them for a fresh run.
  */
 function readSeasonEndSentinel(
   nk: Runtime.Nakama,
-  seasonId: string
+  seasonId: string,
+  runtimeLogger: Runtime.Logger
 ): { season: SeasonInfo; distribution: SeasonEndDistribution } | null {
-  try {
-    const owners =
-      typeof nk.sqlQuery === 'function'
-        ? (nk.sqlQuery(
-            "SELECT user_id FROM storage WHERE collection = 'seasons' AND key = $1 LIMIT 1",
-            [seasonId]
-          ) as Array<{ user_id: string }>)
-        : [];
-    const stored = nk.storageRead([
-      {
-        collection: 'seasons',
-        key: seasonId,
-        userId: owners[0]?.user_id || '00000000-0000-0000-0000-000000000000',
-      },
-    ]);
-    if (stored.length === 0 || !stored[0].value) {
-      return null;
-    }
-    const parsed =
-      typeof stored[0].value === 'string'
-        ? (JSON.parse(stored[0].value) as SeasonInfo & { end_distribution?: SeasonEndDistribution })
-        : (stored[0].value as unknown as SeasonInfo & { end_distribution?: SeasonEndDistribution });
-    if (!parsed.end_distribution) {
-      return null;
-    }
-    return { season: parsed, distribution: parsed.end_distribution };
-  } catch {
+  const owners =
+    typeof nk.sqlQuery === 'function'
+      ? (observedSqlQuery(
+          nk,
+          'season.end_sentinel_owner',
+          "SELECT user_id FROM storage WHERE collection = 'seasons' AND key = $1 LIMIT 1",
+          [seasonId],
+          { rpc: 'armored_archer/end_season', logger: runtimeLogger }
+        ) as Array<{ user_id: string }>)
+      : [];
+  const stored = nk.storageRead([
+    {
+      collection: 'seasons',
+      key: seasonId,
+      userId: owners[0]?.user_id || '00000000-0000-0000-0000-000000000000',
+    },
+  ]);
+  if (stored.length === 0 || !stored[0].value) {
     return null;
   }
+  const parsed =
+    typeof stored[0].value === 'string'
+      ? (JSON.parse(stored[0].value) as SeasonInfo & { end_distribution?: SeasonEndDistribution })
+      : (stored[0].value as unknown as SeasonInfo & { end_distribution?: SeasonEndDistribution });
+  if (!parsed.end_distribution) {
+    return null;
+  }
+  return { season: parsed, distribution: parsed.end_distribution };
 }
 
 /**
@@ -1097,7 +1099,17 @@ export function rpcEndSeason(
   let playerOwnerIds: string[];
   let resumeFromIndex: number;
 
-  const existingSentinel = readSeasonEndSentinel(nk, currentSeason.season_id);
+  let existingSentinel: ReturnType<typeof readSeasonEndSentinel>;
+  try {
+    existingSentinel = readSeasonEndSentinel(nk, currentSeason.season_id, logger);
+  } catch {
+    logger.error('Season end recovery state could not be read');
+    return JSON.stringify({
+      success: false,
+      error: 'Season end recovery state could not be read',
+      error_code: 'SEASON_RECOVERY_FAILED',
+    });
+  }
 
   if (existingSentinel) {
     generationToken = existingSentinel.distribution.generation_token;
@@ -1125,11 +1137,13 @@ export function rpcEndSeason(
         next_index: 0,
         started_at: Date.now(),
       });
-    } catch (error) {
-      logger.warn(
-        'rpcEndSeason: failed to persist opening sentinel, continuing in memory: %s',
-        error
-      );
+    } catch {
+      logger.error('Season end recovery state could not be saved');
+      return JSON.stringify({
+        success: false,
+        error: 'Season end recovery state could not be saved',
+        error_code: 'SEASON_RECOVERY_FAILED',
+      });
     }
   }
 

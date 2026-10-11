@@ -159,6 +159,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Get Season Rewards | SeasonManager | `rpcGetSeasonRewards()` in `season_system.ts` | `leaderboard` (Nakama built-in) | `/rpc/armored_archer/get_season_rewards` |
 | Claim Season Rewards | SeasonManager | `rpcClaimSeasonRewards()` in `season_system.ts` | `season_rewards_claimed` storage (custom collection) + wallet (Nakama) | `/rpc/armored_archer/claim_season_rewards` |
 | End Season | Admin Dashboard *(admin-only — gated; use `armored_archer/admin_trigger_season_event` with `action:"end_season"` for live ops)* | `rpcEndSeason()` in `season_system.ts` — wrapped with `withAdminGuard` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/end_season` |
+
 | Get Season History | SeasonManager | `rpcGetSeasonHistory()` in `season_leaderboard.ts` | `seasons` storage (custom collection) + `leaderboard` (Nakama) | `/rpc/armored_archer/get_season_history` |
 | Get Player Cosmetics | SeasonManager | `rpcGetPlayerCosmetics()` in `season_system.ts` — season titles/auras earned via leaderboard rank (separate from IAP cosmetic skins in `get_owned_cosmetics`/`equip_cosmetic`); client uses `season_cosmetics` field | `player_cosmetics` storage (custom collection) | `/rpc/armored_archer/get_player_cosmetics` |
 | Get Prestige Progress | SeasonManager | `rpcGetPrestigeProgress()` in `season_system.ts` — multi-season prestige tier aggregation | `player_prestige` storage (custom collection) | `/rpc/armored_archer/get_prestige_progress` |
@@ -648,3 +649,10 @@ Notes:
 | 1.0 | 2026-04-15 | Initial comprehensive RPC map creation | Claude (AI-assisted) |
 | 1.1 | 2026-08-18 | Documented all 135 registered RPCs (was 86 of ~135); added Analytics & Telemetry section (events, revenue, surveys, audit, funnel); added cosmetics, bundles, restore, season cosmetics/prestige, telemetry, encounter pacing, matchmaking analytics, fairness, balance, match history/details, query_audit_logs sections/rows; corrected stale `Zod` instructions to `valibot` (canonical per AGENTS.md and `validation.ts`); added maintenance note for follow-up registered-vs-documented CI diff check (issue #1072) | Claude (AI-assisted) |
 | 1.1.1 | 2026-08-18 | Removed duplicate `armored_archer/stage_complete` appendix row (kept the canonical `gear_system (+ stage_progression persistence)` attribution); consolidated the section-orphaned `**Removed RPCs:**` heading into a canonical [Removed / Decommissioned RPCs](#removed--decommissioned-rpcs) appendix section with struck-through tombstones for `~~armored_archer/complete_stage~~` (#1069) and `~~armored_archer/update_rank~~` (#1076), linked from the affected feature-section rows; expanded the maintenance note to require the dedicated removed-RPC section. Closes issue #1152. | MiniMax-M3 (AI-assisted) |
+
+
+Draft recovery contract (#1462): `rpcEndSeason` returns `success:false` and
+`SEASON_RECOVERY_FAILED` if sentinel lookup/read/JSON parsing fails or the
+opening sentinel cannot be saved. No player rewards are written on these
+failures. Existing absent-sentinel and successful-resume paths are unchanged.
+This contract requires owner review before the draft PR is ready or merged.
