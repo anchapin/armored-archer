@@ -5,6 +5,8 @@ extends Control
 
 # --- Signal connections for cleanup ---
 var _movement_joystick_callable: Callable
+var _movement_joystick_released_callable: Callable
+var _touch_aim_started: bool = false
 var _aiming_joystick_moved_callable: Callable
 var _aiming_joystick_released_callable: Callable
 var _safe_area_changed_callable: Callable
@@ -16,7 +18,7 @@ func _ready() -> void:
 	_connect_safe_area_manager()
 
 	await get_tree().process_frame
-	if get_parent() and get_parent().has_node("Player"):
+	if not is_instance_valid(player) and get_parent() and get_parent().has_node("Player"):
 		player = get_parent().get_node_or_null("Player")
 
 	_adjust_joysticks_for_safe_area()
@@ -28,6 +30,8 @@ func _connect_signals() -> void:
 	if movement_joystick:
 		_movement_joystick_callable = _on_movement_joystick_moved
 		movement_joystick.joystick_moved.connect(_movement_joystick_callable)
+		_movement_joystick_released_callable = _on_movement_joystick_released
+		movement_joystick.joystick_released.connect(_movement_joystick_released_callable)
 	if aiming_joystick:
 		_aiming_joystick_moved_callable = _on_aiming_joystick_moved
 		_aiming_joystick_released_callable = _on_aiming_joystick_released
@@ -43,6 +47,7 @@ func _connect_safe_area_manager() -> void:
 func _exit_tree() -> void:
 	# Clean up connected signals to prevent memory leaks
 	_cleanup_signal_connection(movement_joystick, "joystick_moved", _movement_joystick_callable)
+	_cleanup_signal_connection(movement_joystick, "joystick_released", _movement_joystick_released_callable)
 	_cleanup_signal_connection(aiming_joystick, "joystick_moved", _aiming_joystick_moved_callable)
 	_cleanup_signal_connection(aiming_joystick, "joystick_released", _aiming_joystick_released_callable)
 
@@ -70,13 +75,26 @@ func _adjust_joysticks_for_safe_area() -> void:
 		aiming_joystick.offset_bottom = 200.0 - safe_margins.bottom
 
 func _on_movement_joystick_moved(vector: Vector2) -> void:
-	if player:
+	if is_instance_valid(player):
 		player.set_virtual_move_direction(vector)
+		if vector != Vector2.ZERO:
+			TutorialManager.on_input_action("move_right")
+
+func _on_movement_joystick_released() -> void:
+	if is_instance_valid(player):
+		player.set_virtual_move_direction(Vector2.ZERO)
 
 func _on_aiming_joystick_moved(vector: Vector2) -> void:
-	if player:
+	if is_instance_valid(player):
 		player.set_virtual_aim_direction(vector)
+		if vector != Vector2.ZERO:
+			_touch_aim_started = true
+			TutorialManager.on_input_action("aim_right")
 
 func _on_aiming_joystick_released() -> void:
-	if player:
+	if is_instance_valid(player):
+		if _touch_aim_started:
+			player._handle_shoot()
+			TutorialManager.on_input_action("shoot")
 		player.set_virtual_aim_direction(Vector2.ZERO)
+	_touch_aim_started = false

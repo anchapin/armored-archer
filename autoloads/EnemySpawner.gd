@@ -162,6 +162,22 @@ func _ready() -> void:
 
 	start_next_wave()
 
+## Pause only enemy simulation and wave clocks. Player/UI remain live.
+func _process(_delta: float) -> void:
+	var paused: bool = TutorialManager.is_combat_paused()
+	if spawn_timer_node:
+		spawn_timer_node.paused = paused
+	if wave_timer_node:
+		wave_timer_node.paused = paused
+	for enemy in get_tree().get_nodes_in_group("Enemies"):
+		if paused and enemy.process_mode != Node.PROCESS_MODE_DISABLED and not enemy.has_meta("tutorial_process_mode"):
+			enemy.set_meta("tutorial_process_mode", enemy.process_mode)
+			enemy.process_mode = Node.PROCESS_MODE_DISABLED
+		elif not paused and enemy.has_meta("tutorial_process_mode"):
+			if not (enemy is CanvasItem) or enemy.visible:
+				enemy.process_mode = enemy.get_meta("tutorial_process_mode")
+			enemy.remove_meta("tutorial_process_mode")
+
 func _exit_tree() -> void:
 	## Clean up timer signals to prevent memory leaks
 	if spawn_timer_node and spawn_timer_node.is_connected("timeout", _on_spawn_timer_timeout):
@@ -199,6 +215,10 @@ func start_next_wave() -> void:
 		spawn_timer_node.start()
 
 func spawn_enemy() -> void:
+	if TutorialManager.is_combat_paused():
+		if spawn_timer_node:
+			spawn_timer_node.start(time_between_enemies)
+		return
 	if enemies_to_spawn <= 0:
 		is_spawning = false
 		wave_complete = true  # Mark wave as complete (all enemies spawned)

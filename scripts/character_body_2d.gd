@@ -198,6 +198,8 @@ func is_player_aiming() -> bool:
 
 ## Handle taking damage from enemies
 func take_damage(amount: int) -> void:
+	if TutorialManager.is_combat_paused():
+		return
 	# Apply damage reduction from defense if available
 	var actual_damage: int = amount
 	if combined_stats_manager and combined_stats_manager.has_method("get_defense"):

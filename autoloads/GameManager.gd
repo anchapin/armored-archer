@@ -83,6 +83,8 @@ func take_player_damage(damage: int) -> void:
 	Parameters:
 		damage: Amount of damage to apply
 	"""
+	if TutorialManager.is_combat_paused():
+		return
 	if not is_game_active:
 		return
 
@@ -232,6 +234,8 @@ func end_game(won: bool) -> void:
 		audio.play_event("stage_win" if won else "stage_lose")
 
 	if won:
+		if TutorialManager.is_tutorial_active and TutorialManager.get_current_step().get("action", "") == "complete_level":
+			TutorialManager.complete_current_step()
 		game_won.emit()
 
 		# Track stage completion in analytics
