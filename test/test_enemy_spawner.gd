@@ -81,7 +81,7 @@ func test_wave_count_calculation() -> void:
 
 	# Wave 1: 3 + (1-1)*2 = 3
 	spawner.current_wave = 0
-	spawner.start_next_wave()
+	spawner.start_stage("1_1", 5, {}, "")
 	if spawner.enemies_to_spawn == 3:
 		_pass("test_wave_count_calculation_wave1")
 	else:
@@ -94,7 +94,7 @@ func test_start_next_wave_increments() -> void:
 	spawner.max_waves = 5
 	spawner.current_wave = 0
 
-	spawner.start_next_wave()
+	spawner.start_stage("1_1", 5, {}, "")
 	if spawner.current_wave == 1:
 		_pass("test_start_next_wave_increments")
 	else:
@@ -106,10 +106,8 @@ func test_start_next_wave_enemy_count() -> void:
 	spawner.base_enemy_count = 5
 	spawner.enemy_count_increment = 3
 	spawner.max_waves = 5
-	# Spawner auto-starts wave 1 in _ready(); reset so this call computes wave 1
-	spawner.current_wave = 0
-
-	spawner.start_next_wave()  # wave 1: 5 + 0*3 = 5
+	# Combat entry owns wave 1; autoload boot must remain idle.
+	spawner.start_stage("1_1", 5, {}, "")  # wave 1: 5 + 0*3 = 5
 	if spawner.enemies_to_spawn == 5:
 		_pass("test_start_next_wave_enemy_count")
 	else:

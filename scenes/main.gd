@@ -29,6 +29,8 @@ func _ready() -> void:
 
 	# Tutorial state must be established before combat starts.
 	GameManager.start_game()
+	EnemySpawner.start_stage(GameManager.current_stage_id, GameManager.current_waves,
+		GameManager.current_encounter_data, GameManager.boss_id)
 
 func _setup_tutorial_controller() -> void:
 	# Create tutorial controller dynamically
@@ -48,3 +50,6 @@ func _input(event: InputEvent) -> void:
 	# Pass input to tutorial controller for completion tracking
 	if tutorial_controller and tutorial_controller.has_method("check_tutorial_input"):
 		tutorial_controller.check_tutorial_input(event)
+
+func _exit_tree() -> void:
+	EnemySpawner.stop_stage()
