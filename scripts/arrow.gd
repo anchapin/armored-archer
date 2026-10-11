@@ -9,6 +9,7 @@ var direction: Vector2 = Vector2.RIGHT
 var lifetime: float = 5.0
 var _lifetime_timer: float = 0.0
 var is_active: bool = false
+var _return_pending: bool = false
 
 # --- Node References ---
 @onready var _collision_shape: CollisionShape2D = $CollisionShape2D
@@ -37,6 +38,7 @@ func setup(start_pos: Vector2, dir: Vector2, dmg: int, spd: float = 800.0) -> vo
 	speed = spd
 	_lifetime_timer = 0.0
 	is_active = true
+	_return_pending = false
 
 	# CRITICAL: Arrows (Area2D) use collision_layer=1 (projectiles) to collide with enemies on layer 2
 	# The arrow's collision_layer=1 must be in the enemy's collision_mask
@@ -78,7 +80,14 @@ func _on_body_entered(body: Node) -> void:
 
 func _return_to_pool() -> void:
 	"""Return this arrow to the object pool."""
+	if _return_pending:
+		return
 	is_active = false
+	_return_pending = true
+	# CollisionObject process-mode changes must run outside contact callbacks.
+	call_deferred("_return_to_pool_deferred")
+
+func _return_to_pool_deferred() -> void:
 	var object_pool = get_node_or_null("/root/ObjectPool")
 	if object_pool and object_pool.has_method("return_arrow"):
 		object_pool.return_arrow(self)
@@ -87,6 +96,7 @@ func _return_to_pool() -> void:
 
 ## Reset state when returning to pool - called by ObjectPool
 func reset_pooled_state() -> void:
+	_return_pending = false
 	is_active = false
 	_lifetime_timer = 0.0
 	direction = Vector2.RIGHT
