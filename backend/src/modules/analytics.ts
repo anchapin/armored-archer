@@ -7,6 +7,7 @@ import { config } from '../config';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { toStorageValue } from '../utils/storage-helpers';
+import { observedSqlQuery } from '../utils/sql-observability';
 import { withCircuitBreaker, getAllCircuitInfo } from '../utils/circuitBreaker';
 import {
   registerRpcWithMetrics,
@@ -160,11 +161,19 @@ function persistAnalyticsEvent(nk: Runtime.Nakama, event: AnalyticsEvent): void 
 }
 
 /** Read durable events for the summary instead of a single VM's memory. */
-function readSummaryEvents(nk: Runtime.Nakama, start: number, end: number): AnalyticsEvent[] {
+function readSummaryEvents(
+  nk: Runtime.Nakama,
+  start: number,
+  end: number,
+  runtimeLogger: Runtime.Logger
+): AnalyticsEvent[] {
   if (typeof nk.sqlQuery !== 'function') return analyticsEvents;
-  const rows = nk.sqlQuery(
+  const rows = observedSqlQuery(
+    nk,
+    'analytics.summary',
     "SELECT value::text AS event_json FROM storage WHERE collection = 'analytics_events' AND (value->>'timestamp')::bigint >= $1 AND (value->>'timestamp')::bigint <= $2 ORDER BY create_time DESC LIMIT 100000",
-    [start, end]
+    [start, end],
+    { rpc: 'armored_archer/get_analytics_summary', logger: runtimeLogger }
   ) as Array<{ event_json: string }>;
   return rows.map((row) => JSON.parse(row.event_json) as AnalyticsEvent);
 }
@@ -572,9 +581,9 @@ export function rpcGetAnalyticsSummary(
 
   let sourceEvents: AnalyticsEvent[];
   try {
-    sourceEvents = readSummaryEvents(_nk, startTime, endTime);
-  } catch (error) {
-    logger.error(`Failed to read analytics summary: ${error}`);
+    sourceEvents = readSummaryEvents(_nk, startTime, endTime, logger);
+  } catch {
+    logger.error('Failed to read analytics summary');
     return JSON.stringify({ success: false, error: 'Failed to read analytics summary' });
   }
   const filteredEvents = sourceEvents.filter(

@@ -29,3 +29,11 @@ same observer. Those RPCs already return failure on SQL exceptions. The observer
 now accepts their fixed RPC IDs and native logger; metrics carry both `op` and
 `rpc` tags. No authorization, query filters, pagination or response changes.
 Other modules and gear read-fallback semantics remain outstanding.
+
+Third slice: analytics summary's durable event read now uses the SQL observer
+with its fixed RPC ID and native logger. A SQL failure still returns the existing
+failed summary response, never a successful empty summary. The catch no longer
+logs driver error text. Regression tests verify the RPC failure, fixed error log
+and one native metric, including when the metric API fails. Date bounds, event
+filters, query limit and successful responses are unchanged. This does not cover
+other modules or change gear read-fallback semantics.
