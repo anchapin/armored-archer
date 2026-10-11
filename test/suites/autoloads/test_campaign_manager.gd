@@ -18,6 +18,9 @@ extends GutTest
 class StubNetworkManager extends Node:
 	var rpc_response: Dictionary = {"success": true}
 
+	func is_session_valid() -> bool:
+		return true
+
 	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
 		return rpc_response
 
