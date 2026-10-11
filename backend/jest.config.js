@@ -21,6 +21,8 @@ module.exports = {
     '!src/utils/eslint-rules/**',
     '!src/config/errorTracking.ts',
   ],
+  // Sonar treats this shared test double as source; instrument it too (#1463).
+  forceCoverageMatch: ['**/src/__mocks__/nakama.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json', 'json-summary'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
