@@ -21,6 +21,7 @@ const TUTORIAL_SAVE_FILE := "user://tutorial_data.json"
 # --- Tutorial State ---
 var tutorial_data: Dictionary = {}
 var current_tutorial_id: String = ""
+var _step_generation: int = 0
 var current_step_index: int = 0
 var is_tutorial_active: bool = false
 var is_tutorial_overlay_visible: bool = false
@@ -337,7 +338,12 @@ func is_first_time_player() -> bool:
 	Returns:
 		bool: True if player is new
 	"""
-	return not is_tutorial_complete("welcome")
+	return get_tutorial_state("welcome") not in [TutorialState.COMPLETED, TutorialState.SKIPPED]
+
+## Keep combat frozen while teaching controls, not during the victory objective.
+func is_combat_paused() -> bool:
+	return is_tutorial_active and current_tutorial_id == "welcome" \
+		and get_current_step().get("action", "") != "complete_level"
 
 # --- Input Handling ---
 
@@ -364,6 +370,8 @@ func on_input_action(action_name: String) -> void:
 # --- Private Methods ---
 
 func _start_current_step() -> void:
+	_step_generation += 1
+	var generation: int = _step_generation
 	var step: Dictionary = get_current_step()
 	if step.is_empty():
 		return
@@ -379,7 +387,8 @@ func _start_current_step() -> void:
 			# Wait for duration then auto-complete
 			var duration: float = step.get("duration", 3.0)
 			await get_tree().create_timer(duration).timeout
-			complete_current_step()
+			if generation == _step_generation and is_tutorial_active:
+				complete_current_step()
 		_:
 			# Show overlay and wait for action
 			show_tutorial_overlay()

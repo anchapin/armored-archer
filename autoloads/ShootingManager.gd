@@ -134,7 +134,7 @@ func handle_auto_shoot(delta: float) -> void:
 			_finish_reload()
 
 	# Handle auto-shoot mode
-	if _shooting_mode == ShootingMode.AUTO:
+	if _shooting_mode == ShootingMode.AUTO and not TutorialManager.is_combat_paused():
 		_process_auto_shoot()
 	# Check for auto-aim toggle
 	check_auto_aim_toggle()

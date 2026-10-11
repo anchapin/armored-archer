@@ -16,17 +16,19 @@ func _ready() -> void:
 	if audio and audio.has_method("play_default_music_combat"):
 		audio.play_default_music_combat()
 
-	# Start the game
-	GameManager.start_game()
-
 	# Setup tutorial controller
 	_setup_tutorial_controller()
 
 	# Check if first-time player and start tutorial
 	if TutorialManager and TutorialManager.is_first_time_player():
-		# Wait a bit before starting tutorial
-		await get_tree().create_timer(1.0).timeout
 		TutorialManager.start_tutorial("welcome")
+
+	# Bind explicitly across the HUD CanvasLayer boundary.
+	if touch_ui:
+		touch_ui.set_player(player)
+
+	# Tutorial state must be established before combat starts.
+	GameManager.start_game()
 
 func _setup_tutorial_controller() -> void:
 	# Create tutorial controller dynamically
