@@ -6,15 +6,24 @@ export function observedSqlQuery(
   nk: Runtime.Nakama,
   operation: string,
   query: string,
-  params?: unknown[]
+  params?: unknown[],
+  context?: { rpc: string; logger: Runtime.Logger }
 ): unknown[] {
   try {
     return nk.sqlQuery(query, params);
   } catch (error) {
     // Never log SQL, parameters, user IDs or driver messages here.
-    logger.error('Database query failed', { operation });
+    const errorLogger = context?.logger ?? logger;
+    if (context) {
+      errorLogger.error('Database query failed: rpc=%s op=%s', context.rpc, operation);
+    } else {
+      logger.error('Database query failed', { operation });
+    }
     try {
-      nk.metricsCounterAdd?.('db_errors_total', { op: operation }, 1);
+      const tags: Record<string, string> = context
+        ? { op: operation, rpc: context.rpc }
+        : { op: operation };
+      nk.metricsCounterAdd?.('db_errors_total', tags, 1);
     } catch {
       // Metrics availability must not replace the original database failure.
       logger.warn('Database error metric unavailable', { operation });

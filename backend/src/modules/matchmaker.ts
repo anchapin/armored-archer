@@ -6,6 +6,7 @@
 import { TurnData, PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { observedSqlQuery } from '../utils/sql-observability';
 import {
   toStorageValue,
   getStorageRawValue,
@@ -2761,6 +2762,7 @@ function runPagedMatchResultsQuery(
     limit: number;
     offset: number;
     stripJoins?: boolean;
+    sqlContext: { rpc: string; logger: Runtime.Logger };
   }
 ): { total: number; rows: any[] } {
   const { range, limit, offset, stripJoins } = opts;
@@ -2781,11 +2783,23 @@ function runPagedMatchResultsQuery(
   if (stripJoins) {
     countQuery = countQuery.replace(/LEFT JOIN[\s\S]+?WHERE/, 'WHERE');
   }
-  const countResult = nk.sqlQuery(countQuery, params) as any[];
+  const countResult = observedSqlQuery(
+    nk,
+    'match_results.count',
+    countQuery,
+    params,
+    opts.sqlContext
+  ) as any[];
   const total = Number(countResult[0]?.total) || 0;
 
   query += ` ORDER BY mr.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  const rows = nk.sqlQuery(query, [...params, limit, offset]) as any[];
+  const rows = observedSqlQuery(
+    nk,
+    'match_results.page',
+    query,
+    [...params, limit, offset],
+    opts.sqlContext
+  ) as any[];
   return { total, rows };
 }
 
@@ -2864,6 +2878,7 @@ export function rpcGetMatchHistory(
     }
 
     const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
+      sqlContext: { rpc: 'armored_archer/get_match_history', logger },
       range: request,
       limit,
       offset,
@@ -3001,7 +3016,10 @@ export function rpcGetMatchDetails(
       WHERE mr.match_id = $1
     `;
 
-    const result = nk.sqlQuery(query, [match_id]) as any[];
+    const result = observedSqlQuery(nk, 'match_results.details', query, [match_id], {
+      rpc: 'armored_archer/get_match_details',
+      logger,
+    }) as any[];
 
     if (!result || result.length === 0) {
       return JSON.stringify({
@@ -3225,6 +3243,7 @@ export function rpcAdminQueryMatches(
     }
 
     const { total, rows: result } = runPagedMatchResultsQuery(nk, query, params, paramIndex, {
+      sqlContext: { rpc: 'armored_archer/admin_query_matches', logger },
       stripJoins: true,
       range: request,
       limit,

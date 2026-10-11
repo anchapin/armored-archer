@@ -5,6 +5,35 @@ import { observedSqlQuery } from '../sql-observability';
 jest.mock('../../config/logger', () => ({ logger: { error: jest.fn(), warn: jest.fn() } }));
 
 describe('observed SQL queries', () => {
+  it('tags RPC failures and uses the runtime logger even when metrics fail', () => {
+    const failure = new Error('private failure');
+    const runtimeLogger = { error: jest.fn(), info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+    const nk = {
+      sqlQuery: () => {
+        throw failure;
+      },
+      metricsCounterAdd: jest.fn(() => {
+        throw new Error('metrics failed');
+      }),
+    } as unknown as Runtime.Nakama;
+    expect(() =>
+      observedSqlQuery(nk, 'match_results.page', '', [], {
+        rpc: 'armored_archer/get_match_history',
+        logger: runtimeLogger,
+      })
+    ).toThrow(failure);
+    expect(runtimeLogger.error).toHaveBeenCalledWith(
+      'Database query failed: rpc=%s op=%s',
+      'armored_archer/get_match_history',
+      'match_results.page'
+    );
+    expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+      'db_errors_total',
+      { op: 'match_results.page', rpc: 'armored_archer/get_match_history' },
+      1
+    );
+  });
+
   beforeEach(() => jest.clearAllMocks());
 
   it('returns rows without logging or counting a failure', () => {
