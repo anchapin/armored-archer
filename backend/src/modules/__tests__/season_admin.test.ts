@@ -101,7 +101,7 @@ function makeLeaderboardRecord(overrides: Record<string, unknown> = {}) {
 
 function createMockNakama(overrides: Record<string, unknown> = {}) {
   return {
-    leaderboardRecordList: jest.fn().mockReturnValue([]),
+    leaderboardRecordsList: jest.fn().mockReturnValue([]),
     storageRead: jest.fn().mockReturnValue([]),
     storageWrite: jest.fn(),
     storageList: jest.fn().mockReturnValue([]),
@@ -243,7 +243,7 @@ describe('rpcAdminGetSeasonState', () => {
       makeLeaderboardRecord({ rank: 200, score: 1200, ownerId: 'p4' }),
       makeLeaderboardRecord({ rank: 600, score: 1000, ownerId: 'p5' }),
     ];
-    mockNk.leaderboardRecordList.mockReturnValue(records);
+    mockNk.leaderboardRecordsList.mockReturnValue(records);
 
     const result = JSON.parse(rpcAdminGetSeasonState(mockCtx, mockLogger, mockNk, '{}'));
     expect(result.success).toBe(true);
@@ -260,7 +260,7 @@ describe('rpcAdminGetSeasonState', () => {
       makeLeaderboardRecord({ rank: 2, score: 1500 }),
       makeLeaderboardRecord({ rank: 3, score: 1000 }),
     ];
-    mockNk.leaderboardRecordList.mockReturnValue(records);
+    mockNk.leaderboardRecordsList.mockReturnValue(records);
 
     const result = JSON.parse(rpcAdminGetSeasonState(mockCtx, mockLogger, mockNk, '{}'));
     expect(result.leaderboard_health.avg_score).toBe(1500);
@@ -588,7 +588,7 @@ describe('validateRewardDistribution', () => {
 
 describe('rpcAdminValidateSeason', () => {
   it('returns all-pass when data is consistent', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([]);
+    mockNk.leaderboardRecordsList.mockReturnValue([]);
     mockNk.storageList.mockReturnValue([]);
 
     const result = JSON.parse(rpcAdminValidateSeason(mockCtx, mockLogger, mockNk, '{}'));
@@ -598,7 +598,7 @@ describe('rpcAdminValidateSeason', () => {
   });
 
   it('runs only specified checks', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([]);
+    mockNk.leaderboardRecordsList.mockReturnValue([]);
 
     const result = JSON.parse(
       rpcAdminValidateSeason(mockCtx, mockLogger, mockNk, '{"checks":["leaderboard_integrity"]}')
@@ -613,7 +613,7 @@ describe('rpcAdminValidateSeason', () => {
 
 describe('triggerRecalculateDecay', () => {
   it('returns zero when no records need decay', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([makeLeaderboardRecord({ metadata: '{}' })]);
+    mockNk.leaderboardRecordsList.mockReturnValue([makeLeaderboardRecord({ metadata: '{}' })]);
     mockSeasonLeaderboard.calculateDecayAmount.mockReturnValue(0);
 
     const result = triggerRecalculateDecay(mockNk, 'season_1', false);
@@ -625,7 +625,7 @@ describe('triggerRecalculateDecay', () => {
     const record = makeLeaderboardRecord({
       metadata: JSON.stringify({ last_active: String(Date.now() - 30 * 24 * 3600000) }),
     });
-    mockNk.leaderboardRecordList.mockReturnValue([record]);
+    mockNk.leaderboardRecordsList.mockReturnValue([record]);
     mockSeasonLeaderboard.getDaysInactive.mockReturnValue(30);
     mockSeasonLeaderboard.calculateDecayAmount.mockReturnValue(45);
 
@@ -639,7 +639,7 @@ describe('triggerRecalculateDecay', () => {
     const record = makeLeaderboardRecord({
       metadata: JSON.stringify({ last_active: String(Date.now() - 30 * 24 * 3600000) }),
     });
-    mockNk.leaderboardRecordList.mockReturnValue([record]);
+    mockNk.leaderboardRecordsList.mockReturnValue([record]);
     mockSeasonLeaderboard.getDaysInactive.mockReturnValue(30);
     mockSeasonLeaderboard.calculateDecayAmount.mockReturnValue(45);
 
@@ -651,7 +651,7 @@ describe('triggerRecalculateDecay', () => {
 
 describe('triggerFixMissingRewards', () => {
   it('identifies players without rewards', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([
+    mockNk.leaderboardRecordsList.mockReturnValue([
       makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
     ]);
     mockNk.storageRead.mockReturnValue([]);
@@ -662,7 +662,7 @@ describe('triggerFixMissingRewards', () => {
   });
 
   it('dry run does not write rewards', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([
+    mockNk.leaderboardRecordsList.mockReturnValue([
       makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
     ]);
     mockNk.storageRead.mockReturnValue([]);
@@ -732,7 +732,7 @@ describe('rpcAdminTriggerSeasonEvent', () => {
   });
 
   it('end_season dry run returns plan without modifying state', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([
+    mockNk.leaderboardRecordsList.mockReturnValue([
       makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
     ]);
 
@@ -779,7 +779,7 @@ describe('rpcAdminTriggerSeasonEvent', () => {
       makeLeaderboardRecord({ rank: 1, score: 800, ownerId: 'p1', metadata: '{}' }),
       makeLeaderboardRecord({ rank: 2, score: 1500, ownerId: 'p2', metadata: '{}' }),
     ];
-    mockNk.leaderboardRecordList.mockReturnValue(records);
+    mockNk.leaderboardRecordsList.mockReturnValue(records);
 
     const result = JSON.parse(
       rpcAdminTriggerSeasonEvent(
@@ -794,7 +794,7 @@ describe('rpcAdminTriggerSeasonEvent', () => {
   });
 
   it('fix_missing_rewards action works', () => {
-    mockNk.leaderboardRecordList.mockReturnValue([
+    mockNk.leaderboardRecordsList.mockReturnValue([
       makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
     ]);
     mockNk.storageRead.mockReturnValue([]);

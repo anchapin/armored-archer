@@ -463,7 +463,7 @@ export const createMockNakama = (): Runtime.Nakama => {
     return [];
   });
 
-  return {
+  return ({
     httpRequest: jest.fn(httpRequestViaFetchMock),
     storageRead: storageReadMock,
     sqlQuery: dbQueryMock,
@@ -497,7 +497,7 @@ export const createMockNakama = (): Runtime.Nakama => {
         return [];
       }
     ),
-    leaderboardRecordList: jest.fn(
+    leaderboardRecordsList: jest.fn(
       (
         _id: string,
         _ownerIds: string[],
@@ -539,7 +539,17 @@ export const createMockNakama = (): Runtime.Nakama => {
       user: { id: userId, username: 'TestPlayer' },
       wallet: testWallets.get(userId) ?? '{}',
     })),
-  } as unknown as Runtime.Nakama;
+    sqlExec: jest.fn(() => ({ rowsAffected: 0 })),
+    storageDelete: jest.fn(),
+    leaderboardDelete: jest.fn(),
+    leaderboardRecordDelete: jest.fn(),
+    walletLedgerUpdate: jest.fn(),
+    streamUserJoin: jest.fn(),
+    streamUserLeave: jest.fn(),
+    streamUserKick: jest.fn(),
+    streamUserList: jest.fn(() => []),
+    streamCount: jest.fn(() => 0),
+  } satisfies Record<keyof Runtime.Nakama, unknown>) as unknown as Runtime.Nakama;
 };
 
 // Simple exported mocks for convenience in tests

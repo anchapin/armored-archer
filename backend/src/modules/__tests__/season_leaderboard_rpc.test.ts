@@ -136,7 +136,7 @@ describe('season_leaderboard_rpc', () => {
     // By default, all players are active (0 days ago)
     mockNk.storageRead = createRoutedStorageRead();
     mockNk.storageWrite = jest.fn();
-    mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+    mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
   });
 
   // ============================================
@@ -147,7 +147,7 @@ describe('season_leaderboard_rpc', () => {
     it('should return explicit power_rating/ladder_rating/standing plus legacy aliases (issue #871)', async () => {
       setPlayerActive('test-user', 2);
       setPlayerStats(12, 3400, { attack: 40, defense: 32, dodge: 24, crit_rate: 16 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -174,7 +174,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should return zero ladder/standing values when player has no leaderboard entry, but still derive power_rating', async () => {
       setPlayerStats(5, 450, { attack: 12, defense: 10, dodge: 8, crit_rate: 6 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -190,7 +190,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should default power_rating to 0 when player_stats storage is missing', async () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, JSON.stringify({}));
       const parsed = JSON.parse(result);
@@ -203,7 +203,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should apply rating decay for inactive player', async () => {
       setPlayerActive('test-user', 14);
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ score: 1500 })]);
 
@@ -217,7 +217,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle empty payload string', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
@@ -235,7 +235,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should accept optional season_id parameter', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
 
       const result = await rpcGetPlayerRank(
         mockCtx,
@@ -262,7 +262,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('test-user', 14);
       setPlayerActive('user4', 1);
 
-      mockNk.leaderboardRecordList = jest.fn((_id: string, ownerIds: string[]) => {
+      mockNk.leaderboardRecordsList = jest.fn((_id: string, ownerIds: string[]) => {
         if (ownerIds && ownerIds.length === 1) {
           return [records.find((r) => r.ownerId === ownerIds[0])!];
         }
@@ -278,7 +278,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle 2v2 mode in metadata', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         createMockLeaderboardRecord({
           metadata: JSON.stringify({
             wins: 5,
@@ -299,7 +299,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should log errors and return error response on exception', async () => {
-      mockNk.leaderboardRecordList = jest.fn().mockImplementation(() => {
+      mockNk.leaderboardRecordsList = jest.fn().mockImplementation(() => {
         throw new Error('Database connection failed');
       });
 
@@ -313,7 +313,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle missing metadata gracefully', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ metadata: '' })]);
 
@@ -327,7 +327,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle malformed metadata gracefully', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ metadata: 'invalid-json' })]);
 
@@ -577,7 +577,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('user2', 0);
       setPlayerActive('user3', 0);
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(records);
 
       const result = await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
 
@@ -633,7 +633,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('user2', 0);
       setPlayerActive('user3', 0);
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(records);
 
       const result = await getTopPlayers(mockNk, TEST_SEASON_ID, '1v1', 10);
 
@@ -651,19 +651,19 @@ describe('season_leaderboard_rpc', () => {
       );
       for (let i = 0; i < 10; i++) setPlayerActive(`user${i}`, 0);
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(records);
 
       await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
 
-      // The limit is passed to leaderboardRecordList as the 3rd arg
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(TEST_SEASON_ID, [], 10, '', 0);
+      // The limit is passed to leaderboardRecordsList as the 3rd arg
+      expect(mockNk.leaderboardRecordsList).toHaveBeenCalledWith(TEST_SEASON_ID, [], 10, '', 0);
     });
 
     it('should apply rating decay for inactive players', async () => {
       setPlayerActive('user1', 1);
       setPlayerActive('user2', 14); // Inactive
 
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([
           createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
@@ -682,7 +682,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('user2', 30); // Very inactive, high decay
       setPlayerActive('user3', 1);
 
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([
           createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
@@ -702,7 +702,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('user2', 0);
       setPlayerActive('user3', 0);
 
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([
           createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
@@ -718,7 +718,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should handle empty leaderboard', async () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
       const result = await getTopPlayers(mockNk, TEST_SEASON_ID, null, 10);
       expect(result).toEqual([]);
     });
@@ -726,7 +726,7 @@ describe('season_leaderboard_rpc', () => {
     it('should use default mode when not specified in metadata', async () => {
       setPlayerActive('user1', 0);
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         createMockLeaderboardRecord({
           ownerId: 'user1',
           rank: 1,
@@ -747,7 +747,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle missing last active data', async () => {
       // Don't set player activity - getPlayerLastActive returns 0
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ ownerId: 'user1', score: 2000 })]);
 
@@ -799,7 +799,7 @@ describe('season_leaderboard_rpc', () => {
       for (const r of allRecords) setPlayerActive(r.ownerId, 0);
       setUserMetadata('winner-user', { username: 'Champion' });
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(allRecords);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(allRecords);
 
       const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
@@ -812,7 +812,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should handle season with no players', async () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const archive = await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
@@ -839,7 +839,7 @@ describe('season_leaderboard_rpc', () => {
       });
 
       setPlayerActive('new-winner', 0);
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         {
           ownerId: 'new-winner',
           username: 'NewChamp',
@@ -869,7 +869,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('winner-user', 0);
       // No user metadata set
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         {
           ownerId: 'winner-user',
           username: 'WinnerName',
@@ -895,7 +895,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('winner-user', 0);
       setUserMetadata('winner-user', { display_name: 'DisplayChamp' });
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         {
           ownerId: 'winner-user',
           username: 'WinnerName',
@@ -921,7 +921,7 @@ describe('season_leaderboard_rpc', () => {
       setPlayerActive('winner-user', 0);
       setUserMetadata('winner-user', { username: 'UserChamp' });
 
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         {
           ownerId: 'winner-user',
           username: 'WinnerName',
@@ -944,7 +944,7 @@ describe('season_leaderboard_rpc', () => {
     });
 
     it('should log archive info', async () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       await recordSeasonCompletion(mockNk, TEST_SEASON_ID, mockLogger);
 
@@ -963,7 +963,7 @@ describe('season_leaderboard_rpc', () => {
 
   describe('getPlayerRank', () => {
     it('should return null for non-existent player', async () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const result = await getPlayerRank(mockNk, TEST_SEASON_ID, 'non-existent-user');
       expect(result).toBeNull();
@@ -972,7 +972,7 @@ describe('season_leaderboard_rpc', () => {
     it('should return rank and entry for existing player', async () => {
       setPlayerActive('test-user', 0);
 
-      mockNk.leaderboardRecordList = jest.fn((_id: string, ownerIds: string[]) => {
+      mockNk.leaderboardRecordsList = jest.fn((_id: string, ownerIds: string[]) => {
         if (ownerIds && ownerIds.length === 1 && ownerIds[0] === 'test-user') {
           return [createMockLeaderboardRecord()];
         }
@@ -1037,7 +1037,7 @@ describe('season_leaderboard_rpc', () => {
         },
       ];
 
-      mockNk.leaderboardRecordList = jest.fn((_id: string, ownerIds: string[]) => {
+      mockNk.leaderboardRecordsList = jest.fn((_id: string, ownerIds: string[]) => {
         if (ownerIds && ownerIds.length === 1 && ownerIds[0] === 'test-user') {
           return [records[1]];
         }
@@ -1137,7 +1137,7 @@ describe('season_leaderboard_rpc', () => {
 
     it('should handle negative ratings via minimum rating floor', async () => {
       setPlayerActive('test-user', 0);
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ score: -100 })]);
 
@@ -1210,7 +1210,7 @@ describe('season_leaderboard_rpc', () => {
         max_decay_loss: 500,
       });
 
-      mockNk.leaderboardRecordList = jest
+      mockNk.leaderboardRecordsList = jest
         .fn()
         .mockReturnValue([createMockLeaderboardRecord({ score: 2000 })]);
 

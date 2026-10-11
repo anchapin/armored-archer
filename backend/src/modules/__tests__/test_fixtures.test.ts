@@ -10,7 +10,7 @@ function makeNk(overrides: Record<string, jest.Mock> = {}): any {
     leaderboardCreate: jest.fn(),
     leaderboardRecordWrite: jest.fn(),
     leaderboardRecordDelete: jest.fn(),
-    leaderboardRecordList: jest.fn().mockReturnValue([{ ownerId: 'u1', score: 10 }]),
+    leaderboardRecordsList: jest.fn().mockReturnValue([{ ownerId: 'u1', score: 10 }]),
     ...overrides,
   };
 }
@@ -92,10 +92,10 @@ describe('test_fixtures', () => {
     expect(
       call(nk, { op: 'list', leaderboard_id: 's', owner_ids: ['u1'], limit: 5 }).records
     ).toHaveLength(1);
-    expect(nk.leaderboardRecordList).toHaveBeenCalledWith('s', ['u1'], 5, '', 0);
-    const empty = makeNk({ leaderboardRecordList: jest.fn().mockReturnValue(null) });
+    expect(nk.leaderboardRecordsList).toHaveBeenCalledWith('s', ['u1'], 5, '', 0);
+    const empty = makeNk({ leaderboardRecordsList: jest.fn().mockReturnValue(null) });
     expect(call(empty, { op: 'list', leaderboard_id: 's' }).records).toEqual([]);
-    expect(empty.leaderboardRecordList).toHaveBeenCalledWith('s', [], 100, '', 0);
+    expect(empty.leaderboardRecordsList).toHaveBeenCalledWith('s', [], 100, '', 0);
   });
 
   test('surfaces runtime errors as a failed payload', () => {

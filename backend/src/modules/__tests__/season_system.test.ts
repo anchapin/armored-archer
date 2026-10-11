@@ -66,7 +66,7 @@ describe('season_system', () => {
 
   describe('rpcGetSeasonInfo', () => {
     it('should return current season info', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonInfo(mockCtx, mockLogger, mockNk, payload);
@@ -80,7 +80,7 @@ describe('season_system', () => {
 
     it('should include player rank when available', () => {
       const record = createMockLeaderboardRecord();
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonInfo(mockCtx, mockLogger, mockNk, payload);
@@ -97,7 +97,7 @@ describe('season_system', () => {
         createMockLeaderboardRecord({ ownerId: 'user1', rank: 1, score: 2000 }),
         createMockLeaderboardRecord({ ownerId: 'user2', rank: 2, score: 1800 }),
       ];
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(records);
 
       const payload = JSON.stringify({ limit: 50 });
       const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
@@ -111,7 +111,7 @@ describe('season_system', () => {
       const records = Array.from({ length: 100 }, (_, i) =>
         createMockLeaderboardRecord({ ownerId: `user${i}`, rank: i + 1, score: 2000 - i * 10 })
       );
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(records);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(records);
 
       const payload = JSON.stringify({ limit: 10 });
       const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
@@ -156,7 +156,7 @@ describe('season_system', () => {
 
   describe('rpcGetSeasonRewards', () => {
     it('should return null rewards when no leaderboard entry', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -168,7 +168,7 @@ describe('season_system', () => {
 
     it('should return legendary rewards for top 10', () => {
       const record = createMockLeaderboardRecord({ rank: 5 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -181,7 +181,7 @@ describe('season_system', () => {
 
     it('should return epic rewards for ranks 11-50', () => {
       const record = createMockLeaderboardRecord({ rank: 25 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -193,7 +193,7 @@ describe('season_system', () => {
 
     it('should return rare rewards for ranks 51-100', () => {
       const record = createMockLeaderboardRecord({ rank: 75 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -205,7 +205,7 @@ describe('season_system', () => {
 
     it('should return uncommon rewards for ranks 101-500', () => {
       const record = createMockLeaderboardRecord({ rank: 200 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -217,7 +217,7 @@ describe('season_system', () => {
 
     it('should return common rewards for ranks below 500', () => {
       const record = createMockLeaderboardRecord({ rank: 600 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonRewards(mockCtx, mockLogger, mockNk, payload);
@@ -231,7 +231,7 @@ describe('season_system', () => {
   describe('rpcClaimSeasonRewards', () => {
     it('should claim rewards successfully', () => {
       const record = createMockLeaderboardRecord({ rank: 5 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({});
@@ -244,7 +244,7 @@ describe('season_system', () => {
     });
 
     it('should return error when rewards already claimed', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([createMockLeaderboardRecord()]);
       mockNk.storageRead = jest.fn((objects) =>
         objects[0].collection === 'season_rewards_claimed'
           ? [
@@ -265,7 +265,7 @@ describe('season_system', () => {
     });
 
     it('should return error when no leaderboard entry', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
       mockNk.storageRead = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({});
@@ -478,7 +478,7 @@ describe('season_system', () => {
   describe('getLeaderboardEntry', () => {
     it('should return null when no entry found', () => {
       const { getLeaderboardEntry } = require('../season_system');
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const entry = getLeaderboardEntry(mockNk, 'user_123', 'season_1');
       expect(entry).toBeNull();
@@ -486,7 +486,7 @@ describe('season_system', () => {
 
     it('should return entry when found', () => {
       const { getLeaderboardEntry } = require('../season_system');
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([
         {
           ownerId: 'user_123',
           username: 'Player',
@@ -943,7 +943,7 @@ describe('season_system', () => {
         createMockLeaderboardRecord({ ownerId: 'player-1', rank: 5, score: 2000 }),
         createMockLeaderboardRecord({ ownerId: 'player-2', rank: 50, score: 1500 }),
       ];
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
       mockNk.storageRead = jest.fn().mockReturnValue([]);
@@ -984,7 +984,7 @@ describe('season_system', () => {
           score: 2500,
         }),
       ];
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
       mockNk.storageRead = jest.fn().mockReturnValue([]);
@@ -1002,7 +1002,7 @@ describe('season_system', () => {
 
     it('should handle players with cosmetic rewards', () => {
       const players = [createMockLeaderboardRecord({ ownerId: 'player-1', rank: 5, score: 2000 })];
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
       mockNk.storageRead = jest.fn().mockReturnValue([]);
@@ -1029,7 +1029,7 @@ describe('season_system', () => {
       );
 
       let callCount = 0;
-      mockNk.leaderboardRecordList = jest.fn(() => {
+      mockNk.leaderboardRecordsList = jest.fn(() => {
         callCount++;
         if (callCount === 1) return batch1;
         if (callCount === 2) return batch2;
@@ -1045,11 +1045,11 @@ describe('season_system', () => {
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalled();
+      expect(mockNk.leaderboardRecordsList).toHaveBeenCalled();
     });
 
     it('should handle empty leaderboard', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
       mockNk.storageWrite = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
@@ -1085,7 +1085,7 @@ describe('season_system', () => {
       });
 
       const players = [createMockLeaderboardRecord({ ownerId: 'player-1', rank: 30, score: 2000 })];
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.storageWrite = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
@@ -1101,7 +1101,7 @@ describe('season_system', () => {
   describe('rpcClaimSeasonRewards advanced', () => {
     it('should claim rewards and credit the unified currency ledger', () => {
       const record = createMockLeaderboardRecord({ rank: 5 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       mockNk.storageWrite = jest.fn();
 
@@ -1152,7 +1152,7 @@ describe('season_system', () => {
 
   describe('rpcGetSeasonInfo additional branches', () => {
     it('should return player_score 0 when no entry', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({});
       const result = rpcGetSeasonInfo(mockCtx, mockLogger, mockNk, payload);
@@ -1166,25 +1166,25 @@ describe('season_system', () => {
 
   describe('rpcGetLeaderboard additional branches', () => {
     it('should use default limit when not specified', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({});
       const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(expect.any(String), [], 50, '', 0);
+      expect(mockNk.leaderboardRecordsList).toHaveBeenCalledWith(expect.any(String), [], 50, '', 0);
     });
 
     it('should use specified limit', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const payload = JSON.stringify({ limit: 10 });
       const result = rpcGetLeaderboard(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
       expect(parsed.success).toBe(true);
-      expect(mockNk.leaderboardRecordList).toHaveBeenCalledWith(expect.any(String), [], 10, '', 0);
+      expect(mockNk.leaderboardRecordsList).toHaveBeenCalledWith(expect.any(String), [], 10, '', 0);
     });
   });
 
@@ -1409,7 +1409,7 @@ describe('season_system', () => {
   describe('rpcGetProjectedNextSeasonElo', () => {
     it('should return projected ELO when player has leaderboard entry', () => {
       const record = createMockLeaderboardRecord({ rank: 5, score: 2500 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
@@ -1421,7 +1421,7 @@ describe('season_system', () => {
     });
 
     it('should return default ELO when player has no leaderboard entry', () => {
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
 
       const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
@@ -1433,7 +1433,7 @@ describe('season_system', () => {
 
     it('should return correct tier for rank 30', () => {
       const record = createMockLeaderboardRecord({ rank: 30, score: 1800 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
@@ -1444,7 +1444,7 @@ describe('season_system', () => {
 
     it('should return correct tier for rank 200', () => {
       const record = createMockLeaderboardRecord({ rank: 200, score: 1200 });
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue([record]);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
 
       const result = rpcGetProjectedNextSeasonElo(mockCtx, mockLogger, mockNk, '{}');
       const parsed = JSON.parse(result);
@@ -1526,7 +1526,7 @@ describe('season_system', () => {
 
     it('records status="ending" and end_distribution BEFORE the first per-player credit', () => {
       const players = buildPlayers();
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
@@ -1572,7 +1572,7 @@ describe('season_system', () => {
 
     it('returns success:false with error_code PARTIAL_SEASON_FAILED on mid-loop failure', () => {
       const players = buildPlayers();
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
@@ -1601,7 +1601,7 @@ describe('season_system', () => {
 
     it('credits each player at most once: retry resumes from checkpoint, no double-credit', () => {
       const players = buildPlayers();
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
@@ -1667,7 +1667,7 @@ describe('season_system', () => {
       // per-player marker is the secondary defense; even with a buggy
       // checkpoint the player must not be re-credited.
       const players = buildPlayers();
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
@@ -1736,7 +1736,7 @@ describe('season_system', () => {
       // matches the pre-fix happy path. The generation_token is included in
       // the response for telemetry correlation.
       const players = buildPlayers();
-      mockNk.leaderboardRecordList = jest.fn().mockReturnValue(players);
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue(players);
       mockNk.walletUpdate = jest.fn();
       mockNk.leaderboardRecordWrite = jest.fn();
 
