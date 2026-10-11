@@ -213,6 +213,8 @@ declare namespace Runtime {
     ): StreamUserListResult[];
     streamCount(stream: Stream): number;
     storageDelete(objects: StorageRead[]): void;
+    /** Native synchronous runtime metric; optional for partial test doubles. */
+    metricsCounterAdd?(name: string, tags: Record<string, string>, delta: number): void;
     /** Run a SQL statement that returns rows (SELECT or ... RETURNING). */
     sqlQuery(query: string, params?: unknown[]): unknown[];
     /** Run a SQL statement that returns no rows. */
