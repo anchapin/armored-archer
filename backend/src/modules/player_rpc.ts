@@ -13,6 +13,7 @@ import { getPlayerStatsWithCache } from '../utils/player-data-helpers';
 import { getHealthStatus } from './health_monitor';
 import { logAudit } from './audit';
 import { isAdminUser } from './admin_auth';
+import { observedSqlQuery } from '../utils/sql-observability';
 
 /**
  * Helper to get structured logger for this module
@@ -300,7 +301,9 @@ export function rpcGetPlayerReports(
 
     try {
       // Try to fetch match details from the database
-      const matchResult = nk.sqlQuery(
+      const matchResult = observedSqlQuery(
+        nk,
+        'player_reports.match_details',
         `
         SELECT
           match_id,
@@ -318,7 +321,8 @@ export function rpcGetPlayerReports(
         WHERE match_id = $1
         LIMIT 1
       `,
-        [report.match_id]
+        [report.match_id],
+        { rpc: 'armored_archer/get_player_reports', logger }
       ) as any[];
 
       if (matchResult && matchResult.length > 0) {
@@ -340,11 +344,8 @@ export function rpcGetPlayerReports(
           },
         };
       }
-    } catch (error) {
-      getLogger().warn('Failed to fetch match details for report', {
-        error: error instanceof Error ? error.message : String(error),
-        matchId: report.match_id,
-      });
+    } catch {
+      // Match details are optional; SQL failures are recorded by the observer.
     }
 
     return report;
