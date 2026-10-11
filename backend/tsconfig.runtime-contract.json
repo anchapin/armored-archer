@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["type-tests/nakama-method-parity.ts"],
+  "exclude": ["node_modules", "build"]
+}

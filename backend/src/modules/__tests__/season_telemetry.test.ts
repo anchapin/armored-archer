@@ -22,7 +22,7 @@ describe('Season Telemetry', () => {
   const mockNk: Runtime.Nakama = {
     storageRead: jest.fn().mockResolvedValue([]),
     storageWrite: jest.fn().mockResolvedValue(undefined),
-    leaderboardRecordList: jest.fn().mockReturnValue([]),
+    leaderboardRecordsList: jest.fn().mockReturnValue([]),
     leaderboardRecordWrite: jest.fn(),
     leaderboardCreate: jest.fn(),
   } as unknown as Runtime.Nakama;
@@ -46,7 +46,7 @@ describe('Season Telemetry', () => {
     jest.restoreAllMocks();
     (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
     (mockNk.storageWrite as jest.Mock).mockResolvedValue(undefined);
-    (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue([]);
+    (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
   });
 
   describe('logRankChange', () => {
@@ -183,7 +183,7 @@ describe('Season Telemetry', () => {
   describe('captureRatingSnapshot', () => {
     it('should compute percentiles from leaderboard data', async () => {
       const scores = [800, 900, 950, 1000, 1050, 1100, 1200, 1300, 1400, 1500];
-      (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue(
+      (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue(
         scores.map((score) => ({ score, ownerId: `user_${score}` }))
       );
 
@@ -198,7 +198,7 @@ describe('Season Telemetry', () => {
     });
 
     it('should return null for empty leaderboard', async () => {
-      (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue([]);
+      (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
 
       const snapshot = await captureRatingSnapshot(mockNk, 'season_1', Date.now());
 
@@ -429,7 +429,7 @@ describe('Season Telemetry', () => {
   describe('getSeasonTelemetrySummary', () => {
     it('should return complete telemetry summary', async () => {
       (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
-      (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue([]);
+      (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
 
       const query: SeasonTelemetryQuery = {
         season_id: 'season_1',
@@ -450,7 +450,7 @@ describe('Season Telemetry', () => {
 
   describe('recordSeasonEndSnapshot', () => {
     it('should write final season summary to storage', async () => {
-      (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue([]);
+      (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
       (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
 
       await recordSeasonEndSnapshot(mockNk, 'season_1', Date.now() - 28 * 86400000);
@@ -465,7 +465,7 @@ describe('Season Telemetry', () => {
     });
 
     it('should capture a final rating snapshot', async () => {
-      (mockNk.leaderboardRecordList as jest.Mock).mockReturnValue([
+      (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([
         { score: 1000, ownerId: 'user1' },
         { score: 1050, ownerId: 'user2' },
       ]);
