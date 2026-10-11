@@ -62,8 +62,19 @@ func _ready() -> void:
 
 	if season_manager:
 		season_manager.season_info_loaded.connect(_on_season_info_loaded)
-		if season_manager.season_info_loaded.is_connected(_on_season_info_loaded):
-			season_manager.get_season_info()
+	if network_manager:
+		network_manager.connection_status_changed.connect(_on_connection_status_changed)
+		_on_connection_status_changed(bool(network_manager.get("is_connected")))
+
+func _exit_tree() -> void:
+	if season_manager and season_manager.season_info_loaded.is_connected(_on_season_info_loaded):
+		season_manager.season_info_loaded.disconnect(_on_season_info_loaded)
+	if network_manager and network_manager.connection_status_changed.is_connected(_on_connection_status_changed):
+		network_manager.connection_status_changed.disconnect(_on_connection_status_changed)
+
+func _on_connection_status_changed(is_online: bool) -> void:
+	if is_online and network_manager and bool(network_manager.get("is_connected")) and season_manager:
+		season_manager.get_season_info()
 
 # --- Public API ---
 
