@@ -140,6 +140,7 @@ var wave_timer: float = 0.0
 var is_spawning: bool = false
 var active_enemies: Array[Node] = []
 var total_enemies_for_stage: int = 0
+var enemies_defeated: int = 0
 var wave_complete: bool = false  # Track if current wave has finished spawning
 
 
@@ -150,6 +151,7 @@ var wave_timer_node: Timer
 
 # --- Signals ---
 signal enemy_count_changed(remaining: int, total: int)
+signal enemy_progress_changed(defeated: int, total: int)
 
 func _ready() -> void:
 	# Create timers dynamically for autoload instance
@@ -206,6 +208,9 @@ func start_stage(stage_id: String, waves: int, stats: Dictionary, stage_boss: St
 	max_waves = max(1, waves)
 	boss_id = stage_boss
 	stage_active = true
+	for wave_index in range(max_waves):
+		total_enemies_for_stage += base_enemy_count + wave_index * enemy_count_increment
+	enemy_progress_changed.emit(0, total_enemies_for_stage)
 	start_next_wave()
 
 func stop_stage() -> void:
@@ -222,6 +227,8 @@ func stop_stage() -> void:
 	current_wave = 0
 	enemies_to_spawn = 0
 	total_enemies_for_stage = 0
+	enemies_defeated = 0
+	enemy_progress_changed.emit(0, 0)
 	is_spawning = false
 	wave_complete = false
 	_boss_started = false
@@ -241,7 +248,6 @@ func start_next_wave() -> void:
 
 	current_wave += 1
 	enemies_to_spawn = base_enemy_count + (current_wave - 1) * enemy_count_increment
-	total_enemies_for_stage += enemies_to_spawn
 	is_spawning = true
 	wave_complete = false  # Reset wave completion flag
 	# CRITICAL: Stop any existing wave timer to prevent premature next wave start
@@ -316,6 +322,7 @@ func spawn_enemy() -> void:
 	if not enemy_instance in active_enemies:
 		active_enemies.append(enemy_instance)
 	enemies_to_spawn -= 1
+	enemy_count_changed.emit(active_enemies.size(), total_enemies_for_stage)
 
 	# CRITICAL: Set spawning state when done spawning all enemies
 	if enemies_to_spawn <= 0:
@@ -328,8 +335,6 @@ func spawn_enemy() -> void:
 		spawn_timer_node.wait_time = time_between_enemies
 		spawn_timer_node.start()
 
-	# Emit enemy count updated signal on spawn
-	enemy_count_changed.emit(active_enemies.size(), total_enemies_for_stage)
 
 ## Enemies never spawn closer than this to the player (#1446: an enemy that
 ## appeared on top of the player killed them in about 3 seconds).
@@ -388,6 +393,8 @@ func _on_enemy_exiting(enemy: Node) -> void:
 	var index := active_enemies.find(enemy)
 	if index >= 0:
 		active_enemies.remove_at(index)
+		enemies_defeated += 1
+		enemy_progress_changed.emit(enemies_defeated, total_enemies_for_stage)
 		enemy_count_changed.emit(active_enemies.size(), total_enemies_for_stage)
 	# Check if stage is complete
 	if active_enemies.size() == 0 and not is_spawning:
