@@ -76,6 +76,10 @@ func _on_combined_stats_updated(stats: Dictionary) -> void:
 	# Preserve health percentage after stats update
 	player_current_health = int(player_max_health * health_ratio)
 	health_changed.emit(player_current_health, player_max_health)
+	_sync_health_to_player()
+
+func _process(delta: float) -> void:
+	damage_cooldown = max(0.0, damage_cooldown - delta)
 
 func take_player_damage(damage: int) -> void:
 	"""Applies damage to the player.
@@ -126,7 +130,7 @@ func take_player_damage(damage: int) -> void:
 		})
 
 	if player_current_health <= 0:
-		player_died.emit()
+		end_game(false)
 
 func heal_player(amount: int) -> void:
 	"""Heals the player by the specified amount.
@@ -169,6 +173,7 @@ func start_game() -> void:
 		object_pool.prewarm_pools()
 
 	player_current_health = player_max_health
+	damage_cooldown = 0.0
 	is_game_active = true
 	game_start_time = Time.get_unix_time_from_system()
 	health_changed.emit(player_current_health, player_max_health)
@@ -294,6 +299,7 @@ func reset_stage() -> void:
 	"""Resets to stage 1 for a new attempt."""
 	current_stage = 1
 	player_current_health = player_max_health
+	damage_cooldown = 0.0
 	is_game_active = true
 	health_changed.emit(player_current_health, player_max_health)
 
@@ -349,13 +355,7 @@ func spawn_boss(boss_name: String) -> void:
 func _sync_health_to_player() -> void:
 	"""Syncs health to the player CharacterBody2D."""
 	var player = get_tree().get_first_node_in_group("Player")
-	if player and player.has_method("heal"):
-		# Calculate health difference and apply as heal/damage
-		var health_diff: int = player_current_health - (player.current_health if "current_health" in player else 0)
-		if health_diff > 0:
-			player.heal(health_diff)
-		elif health_diff < 0 and player.has_method("take_damage"):
-			# Don't apply damage through sync to avoid loops
-			# Just update the character's health directly
-			if "current_health" in player:
-				player.current_health = max(0, player.current_health + health_diff)
+	if player and "current_health" in player:
+		player.current_health = player_current_health
+		if "max_health" in player:
+			player.max_health = player_max_health
