@@ -286,6 +286,14 @@ describe('Synchronous notification RPC control plane', () => {
     nk.sqlQuery.mockReturnValue([]);
     expect(call('remove_device_token')).toEqual(call('cancel_notification'));
   });
+  test('literal registerRpc seams remain discoverable by production bundler', () => {
+    const source = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../notifications_rpc.ts'),
+      'utf8'
+    );
+    const ids = [...source.matchAll(/registerRpc\(\s*'([^']+)'/g)].map((m: any) => m[1]);
+    expect(ids.sort()).toEqual(names.map((n) => 'armored_archer_' + n).sort());
+  });
   test('metric failure cannot replace SQL failure', () => {
     nk.sqlQuery.mockImplementation(() => {
       throw new Error(secret);

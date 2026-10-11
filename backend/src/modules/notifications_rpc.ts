@@ -1,5 +1,5 @@
 import { logger } from '../config/logger';
-import { InitModule, Runtime } from '../types/nakama';
+import { Runtime } from '../types/nakama';
 import {
   registerDeviceToken,
   removeDeviceToken,
@@ -55,13 +55,7 @@ type SyncRpc = (
   nk: Runtime.Nakama,
   payload: string
 ) => string;
-function registerSyncNotificationRpc(
-  initializer: InitModule,
-  name: string,
-  handler: SyncRpc
-): void {
-  initializer.registerRpc(name, handler);
-}
+type SyncNotificationInitializer = { registerRpc(name: string, handler: SyncRpc): void };
 
 function authError(): string {
   return JSON.stringify({
@@ -71,9 +65,8 @@ function authError(): string {
   });
 }
 
-export function registerRpcRegisterDeviceToken(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcRegisterDeviceToken(initializer: SyncNotificationInitializer): void {
+  initializer.registerRpc(
     'armored_archer_register_device_token',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -114,9 +107,8 @@ export function registerRpcRegisterDeviceToken(initializer: InitModule): void {
  * Register RPC: Remove device token
  * Payload: { "deviceToken": string }
  */
-export function registerRpcRemoveDeviceToken(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcRemoveDeviceToken(initializer: SyncNotificationInitializer): void {
+  initializer.registerRpc(
     'armored_archer_remove_device_token',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -148,9 +140,10 @@ export function registerRpcRemoveDeviceToken(initializer: InitModule): void {
  * Register RPC: Get notification preferences
  * Payload: {}
  */
-export function registerRpcGetNotificationPreferences(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcGetNotificationPreferences(
+  initializer: SyncNotificationInitializer
+): void {
+  initializer.registerRpc(
     'armored_archer_get_notification_preferences',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -198,9 +191,10 @@ export function registerRpcGetNotificationPreferences(initializer: InitModule): 
  * Register RPC: Update notification preferences
  * Payload: { "dailyRewardsEnabled"?: boolean, "eventsEnabled"?: boolean, ... }
  */
-export function registerRpcUpdateNotificationPreferences(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcUpdateNotificationPreferences(
+  initializer: SyncNotificationInitializer
+): void {
+  initializer.registerRpc(
     'armored_archer_update_notification_preferences',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -247,9 +241,8 @@ export function registerRpcUpdateNotificationPreferences(initializer: InitModule
  * Register RPC: Schedule a notification
  * Payload: { "type": "daily_reward" | "event" | "pvp_challenge" | "promotion" | "custom", "title": string, "body": string, "scheduledFor": ISO date string }
  */
-export function registerRpcScheduleNotification(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcScheduleNotification(initializer: SyncNotificationInitializer): void {
+  initializer.registerRpc(
     'armored_archer_schedule_notification',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -303,9 +296,8 @@ export function registerRpcScheduleNotification(initializer: InitModule): void {
  * Register RPC: Cancel a scheduled notification
  * Payload: { "notificationId": string }
  */
-export function registerRpcCancelNotification(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcCancelNotification(initializer: SyncNotificationInitializer): void {
+  initializer.registerRpc(
     'armored_archer_cancel_notification',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -337,9 +329,8 @@ export function registerRpcCancelNotification(initializer: InitModule): void {
  * Register RPC: Get notification status
  * Payload: {}
  */
-export function registerRpcGetNotificationStatus(initializer: InitModule): void {
-  registerSyncNotificationRpc(
-    initializer,
+export function registerRpcGetNotificationStatus(initializer: SyncNotificationInitializer): void {
+  initializer.registerRpc(
     'armored_archer_get_notification_status',
     (ctx: Runtime.Context, logger: Runtime.Logger, nk: Runtime.Nakama, payload: string) => {
       try {
@@ -369,7 +360,7 @@ export function registerRpcGetNotificationStatus(initializer: InitModule): void 
 /**
  * Register all notification RPCs
  */
-export function registerNotificationEndpoints(initializer: InitModule): void {
+export function registerNotificationEndpoints(initializer: SyncNotificationInitializer): void {
   registerRpcRegisterDeviceToken(initializer);
   registerRpcRemoveDeviceToken(initializer);
   registerRpcGetNotificationPreferences(initializer);
