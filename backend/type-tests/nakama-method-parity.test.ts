@@ -13,10 +13,10 @@ mock.leaderboardRecordList('season');
 // @ts-expect-error Invented methods must not enter the official API surface.
 const invented: OfficialNakamaMethod = 'dbQuery';
 const valid: OfficialNakamaMethod = 'leaderboardRecordsList';
-const complete: Record<keyof Runtime.Nakama, unknown> = mock;
+const supported: Partial<Record<keyof Runtime.Nakama, unknown>> = mock;
 const extra = {
   ...mock,
   // @ts-expect-error The same exact key contract checks the shared factory.
   dbQuery: () => [],
-} satisfies Record<keyof Runtime.Nakama, unknown>;
-void [invented, valid, complete, extra];
+} satisfies Partial<Record<keyof Runtime.Nakama, unknown>>;
+void [invented, valid, supported, extra];

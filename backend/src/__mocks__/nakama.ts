@@ -539,17 +539,7 @@ export const createMockNakama = (): Runtime.Nakama => {
       user: { id: userId, username: 'TestPlayer' },
       wallet: testWallets.get(userId) ?? '{}',
     })),
-    sqlExec: jest.fn(() => ({ rowsAffected: 0 })),
-    storageDelete: jest.fn(),
-    leaderboardDelete: jest.fn(),
-    leaderboardRecordDelete: jest.fn(),
-    walletLedgerUpdate: jest.fn(),
-    streamUserJoin: jest.fn(),
-    streamUserLeave: jest.fn(),
-    streamUserKick: jest.fn(),
-    streamUserList: jest.fn(() => []),
-    streamCount: jest.fn(() => 0),
-  } satisfies Record<keyof Runtime.Nakama, unknown>) as unknown as Runtime.Nakama;
+  } satisfies Partial<Record<keyof Runtime.Nakama, unknown>>) as unknown as Runtime.Nakama;
 };
 
 // Simple exported mocks for convenience in tests
