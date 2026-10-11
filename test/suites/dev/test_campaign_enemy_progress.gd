@@ -50,6 +50,8 @@ func test_new_stage_and_menu_clear_old_progress() -> void:
 
 func test_real_lethal_damage_advances_progress_on_normal_juice_path() -> void:
 	EnemySpawner.spawn_enemy()
+	# Do not let the next timed spawn reuse this dead fixture before inspection.
+	EnemySpawner.spawn_timer_node.stop()
 	var enemy: Node = EnemySpawner.active_enemies[0]
 	enemy.take_damage(enemy.current_health)
 	assert_eq(counter.text, "Enemies: 1 / 18 (5%)")
