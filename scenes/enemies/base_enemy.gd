@@ -71,6 +71,10 @@ func _ready() -> void:
 
 # Reset enemy state for reuse from object pool
 func reset_for_spawn() -> void:
+	# Pooled AI must not retain a Player from the previous scene.
+	if "player_ref" in self:
+		set("player_ref", null)
+	velocity = Vector2.ZERO
 	current_health = max_health
 	is_dead = false
 	collision_layer = 2

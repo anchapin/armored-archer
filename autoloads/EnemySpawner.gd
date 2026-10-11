@@ -130,6 +130,9 @@ var current_chapter: int = 0
 var current_stage: int = 0
 
 # --- State ---
+var stage_active: bool = false
+var _boss_started: bool = false
+var _stage_generation: int = 0
 var current_wave: int = 0
 var enemies_to_spawn: int = 0
 var spawn_timer: float = 0.0
@@ -160,7 +163,6 @@ func _ready() -> void:
 	add_child(wave_timer_node)
 	wave_timer_node.timeout.connect(_on_wave_timer_timeout)
 
-	start_next_wave()
 
 ## Pause only enemy simulation and wave clocks. Player/UI remain live.
 func _process(_delta: float) -> void:
@@ -195,7 +197,43 @@ func connect_enemy_death(enemy: Node) -> void:
 	if enemy and enemy.has_signal("enemy_died"):
 		enemy.enemy_died.connect(_on_enemy_exiting)
 
+## Reset combat ownership every time a selected stage enters.
+func start_stage(stage_id: String, waves: int, stats: Dictionary, stage_boss: String) -> void:
+	stop_stage()
+	var parts: PackedStringArray = stage_id.split("_")
+	set_active_stage(int(parts[0]) if parts.size() > 0 else 0,
+		int(parts[1]) if parts.size() > 1 else 0, stats)
+	max_waves = max(1, waves)
+	boss_id = stage_boss
+	stage_active = true
+	start_next_wave()
+
+func stop_stage() -> void:
+	_stage_generation += 1
+	stage_active = false
+	if spawn_timer_node:
+		spawn_timer_node.stop()
+	if wave_timer_node:
+		wave_timer_node.stop()
+	for enemy in active_enemies.duplicate():
+		if is_instance_valid(enemy) and enemy.is_connected("enemy_died", _on_enemy_exiting):
+			enemy.enemy_died.disconnect(_on_enemy_exiting)
+	active_enemies.clear()
+	current_wave = 0
+	enemies_to_spawn = 0
+	total_enemies_for_stage = 0
+	is_spawning = false
+	wave_complete = false
+	_boss_started = false
+	var pool: Node = get_node_or_null("/root/ObjectPool")
+	if pool:
+		pool.prepare_for_scene_change()
+	for boss in get_tree().get_nodes_in_group("Boss"):
+		boss.queue_free()
+
 func start_next_wave() -> void:
+	if not stage_active:
+		return
 	if current_wave >= max_waves:
 		if boss_id != "":
 			spawn_boss()
@@ -215,6 +253,8 @@ func start_next_wave() -> void:
 		spawn_timer_node.start()
 
 func spawn_enemy() -> void:
+	if not stage_active:
+		return
 	if TutorialManager.is_combat_paused():
 		if spawn_timer_node:
 			spawn_timer_node.start(time_between_enemies)
@@ -227,23 +267,17 @@ func spawn_enemy() -> void:
 
 	var spawn_position: Vector2 = get_random_spawn_position()
 
-	# Use object pool for enemy instantiation (performance optimization)
+	# The selected archetype must also reach the pooled path.
+	var mapped_scene: PackedScene = _resolve_current_stage_scene()
+	if not mapped_scene:
+		mapped_scene = SCOUT_ENEMY_SCENE
 	var enemy_instance: Node
-	var object_pool = get_node_or_null("/root/ObjectPool")
+	var object_pool: Node = get_node_or_null("/root/ObjectPool")
 	if object_pool and object_pool.has_method("get_enemy"):
-		enemy_instance = object_pool.get_enemy()
+		enemy_instance = object_pool.get_enemy(mapped_scene)
 	else:
-		# Deterministic scene selection via enemy_scene_map (issue #910).
-		# Falls back to scout_enemy if no stage context is set — the
-		# random-scene fallback that previously corrupted Ch1 is removed.
-		var mapped_scene: PackedScene = _resolve_current_stage_scene()
-		if not mapped_scene:
-			mapped_scene = SCOUT_ENEMY_SCENE
-			push_warning("EnemySpawner: no scene resolved for current stage, defaulting to scout_enemy")
 		enemy_instance = mapped_scene.instantiate()
-
-
-
+		add_child(enemy_instance)
 
 	enemy_instance.global_position = spawn_position
 
@@ -341,6 +375,8 @@ func _on_wave_timer_timeout() -> void:
 		start_next_wave()
 # Track enemy removal via enemy_died signal (fires when enemy dies, works with object pooling)
 func _on_enemy_exiting(enemy: Node) -> void:
+	if not stage_active or not enemy in active_enemies:
+		return
 	for i in range(active_enemies.size()):
 		var e = active_enemies[i]
 		if is_instance_valid(e):
@@ -356,7 +392,9 @@ func _on_enemy_exiting(enemy: Node) -> void:
 	# Check if stage is complete
 	if active_enemies.size() == 0 and not is_spawning:
 		if current_wave >= max_waves:
-			if boss_id == "" or not is_boss_alive():
+			if boss_id != "":
+				spawn_boss()
+			else:
 				var game_mgr = get_node_or_null("/root/GameManager")
 				if game_mgr and game_mgr.has_method("end_game"):
 					game_mgr.end_game(true)
@@ -372,9 +410,11 @@ func _on_enemy_exiting(enemy: Node) -> void:
 					wave_timer_node.wait_time = time_between_waves
 					wave_timer_node.start()
 func spawn_boss() -> void:
-	if boss_id == "":
+	if not stage_active or _boss_started or boss_id == "":
 		return
 
+	_boss_started = true
+	var generation: int = _stage_generation
 	var game_mgr = get_node_or_null("/root/GameManager")
 	if game_mgr and game_mgr.has_method("spawn_boss"):
 		game_mgr.spawn_boss(boss_id)
@@ -383,6 +423,8 @@ func spawn_boss() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame  # Double frame to ensure boss is fully initialized
 
+		if generation != _stage_generation or not stage_active:
+			return
 		var bosses: Array[Node] = get_tree().get_nodes_in_group("Boss")
 		if bosses.size() > 0:
 			var boss = bosses[0]
@@ -396,6 +438,9 @@ func is_boss_alive() -> bool:
 func _on_boss_defeated(_boss_name: String) -> void:
 	"""Handle boss defeat - complete the stage with victory."""
 
+	if not stage_active:
+		return
+	var generation: int = _stage_generation
 	# Mark wave as complete since all waves and boss are done
 	wave_complete = true
 
@@ -403,7 +448,7 @@ func _on_boss_defeated(_boss_name: String) -> void:
 	await get_tree().create_timer(1.0).timeout
 
 	var game_mgr = get_node_or_null("/root/GameManager")
-	if game_mgr and game_mgr.has_method("end_game"):
+	if generation == _stage_generation and stage_active and game_mgr and game_mgr.has_method("end_game"):
 		game_mgr.end_game(true)
 
 # --- Stage-driven helpers (issue #910) ---
