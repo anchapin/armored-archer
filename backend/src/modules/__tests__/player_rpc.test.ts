@@ -231,6 +231,58 @@ describe('player_rpc', () => {
       expect(getReportsForUser).toHaveBeenCalledWith('test-user');
     });
 
+    it('records a failed optional match lookup without hiding the existing reports', () => {
+      const report = { reportId: 'r1', match_id: 'match-private', reason: 'cheating' };
+      getReportsForUser.mockReturnValue([report]);
+      mockNk.sqlQuery = jest.fn(() => {
+        throw new Error('private driver details');
+      });
+      mockNk.metricsCounterAdd = jest.fn();
+      const result = JSON.parse(rpcGetPlayerReports(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result).toEqual({ success: true, reports: [report], total: 1 });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Database query failed: rpc=%s op=%s',
+        'armored_archer/get_player_reports',
+        'player_reports.match_details'
+      );
+      expect(mockNk.metricsCounterAdd).toHaveBeenCalledTimes(1);
+      expect(mockNk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'player_reports.match_details', rpc: 'armored_archer/get_player_reports' },
+        1
+      );
+      expect(JSON.stringify((mockLogger.error as jest.Mock).mock.calls)).not.toContain('private');
+      expect(JSON.stringify(result)).not.toContain('driver');
+    });
+
+    it('retains optional match fallback when SQL error metrics fail', () => {
+      const report = { reportId: 'r1', match_id: 'match-private' };
+      getReportsForUser.mockReturnValue([report]);
+      mockNk.sqlQuery = jest.fn(() => {
+        throw new Error('query failed');
+      });
+      mockNk.metricsCounterAdd = jest.fn(() => {
+        throw new Error('metric failed');
+      });
+      const result = JSON.parse(rpcGetPlayerReports(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result).toEqual({ success: true, reports: [report], total: 1 });
+    });
+
+    it('preserves optional match details on a successful SQL lookup', () => {
+      const report = { reportId: 'r1', match_id: 'match1' };
+      getReportsForUser.mockReturnValue([report]);
+      const match = { match_id: 'match1', creator_id: 'creator', opponent_id: 'opponent' };
+      mockNk.sqlQuery = jest.fn(() => [match]);
+      mockNk.metricsCounterAdd = jest.fn();
+      const result = JSON.parse(rpcGetPlayerReports(mockCtx, mockLogger, mockNk, '{}'));
+      expect(result.success).toBe(true);
+      expect(result.reports[0]).toEqual({ ...report, match_details: match });
+      expect(mockNk.sqlQuery).toHaveBeenCalledWith(expect.stringContaining('FROM match_results'), [
+        'match1',
+      ]);
+      expect(mockNk.metricsCounterAdd).not.toHaveBeenCalled();
+    });
+
     it('should return empty reports array', () => {
       getReportsForUser.mockReturnValue([]);
 
@@ -298,15 +350,11 @@ describe('player_rpc', () => {
 
       // The response must not echo the victim or any internals.
       expect(result).not.toContain('victim-user');
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('test-user')
-      );
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('victim-user')
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('test-user'));
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('victim-user'));
     });
 
-    it('should allow an allowlisted admin to query another user\'s reports (#1150, #1075)', () => {
+    it("should allow an allowlisted admin to query another user's reports (#1150, #1075)", () => {
       const previousAdminIds = process.env.ADMIN_USER_IDS;
       process.env.ADMIN_USER_IDS = '00000000-0000-4000-8000-000000000005';
       // isAdminUser caches the parsed allowlist (issue #1155), so the cache

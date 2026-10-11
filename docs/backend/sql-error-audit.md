@@ -37,3 +37,11 @@ logs driver error text. Regression tests verify the RPC failure, fixed error log
 and one native metric, including when the metric API fails. Date bounds, event
 filters, query limit and successful responses are unchanged. This does not cover
 other modules or change gear read-fallback semantics.
+
+Player-report enrichment audit: the match-detail lookup is optional and already
+returns the report without details on a SQL failure. It now records a fixed
+operation/RPC error log and native metric before that fallback. The prior warning
+with driver text and match ID is removed. Tests preserve successful enrichment,
+report fallback, and metric-failure behavior. Authorization and report ownership
+are unchanged. This deliberately does not convert optional-detail failures into
+a failed reports RPC or claim that the broader read-fallback issue is finished.
