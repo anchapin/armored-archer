@@ -23,8 +23,8 @@ func test_enemy_counter_reads_autoload_and_updates() -> void:
 	var counter: Label = COUNTER.new()
 	add_child_autofree(counter)
 	await get_tree().process_frame
-	assert_true(EnemySpawner.enemy_count_changed.is_connected(counter._on_enemy_count_changed))
-	counter._on_enemy_count_changed(2, 3)
+	assert_true(EnemySpawner.enemy_progress_changed.is_connected(counter._on_enemy_progress_changed))
+	counter._on_enemy_progress_changed(1, 3)
 	assert_eq(counter.text, "Enemies: 1 / 3 (33%)")
 
 func test_campaign_progress_counter_tween_updates() -> void:

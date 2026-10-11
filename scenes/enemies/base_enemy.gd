@@ -127,7 +127,8 @@ func die() -> void:
 		elif audio_kill.has_method("play_sfx"):
 			audio_kill.play_sfx("arrow_kill")
 
-	# Emit death signals first
+	# Notify combat ownership at death, independent of the animation/pool path.
+	enemy_died.emit(self)
 	died.emit(xp_reward)
 
 	# Trigger death animation through CombatJuiceManager
