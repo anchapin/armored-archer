@@ -1,8 +1,14 @@
 extends GutTest
 
 var counter: Label
+var old_time_scale: float
 
 func before_each() -> void:
+	old_time_scale = Engine.time_scale
+	Engine.time_scale = 1.0
+	EnemySpawner.stop_stage()
+	ObjectPool.cleanup_all()
+	ObjectPool.prewarm_pools()
 	TutorialManager.skip_current_tutorial()
 	EnemySpawner.start_stage("1_1", 4, CampaignManager.get_enemy_data("1_1"), "")
 	counter = load("res://scenes/ui/components/enemies_counter.gd").new()
@@ -10,6 +16,7 @@ func before_each() -> void:
 
 func after_each() -> void:
 	EnemySpawner.stop_stage()
+	Engine.time_scale = old_time_scale
 
 func test_pending_and_final_spawn_are_not_defeats() -> void:
 	assert_eq(counter.text, "Enemies: 0 / 18 (0%)")
@@ -57,6 +64,8 @@ func test_physical_arrow_contact_records_lethal_enemy_defeat() -> void:
 	EnemySpawner.spawn_enemy()
 	var enemy: Node = EnemySpawner.active_enemies[0]
 	enemy.global_position = Vector2(10000, 10000)
+	await get_tree().process_frame
+	await get_tree().physics_frame
 	var arrow: Node = ObjectPool.get_arrow()
 	arrow.setup(enemy.global_position, Vector2.RIGHT, enemy.current_health, 0.0)
 	for _i in range(6):
