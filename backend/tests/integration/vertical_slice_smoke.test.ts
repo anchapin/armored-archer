@@ -265,7 +265,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(gearInInventory).toBe(true);
     });
 
-    it('should persist stage XP through the separate gain_xp client flow', async () => {
+    it('should persist stage XP through the canonical stage completion', async () => {
       const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
@@ -276,12 +276,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.xp_gained).toBeGreaterThan(0);
       expect(result.payload.xp_gained).toBe(30); // Server base XP 60 * easy multiplier 0.5
 
-      // The client game-over flow awards XP through gain_xp separately.
-      const award = await nakama.rpc(session, 'armored_archer/gain_xp', {
-        xp_amount: result.payload.xp_gained, source: 'pve'
-      });
-      expect(award.payload.success).toBe(true);
-      expect(award.payload.xp_gained).toBe(30);
       // Verify XP was actually applied
       const statsResult = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       expect(statsResult.payload.xp).toBe(result.payload.xp_gained);

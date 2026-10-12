@@ -21,13 +21,10 @@ export function grantStageXP(
   const stats: PlayerStats = stored
     ? JSON.parse(getStorageRawValue(stored.value) ?? '')
     : {
-        user_id: ctx.userId,
-        level: 1,
-        xp: 0,
-        ability_points: 0,
-        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+        ...initialStageStats(ctx.userId),
       };
   validateStats(stats, ctx.userId);
+  stats.user_id = ctx.userId;
   const totalXP = stats.xp + xp;
   if (!Number.isSafeInteger(totalXP)) throw new Error('Player XP overflow');
   const levelsGained = Math.max(0, getLevelForXp(totalXP) - stats.level);
@@ -51,7 +48,7 @@ export function grantStageXP(
 
 function validateStats(stats: PlayerStats, userId: string): void {
   if (
-    stats.user_id !== userId ||
+    (stats.user_id !== undefined && stats.user_id !== userId) ||
     !Number.isSafeInteger(stats.xp) ||
     stats.xp < 0 ||
     !Number.isSafeInteger(stats.level) ||
@@ -62,4 +59,14 @@ function validateStats(stats: PlayerStats, userId: string): void {
   ) {
     throw new Error('Invalid stored player stats');
   }
+}
+
+function initialStageStats(userId: string): PlayerStats {
+  return {
+    user_id: userId,
+    level: getLevelForXp(0),
+    xp: 0,
+    ability_points: 0,
+    stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+  };
 }

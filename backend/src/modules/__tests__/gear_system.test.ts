@@ -1891,6 +1891,33 @@ describe('canonical stage XP persistence', () => {
     expect(complete().success).toBe(true);
     expect(stats()).toMatchObject({ xp: 120, level: 2, ability_points: 3, stats: { attack: 42 } });
   });
+  it('accepts legacy stats without user_id from the authenticated owner storage key', () => {
+    testStorage.set(
+      'player_stats:xp-review-user',
+      JSON.stringify({
+        xp: 90,
+        level: 1,
+        ability_points: 2,
+        stats: { attack: 42, defense: 10, dodge: 10, crit_rate: 5 },
+      })
+    );
+    expect(complete().success).toBe(true);
+    expect(stats()).toMatchObject({ user_id: ctx.userId, xp: 120, ability_points: 3 });
+  });
+  it('rejects an explicit mismatched stats owner', () => {
+    testStorage.set(
+      'player_stats:xp-review-user',
+      JSON.stringify({
+        user_id: 'other-owner',
+        xp: 0,
+        level: 1,
+        ability_points: 0,
+        stats: { attack: 10 },
+      })
+    );
+    expect(complete()).toMatchObject({ success: false, error_code: 'INTERNAL_ERROR' });
+    expect(stats().xp).toBe(0);
+  });
   it('uses the stored stats version for existing players', () => {
     testStorage.set(
       'player_stats:xp-review-user',
