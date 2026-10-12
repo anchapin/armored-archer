@@ -31,6 +31,9 @@ var progression_manager: Node
 
 # --- Signals ---
 signal stage_unlocked(stage_id: String)
+signal stage_sync_updated(stage_id: String, state: String, result: Dictionary)
+var last_stage_sync: Dictionary = {}
+
 signal stage_completed(stage_id: String)
 signal campaign_progress_updated(chapter_id: String, progress: float)
 signal chapter_unlocked(chapter_id: String)
@@ -268,6 +271,9 @@ func complete_stage(stage_id: String) -> void:
 	Parameters:
 		stage_id: ID of the completed stage
 	"""
+	if stage_id in completed_stages:
+		_set_stage_sync(stage_id, "local_replay", {})
+		return
 	if not stage_id in completed_stages:
 		completed_stages.append(stage_id)
 		stage_completed.emit(stage_id)
@@ -299,8 +305,10 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 	"""
 	# Offline campaign completion saves local progress, not server settlement.
 	if not network_manager or not network_manager.is_session_valid():
+		_set_stage_sync(stage_id, "offline", {})
 		return
 
+	_set_stage_sync(stage_id, "pending", {})
 	var tier: int = 1
 	if "current_difficulty" in GameManager:
 		tier = GameManager.current_difficulty
@@ -318,15 +326,18 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 	)
 
 	if response.has("error"):
+		_set_stage_sync(stage_id, "failed", {})
 		push_error("Failed to notify server of stage completion: %s" % str(response.error))
 		# TODO: Queue for retry or mark as pending sync
 		return
 
 	if not response.get("success", false):
+		_set_stage_sync(stage_id, "failed", {})
 		push_warning("Server rejected stage completion: %s" % str(response.get("message", "Unknown error")))
 		# TODO: Queue for retry or mark as pending sync
 		return
 
+	_set_stage_sync(stage_id, "confirmed", response)
 	# Successfully synced to server
 	if analytics and analytics.has_method("log_custom_event"):
 		analytics.log_custom_event("stage_synced_to_server", {
@@ -971,3 +982,8 @@ func get_all_stage_markers() -> Dictionary:
 		markers[stage_id] = marker_info
 
 	return markers
+
+## Preserve the server status independently of a result scene's lifetime.
+func _set_stage_sync(stage_id: String, state: String, result: Dictionary) -> void:
+	last_stage_sync = {"stage_id": stage_id, "state": state, "result": result.duplicate(true)}
+	stage_sync_updated.emit(stage_id, state, result.duplicate(true))

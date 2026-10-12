@@ -4,6 +4,7 @@ extends Control
 var current_chapter: String = "chapter_1"
 var available_chapters: Array = []
 var _difficulty_colors: Dictionary = {}
+var _stage_sync_label: Label
 
 # --- Theme Manager Reference ---
 var theme_manager: Node
@@ -41,6 +42,14 @@ const RANK_COLORS = {
 }
 
 func _ready() -> void:
+	_stage_sync_label = Label.new()
+	_stage_sync_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	$SafeAreaContainer/ScrollContainer/Content.add_child(_stage_sync_label)
+	$SafeAreaContainer/ScrollContainer/Content.move_child(_stage_sync_label, 2)
+	CampaignManager.stage_sync_updated.connect(_on_stage_sync_updated)
+	var status: Dictionary = CampaignManager.last_stage_sync
+	_on_stage_sync_updated(str(status.get("stage_id", "")), str(status.get("state", "")),
+		status.get("result", {}))
 	# Issue #913 — fade in from black so menu transitions feel seamless.
 	_play_fade_in()
 
@@ -480,6 +489,8 @@ func _play_fade_in() -> void:
 
 
 func _exit_tree() -> void:
+	if CampaignManager.stage_sync_updated.is_connected(_on_stage_sync_updated):
+		CampaignManager.stage_sync_updated.disconnect(_on_stage_sync_updated)
 	# Disconnect signals to prevent memory leaks
 	if CampaignManager:
 		if CampaignManager.stage_unlocked.is_connected(_on_stage_unlocked):
@@ -501,6 +512,8 @@ func _apply_theme() -> void:
 		return
 
 	var colors = theme_manager.get_theme_colors()
+	if _stage_sync_label:
+		_stage_sync_label.add_theme_color_override("font_color", colors["on_surface"])
 	var is_dark = theme_manager.is_dark_mode()
 	prev_chapter_button.add_theme_color_override("font_disabled_color", colors["on_surface"])
 	next_chapter_button.add_theme_color_override("font_disabled_color", colors["on_surface"])
@@ -665,3 +678,24 @@ func get_campaign_data(chapter_id: String) -> Dictionary:
 func get_campaign_stages(chapter_id: String) -> Array:
 	var campaign_data = get_campaign_data(chapter_id)
 	return campaign_data.get("stages", [])
+
+## Result scene may exit before the request returns. Keep status visible here.
+func _on_stage_sync_updated(stage_id: String, state: String, result: Dictionary) -> void:
+	_stage_sync_label.visible = not state.is_empty()
+	var prefix: String = "Stage %s: " % stage_id
+	match state:
+		"local_replay":
+			_stage_sync_label.text = prefix + "already completed locally. No new server reward request."
+		"offline":
+			_stage_sync_label.text = prefix + "saved on this device. Server rewards unavailable."
+		"pending":
+			_stage_sync_label.text = prefix + "server rewards pending confirmation."
+		"failed":
+			_stage_sync_label.text = prefix + "saved on this device. Server rewards not confirmed."
+		"confirmed":
+			_stage_sync_label.text = prefix + "server confirmed %d XP." % int(result.get("xp_gained", 0))
+			var gear: Variant = result.get("gear_dropped")
+			if gear is Dictionary and not gear.is_empty():
+				_stage_sync_label.text += " Gear: " + str(gear.get("name", "Gear received"))
+			else:
+				_stage_sync_label.text += " No gear drop."
