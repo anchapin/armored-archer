@@ -4,6 +4,7 @@ extends Control
 var current_chapter: String = "chapter_1"
 var available_chapters: Array = []
 var _difficulty_colors: Dictionary = {}
+var _counter_tweens: Dictionary = {}
 var _stage_sync_label: Label
 
 # --- Theme Manager Reference ---
@@ -570,6 +571,9 @@ func _on_next_chapter_pressed() -> void:
 
 func _tween_counter(label: Label, target_value: int, duration: float) -> void:
 	"""Animates a counter label from current to target value."""
+	var previous: Tween = _counter_tweens.get(label)
+	if previous and previous.is_valid():
+		previous.kill()
 	var current_value = int(label.text)
 	if current_value == target_value:
 		return
@@ -577,6 +581,7 @@ func _tween_counter(label: Label, target_value: int, duration: float) -> void:
 	var tween = create_tween()
 	tween.set_ease(Tween.EASE_OUT)
 	tween.set_trans(Tween.TRANS_SINE)
+	_counter_tweens[label] = tween
 	tween.tween_method(_update_counter.bind(label), current_value, target_value, duration)
 
 func _update_counter(value: int, label: Label) -> void:

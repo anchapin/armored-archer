@@ -54,3 +54,24 @@ func test_virtual_joystick_touch_drag_and_release() -> void:
 	touch.pressed = false
 	joystick._input(touch)
 	assert_eq(joystick.output_vector, Vector2.ZERO)
+
+func test_campaign_counter_latest_update_wins() -> void:
+	var scene: Control = CAMPAIGN.instantiate()
+	add_child_autofree(scene)
+	await get_tree().process_frame
+	scene._tween_counter(scene.progress_percent, 80, 0.3)
+	await get_tree().create_timer(0.05).timeout
+	scene._tween_counter(scene.progress_percent, 20, 0.05)
+	await get_tree().create_timer(0.4).timeout
+	assert_eq(scene.progress_percent.text, "20%")
+
+func test_campaign_counter_equal_target_stops_stale_update() -> void:
+	var scene: Control = CAMPAIGN.instantiate()
+	add_child_autofree(scene)
+	await get_tree().process_frame
+	scene._tween_counter(scene.progress_percent, 80, 0.3)
+	await get_tree().create_timer(0.05).timeout
+	var expected: String = scene.progress_percent.text
+	scene._tween_counter(scene.progress_percent, int(expected), 0.05)
+	await get_tree().create_timer(0.4).timeout
+	assert_eq(scene.progress_percent.text, expected)
