@@ -452,7 +452,7 @@ func _on_boss_defeated(_boss_name: String) -> void:
 	wave_complete = true
 
 	# Wait a moment for boss death effects, then trigger victory
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(1.0, false).timeout
 
 	var game_mgr = get_node_or_null("/root/GameManager")
 	if generation == _stage_generation and stage_active and game_mgr and game_mgr.has_method("end_game"):

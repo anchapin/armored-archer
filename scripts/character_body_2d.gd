@@ -79,6 +79,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not GameManager.is_game_active:
+		velocity = Vector2.ZERO
+		return
 	# Get input direction from keyboard or virtual joystick
 	var input_direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 
@@ -126,6 +129,8 @@ func _physics_process(delta: float) -> void:
 
 ## Handle shooting when player presses shoot button
 func _handle_shoot() -> void:
+	if get_tree().paused or not GameManager.is_game_active:
+		return
 	var shooting_manager = get_node_or_null("/root/ShootingManager")
 	if not shooting_manager:
 		return
