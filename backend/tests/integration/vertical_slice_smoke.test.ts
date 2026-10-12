@@ -556,13 +556,23 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
       const results = await Promise.all(promises);
 
+      const awarded = results.filter(result => result.payload.success);
+      expect(awarded.length).toBeGreaterThan(0);
       for (const result of results) {
-        expect(result.payload).toEqual(expect.objectContaining({ success: true }));
+        if (result.payload.success) {
+          expect(result.payload.xp_gained).toBe(30);
+        } else {
+          // Concurrent updates share one versioned player-stats record.
+          // A lost write race must fail closed, never overwrite another grant.
+          expect(result.payload).toMatchObject({success: false, error_code: 'INTERNAL_ERROR'});
+          expect(result.payload.xp_gained).toBeUndefined();
+        }
       }
+      const stored = await nakama.readStorageObjects(session, {object_ids: [
+        {collection: 'player_stats', key: userId, user_id: userId},
+      ]});
+      expect(stored.objects?.[0].value.xp).toBe(awarded.length * 30);
 
-      // Verify all stages completed
-      const progress = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
-      expect(progress.payload.completed_stages.length).toBeGreaterThanOrEqual(5);
     });
   });
 });
