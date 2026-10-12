@@ -86,6 +86,14 @@ func _on_game_won() -> void:
 	else:
 		pvp_challenge_button.visible = false
 
+	# Local campaign progress is not a server reward settlement.
+	if not network_manager or not network_manager.is_session_valid():
+		_looted_gear.clear()
+		if loot_label:
+			loot_label.text = "Offline victory: progress saved on this device. Server rewards unavailable."
+			loot_label.visible = true
+		return
+
 	# Show loot summary if PvE encounter
 	var encounter_data = GameManager.current_encounter_data
 	if encounter_data.size() > 0 and CampaignManager:

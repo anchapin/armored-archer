@@ -297,8 +297,8 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 		stage_id: ID of the completed stage
 		boss_id: ID of the boss defeated (empty string if no boss)
 	"""
-	if not network_manager or not network_manager.has_method("send_rpc"):
-		push_warning("Cannot notify server: NetworkManager not available")
+	# Offline campaign completion saves local progress, not server settlement.
+	if not network_manager or not network_manager.is_session_valid():
 		return
 
 	var tier: int = 1
