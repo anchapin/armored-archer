@@ -126,6 +126,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Check shell entrypoint syntax
         run: bash -n scripts/check-ports.sh scripts/local_services.sh scripts/cold-start.sh
+      - name: Run isolated scanner security regressions
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_sonar_sanitize.py' -v
+          node --test scripts/tests/sonar*.test.js
       - name: Run port preflight regressions
         run: python3 -m unittest discover -s scripts/tests -p 'test_compose_ports.py' -v
       - name: Validate resolved compose port models
@@ -472,7 +476,7 @@ jobs:
     # the repo or org level. Without SONAR_ORG the scanner errors out
     # with "Organization key '' does not exist" on every PR. Tracking:
     # follow-up issue (see PR #1356 description).
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]')
     services:
       # PostgreSQL database service
       # Note: Using unique port 5434 to avoid conflicts with backend-test job (5432) when running act in parallel
@@ -617,6 +621,26 @@ jobs:
             -Dsonar.newCode.referenceBranch=main
             -Dsonar.projectKey=armored-archer_game
             -Dsonar.organization=${{ secrets.SONAR_ORG }}
+
+  dependabot-sonar-gate:
+    name: Dependabot Sonar Result Gate
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Require exact-head trusted Sonar quality gate
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            await require('./scripts/ci/sonar/wait.js')({github, context});
 
   schema-validation:
     name: Database Schema Validation

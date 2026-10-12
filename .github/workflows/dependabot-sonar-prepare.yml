@@ -1,0 +1,74 @@
+name: Dependabot Sonar Preparation
+on:
+  pull_request:
+    branches: [main, develop]
+permissions:
+  contents: read
+concurrency:
+  group: dependabot-sonar-prepare-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  prepare:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:14-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: nakama
+          POSTGRES_PASSWORD: changeme
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s
+          --health-retries 5 --health-start-period 30s
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+      # All PR-controlled package lifecycle/build/test scripts stay in this
+      # disposable no-Sonar-secret job. The receiver never runs these files.
+      - name: Apply test-only database migrations
+        working-directory: backend/data
+        run: |
+          for migration in $(ls -1 *.sql | sort -V); do
+            PGPASSWORD=changeme psql -h localhost -p 5434 -U postgres -d nakama -f "$migration" || true
+          done
+      - name: Produce backend coverage
+        working-directory: backend
+        env:
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5434
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: changeme
+          TEST_DB_NAME: nakama
+          NAKAMA_HOST: localhost
+          NAKAMA_PORT: 7351
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: |
+          npm ci
+          npm run build
+          npm run test:coverage
+      - name: Produce Python coverage
+        env:
+          COVERAGE_FILE: /tmp/sonar-python.coverage
+        run: |
+          python3 -m pip install coverage==7.16.2
+          python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests -p 'test_compose_ports.py'
+          python3 -m coverage report --include='scripts/check_compose_ports.py' --fail-under=80
+          python3 -m coverage xml --include='scripts/check_compose_ports.py' -o /tmp/coverage-python.xml
+      - name: Stage reports only
+        run: |
+          mkdir -p /tmp/sonar-reports
+          cp backend/coverage/lcov.info /tmp/sonar-reports/backend-lcov.info
+          cp /tmp/coverage-python.xml /tmp/sonar-reports/coverage-python.xml
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: sonar-coverage-${{ github.event.pull_request.head.sha }}
+          path: /tmp/sonar-reports/
+          if-no-files-found: error
+          retention-days: 3
