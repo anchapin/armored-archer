@@ -98,3 +98,13 @@ func _on_aiming_joystick_released() -> void:
 			TutorialManager.on_input_action("shoot")
 		player.set_virtual_aim_direction(Vector2.ZERO)
 	_touch_aim_started = false
+
+## Cancel held touches without treating cancellation as a shot release.
+func clear_input() -> void:
+	_touch_aim_started = false
+	for joystick in [movement_joystick, aiming_joystick]:
+		if joystick and joystick.has_method("_release_joystick"):
+			joystick._release_joystick()
+	if is_instance_valid(player):
+		player.set_virtual_move_direction(Vector2.ZERO)
+		player.set_virtual_aim_direction(Vector2.ZERO)
