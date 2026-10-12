@@ -224,7 +224,7 @@ func test_turn_changed_signal():
 
 	# Manually trigger signal emission to test it
 	_combat.emit_signal("turn_changed", true)
-	assert_signal_emitted_with_parameters(_combat, "turn_changed", [true], "turn_changed signal should emit with is_my_turn=true")
+	assert_signal_emitted_with_parameters(_combat, "turn_changed", [true])
 
 func test_combat_ended_signal():
 	# Test signal emits with winner on match end
@@ -232,7 +232,7 @@ func test_combat_ended_signal():
 
 	# Manually trigger signal emission to test it
 	_combat.emit_signal("combat_ended", "player1")
-	assert_signal_emitted_with_parameters(_combat, "combat_ended", ["player1"], "combat_ended signal should emit with winner")
+	assert_signal_emitted_with_parameters(_combat, "combat_ended", ["player1"])
 
 func test_submit_combat_action_no_network():
 	pending("ENV_DEPENDENT: requires live Nakama on 127.0.0.1:7350; see issue #960")
@@ -287,7 +287,7 @@ func test_get_match_state_empty_match_id():
 	# This should not crash, just push_error and return
 	_combat.get_match_state("")
 	# Consume the expected push_error from CombatManager.get_match_state (issue #1361 follow-up).
-	assert_push_error("Invalid match_id")
+	assert_push_error("Match ID required")
 	# Verify current_match_state remains empty
 	# Match state should remain empty with empty match_id (GUT 9.x: assert_eq_deep has no text arg)
 	assert_eq_deep(_combat.get_current_match_state(), {})
