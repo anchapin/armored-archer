@@ -1,0 +1,103 @@
+name: Trusted Dependabot Sonar Scan
+on:
+  workflow_run:
+    workflows: [Dependabot Sonar Preparation]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+  checks: write
+concurrency:
+  group: trusted-dependabot-sonar-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+jobs:
+  scan:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.actor.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted policy from default branch
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: policy
+          persist-credentials: false
+      - name: Validate run, current head and artifact provenance
+        id: provenance
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const receive = require('./policy/scripts/ci/sonar/receive.js');
+            await receive({github, context, core});
+      - name: Checkout exact PR head as passive data
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ steps.provenance.outputs.sha }}
+          path: passive-pr
+          persist-credentials: false
+      - name: Prepare sterile scan tree using trusted sanitizer
+        run: python3 policy/scripts/ci/sonar/sanitize.py
+      - name: Build fresh SCM metadata without PR checkout configuration
+        env:
+          PR_SHA: ${{ steps.provenance.outputs.sha }}
+          BASE_BRANCH: ${{ steps.provenance.outputs.base }}
+        run: |
+          # Fixed URL and no checkout of fetched files. Reset updates index only.
+          git -C scan-data init
+          git -C scan-data -c core.hooksPath=/dev/null fetch --no-tags https://github.com/anchapin/armored-archer.git "+refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" "$PR_SHA"
+          git -C scan-data -c core.hooksPath=/dev/null reset --mixed "$PR_SHA"
+      # No npm install/build/test, PR script imports, or PR scanner config here.
+      - name: Fixed backend scan and quality gate
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scannerVersion: 8.1.0.6389
+          projectBaseDir: scan-data/backend
+          args: >-
+            -Dproject.settings=trusted-sonar.properties
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.projectKey=armored-archer_backend
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
+            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.coverage.exclusions=**/*.d.ts,**/*.config.js
+            -Dsonar.exclusions=**/*.test.ts,**/*.spec.ts
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+            -Dsonar.pullrequest.key=${{ steps.provenance.outputs.number }}
+            -Dsonar.pullrequest.branch=${{ steps.provenance.outputs.branch }}
+            -Dsonar.pullrequest.base=${{ steps.provenance.outputs.base }}
+            -Dsonar.scm.revision=${{ steps.provenance.outputs.sha }}
+      - name: Fixed game scan and quality gate
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scannerVersion: 8.1.0.6389
+          projectBaseDir: scan-data
+          args: >-
+            -Dproject.settings=trusted-sonar.properties
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.projectKey=armored-archer_game
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.sources=autoloads,scenes,scripts
+            -Dsonar.python.coverage.reportPaths=coverage-python.xml
+            -Dsonar.javascript.lcov.reportPaths=coverage-sonar-policy/lcov.info
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+            -Dsonar.pullrequest.key=${{ steps.provenance.outputs.number }}
+            -Dsonar.pullrequest.branch=${{ steps.provenance.outputs.branch }}
+            -Dsonar.pullrequest.base=${{ steps.provenance.outputs.base }}
+            -Dsonar.scm.revision=${{ steps.provenance.outputs.sha }}
+      - name: Complete exact-head result, fail closed
+        if: always() && steps.provenance.outputs.check != ''
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          CHECK_ID: ${{ steps.provenance.outputs.check }}
+          PR_NUMBER: ${{ steps.provenance.outputs.number }}
+          PR_SHA: ${{ steps.provenance.outputs.sha }}
+          SCAN_RESULT: ${{ job.status }}
+        with:
+          script: |
+            await require('./policy/scripts/ci/sonar/finish.js')({github, context});
