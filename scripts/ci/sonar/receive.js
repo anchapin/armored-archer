@@ -29,7 +29,7 @@ module.exports = async function receive({github, context, core}) {
     {flag: 'wx', mode: 0o600});
   const {data: check} = await github.rest.checks.create({
     ...repo, name: 'Dependabot Sonar Quality Gate', head_sha: input.sha,
-    status: 'in_progress', external_id: `sonar-preparation:${id}:${input.sha}`,
+    status: 'in_progress', external_id: `sonar-isolated:${id}:${context.runId}:${input.sha}`,
     details_url: `${context.serverUrl}/${repo.owner}/${repo.repo}/actions/runs/${context.runId}`,
     output: {title: 'Secret-isolated analysis', summary: 'Both project quality gates must pass for this exact head.'}
   });

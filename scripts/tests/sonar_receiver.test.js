@@ -14,17 +14,17 @@ function fixture() {
   const pull = {number: 1533, state: 'open', user: {login: 'dependabot[bot]'},
     head: {repo, sha, ref: 'dependabot/npm/a'}, base: {repo, ref: 'main'}};
   const artifacts = [{id: 77, name: `sonar-coverage-${sha}`, expired: false, size_in_bytes: 5}];
-  const outputs = {}, updates = [];
+  const outputs = {}, updates = [], created = [];
   const github = {paginate: async () => artifacts, rest: {
     actions: {getWorkflowRun: async () => ({data: run}), listWorkflowRunArtifacts: () => {},
       downloadArtifact: async () => ({data: new Uint8Array([1, 2, 3])})},
     repos: {listPullRequestsAssociatedWithCommit: async () => ({data: [{number: pull.number}]})},
     pulls: {get: async () => ({data: pull})},
-    checks: {create: async () => ({data: {id: 88}}), update: async body => {updates.push(body);}}
+    checks: {create: async body => {created.push(body); return {data: {id: 88}};}, update: async body => {updates.push(body);}}
   }};
   const context = {repo: {owner: 'anchapin', repo: 'armored-archer'}, payload: {workflow_run: {id: 12}},
     runId: 34, serverUrl: 'https://github.com'};
-  return {github, context, core: {setOutput: (k, v) => {outputs[k] = v;}}, run, pull, artifacts, outputs, updates};
+  return {github, context, core: {setOutput: (k, v) => {outputs[k] = v;}}, run, pull, artifacts, outputs, updates, created};
 }
 test('receiver downloads only exact-run artifact and creates SHA result', async () => {
   const before = process.cwd();
@@ -32,6 +32,7 @@ test('receiver downloads only exact-run artifact and creates SHA result', async 
   try {
     process.chdir(temporary);
     const f = fixture(); await receive(f); assert.equal(f.outputs.sha, sha); assert.equal(f.outputs.check, '88');
+    assert.equal(f.created[0].external_id, `sonar-isolated:12:34:${sha}`);
     assert.equal(fs.readFileSync('trusted-artifact/sonar-coverage.zip').length, 3);
     assert.equal(fs.statSync('trusted-artifact').mode & 0o777, 0o700);
     assert.equal(fs.statSync('trusted-artifact/sonar-coverage.zip').mode & 0o777, 0o600);
