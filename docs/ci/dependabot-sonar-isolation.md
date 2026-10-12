@@ -59,3 +59,9 @@ The trusted sanitizer accepts no command-line path arguments. Its checkout,
 archive and destination are fixed workspace-relative policy paths. The receiver
 creates a new owner-only artifact directory and uses exclusive file creation;
 pre-existing files, directories or links fail closed.
+
+GitHub Actions rewrites custom check details links, so those URLs are not used
+as provenance. The strict external ID carries preparation run, receiver run and
+exact PR head. The waiter independently reads both runs and requires the fixed
+workflows, repository, Dependabot actor, trusted base branch and successful
+completion. Old-format results cannot approve a merge.

@@ -8,9 +8,10 @@ function fixture() {
     repository: {full_name: 'anchapin/armored-archer'}, head_repository: {full_name: 'anchapin/armored-archer'},
     head_sha: sha, actor: {login: 'dependabot[bot]'}, conclusion: 'success'};
   const receiver = {path: '.github/workflows/dependabot-sonar-scan.yml', event: 'workflow_run',
-    repository: {full_name: 'anchapin/armored-archer'}, status: 'completed', conclusion: 'success'};
+    repository: {full_name: 'anchapin/armored-archer'}, head_repository: {full_name: 'anchapin/armored-archer'},
+    actor: {login: 'dependabot[bot]'}, head_branch: 'main', status: 'completed', conclusion: 'success'};
   const check = {id: 99, name: 'Dependabot Sonar Quality Gate', app: {slug: 'github-actions'},
-    external_id: `sonar-preparation:12:${sha}`, status: 'completed', conclusion: 'success',
+    external_id: `sonar-isolated:12:34:${sha}`, status: 'completed', conclusion: 'success',
     details_url: 'https://github.com/anchapin/armored-archer/actions/runs/34'};
   const pull = {head: {sha}, state: 'open'};
   const github = {paginate: async () => [check], rest: {
@@ -18,16 +19,24 @@ function fixture() {
     actions: {getWorkflowRun: async ({run_id}) => ({data: run_id === 12 ? source : receiver})}
   }};
   const context = {repo: {owner: 'anchapin', repo: 'armored-archer'}, serverUrl: 'https://github.com',
-    payload: {pull_request: {head: {sha}, number: 1533}}};
+    payload: {pull_request: {head: {sha}, base: {ref: 'main'}, number: 1533}}};
   return {github, context, source, receiver, check, pull};
 }
 test('accept exact-head trusted successful result', async () => {await wait(fixture());});
+test('GitHub rewritten details URL does not carry identity', async () => {
+  const f = fixture(); f.check.details_url = 'https://github.com/anchapin/armored-archer/runs/99';
+  await wait(f);
+});
 for (const [name, mutate] of [
   ['foreign receiver', f => {f.receiver.path = '.github/workflows/evil.yml';}],
   ['failed receiver', f => {f.receiver.conclusion = 'failure';}],
   ['failed quality gate', f => {f.check.conclusion = 'failure';}],
   ['wrong source SHA', f => {f.source.head_sha = 'b'.repeat(40);}],
-  ['wrong details URL', f => {f.check.details_url = 'https://evil.invalid/34';}],
+  ['wrong receiver actor', f => {f.receiver.actor.login = 'attacker';}],
+  ['foreign receiver head repo', f => {f.receiver.head_repository.full_name = 'evil/repo';}],
+  ['wrong receiver branch', f => {f.receiver.head_branch = 'untrusted';}],
+  ['wrong result SHA', f => {f.check.external_id = `sonar-isolated:12:34:${'b'.repeat(40)}`;}],
+  ['unsafe receiver ID', f => {f.check.external_id = `sonar-isolated:12:99999999999999999999:${sha}`;}],
   ['stale head', f => {f.pull.head.sha = 'b'.repeat(40);}],
   ['wrong source actor', f => {f.source.actor.login = 'attacker';}],
 ]) {
