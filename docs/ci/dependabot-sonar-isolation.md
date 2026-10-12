@@ -54,3 +54,8 @@ References:
 - https://docs.github.com/en/code-security/dependabot/troubleshooting-dependabot/troubleshooting-dependabot-on-github-actions
 - https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-on-actions
 - https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/
+
+The trusted sanitizer accepts no command-line path arguments. Its checkout,
+archive and destination are fixed workspace-relative policy paths. The receiver
+creates a new owner-only artifact directory and uses exclusive file creation;
+pre-existing files, directories or links fail closed.

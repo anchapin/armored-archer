@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location(
     'sanitize', Path(__file__).parents[1] / 'ci/sonar/sanitize.py'
@@ -13,6 +14,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class SanitizeTests(unittest.TestCase):
+    def test_cli_rejects_path_overrides(self):
+        with patch.object(MODULE.sys, 'argv', ['sanitize.py', '--destination', '/tmp/escape']):
+            with self.assertRaises(ValueError):
+                MODULE.main()
+
     def test_relative_paths(self):
         for path in ('../evil', '/etc/passwd', 'src/../../x', 'src\\x', 'src//x', 'src/./x'):
             with self.subTest(path=path), self.assertRaises(ValueError):

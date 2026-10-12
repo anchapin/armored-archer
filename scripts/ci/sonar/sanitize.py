@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Prepare passive Sonar input. Never import or execute checkout content."""
-import argparse
 import os
 import re
 import shutil
 import stat
+import sys
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -134,13 +134,12 @@ def validate_xml(data):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--checkout', required=True)
-    parser.add_argument('--archive', required=True)
-    parser.add_argument('--destination', required=True)
-    args = parser.parse_args()
-    copy_sources(args.checkout, args.destination)
-    extract_coverage(args.archive, args.destination)
+    # These paths are policy constants, not PR or command-line input. The job
+    # runs in a fresh hosted-runner workspace and never accepts path overrides.
+    if len(sys.argv) != 1:
+        raise ValueError('Path arguments are not allowed')
+    copy_sources('passive-pr', 'scan-data')
+    extract_coverage('trusted-artifact/sonar-coverage.zip', 'scan-data')
 
 
 if __name__ == '__main__':

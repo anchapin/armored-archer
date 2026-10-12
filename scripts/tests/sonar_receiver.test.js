@@ -2,6 +2,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const receive = require('../ci/sonar/receive');
 const finish = require('../ci/sonar/finish');
 const sha = 'a'.repeat(40);
@@ -25,8 +27,30 @@ function fixture() {
   return {github, context, core: {setOutput: (k, v) => {outputs[k] = v;}}, run, pull, artifacts, outputs, updates};
 }
 test('receiver downloads only exact-run artifact and creates SHA result', async () => {
-  const f = fixture(); await receive(f); assert.equal(f.outputs.sha, sha); assert.equal(f.outputs.check, '88');
-  assert.equal(fs.readFileSync('/tmp/sonar-coverage.zip').length, 3);
+  const before = process.cwd();
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'sonar-receiver-test-'));
+  try {
+    process.chdir(temporary);
+    const f = fixture(); await receive(f); assert.equal(f.outputs.sha, sha); assert.equal(f.outputs.check, '88');
+    assert.equal(fs.readFileSync('trusted-artifact/sonar-coverage.zip').length, 3);
+    assert.equal(fs.statSync('trusted-artifact').mode & 0o777, 0o700);
+    assert.equal(fs.statSync('trusted-artifact/sonar-coverage.zip').mode & 0o777, 0o600);
+    await assert.rejects(receive(f));
+  } finally { process.chdir(before); fs.rmSync(temporary, {recursive: true}); }
+});
+test('receiver rejects pre-placed artifact-directory symlinks', async () => {
+  const before = process.cwd();
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'sonar-receiver-test-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'sonar-outside-test-'));
+  try {
+    process.chdir(temporary);
+    fs.symlinkSync(outside, 'trusted-artifact');
+    await assert.rejects(receive(fixture()));
+    assert.deepEqual(fs.readdirSync(outside), []);
+  } finally {
+    process.chdir(before);
+    fs.rmSync(temporary, {recursive: true}); fs.rmSync(outside, {recursive: true});
+  }
 });
 for (const [name, mutate] of [
   ['wrong workflow', f => {f.run.path = 'evil.yml';}],

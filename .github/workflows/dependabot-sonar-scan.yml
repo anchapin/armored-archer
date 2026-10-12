@@ -35,7 +35,7 @@ jobs:
           path: passive-pr
           persist-credentials: false
       - name: Prepare sterile scan tree using trusted sanitizer
-        run: python3 policy/scripts/ci/sonar/sanitize.py --checkout passive-pr --archive /tmp/sonar-coverage.zip --destination scan-data
+        run: python3 policy/scripts/ci/sonar/sanitize.py
       - name: Build fresh SCM metadata without PR checkout configuration
         env:
           PR_SHA: ${{ steps.provenance.outputs.sha }}

@@ -1,7 +1,8 @@
 'use strict';
 const fs = require('node:fs');
+const path = require('node:path');
 const {validate} = require('./provenance');
-module.exports = async ({github, context, core}) => {
+module.exports = async function receive({github, context, core}) {
   const repo = context.repo;
   const id = context.payload.workflow_run.id;
   const {data: run} = await github.rest.actions.getWorkflowRun({...repo, run_id: id});
@@ -21,7 +22,11 @@ module.exports = async ({github, context, core}) => {
   const {data: archive} = await github.rest.actions.downloadArtifact({
     ...repo, artifact_id: eligible[0].id, archive_format: 'zip'
   });
-  fs.writeFileSync('/tmp/sonar-coverage.zip', Buffer.from(archive));
+  // A new private workspace directory and exclusive file creation prevent
+  // another process from pre-placing a link at a predictable artifact path.
+  fs.mkdirSync('trusted-artifact', {mode: 0o700});
+  fs.writeFileSync(path.join('trusted-artifact', 'sonar-coverage.zip'), Buffer.from(archive),
+    {flag: 'wx', mode: 0o600});
   const {data: check} = await github.rest.checks.create({
     ...repo, name: 'Dependabot Sonar Quality Gate', head_sha: input.sha,
     status: 'in_progress', external_id: `sonar-preparation:${id}:${input.sha}`,
