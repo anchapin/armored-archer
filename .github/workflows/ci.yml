@@ -598,8 +598,10 @@ jobs:
         run: |
           python3 -m pip install coverage==7.16.2
           python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests -p 'test_compose_ports.py'
+          python3 -m coverage run --append --branch --source=scripts -m unittest discover -s scripts/tests -p 'test_sonar_sanitize.py'
           python3 -m coverage report --include='scripts/check_compose_ports.py' --fail-under=80
-          python3 -m coverage xml --include='scripts/check_compose_ports.py' -o coverage-python.xml
+          python3 -m coverage xml --include='scripts/check_compose_ports.py,scripts/ci/sonar/sanitize.py' -o coverage-python.xml
+          npx --yes c8@12.0.0 --all --reporter=lcov --reports-dir=coverage-sonar-policy --include='scripts/ci/sonar/*.js' node --test scripts/tests/sonar*.test.js
 
       - name: Run SonarCloud Scanner for Game Scripts
         # Note: GDScript requires SonarQube server with community plugin
@@ -614,7 +616,7 @@ jobs:
             -Dsonar.sources=autoloads,scenes,scripts
             -Dsonar.language=js
             -Dsonar.python.coverage.reportPaths=coverage-python.xml
-            -Dsonar.javascript.lcov.reportPaths=
+            -Dsonar.javascript.lcov.reportPaths=coverage-sonar-policy/lcov.info
             -Dsonar.exclusions=**/node_modules/**,**/backend/**,**/tests/**,**/test/**,.git
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=300

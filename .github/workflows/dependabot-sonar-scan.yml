@@ -83,6 +83,7 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORG }}
             -Dsonar.sources=autoloads,scenes,scripts
             -Dsonar.python.coverage.reportPaths=coverage-python.xml
+            -Dsonar.javascript.lcov.reportPaths=coverage-sonar-policy/lcov.info
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=300
             -Dsonar.pullrequest.key=${{ steps.provenance.outputs.number }}

@@ -9,7 +9,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 SOURCE_ROOTS = ('backend/src', 'backend/tests', 'autoloads', 'scenes', 'scripts')
-COVERAGE_FILES = {'backend-lcov.info', 'coverage-python.xml'}
+COVERAGE_FILES = {'backend-lcov.info', 'game-lcov.info', 'coverage-python.xml'}
 MAX_SOURCE_BYTES = 150 * 1024 * 1024
 MAX_ARTIFACT_BYTES = 25 * 1024 * 1024
 
@@ -85,6 +85,9 @@ def extract_coverage(archive, destination):
             if entry.filename == 'backend-lcov.info':
                 validate_lcov(data)
                 target = destination / 'backend/coverage/lcov.info'
+            elif entry.filename == 'game-lcov.info':
+                validate_lcov(data, 'scripts')
+                target = destination / 'coverage-sonar-policy/lcov.info'
             else:
                 data = validate_xml(data)
                 target = destination / 'coverage-python.xml'
@@ -94,14 +97,14 @@ def extract_coverage(archive, destination):
         raise ValueError('Required coverage files missing')
 
 
-def validate_lcov(data):
+def validate_lcov(data, source_root='src'):
     text = data.decode('utf-8')
     sources = 0
     for line in text.splitlines():
         if line.startswith('SF:'):
             path = safe_relative(line[3:])
-            if path.parts[0] != 'src':
-                raise ValueError('LCOV source outside backend/src')
+            if path.parts[0] != source_root:
+                raise ValueError('LCOV source outside permitted root')
             sources += 1
         elif line and not re.fullmatch(r'(TN:.*|DA:\d+,\d+(?:,[A-Za-z0-9+/=]+)?|LF:\d+|LH:\d+|FN:\d+,[^\r\n]+|FNDA:\d+,[^\r\n]+|FNF:\d+|FNH:\d+|BRDA:\d+,\d+,\d+,(?:\d+|-)|BRF:\d+|BRH:\d+|end_of_record)', line):
             raise ValueError('Unexpected LCOV record')

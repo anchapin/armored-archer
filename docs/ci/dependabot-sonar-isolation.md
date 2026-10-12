@@ -7,7 +7,7 @@ tests under `pull_request_target` with elevated credentials.
 ## Trust boundary
 
 `Dependabot Sonar Preparation` installs, builds, and tests the exact PR head
-without Sonar credentials. It uploads only backend LCOV and Python coverage.
+without Sonar credentials. It uploads only backend LCOV, policy JavaScript LCOV and Python coverage.
 The trusted `workflow_run` receiver runs the default branch's policy, verifies
 the source workflow/event/repository/actor/current open PR SHA through GitHub's
 API, and downloads the one expected artifact from that exact run.

@@ -59,13 +59,16 @@ jobs:
         run: |
           python3 -m pip install coverage==7.16.2
           python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests -p 'test_compose_ports.py'
+          python3 -m coverage run --append --branch --source=scripts -m unittest discover -s scripts/tests -p 'test_sonar_sanitize.py'
           python3 -m coverage report --include='scripts/check_compose_ports.py' --fail-under=80
-          python3 -m coverage xml --include='scripts/check_compose_ports.py' -o /tmp/coverage-python.xml
+          python3 -m coverage xml --include='scripts/check_compose_ports.py,scripts/ci/sonar/sanitize.py' -o /tmp/coverage-python.xml
+          npx --yes c8@12.0.0 --all --reporter=lcov --reports-dir=/tmp/sonar-jscoverage --include='scripts/ci/sonar/*.js' node --test scripts/tests/sonar*.test.js
       - name: Stage reports only
         run: |
           mkdir -p /tmp/sonar-reports
           cp backend/coverage/lcov.info /tmp/sonar-reports/backend-lcov.info
           cp /tmp/coverage-python.xml /tmp/sonar-reports/coverage-python.xml
+          cp /tmp/sonar-jscoverage/lcov.info /tmp/sonar-reports/game-lcov.info
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: sonar-coverage-${{ github.event.pull_request.head.sha }}
