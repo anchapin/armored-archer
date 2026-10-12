@@ -41,3 +41,11 @@ until after the physics callback. Duplicate contact/return requests are ignored
 until parking completes. This prevents CollisionObject process-mode changes
 inside physics callbacks. Regression coverage includes an actual overlap with
 a static wall and exactly one pool entry after return.
+
+During the combat portion the harness now sends movement through Player's public
+virtual-control binding around a small central route. Existing auto-aim/auto-shoot
+remains responsible for arrows; the harness does not inject damage, change health,
+teleport or enable invulnerability. It still requires the full60seconds alive or
+an earlier victory. This avoids accidentally requiring a motionless character to
+survive after the damage cooldown was repaired. Failure also runs the normal
+cleanup, retaining a nonzero exit and no PASS marker.

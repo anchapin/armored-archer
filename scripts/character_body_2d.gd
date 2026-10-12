@@ -208,16 +208,18 @@ func take_damage(amount: int) -> void:
 		var damage_reduction: int = int(defense / 5.0)
 		actual_damage = max(1, amount - damage_reduction)
 
-	current_health -= actual_damage
+	# Sync with GameManager
+	var game_mgr = get_node_or_null("/root/GameManager")
+	if game_mgr and game_mgr.has_method("take_player_damage"):
+		if not game_mgr.is_game_active or game_mgr.damage_cooldown > 0:
+			return
+		game_mgr.take_player_damage(actual_damage)
+	else:
+		current_health = max(0, current_health - actual_damage)
 
 	var haptic = get_node_or_null("/root/HapticManager")
 	if haptic:
 		haptic.damage_pulse()
-
-	# Sync with GameManager
-	var game_mgr = get_node_or_null("/root/GameManager")
-	if game_mgr and game_mgr.has_method("take_player_damage"):
-		game_mgr.take_player_damage(actual_damage)
 
 	# Track combat engagement for pacing
 	if not in_combat:
@@ -229,12 +231,13 @@ func take_damage(amount: int) -> void:
 
 ## Handle healing the player
 func heal(amount: int) -> void:
-	current_health = min(max_health, current_health + amount)
-
+	# GameManager is the health owner during combat.
 	# Sync with GameManager
 	var game_mgr = get_node_or_null("/root/GameManager")
 	if game_mgr and game_mgr.has_method("heal_player"):
 		game_mgr.heal_player(amount)
+	else:
+		current_health = min(max_health, current_health + amount)
 
 
 ## Handle player death
