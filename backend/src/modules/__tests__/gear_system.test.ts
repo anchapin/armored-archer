@@ -56,6 +56,10 @@ describe('gear_system', () => {
     jest.spyOn(Math, 'random').mockRestore();
   });
 
+  // These legacy fixtures describe inventory/boss data, never player stats.
+  const mockStorageReads = (value: any[]) =>
+    jest.fn((objects: any[]) => (objects[0]?.collection === 'player_stats' ? [] : value));
+
   const createMockInventory = (overrides?: Partial<PlayerInventory>): PlayerInventory => {
     const inventory = {
       user_id: 'test-user',
@@ -97,7 +101,7 @@ describe('gear_system', () => {
 
     it('should add gear to existing inventory', () => {
       const inventory = createMockInventory();
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -211,7 +215,7 @@ describe('gear_system', () => {
     it('should return error when no gear equipped in slot', () => {
       const inventory = createMockInventory({ equipped_gear: {} });
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -231,7 +235,7 @@ describe('gear_system', () => {
     it('should return existing inventory', () => {
       const inventory = createMockInventory({ gear: [createMockGearItem()] });
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -276,7 +280,7 @@ describe('gear_system', () => {
       // Set up existing unlocked modifier pools in database mock
       testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['boss_basic']));
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -296,7 +300,7 @@ describe('gear_system', () => {
     it('should not duplicate already unlocked pools', () => {
       const inventory = createMockInventory({ unlocked_modifier_pools: ['boss_wind'] });
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -436,7 +440,7 @@ describe('gear_system', () => {
 
     it('should add gear to existing inventory', () => {
       const inventory = createMockInventory({ gear: [createMockGearItem()] });
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -731,7 +735,7 @@ describe('gear_system', () => {
 
   describe('rpcEquipGear edge cases', () => {
     it('should return error when inventory value is null', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -748,7 +752,7 @@ describe('gear_system', () => {
     });
 
     it('should return error when inventory value is empty string', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -765,7 +769,7 @@ describe('gear_system', () => {
     });
 
     it('should return error when inventory data is corrupted', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -784,7 +788,7 @@ describe('gear_system', () => {
 
   describe('rpcUnequipGear edge cases', () => {
     it('should return error when inventory value is null', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -801,7 +805,7 @@ describe('gear_system', () => {
     });
 
     it('should return error when inventory value is empty string', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -818,7 +822,7 @@ describe('gear_system', () => {
     });
 
     it('should return error when inventory data is corrupted', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -893,7 +897,7 @@ describe('gear_system', () => {
     // The original storage-based implementation would read and parse inventory data,
     // but the new implementation uses direct database queries.
     it.skip('should handle corrupted inventory on unlock', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -909,7 +913,7 @@ describe('gear_system', () => {
     });
 
     it('should create new inventory with modifier when value is null', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -928,7 +932,7 @@ describe('gear_system', () => {
 
   describe('rpcGetInventory edge cases', () => {
     it('should return default inventory when storage value is null', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -947,7 +951,7 @@ describe('gear_system', () => {
 
     it('should return stored value when valid', () => {
       const inventory = createMockInventory({ gear: [createMockGearItem()] });
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -966,7 +970,7 @@ describe('gear_system', () => {
   describe('rpcStageComplete loot generation branches', () => {
     it('should handle loot drop with existing inventory', () => {
       const inventory = createMockInventory({ gear: [createMockGearItem()] });
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -1021,7 +1025,7 @@ describe('gear_system', () => {
       // Set up existing unlocked modifier pools in database mock
       testStorage.set('unlocked_modifier_pools:test-user', JSON.stringify(['heavy_impact']));
 
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -1175,7 +1179,7 @@ describe('gear_system', () => {
 
   describe('rpcGenerateGear edge cases', () => {
     it('should handle inventory with null value', () => {
-      mockNk.storageRead = jest.fn().mockReturnValue([
+      mockNk.storageRead = mockStorageReads([
         {
           collection: 'player_inventory',
           key: 'test-user',
@@ -1319,6 +1323,7 @@ describe('gear_system', () => {
       let callCount = 0;
       mockNk.storageRead = jest.fn(
         (objects: { collection: string; key: string; userId?: string }[]) => {
+          if (objects[0]?.collection === 'player_stats') return [];
           callCount++;
           if (callCount <= 2) {
             // Initial reads for getPlayerInventory and getBossDefeatData
@@ -1402,6 +1407,7 @@ describe('gear_system', () => {
       let callCount = 0;
       mockNk.storageRead = jest.fn(
         (objects: { collection: string; key: string; userId?: string }[]) => {
+          if (objects[0]?.collection === 'player_stats') return [];
           callCount++;
           if (callCount <= 2) {
             return objects.map((obj) => {
@@ -1499,6 +1505,7 @@ describe('gear_system', () => {
       let callCount = 0;
       mockNk.storageRead = jest.fn(
         (objects: { collection: string; key: string; userId?: string }[]) => {
+          if (objects[0]?.collection === 'player_stats') return [];
           callCount++;
           if (callCount <= 2) {
             // Initial reads for getPlayerInventory and getBossDefeatData
@@ -1813,5 +1820,105 @@ describe('gear_system', () => {
       // expecting an exact delta over an unobserved baseline.
       expect(finalCount).toBeGreaterThanOrEqual(1);
     });
+  });
+});
+
+describe('canonical stage XP persistence', () => {
+  let nk: Runtime.Nakama;
+  const ctx = createMockContext({ userId: 'xp-review-user' });
+  const logger = createMockLogger();
+  const payload = { stage_id: 'xp_stage', boss_defeated: false, difficulty: 'easy' };
+  const complete = () => JSON.parse(rpcStageComplete(ctx, logger, nk, JSON.stringify(payload)));
+  const stats = () => JSON.parse(testStorage.get('player_stats:xp-review-user') as string);
+  beforeEach(() => {
+    nk = createMockNakama();
+    testStorage.clear();
+    resetRateLimiting();
+    jest.spyOn(Math, 'random').mockReturnValue(0.99);
+  });
+  afterEach(() => jest.restoreAllMocks());
+  it('persists exactly the XP returned and duplicate requests cannot grant again', () => {
+    const first = complete();
+    expect(first).toMatchObject({ success: true, xp_gained: 30 });
+    expect(stats()).toMatchObject({ xp: 30, level: 1, ability_points: 0 });
+    expect(complete()).toMatchObject({ success: false, error_code: 'DUPLICATE_COMPLETION' });
+    expect(stats().xp).toBe(30);
+    const write = (nk.storageWrite as jest.Mock).mock.calls
+      .flatMap((call) => call[0])
+      .find((write) => write.collection === 'player_stats');
+    expect(write).toMatchObject({ version: '*', permissionRead: 1, permissionWrite: 0 });
+  });
+  it('requires a create-only first claim and fails closed on a lost claim race', () => {
+    const write = (nk.storageWrite as jest.Mock).getMockImplementation()!;
+    (nk.storageWrite as jest.Mock).mockImplementation((objects) => {
+      if (objects.some((object: any) => object.collection === 'stage_completion_claims')) {
+        expect(objects[0].version).toBe('*');
+        throw new Error('claim already exists');
+      }
+      return write(objects);
+    });
+    expect(complete()).toMatchObject({ success: false, error_code: 'CLAIM_CONFLICT' });
+    expect(testStorage.has('player_stats:xp-review-user')).toBe(false);
+  });
+  it('does not award XP on a no-improvement replay after cooldown', () => {
+    expect(complete().xp_gained).toBe(30);
+    testStorage.set(
+      'stage_completion_claims:xp-review-user:xp_stage',
+      JSON.stringify({
+        claimed_at: Date.now() - 400000,
+        stage_id: payload.stage_id,
+      })
+    );
+    expect(complete()).toMatchObject({ success: true, xp_gained: 0, is_new_completion: false });
+    expect(stats().xp).toBe(30);
+  });
+  it('cannot overwrite malformed stored stats or claim XP success', () => {
+    testStorage.set('player_stats:xp-review-user', '{invalid');
+    expect(complete()).toMatchObject({ success: false, error_code: 'INTERNAL_ERROR' });
+    expect(testStorage.get('player_stats:xp-review-user')).toBe('{invalid');
+  });
+  it('preserves stats and applies the canonical level curve and ability points', () => {
+    testStorage.set(
+      'player_stats:xp-review-user',
+      JSON.stringify({
+        user_id: ctx.userId,
+        xp: 90,
+        level: 1,
+        ability_points: 2,
+        stats: { attack: 42, defense: 10, dodge: 10, crit_rate: 5 },
+      })
+    );
+    expect(complete().success).toBe(true);
+    expect(stats()).toMatchObject({ xp: 120, level: 2, ability_points: 3, stats: { attack: 42 } });
+  });
+  it('uses the stored stats version for existing players', () => {
+    testStorage.set(
+      'player_stats:xp-review-user',
+      JSON.stringify({
+        user_id: ctx.userId,
+        xp: 10,
+        level: 1,
+        ability_points: 0,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+      })
+    );
+    expect(complete().success).toBe(true);
+    const write = (nk.storageWrite as jest.Mock).mock.calls
+      .flatMap((call) => call[0])
+      .find((write) => write.collection === 'player_stats');
+    expect(write.version).toBe('1');
+    expect(stats().xp).toBe(40);
+  });
+  it('returns failure and retains the claim when the XP write fails', () => {
+    const write = (nk.storageWrite as jest.Mock).getMockImplementation()!;
+    (nk.storageWrite as jest.Mock).mockImplementation((objects) => {
+      if (objects.some((object: any) => object.collection === 'player_stats')) {
+        throw new Error('version conflict');
+      }
+      return write(objects);
+    });
+    expect(complete()).toMatchObject({ success: false, error_code: 'INTERNAL_ERROR' });
+    expect(testStorage.has('player_stats:xp-review-user')).toBe(false);
+    expect(complete()).toMatchObject({ success: false, error_code: 'DUPLICATE_COMPLETION' });
   });
 });

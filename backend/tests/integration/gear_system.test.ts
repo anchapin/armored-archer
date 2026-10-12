@@ -539,7 +539,8 @@ describe('Gear System Integration Tests', () => {
 
       // Second defeat
       const result2 = await rpcCall(player, 'armored_archer/stage_complete', {
-        ...payload, stage_id: 'stage_wind_boss_second',
+        ...payload,
+        stage_id: 'stage_wind_boss_second',
       });
       expect(result2.boss_defeat_count).toBe(2);
 
@@ -572,7 +573,8 @@ describe('Gear System Integration Tests', () => {
       // Separate stage completions can defeat the same boss; replaying one is rejected.
       await rpcCall(player, 'armored_archer/stage_complete', payload);
       await rpcCall(player, 'armored_archer/stage_complete', {
-        ...payload, stage_id: 'stage_wind_boss_second',
+        ...payload,
+        stage_id: 'stage_wind_boss_second',
       });
 
       // Get modifiers - should only have piercing_arrow once
@@ -581,6 +583,69 @@ describe('Gear System Integration Tests', () => {
         (m: string) => m === 'piercing_arrow'
       ).length;
       expect(piercingCount).toBe(1);
+    });
+  });
+  // Uses the real server storage, not response fields alone.
+  describe('canonical stage XP persistence and idempotence', () => {
+    test('persists returned XP, advances level, and rejects replay without a second grant', async () => {
+      await testHelper.writeStorageObject('player_stats', player.userId, player.userId, {
+        user_id: player.userId,
+        level: 1,
+        xp: 90,
+        ability_points: 2,
+        stats: { attack: 42, defense: 10, dodge: 10, crit_rate: 5 },
+      });
+      const payload = {
+        stage_id: 'xp_persistence_stage',
+        boss_defeated: false,
+        difficulty: 'easy',
+      };
+      const first = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      expect(first).toMatchObject({ success: true, xp_gained: 30 });
+      const stored = await testHelper.getStorageObject(
+        'player_stats',
+        player.userId,
+        player.userId
+      );
+      expect(stored.value).toMatchObject({
+        xp: 120,
+        level: 2,
+        ability_points: 3,
+        stats: { attack: 42 },
+      });
+      const duplicate = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      expect(duplicate).toMatchObject({ success: false, error_code: 'DUPLICATE_COMPLETION' });
+      const after = await testHelper.getStorageObject('player_stats', player.userId, player.userId);
+      expect(after.value.xp).toBe(120);
+      await testHelper.sql(
+        `UPDATE storage SET value = jsonb_set(value, '{claimed_at}', to_jsonb($1::bigint))
+         WHERE collection = 'stage_completion_claims' AND key = $2 AND user_id = $3`,
+        [Date.now() - 400000, `${player.userId}:${payload.stage_id}`, player.userId]
+      );
+      const replay = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      expect(replay).toMatchObject({ success: true, xp_gained: 0, is_new_completion: false });
+      const unchanged = await testHelper.getStorageObject(
+        'player_stats',
+        player.userId,
+        player.userId
+      );
+      expect(unchanged.value.xp).toBe(120);
+    });
+
+    test('simultaneous duplicate requests grant XP at most once', async () => {
+      const payload = { stage_id: 'xp_concurrent_stage', boss_defeated: false, difficulty: 'easy' };
+      const results = await Promise.all([
+        rpcCall(player, 'armored_archer/stage_complete', payload),
+        rpcCall(player, 'armored_archer/stage_complete', payload),
+      ]);
+      expect(results.filter((result) => result.success && result.xp_gained === 30)).toHaveLength(1);
+      expect(results.filter((result) => !result.success)).toHaveLength(1);
+      const stored = await testHelper.getStorageObject(
+        'player_stats',
+        player.userId,
+        player.userId
+      );
+      expect(stored.value.xp).toBe(30);
     });
   });
 });

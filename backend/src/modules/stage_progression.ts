@@ -177,7 +177,7 @@ export function writeStageCompletionClaim(
       key: `${userId}:${stageId}`,
       userId,
       value: toStorageValue({ claimed_at: Date.now(), stage_id: stageId }),
-      version: claimVersion,
+      version: claimVersion ?? '*',
     },
   ]);
 }
