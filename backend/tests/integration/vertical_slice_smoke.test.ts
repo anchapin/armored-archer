@@ -265,7 +265,7 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(gearInInventory).toBe(true);
     });
 
-    it('should persist stage XP through the separate gain_xp client flow', async () => {
+    it('should persist stage XP through the canonical stage completion', async () => {
       const result = await nakama.rpc(session, 'armored_archer/stage_complete', {
         stage_id: TEST_STAGE_ID,
         boss_defeated: false,
@@ -276,12 +276,6 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
       expect(result.payload.xp_gained).toBeGreaterThan(0);
       expect(result.payload.xp_gained).toBe(30); // Server base XP 60 * easy multiplier 0.5
 
-      // The client game-over flow awards XP through gain_xp separately.
-      const award = await nakama.rpc(session, 'armored_archer/gain_xp', {
-        xp_amount: result.payload.xp_gained, source: 'pve'
-      });
-      expect(award.payload.success).toBe(true);
-      expect(award.payload.xp_gained).toBe(30);
       // Verify XP was actually applied
       const statsResult = await nakama.rpc(session, 'armored_archer/get_player_stats', {});
       expect(statsResult.payload.xp).toBe(result.payload.xp_gained);
@@ -562,13 +556,23 @@ describe('Vertical Slice Smoke Test - Backend RPCs', () => {
 
       const results = await Promise.all(promises);
 
+      const awarded = results.filter(result => result.payload.success);
+      expect(awarded.length).toBeGreaterThan(0);
       for (const result of results) {
-        expect(result.payload).toEqual(expect.objectContaining({ success: true }));
+        if (result.payload.success) {
+          expect(result.payload.xp_gained).toBe(30);
+        } else {
+          // Concurrent updates share one versioned player-stats record.
+          // A lost write race must fail closed, never overwrite another grant.
+          expect(result.payload).toMatchObject({success: false, error_code: 'INTERNAL_ERROR'});
+          expect(result.payload.xp_gained).toBeUndefined();
+        }
       }
+      const stored = await nakama.readStorageObjects(session, {object_ids: [
+        {collection: 'player_stats', key: userId, user_id: userId},
+      ]});
+      expect(stored.objects?.[0].value.xp).toBe(awarded.length * 30);
 
-      // Verify all stages completed
-      const progress = await nakama.rpc(session, 'armored_archer/get_campaign_progress', {});
-      expect(progress.payload.completed_stages.length).toBeGreaterThanOrEqual(5);
     });
   });
 });

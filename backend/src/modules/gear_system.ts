@@ -38,6 +38,7 @@ import {
   clampCompletionClaims,
   writeStageCompletionClaim,
 } from './stage_progression';
+import { grantStageXP } from './stage_xp';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -1719,7 +1720,21 @@ function claimStageCompletionOrReject(
   // BEFORE granting loot/XP/stars. If any later write fails, the claim
   // persists and a retry is rejected as a duplicate for the cooldown
   // window, so rewards can never be double-granted.
-  writeStageCompletionClaim(nk, userId, stageId, dedupResult.claimVersion);
+  try {
+    writeStageCompletionClaim(nk, userId, stageId, dedupResult.claimVersion);
+  } catch (error) {
+    logger.warn(
+      'Stage claim write failed for user %s stage %s: %s',
+      userId,
+      stageId,
+      String(error)
+    );
+    return JSON.stringify({
+      success: false,
+      error: 'Stage completion claim could not be acquired',
+      error_code: 'CLAIM_CONFLICT',
+    });
+  }
   observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
   // claimVersion is only defined when a prior claim object existed (i.e. the
   // cooldown had expired and this completion proceeded through a versioned
@@ -1984,6 +1999,11 @@ function applyCompletionAndRespond(
   // intentionally not instrumented because it is a replay, not a new stage.
   recordPveStageCompleted(request.difficulty, safeStars);
 
+  // Calculate XP gained for stage completion (verify boss defeat claim server-side)
+  const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
+  const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
+  grantStageXP(nk, ctx, logger, xpGained);
+
   // Audit the stage completion
   logAudit(
     nk,
@@ -1994,10 +2014,6 @@ function applyCompletionAndRespond(
     buildAuditData(request, result),
     'success'
   );
-
-  // Calculate XP gained for stage completion (verify boss defeat claim server-side)
-  const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
-  const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
 
   recordStageCompleteOutcome(outcome);
   return JSON.stringify({
