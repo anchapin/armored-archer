@@ -24,6 +24,7 @@ const DEFEAT_COLOR = Color("#EF4444")   # Red - ArcherDesignTokens.COLOR_ERROR
 
 # --- Looted Gear ---
 var _looted_gear: Dictionary = {}
+var _result_stage_id: String = ""
 
 # --- Rarity Colors ---
 const RARITY_COLORS = {
@@ -60,9 +61,7 @@ func _ready() -> void:
 	if matchmaker_manager:
 		matchmaker_manager.match_created.connect(_on_match_created)
 
-	# Connect to gear manager for loot
-	if gear_manager and gear_manager.has_signal("gear_generated"):
-		gear_manager.gear_generated.connect(_on_gear_generated)
+	CampaignManager.stage_sync_updated.connect(_on_stage_sync_updated)
 
 	visible = false
 
@@ -94,60 +93,32 @@ func _on_game_won() -> void:
 			loot_label.visible = true
 		return
 
-	# Show loot summary if PvE encounter
-	var encounter_data = GameManager.current_encounter_data
-	if encounter_data.size() > 0 and CampaignManager:
-		var loot_config = CampaignManager.get_loot_config(GameManager.current_stage_id)
-		var xp = loot_config.get("xp", 50)
-		var gold = loot_config.get("gold", 25)
+	# CampaignManager owns the one stage_complete request. Do not independently
+	# request XP/gear or display configured gold as an awarded currency.
+	_result_stage_id = GameManager.current_stage_id
+	_looted_gear.clear()
+	loot_label.text = "Server rewards pending confirmation."
+	loot_label.visible = true
 
-		# Grant XP to player
-		if player_stats and player_stats.has_method("gain_xp"):
-			player_stats.gain_xp(xp, "pve")
-
-		# Generate gear loot
-		if gear_manager and gear_manager.has_method("generate_gear"):
-			var boss_id: String = encounter_data.get("boss", "")
-			gear_manager.generate_gear(GameManager.current_stage_id, not boss_id.is_empty())
-
-		# Display loot (will be updated when gear arrives)
-		_update_loot_label(xp, gold)
-
-func _update_loot_label(xp: int, gold: int) -> void:
-	"""Updates loot label with XP, gold, and earned gear.
-
-	Parameters:
-		xp: XP amount gained
-		gold: Gold amount gained
-	"""
-	var loot_text: String = "+" + str(xp) + " XP  +" + str(gold) + " Gold"
-
-	# Add gear to display if looted
-	if not _looted_gear.is_empty():
-		var gear_name: String = _looted_gear.get("name", "Unknown Gear")
-		var rarity: String = _looted_gear.get("rarity", "common")
-		var rarity_color: String = RARITY_COLORS.get(rarity, "#FFFFFF")
-		loot_text += "\n\n[color=%s][b]%s (%s)[/b][/color]" % [rarity_color, gear_name, rarity.capitalize()]
-
-	if loot_label:
-		loot_label.text = loot_text
-		loot_label.visible = true
-
-func _on_gear_generated(gear_data: Dictionary) -> void:
-	"""Handle gear generation from server.
-
-	Parameters:
-		gear_data: Generated gear dictionary
-	"""
-	_looted_gear = gear_data.duplicate()
-
-	# Update loot display with gear
-	var encounter_data = GameManager.current_encounter_data
-	if encounter_data.size() > 0 and CampaignManager:
-		var loot_config = CampaignManager.get_loot_config(GameManager.current_stage_id)
-		var xp = loot_config.get("xp", 50)
-		var gold = loot_config.get("gold", 25)
-		_update_loot_label(xp, gold)
+func _on_stage_sync_updated(stage_id: String, state: String, result: Dictionary) -> void:
+	if not visible or stage_id != _result_stage_id:
+		return
+	match state:
+		"local_replay":
+			loot_label.text = "Already completed locally. No new server reward request."
+		"pending":
+			loot_label.text = "Server rewards pending confirmation."
+		"failed":
+			loot_label.text = "Progress saved on this device. Server rewards not confirmed."
+		"confirmed":
+			var xp: int = int(result.get("xp_gained", 0))
+			loot_label.text = "Server confirmed: %d XP." % xp
+			var gear: Variant = result.get("gear_dropped")
+			if gear is Dictionary and not gear.is_empty():
+				loot_label.text += "\nGear: " + str(gear.get("name", "Gear received"))
+			else:
+				loot_label.text += " No gear drop."
+	loot_label.visible = true
 
 func _on_pvp_challenge_button_pressed() -> void:
 	"""Handle PvP Challenge button press - creates an async match."""
@@ -211,10 +182,8 @@ func _exit_tree() -> void:
 		if matchmaker_manager.match_created.is_connected(_on_match_created):
 			matchmaker_manager.match_created.disconnect(_on_match_created)
 
-	# Disconnect gear manager
-	if gear_manager and gear_manager.has_signal("gear_generated"):
-		if gear_manager.gear_generated.is_connected(_on_gear_generated):
-			gear_manager.gear_generated.disconnect(_on_gear_generated)
+	if CampaignManager.stage_sync_updated.is_connected(_on_stage_sync_updated):
+		CampaignManager.stage_sync_updated.disconnect(_on_stage_sync_updated)
 
 	# Disconnect theme manager
 	if theme_manager and theme_manager.theme_changed.is_connected(_on_theme_changed):
