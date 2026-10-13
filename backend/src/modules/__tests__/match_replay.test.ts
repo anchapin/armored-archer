@@ -85,7 +85,7 @@ describe('match_replay', () => {
   describe('rpcGetMatchReplay', () => {
     it('should retrieve match replay data successfully', async () => {
       const mockMatch = createMockMatchResult();
-      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockReturnValue([mockMatch]);
 
       const payload = JSON.stringify({ match_id: 'match_test_123' });
       const result = await rpcGetMatchReplay(mockCtx, mockLogger, mockNk, payload);
@@ -101,7 +101,7 @@ describe('match_replay', () => {
     });
 
     it('should return error when match not found', async () => {
-      mockNk.sqlQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockReturnValue([]);
 
       const payload = JSON.stringify({ match_id: 'nonexistent_match' });
       const result = await rpcGetMatchReplay(mockCtx, mockLogger, mockNk, payload);
@@ -122,7 +122,7 @@ describe('match_replay', () => {
 
     it('should increment replay access count', async () => {
       const mockMatch = createMockMatchResult();
-      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockReturnValue([mockMatch]);
 
       const payload = JSON.stringify({ match_id: 'match_test_123' });
       await rpcGetMatchReplay(mockCtx, mockLogger, mockNk, payload);
@@ -141,7 +141,7 @@ describe('match_replay', () => {
         createMockMatchResult({ match_id: 'match_1' }),
         createMockMatchResult({ match_id: 'match_2' }),
       ];
-      mockNk.sqlQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockReturnValue(mockMatches);
 
       const payload = JSON.stringify({});
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -156,7 +156,7 @@ describe('match_replay', () => {
 
     it('should filter by match type', async () => {
       const mockMatches = [createMockMatchResult({ match_id: 'match_1', match_type: 'ranked' })];
-      mockNk.sqlQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockReturnValue(mockMatches);
 
       const payload = JSON.stringify({ match_type: 'ranked', limit: 10 });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -172,7 +172,7 @@ describe('match_replay', () => {
 
     it('should filter by QA flagged only', async () => {
       const mockMatches = [createMockMatchResult({ match_id: 'match_1', qa_flagged: true })];
-      mockNk.sqlQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockReturnValue(mockMatches);
 
       const payload = JSON.stringify({ qa_flagged_only: true });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -187,7 +187,7 @@ describe('match_replay', () => {
 
     it('should filter by player ID', async () => {
       const mockMatches = [createMockMatchResult({ match_id: 'match_1' })];
-      mockNk.sqlQuery.mockResolvedValue(mockMatches);
+      mockNk.sqlQuery.mockReturnValue(mockMatches);
 
       const payload = JSON.stringify({ player_id: 'creator-user' });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -201,7 +201,7 @@ describe('match_replay', () => {
     });
 
     it('should apply pagination', async () => {
-      mockNk.sqlQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockReturnValue([]);
 
       const payload = JSON.stringify({ limit: 25, offset: 50 });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -213,7 +213,7 @@ describe('match_replay', () => {
     });
 
     it('should reject limit > 100', async () => {
-      mockNk.sqlQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockReturnValue([]);
 
       const payload = JSON.stringify({ limit: 200 });
       const result = await rpcListMatchReplays(mockCtx, mockLogger, mockNk, payload);
@@ -227,7 +227,7 @@ describe('match_replay', () => {
 
   describe('rpcFlagMatchForQa', () => {
     it('should flag a match for QA investigation', async () => {
-      mockNk.sqlQuery.mockResolvedValue([{ flag_match_for_qa: true }]);
+      mockNk.sqlQuery.mockReturnValue([{ flag_match_for_qa: true }]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -245,7 +245,7 @@ describe('match_replay', () => {
     });
 
     it('should return error when match not found', async () => {
-      mockNk.sqlQuery.mockResolvedValue([{ flag_match_for_qa: false }]);
+      mockNk.sqlQuery.mockReturnValue([{ flag_match_for_qa: false }]);
 
       const payload = JSON.stringify({
         match_id: 'nonexistent_match',
@@ -270,7 +270,7 @@ describe('match_replay', () => {
 
   describe('rpcAddDebugNotes', () => {
     it('should add debug notes to a match', async () => {
-      mockNk.sqlQuery.mockResolvedValue([{ match_id: 'match_test_123' }]);
+      mockNk.sqlQuery.mockReturnValue([{ match_id: 'match_test_123' }]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -291,7 +291,7 @@ describe('match_replay', () => {
     });
 
     it('should return error when match not found', async () => {
-      mockNk.sqlQuery.mockResolvedValue([]);
+      mockNk.sqlQuery.mockReturnValue([]);
 
       const payload = JSON.stringify({
         match_id: 'nonexistent_match',
@@ -317,7 +317,7 @@ describe('match_replay', () => {
   describe('rpcReconstructMatchState', () => {
     it('should reconstruct match state at specific turn', async () => {
       const mockMatch = createMockMatchResult();
-      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockReturnValue([mockMatch]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -338,7 +338,7 @@ describe('match_replay', () => {
       const mockMatch = createMockMatchResult({
         replay_data: JSON.stringify({ turn_snapshots: [] }),
       });
-      mockNk.sqlQuery.mockResolvedValue([mockMatch]);
+      mockNk.sqlQuery.mockReturnValue([mockMatch]);
 
       const payload = JSON.stringify({
         match_id: 'match_test_123',
@@ -395,4 +395,78 @@ describe('match_replay', () => {
       );
     });
   });
+});
+
+/**
+ * Regression tests for the synchronous-runtime fix (issue #1462).
+ * The Nakama runtime has no microtask queue: RPC handlers must return
+ * strings synchronously, and SQL failures must be logged safely with a
+ * db_errors_total metric before the handler returns its error response.
+ */
+describe('synchronous runtime contract (issue #1462)', () => {
+  let mockLogger: any;
+  let mockCtx: any;
+  let mockNk: any;
+
+  const handlers: Array<[string, any, string]> = [
+    ['get_match_replay', rpcGetMatchReplay, JSON.stringify({ match_id: 'm1' })],
+    ['list_match_replays', rpcListMatchReplays, JSON.stringify({})],
+    [
+      'flag_match_for_qa',
+      rpcFlagMatchForQa,
+      JSON.stringify({ match_id: 'm1', reason: 'suspicious' }),
+    ],
+    [
+      'add_debug_notes',
+      rpcAddDebugNotes,
+      JSON.stringify({ match_id: 'm1', notes: 'note' }),
+    ],
+    [
+      'reconstruct_match_state',
+      rpcReconstructMatchState,
+      JSON.stringify({ match_id: 'm1', turn: 1 }),
+    ],
+  ];
+
+  beforeEach(() => {
+    mockLogger = createMockLogger();
+    mockCtx = createMockContext({ userId: 'test-user-123' });
+    mockNk = createMockNakama();
+    mockNk.metricsCounterAdd = jest.fn();
+    jest.clearAllMocks();
+  });
+
+  it.each(handlers)('%s returns a string synchronously', (_name, handler, payload) => {
+    mockNk.sqlQuery.mockReturnValue([]);
+    const result = handler(mockCtx, mockLogger, mockNk, payload);
+    expect(typeof result).toBe('string');
+  });
+
+  it.each(handlers)(
+    '%s logs a fixed, tagged error and records db_errors_total on SQL failure',
+    (rpcName, handler, payload) => {
+      mockNk.sqlQuery.mockImplementation(() => {
+        throw new Error('driver connection reset with secret DSN details');
+      });
+
+      const result = handler(mockCtx, mockLogger, mockNk, payload);
+      expect(typeof result).toBe('string');
+      const response = JSON.parse(result);
+      expect(response.success).toBe(false);
+      expect(response.error).toBe('Internal server error');
+
+      expect(mockNk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        expect.objectContaining({ rpc: `armored_archer/${rpcName}` }),
+        1
+      );
+
+      const fixedErrorCalls = mockLogger.error.mock.calls.filter(
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Database query failed')
+      );
+      expect(fixedErrorCalls.length).toBeGreaterThan(0);
+      const loggedText = JSON.stringify(fixedErrorCalls);
+      expect(loggedText).not.toContain('secret DSN details');
+    }
+  );
 });
