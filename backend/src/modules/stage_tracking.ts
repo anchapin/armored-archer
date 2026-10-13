@@ -243,7 +243,10 @@ export function rpcGetCampaignProgress(
 
     // Read bosses defeated from the database (written by stage_complete's
     // recordBossDefeat path)
-    const bossesDefeated = getDefeatedBossesFromDB(nk, ctx.userId);
+    const bossesDefeated = getDefeatedBossesFromDB(nk, ctx.userId, {
+      rpc: 'armored_archer/get_campaign_progress',
+      logger,
+    });
 
     // Derive unlocked chapters from completed stages
     const unlockedChapters = deriveUnlockedChapters(completedStages);
@@ -264,8 +267,9 @@ export function rpcGetCampaignProgress(
       bosses_defeated: bossesDefeated,
       unlocked_chapters: unlockedChapters,
     });
-  } catch (error) {
-    logger.error('Error retrieving campaign progress: %s', String(error));
+  } catch {
+    // SQL failures are already tagged by the observer. Keep other errors safe too.
+    logger.error('Failed to retrieve campaign progress');
 
     return JSON.stringify({
       success: false,

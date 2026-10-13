@@ -367,7 +367,10 @@ describe('stage_tracking module (read RPCs)', () => {
       const result = rpcGetCampaignProgress(mockCtx, createMockLogger() as any, nk as any, '{}');
       const parsed = JSON.parse(result);
 
-      expect(getDefeatedBossesFromDB).toHaveBeenCalledWith(expect.anything(), 'user_123');
+      expect(getDefeatedBossesFromDB).toHaveBeenCalledWith(expect.anything(), 'user_123', {
+        rpc: 'armored_archer/get_campaign_progress',
+        logger: expect.anything(),
+      });
       expect(parsed.bosses_defeated).toContain('boss_dragon');
       expect(parsed.bosses_defeated).toContain('boss_lich');
 

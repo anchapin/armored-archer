@@ -104,3 +104,14 @@ checks the existing failed response and audit alongside native metrics and safe
 logging, including an unavailable metrics API. No query, settlement sequencing,
 reward, participant-check, schema or transaction change is included. Remaining
 SQL users and broader read fallback semantics still need review for #1462.
+
+### Campaign-progress boss read
+
+`get_campaign_progress` now opts into a strict boss-defeat read. A SQL exception
+produces the existing `INTERNAL_ERROR` RPC response instead of a successful
+empty `bosses_defeated` array. The SQL observer records fixed operation/RPC tags
+and one native metric; the RPC catch no longer logs driver text. Actual empty
+boss rows remain successful, and the SQL query, storage read, stage/chapter
+calculation and authentication are unchanged. Other callers of the shared boss
+helper keep their prior fallback until reviewed separately. Cleanup and legacy
+notification modules, plus other gear-read callers, remain outside this slice.
