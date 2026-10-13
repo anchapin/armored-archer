@@ -148,7 +148,7 @@ import {
   rpcGetBundleCatalog,
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
-import { registerRpcCleanupTestUser } from './modules/cleanup_test_user';
+import { registerRpcCleanupTestUser, cleanupTestUserEnabled } from './modules/cleanup_test_user';
 import { registerTestFixtureRpcs } from './modules/test_fixtures';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
@@ -485,12 +485,14 @@ const InitModule: InitModule = function (
       'get_completed_stages',
       rpcGetCompletedStagesWrapper
     );
-    registerRpcWithRateLimit(
-      initializer,
-      'armored_archer/cleanup_test_user',
-      'cleanup_test_user',
-      rpcCleanupTestUserWrapper
-    );
+    if (cleanupTestUserEnabled()) {
+      registerRpcWithRateLimit(
+        initializer,
+        'armored_archer/cleanup_test_user',
+        'cleanup_test_user',
+        rpcCleanupTestUserWrapper
+      );
+    }
     registerRpcWithRateLimit(
       initializer,
       'armored_archer/stage_complete',

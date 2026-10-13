@@ -115,3 +115,21 @@ boss rows remain successful, and the SQL query, storage read, stage/chapter
 calculation and authentication are unchanged. Other callers of the shared boss
 helper keep their prior fallback until reviewed separately. Cleanup and legacy
 notification modules, plus other gear-read callers, remain outside this slice.
+
+### Test cleanup hardening (owner-approved scope)
+
+`cleanup_test_user` is gated by the existing exact
+`TEST_FIXTURE_RPCS_ENABLED=true` test-bundle opt-in at both registration routes
+and in the handler. It must never be enabled for a real deployment. An
+authenticated caller can clean their own user only; a cross-user request needs
+the existing server-side admin allowlist. Missing caller identity, empty or
+broken allowlists and disabled opt-in fail closed before deletes.
+
+Cleanup now uses synchronous Nakama host calls, not fire-and-forget promises.
+Success means all existing storage and SQL deletes completed and reports
+`async:false`. Any delete failure returns `cleanup_failed`; other deletes are
+still attempted, so a failed response can mean partial cleanup, not rollback.
+SQL failures record fixed RPC/operation logs and native metrics without driver
+text. The target collections/tables and queries are unchanged. No migration,
+new flag, allowlist/config change, deployment or other endpoint change is part
+of this patch. The unused legacy `test_cleanup.ts` remains outside this slice.
