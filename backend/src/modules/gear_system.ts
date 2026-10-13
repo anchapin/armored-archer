@@ -1352,23 +1352,23 @@ export function rpcGetUnlockedModifiers(
     return createValidationErrorResponse('get_unlocked_modifiers', validation.error);
   }
 
-  // Get unlocked modifier pools from database
-  const unlockedModifierPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
-
-  // Get defeated bosses from database
-  const defeatedBosses = getDefeatedBossesFromDB(nk, ctx.userId);
-
-  // Build boss defeat count object
-  const bossDefeats: { [bossId: string]: number } = {};
-  for (const bossId of defeatedBosses) {
-    bossDefeats[bossId] = getBossDefeatCount(nk, ctx.userId, bossId);
+  const context = { rpc: 'armored_archer/get_unlocked_modifiers', logger };
+  try {
+    const unlockedModifierPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId, context);
+    const defeatedBosses = getDefeatedBossesFromDB(nk, ctx.userId, context);
+    const bossDefeats: { [bossId: string]: number } = {};
+    for (const bossId of defeatedBosses) {
+      bossDefeats[bossId] = getBossDefeatCount(nk, ctx.userId, bossId, context);
+    }
+    return JSON.stringify({
+      success: true,
+      unlocked_modifier_pools: unlockedModifierPools,
+      boss_defeats: bossDefeats,
+    });
+  } catch {
+    // The SQL observer has already recorded safe RPC/operation labels.
+    return createErrorResponse('DATABASE_ERROR', 'Failed to retrieve unlocked modifiers');
   }
-
-  return JSON.stringify({
-    success: true,
-    unlocked_modifier_pools: unlockedModifierPools,
-    boss_defeats: bossDefeats,
-  });
 }
 
 /**

@@ -570,22 +570,31 @@ export function getDefeatedBossesFromDB(
  * @param bossId - ID of the boss to check
  * @returns Number of times the boss has been defeated, or 0 if never defeated
  */
-export function getBossDefeatCount(nk: Runtime.Nakama, userId: string, bossId: string): number {
+export function getBossDefeatCount(
+  nk: Runtime.Nakama,
+  userId: string,
+  bossId: string,
+  context?: InventoryReadContext
+): number {
   const query = `
     SELECT defeat_count FROM boss_defeats
     WHERE user_id = $1 AND boss_id = $2
   `;
 
   try {
-    const result = observedSqlQuery(nk, 'gear_db.getBossDefeatCount', query, [
-      userId,
-      bossId,
-    ]) as BossDefeatRow[];
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.getBossDefeatCount',
+      query,
+      [userId, bossId],
+      context
+    ) as BossDefeatRow[];
     if (result && result.length > 0) {
       return result[0].defeat_count;
     }
     return 0;
   } catch (error) {
+    if (context) throw error;
     logger.error('Failed to retrieve boss defeat count', { error: String(error) });
     return 0;
   }

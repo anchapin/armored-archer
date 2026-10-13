@@ -133,3 +133,15 @@ SQL failures record fixed RPC/operation logs and native metrics without driver
 text. The target collections/tables and queries are unchanged. No migration,
 new flag, allowlist/config change, deployment or other endpoint change is part
 of this patch. The unused legacy `test_cleanup.ts` remains outside this slice.
+
+### Unlocked-modifier read contract
+
+`get_unlocked_modifiers` now supplies a strict read context for modifier pools,
+defeated-boss IDs and each boss's defeat count. Any SQL exception returns
+`DATABASE_ERROR`, not a successful empty pool list or zero count. Fixed
+RPC/operation error logs and one native metric identify the failed query
+without driver details. Actual empty results and context-free helper callers'
+prior fallback remain unchanged. The query sequence, user scope, validation
+and successful response shape are unchanged; no write, reward, auth, schema or
+transaction change. Other gear-read paths and legacy modules remain outside
+this slice; #1462 is not complete.
