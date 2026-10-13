@@ -8,6 +8,7 @@ import { logger } from '../config/logger';
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { observedSqlQuery } from '../utils/sql-observability';
 import { setTracingAttribute } from '../utils/tracing';
 import { withSpanSync } from '../utils/tracing-helpers';
 import {
@@ -339,7 +340,10 @@ function handleTurnTimeout(
         // If the DB write fails we MUST NOT broadcast match_completed — the
         // match_results row never landed, so the players would otherwise
         // believe the match was permanently recorded when it was not.
-        const persistResult = persistMatchResult(nk, matchResult.data, matchState, 'timeout');
+        const persistResult = persistMatchResult(nk, matchResult.data, matchState, 'timeout', {
+          rpc: 'armored_archer/submit_combat_action',
+          logger,
+        });
         if (!persistResult.success) {
           logger.error(
             'persistMatchResult failed in handleTurnTimeout auto-forfeit (issue #1107)',
@@ -585,7 +589,10 @@ export function rpcSubmitCombatAction(
         // NOT broadcast match_completed (players would otherwise believe the
         // match was permanently saved) and must surface PERSIST_FAILED so the
         // client knows the settlement needs follow-up.
-        const persistResult = persistMatchResult(nk, match, matchState, 'health_zero');
+        const persistResult = persistMatchResult(nk, match, matchState, 'health_zero', {
+          rpc: 'armored_archer/submit_combat_action',
+          logger,
+        });
         if (!persistResult.success) {
           logger.error('persistMatchResult failed on health_zero settlement (issue #1107)', {
             matchId: match.match_id,
@@ -1421,7 +1428,8 @@ export function rpcPlayerDisconnect(
         nk,
         match,
         matchState,
-        reason === 'timeout' ? 'timeout' : 'disconnect'
+        reason === 'timeout' ? 'timeout' : 'disconnect',
+        { rpc: 'armored_archer/player_disconnect', logger }
       );
       if (!persistResult.success) {
         const endReason = reason === 'timeout' ? 'timeout' : 'disconnect';
@@ -1507,13 +1515,14 @@ export function rpcPlayerDisconnect(
  * @param match - PvP match data
  * @param matchState - Final match state
  * @param endReason - Reason match ended (health_zero, forfeit, timeout, disconnect)
- * @returns Promise resolving to success or error
+ * @returns Synchronous success or a fixed error
  */
 function persistMatchResult(
   nk: Runtime.Nakama,
   match: PvPMatch,
   matchState: MatchState,
-  endReason: 'health_zero' | 'forfeit' | 'timeout' | 'disconnect'
+  endReason: 'health_zero' | 'forfeit' | 'timeout' | 'disconnect',
+  sqlContext: { rpc: string; logger: Runtime.Logger }
 ): { success: boolean; error?: string } {
   try {
     const winnerId = matchState.winner || match.winner;
@@ -1556,7 +1565,9 @@ function persistMatchResult(
       }
     }
 
-    nk.sqlQuery(
+    observedSqlQuery(
+      nk,
+      'match_results.insert',
       `INSERT INTO match_results (
         match_id, creator_id, opponent_id, winner_id, loser_id,
         match_type, is_punch_up, creator_rank, opponent_rank,
@@ -1588,7 +1599,8 @@ function persistMatchResult(
         JSON.stringify(matchState.creator_stats),
         JSON.stringify(matchState.opponent_stats),
         currentSeason.season_id,
-      ]
+      ],
+      sqlContext
     );
 
     logger.info('Match result persisted to database', {
@@ -1602,14 +1614,11 @@ function persistMatchResult(
     });
 
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to persist match result', {
-      error: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-      matchId: match.match_id,
-    });
-    return { success: false, error: errorMessage };
+  } catch {
+    // The SQL observer records the tagged failure. Keep driver details out of
+    // callers' logs and audit records, without changing PERSIST_FAILED replies.
+    sqlContext.logger.error('Match result persistence failed: rpc=%s', sqlContext.rpc);
+    return { success: false, error: PERSIST_FAILED_MESSAGE };
   }
 }
 
