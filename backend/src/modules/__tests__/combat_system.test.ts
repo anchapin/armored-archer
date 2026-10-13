@@ -257,6 +257,35 @@ describe('combat_system', () => {
   });
 
   describe('rpcGetMatchState', () => {
+    it('returns a failed RPC response and observes an owner lookup SQL error', () => {
+      mockCtx.userId = 'opponent-user';
+      mockNk.storageRead = jest.fn(() => []);
+      mockNk.sqlQuery = jest.fn(() => {
+        throw new Error('private SQL driver text');
+      });
+      mockNk.metricsCounterAdd = jest.fn();
+      const response = rpcGetMatchState(
+        mockCtx,
+        mockLogger,
+        mockNk,
+        JSON.stringify({ match_id: 'match-123' })
+      );
+      expect(typeof response).toBe('string');
+      expect(JSON.parse(response)).toEqual({ error: 'Match state not found' });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Database query failed: rpc=%s op=%s',
+        'armored_archer/get_match_state',
+        'pvp_matches.owner_lookup'
+      );
+      expect(mockNk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'pvp_matches.owner_lookup', rpc: 'armored_archer/get_match_state' },
+        1
+      );
+      expect(mockNk.storageWrite).not.toHaveBeenCalled();
+      expect(response).not.toContain('private');
+    });
+
     it('should return match state', async () => {
       const matchState: MatchState = {
         match_id: 'match-123',

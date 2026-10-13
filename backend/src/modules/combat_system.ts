@@ -197,9 +197,13 @@ function validateMatchForCombat(
   nk: Runtime.Nakama,
   matchId: string,
   userId: string,
-  span: Span
+  span: Span,
+  runtimeLogger: Runtime.Logger
 ): { valid: true; match: PvPMatch } | { valid: false; error: string; errorCode?: string } {
-  const matchObjects = readPvpMatch(nk, matchId, userId);
+  const matchObjects = readPvpMatch(nk, matchId, userId, {
+    rpc: 'armored_archer/submit_combat_action',
+    logger: runtimeLogger,
+  });
 
   if (matchObjects.length === 0) {
     span.setAttribute('error', true);
@@ -507,7 +511,7 @@ export function rpcSubmitCombatAction(
       }
 
       // Validate match
-      const matchValidation = validateMatchForCombat(nk, action.match_id, ctx.userId, span);
+      const matchValidation = validateMatchForCombat(nk, action.match_id, ctx.userId, span, logger);
       if (!matchValidation.valid) {
         return JSON.stringify({ error: matchValidation.error });
       }
@@ -676,7 +680,10 @@ export function rpcGetMatchState(
 
     const request = validation.data;
 
-    const matchObjects = readPvpMatch(nk, request.match_id, ctx.userId);
+    const matchObjects = readPvpMatch(nk, request.match_id, ctx.userId, {
+      rpc: 'armored_archer/get_match_state',
+      logger,
+    });
     if (matchObjects.length === 0) return JSON.stringify({ error: 'Match state not found' });
     const parsed = safeParse<PvPMatch>(
       getStorageRawValue(matchObjects[0].value) ?? '',
@@ -1320,7 +1327,10 @@ export function rpcPlayerDisconnect(
       const { match_id, reason } = validation.data;
 
       // Read match
-      const forfeitObjects = readPvpMatch(nk, match_id, ctx.userId);
+      const forfeitObjects = readPvpMatch(nk, match_id, ctx.userId, {
+        rpc: 'armored_archer/player_disconnect',
+        logger,
+      });
       const rawForfeitMatch =
         forfeitObjects.length > 0 ? getStorageRawValue(forfeitObjects[0].value) : null;
       if (rawForfeitMatch === null) {

@@ -78,3 +78,16 @@ A genuinely absent inventory remains successful. The RPC reads modifier pools
 once instead of twice. Other callers retain their prior fallback semantics;
 reward, equip, combat, optional enrichment and replay behavior are not changed.
 This is another slice of #1462, not its completion. No schema change.
+
+### PvP match owner lookup
+
+The shared `readPvpMatch` SQL owner lookup now records safe errors and native
+`db_errors_total{op,rpc}` metrics for submit-combat-action, get-match-state,
+player-disconnect, accept-match and complete-match. The owner query, participant
+checks and creator-owned storage reads are unchanged. SQL exceptions still
+produce the existing unsuccessful/not-found RPC response, not an empty success;
+this slice makes that failed lookup observable rather than changing the error
+contract. Tests verify fixed tags, no private driver/parameter logging, no extra
+storage read after failure, and the get-match-state RPC failure response. Metric
+API failure does not change the failed lookup. Other SQL users and gear fallback
+semantics remain outside this slice; #1462 is not complete.

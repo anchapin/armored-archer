@@ -749,7 +749,10 @@ export function rpcAcceptMatch(
     });
   }
 
-  const objects = readPvpMatch(nk, request.match_id, ctx.userId);
+  const objects = readPvpMatch(nk, request.match_id, ctx.userId, {
+    rpc: 'armored_archer/accept_match',
+    logger,
+  });
 
   if (objects.length === 0) {
     return JSON.stringify({
@@ -1642,7 +1645,10 @@ function getAndValidateMatch(
   logger: Runtime.Logger,
   options?: { allowCompleted?: boolean }
 ): { match?: PvPMatch; error?: string } {
-  const objects = readPvpMatch(nk, request.match_id, ctx.userId);
+  const objects = readPvpMatch(nk, request.match_id, ctx.userId, {
+    rpc: 'armored_archer/complete_match',
+    logger,
+  });
 
   if (objects.length === 0) {
     return { error: 'Match not found' };
