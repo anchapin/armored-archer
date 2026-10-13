@@ -6,6 +6,7 @@
 import { PlayerStats } from '../types/game';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
+import { observedSqlQuery } from '../utils/sql-observability';
 import { withAdminGuard } from './admin_auth';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -365,12 +366,12 @@ export function registerRpcGetMatchReplay(initializer: Runtime.Initializer): voi
  * @param payload - JSON string containing request data
  * @returns JSON string with replay data
  */
-export async function rpcGetMatchReplay(
+export function rpcGetMatchReplay(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   try {
     const validation = validatePayload(ZodSchemas.get_match_replay, payload, 'get_match_replay');
     if (!validation.success) {
@@ -379,7 +380,9 @@ export async function rpcGetMatchReplay(
 
     const request = validation.data;
 
-    const result = await nk.sqlQuery(
+    const result = observedSqlQuery(
+      nk,
+      'match_results.replay_fetch',
       `SELECT
         match_id, creator_id, opponent_id, winner_id, loser_id,
         match_type, total_turns, duration_seconds, end_reason,
@@ -389,7 +392,8 @@ export async function rpcGetMatchReplay(
         created_at, updated_at
        FROM match_results
        WHERE match_id = $1 AND replay_enabled = true`,
-      [request.match_id]
+      [request.match_id],
+      { rpc: 'armored_archer/get_match_replay', logger }
     );
 
     if (result.length === 0) {
@@ -407,7 +411,16 @@ export async function rpcGetMatchReplay(
     const creatorStats = parsePlayerStats(match.creator_stats_at_match, logger, 'creator_stats');
     const opponentStats = parsePlayerStats(match.opponent_stats_at_match, logger, 'opponent_stats');
 
-    await nk.sqlQuery('SELECT increment_replay_access($1)', [request.match_id]);
+    observedSqlQuery(
+      nk,
+      'match_results.increment_replay_access',
+      'SELECT increment_replay_access($1)',
+      [request.match_id],
+      {
+        rpc: 'armored_archer/get_match_replay',
+        logger,
+      }
+    );
 
     const replayDataResponse = buildMatchReplayData(
       match,
@@ -462,12 +475,12 @@ export function registerRpcListMatchReplays(initializer: Runtime.Initializer): v
  * @param payload - JSON string containing request data
  * @returns JSON string with replay list
  */
-export async function rpcListMatchReplays(
+export function rpcListMatchReplays(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   try {
     const validation = validatePayload(
       ZodSchemas.list_match_replays,
@@ -515,7 +528,9 @@ export async function rpcListMatchReplays(
     const whereClause = conditions.join(' AND ');
 
     // Query match replays
-    const result = await nk.sqlQuery(
+    const result = observedSqlQuery(
+      nk,
+      'match_results.replay_list',
       `SELECT
         match_id, creator_id, opponent_id, match_type,
         created_at, total_turns, duration_seconds,
@@ -525,7 +540,8 @@ export async function rpcListMatchReplays(
        WHERE ${whereClause}
        ORDER BY created_at DESC
        LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
-      [...params, limit, offset]
+      [...params, limit, offset],
+      { rpc: 'armored_archer/list_match_replays', logger }
     );
 
     const summaries: MatchReplaySummary[] = (result as Record<string, unknown>[]).map(
@@ -593,12 +609,12 @@ export function registerRpcFlagMatchForQa(initializer: Runtime.Initializer): voi
  * @param payload - JSON string containing request data
  * @returns JSON string with result
  */
-export async function rpcFlagMatchForQa(
+export function rpcFlagMatchForQa(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   try {
     const validation = validatePayload(ZodSchemas.flag_match_for_qa, payload, 'flag_match_for_qa');
     if (!validation.success) {
@@ -607,10 +623,13 @@ export async function rpcFlagMatchForQa(
 
     const request = validation.data;
 
-    const result = await nk.sqlQuery('SELECT flag_match_for_qa($1, $2)', [
-      request.match_id,
-      request.reason,
-    ]);
+    const result = observedSqlQuery(
+      nk,
+      'match_results.flag_match_for_qa',
+      'SELECT flag_match_for_qa($1, $2)',
+      [request.match_id, request.reason],
+      { rpc: 'armored_archer/flag_match_for_qa', logger }
+    );
 
     const success = (result[0] as Record<string, unknown>)?.flag_match_for_qa === true;
 
@@ -665,12 +684,12 @@ export function registerRpcAddDebugNotes(initializer: Runtime.Initializer): void
  * @param payload - JSON string containing request data
  * @returns JSON string with result
  */
-export async function rpcAddDebugNotes(
+export function rpcAddDebugNotes(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   try {
     const validation = validatePayload(ZodSchemas.add_debug_notes, payload, 'add_debug_notes');
     if (!validation.success) {
@@ -679,13 +698,16 @@ export async function rpcAddDebugNotes(
 
     const request = validation.data;
 
-    const result = await nk.sqlQuery(
+    const result = observedSqlQuery(
+      nk,
+      'match_results.add_debug_notes',
       `UPDATE match_results
        SET debug_notes = COALESCE(debug_notes, '') || $1,
            updated_at = NOW()
        WHERE match_id = $2
        RETURNING match_id`,
-      [(request.notes || '').trim() + '\n---\n', request.match_id]
+      [(request.notes || '').trim() + '\n---\n', request.match_id],
+      { rpc: 'armored_archer/add_debug_notes', logger }
     );
 
     if (result.length === 0) {
@@ -738,12 +760,12 @@ export function registerRpcReconstructMatchState(initializer: Runtime.Initialize
  * @param payload - JSON string containing request data
  * @returns JSON string with reconstructed state
  */
-export async function rpcReconstructMatchState(
+export function rpcReconstructMatchState(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   try {
     const validation = validatePayload(
       ZodSchemas.reconstruct_match_state,
@@ -756,13 +778,16 @@ export async function rpcReconstructMatchState(
 
     const request = validation.data;
 
-    const result = await nk.sqlQuery(
+    const result = observedSqlQuery(
+      nk,
+      'match_results.reconstruct_state',
       `SELECT
         match_id, creator_id, opponent_id, winner_id, match_type,
         combat_log, replay_data, creator_stats_at_match, opponent_stats_at_match
        FROM match_results
        WHERE match_id = $1 AND replay_enabled = true`,
-      [request.match_id]
+      [request.match_id],
+      { rpc: 'armored_archer/reconstruct_match_state', logger }
     );
 
     if (result.length === 0) {
