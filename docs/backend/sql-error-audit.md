@@ -91,3 +91,16 @@ contract. Tests verify fixed tags, no private driver/parameter logging, no extra
 storage read after failure, and the get-match-state RPC failure response. Metric
 API failure does not change the failed lookup. Other SQL users and gear fallback
 semantics remain outside this slice; #1462 is not complete.
+
+### Combat match-result persistence
+
+The match-results insert now uses the SQL observer with fixed operation and
+calling RPC tags for health-zero settlement, timeout auto-forfeit and player
+disconnect. Those paths already return `PERSIST_FAILED` and withhold completion
+notifications when persistence fails; that client contract is unchanged. The
+helper now returns a fixed failure reason instead of driver text, so downstream
+logs and audit records do not copy private database details. Regression coverage
+checks the existing failed response and audit alongside native metrics and safe
+logging, including an unavailable metrics API. No query, settlement sequencing,
+reward, participant-check, schema or transaction change is included. Remaining
+SQL users and broader read fallback semantics still need review for #1462.
