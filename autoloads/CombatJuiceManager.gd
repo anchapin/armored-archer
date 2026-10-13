@@ -226,9 +226,10 @@ func _trigger_death_animation(data: Dictionary) -> Dictionary:
 	var enemy_node = data.get("enemy_node")
 	var particle_count = data.get("particle_count", 5)
 
-	if not enemy_node:
+	if not is_instance_valid(enemy_node):
 		return {"success": false, "error": "Enemy node not provided"}
 
+	var enemy_id: String = str(enemy_node.get_instance_id())
 	juice_effect_started.emit("death_animation", data)
 
 	# Trigger enemy's death animation
@@ -244,10 +245,12 @@ func _trigger_death_animation(data: Dictionary) -> Dictionary:
 
 	# Return enemy to pool
 	var object_pool = get_node_or_null("/root/ObjectPool")
-	if object_pool and object_pool.has_method("return_enemy"):
+	# Stage teardown may free the enemy while the animation timer is pending.
+	# Check before passing it to a typed pool method; its own guard is too late.
+	if is_instance_valid(enemy_node) and object_pool and object_pool.has_method("return_enemy"):
 		object_pool.return_enemy(enemy_node)
 
-	var result = {"success": true, "enemy_id": str(enemy_node.get_instance_id())}
+	var result = {"success": true, "enemy_id": enemy_id}
 	juice_effect_completed.emit("death_animation", result)
 	return result
 
