@@ -532,7 +532,11 @@ export function recordBossDefeatInDB(
  * @param userId - ID of the player
  * @returns Array of boss IDs that have been defeated
  */
-export function getDefeatedBossesFromDB(nk: Runtime.Nakama, userId: string): string[] {
+export function getDefeatedBossesFromDB(
+  nk: Runtime.Nakama,
+  userId: string,
+  context?: InventoryReadContext
+): string[] {
   const query = `
     SELECT boss_id FROM boss_defeats
     WHERE user_id = $1
@@ -540,14 +544,19 @@ export function getDefeatedBossesFromDB(nk: Runtime.Nakama, userId: string): str
   `;
 
   try {
-    const result = observedSqlQuery(nk, 'gear_db.getDefeatedBossesFromDB', query, [
-      userId,
-    ]) as BossDefeatRow[];
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.getDefeatedBossesFromDB',
+      query,
+      [userId],
+      context
+    ) as BossDefeatRow[];
     if (!result || result.length === 0) {
       return [];
     }
     return result.map((row: BossDefeatRow) => row.boss_id);
   } catch (error) {
+    if (context) throw error;
     logger.error('Failed to retrieve defeated bosses', { error: String(error) });
     return [];
   }
