@@ -5,6 +5,7 @@
 
 import { Runtime } from '../types/nakama';
 import { safeParse } from './safeParse';
+import { observedSqlQuery } from './sql-observability';
 
 /**
  * Standard storage collection names
@@ -326,7 +327,8 @@ export function parseRecordMetadata(metadata: unknown): Record<string, any> {
 export function readPvpMatch(
   nk: Runtime.Nakama,
   matchId: string,
-  callerUserId: string
+  callerUserId: string,
+  sqlContext?: { rpc: string; logger: Runtime.Logger }
 ): Runtime.StorageObject[] {
   const own = nk.storageRead([{ collection: 'pvp_matches', key: matchId, userId: callerUserId }]);
   if (own.length > 0 || typeof nk.sqlQuery !== 'function') {
@@ -334,13 +336,17 @@ export function readPvpMatch(
   }
   let ownerId: string | undefined;
   try {
-    const rows = nk.sqlQuery(
+    const rows = observedSqlQuery(
+      nk,
+      'pvp_matches.owner_lookup',
       "SELECT user_id FROM storage WHERE collection = 'pvp_matches' AND key = $1 LIMIT 1",
-      [matchId]
+      [matchId],
+      sqlContext
     ) as Array<{ user_id?: unknown }>;
     const raw = rows && rows.length > 0 ? rows[0].user_id : undefined;
     ownerId = raw === undefined || raw === null ? undefined : String(raw);
   } catch {
+    // Preserve the failed lookup response; the observer records the SQL failure.
     return own;
   }
   if (!ownerId || ownerId === callerUserId) {
