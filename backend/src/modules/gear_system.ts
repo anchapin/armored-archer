@@ -870,6 +870,57 @@ export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/equip_gear', rpcEquipGear);
 }
 
+/** Read and format the persisted loadout without a success-shaped fallback. */
+function readEquippedGear(
+  nk: Runtime.Nakama,
+  userId: string,
+  context: { rpc: string; logger: Runtime.Logger }
+): { [slot: string]: string | null } {
+  const loadout = getPlayerLoadoutFromDB(nk, userId, context);
+  const equipped: { [slot: string]: string | null } = {};
+  for (const slot of ['helm', 'armor', 'bow', 'arrow', 'amulet'] as const) {
+    equipped[slot] = loadout[`${slot}_item_id`];
+  }
+  return equipped;
+}
+
+type LoadoutRpc = (
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+) => string;
+
+/** Keep SQL exceptions safe at the synchronous loadout RPC boundary. */
+function withLoadoutSqlErrors(handler: LoadoutRpc): LoadoutRpc {
+  return (ctx, logger, nk, payload) => {
+    try {
+      return handler(ctx, logger, nk, payload);
+    } catch {
+      return createErrorResponse('DATABASE_ERROR', 'Failed to update gear loadout');
+    }
+  };
+}
+
+/** Preserve the equip failure audit envelope and caller-supplied reason. */
+function recordEquipFailure(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  details: Record<string, unknown>,
+  reason: string
+): void {
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'equip_gear',
+    'player_inventory',
+    details,
+    'failure',
+    reason
+  );
+}
+
 /**
  * Handles equipping gear to a specific slot.
  *
@@ -890,12 +941,8 @@ export function registerRpcEquipGear(initializer: Runtime.Initializer): void {
  *   "gear": { ... }
  * }
  */
-export function rpcEquipGear(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
+const equipGearWithSqlContext: LoadoutRpc = (ctx, logger, nk, payload) => {
+  const context = { rpc: 'armored_archer/equip_gear', logger };
   logger.info('Equip gear called for user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.equip_gear, payload, 'equip_gear');
@@ -906,17 +953,13 @@ export function rpcEquipGear(
   const request = validation.data;
 
   // Get gear from database
-  const gear = getPlayerGearFromDB(nk, ctx.userId).find((g) => g.id === request.gear_id);
+  const gear = getPlayerGearFromDB(nk, ctx.userId, context).find((g) => g.id === request.gear_id);
 
   if (!gear) {
-    logAudit(
+    recordEquipFailure(
       nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'equip_gear',
-      'player_inventory',
+      ctx,
       { gear_id: request.gear_id, slot: request.slot, error: 'not_found' },
-      'failure',
       'Gear not found in inventory'
     );
     return JSON.stringify({
@@ -925,14 +968,10 @@ export function rpcEquipGear(
   }
 
   if (gear.type !== request.slot) {
-    logAudit(
+    recordEquipFailure(
       nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'equip_gear',
-      'player_inventory',
+      ctx,
       { gear_id: request.gear_id, slot: request.slot, error: 'type_mismatch' },
-      'failure',
       'Gear type does not match slot'
     );
     return JSON.stringify({
@@ -941,17 +980,13 @@ export function rpcEquipGear(
   }
 
   // Equip item in database
-  const equipResult = equipItemInDB(nk, ctx.userId, request.gear_id, request.slot);
+  const equipResult = equipItemInDB(nk, ctx.userId, request.gear_id, request.slot, context);
 
   if (!equipResult.success) {
-    logAudit(
+    recordEquipFailure(
       nk,
-      ctx.userId,
-      ctx.ipAddress ?? null,
-      'equip_gear',
-      'player_inventory',
+      ctx,
       { gear_id: request.gear_id, slot: request.slot, error: equipResult.error },
-      'failure',
       equipResult.error || 'Failed to equip gear'
     );
     return JSON.stringify({
@@ -960,16 +995,7 @@ export function rpcEquipGear(
   }
 
   // Get updated loadout from database
-  const updatedLoadout = getPlayerLoadoutFromDB(nk, ctx.userId);
-
-  // Convert to equipped_gear format
-  const equipped_gear: { [slot: string]: string | null } = {
-    helm: updatedLoadout.helm_item_id,
-    armor: updatedLoadout.armor_item_id,
-    bow: updatedLoadout.bow_item_id,
-    arrow: updatedLoadout.arrow_item_id,
-    amulet: updatedLoadout.amulet_item_id,
-  };
+  const equipped_gear = readEquippedGear(nk, ctx.userId, context);
 
   logAudit(
     nk,
@@ -992,7 +1018,10 @@ export function rpcEquipGear(
     equipped_gear: equipped_gear,
     gear: gear,
   });
-}
+};
+
+/** Synchronous SQL-safe loadout RPC. */
+export const rpcEquipGear = withLoadoutSqlErrors(equipGearWithSqlContext);
 
 /**
  * Registers the unequip gear RPC endpoint.
@@ -1022,12 +1051,8 @@ export function registerRpcUnequipGear(initializer: Runtime.Initializer): void {
  *   "equipped_gear": { ... }
  * }
  */
-export function rpcUnequipGear(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): string {
+const unequipGearWithSqlContext: LoadoutRpc = (ctx, logger, nk, payload) => {
+  const context = { rpc: 'armored_archer/unequip_gear', logger };
   logger.info('Unequip gear called for user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.unequip_gear, payload, 'unequip_gear');
@@ -1038,7 +1063,7 @@ export function rpcUnequipGear(
   const request = validation.data;
 
   // Check if gear is equipped in the slot
-  const currentLoadout = getPlayerLoadoutFromDB(nk, ctx.userId);
+  const currentLoadout = getPlayerLoadoutFromDB(nk, ctx.userId, context);
   const slotItemKey = `${request.slot}_item_id` as keyof typeof currentLoadout;
 
   if (!currentLoadout[slotItemKey]) {
@@ -1058,7 +1083,7 @@ export function rpcUnequipGear(
   }
 
   // Unequip item from database
-  const unequipResult = unequipItemInDB(nk, ctx.userId, request.slot);
+  const unequipResult = unequipItemInDB(nk, ctx.userId, request.slot, context);
 
   if (!unequipResult.success) {
     logAudit(
@@ -1077,9 +1102,7 @@ export function rpcUnequipGear(
   }
 
   // Get updated loadout from database
-  const updatedLoadout = getPlayerLoadoutFromDB(nk, ctx.userId);
-
-  // Convert to equipped_gear format
+  const updatedLoadout = getPlayerLoadoutFromDB(nk, ctx.userId, context);
   const equipped_gear: { [slot: string]: string | null } = {
     helm: updatedLoadout.helm_item_id,
     armor: updatedLoadout.armor_item_id,
@@ -1102,7 +1125,10 @@ export function rpcUnequipGear(
     success: true,
     equipped_gear: equipped_gear,
   });
-}
+};
+
+/** Synchronous SQL-safe loadout RPC. */
+export const rpcUnequipGear = withLoadoutSqlErrors(unequipGearWithSqlContext);
 
 /**
  * Registers the get inventory RPC endpoint.

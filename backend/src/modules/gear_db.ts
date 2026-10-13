@@ -306,11 +306,21 @@ export interface UpdateLoadoutResult {
   error?: string;
 }
 
+function failedLoadoutResult(
+  error: unknown,
+  context: InventoryReadContext | undefined,
+  message: string
+): UpdateLoadoutResult {
+  if (context) throw error;
+  return { success: false, error: `${message}: ${String(error)}` };
+}
+
 export function equipItemInDB(
   nk: Runtime.Nakama,
   userId: string,
   itemId: string,
-  slot: string
+  slot: string,
+  context?: InventoryReadContext
 ): UpdateLoadoutResult {
   const slotColumn = `${slot}_item_id`;
 
@@ -322,10 +332,13 @@ export function equipItemInDB(
 
   let gearType: string | null = null;
   try {
-    const verifyResult = observedSqlQuery(nk, 'gear_db.equipItemInDB', verifyQuery, [
-      itemId,
-      userId,
-    ]) as any[];
+    const verifyResult = observedSqlQuery(
+      nk,
+      'gear_db.equipItemInDB',
+      verifyQuery,
+      [itemId, userId],
+      context
+    ) as any[];
     if (!verifyResult || verifyResult.length === 0) {
       return {
         success: false,
@@ -342,10 +355,7 @@ export function equipItemInDB(
       };
     }
   } catch (error) {
-    return {
-      success: false,
-      error: `Failed to verify item: ${String(error)}`,
-    };
+    return failedLoadoutResult(error, context, 'Failed to verify item');
   }
 
   // Upsert the loadout
@@ -360,13 +370,10 @@ export function equipItemInDB(
   `;
 
   try {
-    observedSqlQuery(nk, 'gear_db.equipItemInDB', upsertQuery, [userId, itemId]);
+    observedSqlQuery(nk, 'gear_db.equipItemInDB', upsertQuery, [userId, itemId], context);
     return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: `Failed to update loadout: ${String(error)}`,
-    };
+    return failedLoadoutResult(error, context, 'Failed to update loadout');
   }
 }
 
@@ -381,7 +388,8 @@ export function equipItemInDB(
 export function unequipItemInDB(
   nk: Runtime.Nakama,
   userId: string,
-  slot: string
+  slot: string,
+  context?: InventoryReadContext
 ): UpdateLoadoutResult {
   const slotColumn = `${slot}_item_id`;
 
@@ -393,13 +401,10 @@ export function unequipItemInDB(
   `;
 
   try {
-    observedSqlQuery(nk, 'gear_db.unequipItemInDB', query, [userId]);
+    observedSqlQuery(nk, 'gear_db.unequipItemInDB', query, [userId], context);
     return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: `Failed to unequip item: ${String(error)}`,
-    };
+    return failedLoadoutResult(error, context, 'Failed to unequip item');
   }
 }
 
