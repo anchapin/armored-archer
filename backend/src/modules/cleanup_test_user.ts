@@ -1,10 +1,11 @@
-// Test-only RPC: armored_archer/cleanup_test_user
-// Clears a user's Nakama storage and game tables between integration tests.
-// Mirrors backend/src/modules/test_cleanup.ts but is sync (Nakama JS runtime
-// does not support async RPC handlers — see index.ts:770 / ADR-0008).
-// Cleanup runs as fire-and-forget async work after the RPC returns the ack.
-
+// Test-only cleanup: synchronous host calls per ADR-0008. Never deploy with
+// TEST_FIXTURE_RPCS_ENABLED=true. Both registration and execution fail closed.
 import { Runtime } from '../types/nakama';
+import { observedSqlQuery } from '../utils/sql-observability';
+import { isAdminUser } from './admin_auth';
+import { testFixtureRpcsEnabled } from './test_fixtures';
+
+const RPC_ID = 'armored_archer/cleanup_test_user';
 
 const CLEANUP_COLLECTIONS = [
   'player_inventory',
@@ -40,57 +41,76 @@ interface CleanupPayload {
   userId?: string;
 }
 
+function failure(error: string): string {
+  return JSON.stringify({ success: false, error });
+}
+
+export function cleanupTestUserEnabled(): boolean {
+  return testFixtureRpcsEnabled(process.env);
+}
+
 export function rpcCleanupTestUser(
-  _ctx: Runtime.Context,
+  ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
 ): string {
+  if (!cleanupTestUserEnabled()) return failure('cleanup_disabled');
+  if (!ctx.userId) return failure('not_authorized');
+
   let userId: string | undefined;
   try {
     const parsed = JSON.parse(payload || '{}') as CleanupPayload;
     userId = parsed.user_id ?? parsed.userId;
   } catch {
-    return JSON.stringify({ success: false, error: 'invalid_payload' });
+    return failure('invalid_payload');
   }
-  if (!userId || typeof userId !== 'string') {
-    return JSON.stringify({ success: false, error: 'missing_user_id' });
+  if (!userId || typeof userId !== 'string') return failure('missing_user_id');
+
+  // A public server key is never an admin identity. Cross-user cleanup uses
+  // the existing parse-once allowlist; an empty or broken allowlist fails closed.
+  try {
+    if (userId !== ctx.userId && !isAdminUser(ctx.userId)) {
+      return failure('not_authorized');
+    }
+  } catch {
+    logger.error('Test cleanup authorization failed');
+    return failure('not_authorized');
   }
 
-  // Fire-and-forget async cleanup. The handler returns the ack immediately so
-  // the sync wrapper contract is honored. Real cleanup happens via
-  // nk.storageDelete (async) and nk.sqlQuery (async) below.
-  void runCleanup(nk, logger, userId);
-
-  return JSON.stringify({ success: true, user_id: userId, async: true });
+  const completed = runCleanup(nk, logger, userId);
+  if (!completed) return failure('cleanup_failed');
+  return JSON.stringify({ success: true, user_id: userId, async: false });
 }
 
 export function registerRpcCleanupTestUser(initializer: Runtime.Initializer): void {
+  if (!cleanupTestUserEnabled()) return;
   initializer.registerRpc('armored_archer/cleanup_test_user', rpcCleanupTestUser);
 }
 
-async function runCleanup(
-  nk: Runtime.Nakama,
-  logger: Runtime.Logger,
-  userId: string
-): Promise<void> {
-  logger.info(`cleanup_test_user: starting for ${userId}`);
-
+function runCleanup(nk: Runtime.Nakama, logger: Runtime.Logger, userId: string): boolean {
+  let completed = true;
   for (const collection of CLEANUP_COLLECTIONS) {
     try {
-      await nk.storageDelete([{ collection, key: userId, userId }]);
-    } catch (err) {
-      logger.debug(`cleanup_test_user: ${collection} storage delete: ${(err as Error).message}`);
+      nk.storageDelete([{ collection, key: userId, userId }]);
+    } catch {
+      completed = false;
+      logger.error('Test cleanup storage delete failed: collection=%s', collection);
     }
   }
 
   for (const table of CLEANUP_TABLES) {
     try {
-      await nk.sqlQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
-    } catch (err) {
-      logger.debug(`cleanup_test_user: ${table} delete: ${(err as Error).message}`);
+      observedSqlQuery(
+        nk,
+        'cleanup_test_user.delete.' + table,
+        `DELETE FROM ${table} WHERE user_id = $1`,
+        [userId],
+        { rpc: RPC_ID, logger }
+      );
+    } catch {
+      completed = false;
     }
   }
-
-  logger.info(`cleanup_test_user: finished for ${userId}`);
+  return completed;
 }
