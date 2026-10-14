@@ -1502,7 +1502,14 @@ export function recordBossDefeat(
 
   // Unlock modifier pools using database functions
   for (const modifierId of modifiersToUnlock) {
-    const unlockResult = unlockModifierPoolInDB(nk, ctx.userId, modifierId, 'boss_defeat', bossId);
+    const unlockResult = unlockModifierPoolInDB(
+      nk,
+      ctx.userId,
+      modifierId,
+      'boss_defeat',
+      bossId,
+      context
+    );
 
     if (unlockResult.success && unlockResult.newly_unlocked) {
       newlyUnlockedModifiers.push(modifierId);
@@ -1524,7 +1531,7 @@ export function recordBossDefeat(
   );
 
   // Get all unlocked modifiers for audit
-  const allUnlockedModifiers = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
+  const allUnlockedModifiers = getUnlockedModifierPoolsFromDB(nk, ctx.userId, context);
 
   // Audit the boss defeat
   logAudit(
@@ -1823,7 +1830,8 @@ function unlockModifierPools(
   nk: Runtime.Nakama,
   userId: string,
   logger: Runtime.Logger,
-  enemyType?: string
+  enemyType?: string,
+  context?: { rpc: string; logger: Runtime.Logger }
 ): string[] {
   const newlyUnlocked: string[] = [];
 
@@ -1836,7 +1844,8 @@ function unlockModifierPools(
         userId,
         modifierId,
         'enemy_defeat',
-        undefined
+        undefined,
+        context
       );
 
       if (unlockResult.success && unlockResult.newly_unlocked) {
@@ -2139,7 +2148,10 @@ function processStageCompletion(
       : undefined;
 
   // Unlock modifier pools from enemy defeats
-  const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type);
+  const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type, {
+    rpc: 'armored_archer/stage_complete',
+    logger,
+  });
 
   // Get player inventory (after unlocking modifier pools to get updated pools)
   const inventory = getPlayerInventory(nk, ctx.userId, logger, {
