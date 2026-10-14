@@ -280,3 +280,14 @@ copying driver error text and caller ID after the safe observer. Tests inspect
 all catch/observer log arguments, not just the observer subset, across all five
 handlers and unavailable native metrics. No query, response, admin gate or
 replay behavior changes.
+
+### Context-free gear read catch diagnostics
+
+Six legacy gear read helpers retain their existing empty/null/zero/false
+fallbacks when called without strict RPC context. Their secondary catch logs
+now use fixed text only, rather than copying driver errors after the SQL
+observer already emitted safe diagnostics. Strict-context callers still
+rethrow. Each query failure still attempts one native operation-tagged counter,
+even if metrics are unavailable. Queries, scope, return values and rewards do
+not change. Legacy async notification/cleanup paths and empty boss-upsert
+semantics remain separate review scope; #1462 is not finished.

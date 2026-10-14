@@ -216,7 +216,7 @@ export function getPlayerGearFromDB(
     }));
   } catch (error) {
     if (context) throw error;
-    logger.error('Failed to retrieve player gear', { error: String(error) });
+    logger.error('Failed to retrieve player gear');
     return [];
   }
 }
@@ -281,7 +281,7 @@ export function getPlayerLoadoutFromDB(
     };
   } catch (error) {
     if (context) throw error;
-    logger.error('Failed to retrieve player loadout', { error: String(error) });
+    logger.error('Failed to retrieve player loadout');
     return {
       helm_item_id: null,
       armor_item_id: null,
@@ -570,7 +570,7 @@ export function getDefeatedBossesFromDB(
     return result.map((row: BossDefeatRow) => row.boss_id);
   } catch (error) {
     if (context) throw error;
-    logger.error('Failed to retrieve defeated bosses', { error: String(error) });
+    logger.error('Failed to retrieve defeated bosses');
     return [];
   }
 }
@@ -608,7 +608,7 @@ export function getBossDefeatCount(
     return 0;
   } catch (error) {
     if (context) throw error;
-    logger.error('Failed to retrieve boss defeat count', { error: String(error) });
+    logger.error('Failed to retrieve boss defeat count');
     return 0;
   }
 }
@@ -719,7 +719,7 @@ export function getUnlockedModifierPoolsFromDB(
     return result.map((row: UnlockedModifierPoolRow) => row.modifier_id);
   } catch (error) {
     if (context) throw error;
-    logger.error('Failed to retrieve unlocked modifier pools', { error: String(error) });
+    logger.error('Failed to retrieve unlocked modifier pools');
     return [];
   }
 }
@@ -748,8 +748,8 @@ export function isModifierPoolUnlocked(
       modifierId,
     ]) as UnlockedModifierPoolRow[];
     return result && result.length > 0;
-  } catch (error) {
-    logger.error('Failed to check if modifier pool is unlocked', { error: String(error) });
+  } catch {
+    logger.error('Failed to check if modifier pool is unlocked');
     return false;
   }
 }
