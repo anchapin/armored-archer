@@ -78,8 +78,10 @@ describe('DynamicDifficulty', () => {
       storageRead: mockStorageRead,
       storageList: jest.fn().mockResolvedValue([]),
       // Real inventory reads now fail closed; reward-neutrality fixtures
-      // supply successful empty SQL results rather than a missing host API.
-      sqlQuery: jest.fn().mockReturnValue([]),
+      // supply real-shaped successful reads and a persisted loot item ID.
+      sqlQuery: jest.fn((sql: string) =>
+        sql.includes('INSERT INTO inventory_items') ? [{ item_id: 'neutrality-item' }] : []
+      ),
       env: {},
     } as any;
 

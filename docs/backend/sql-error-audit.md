@@ -271,3 +271,16 @@ or state writes, rather than using empty-on-error gear bonuses. SQL observer
 logs/counters carry fixed operation and RPC labels. Existing persisted match
 states still bypass fresh inventory reads, and empty inventories remain valid.
 No damage formula, participant gate, reward, settlement or query scope changes.
+
+### Stage loot insert exhaustion (owner-approved gameplay decision)
+
+Stage loot keeps the existing three insert attempts. Each thrown SQL attempt
+logs/meters fixed stage RPC/operation tags; warnings and failure audits no longer
+copy driver text. Exhausted attempts, including missing returned item IDs, now
+fail completion through the safe stage handler instead of reporting successful
+stage/XP with a loot error. Successful retry and reward behavior are unchanged.
+
+Earlier claim, best-of, boss and pool writes can remain. The claim rejects an
+immediate retry, and the retained best-of record can make a later non-improving
+retry a no-loot/no-XP success. This makes failure visible, not recoverable or
+transactional: no claim clearing, rollback, reconciliation or new retry is added.

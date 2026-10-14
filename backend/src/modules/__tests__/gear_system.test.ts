@@ -1071,7 +1071,7 @@ describe('gear_system', () => {
       expect(parsed.newly_unlocked_modifiers).toContain('fire_arrow');
     });
 
-    it('should return dropped:false when database insert throws (issue #1080)', async () => {
+    it('should fail stage completion when all loot inserts throw', async () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
@@ -1089,10 +1089,16 @@ describe('gear_system', () => {
       const result = rpcStageComplete(mockCtx, mockLogger, mockNk, payload);
       const parsed = JSON.parse(result);
 
-      expect(parsed.success).toBe(true);
-      expect(parsed.loot.dropped).toBe(false);
-      expect(parsed.loot.gear).toBeNull();
-      expect(parsed.loot.error).toBe('PERSISTENCE_FAILED');
+      expect(parsed).toEqual({
+        success: false,
+        error: 'Failed to process stage completion',
+        error_code: 'INTERNAL_ERROR',
+      });
+      expect(
+        mockNk.sqlQuery.mock.calls.filter(([sql]: [string]) =>
+          sql.includes('INSERT INTO inventory_items')
+        )
+      ).toHaveLength(3);
     });
 
     it('should retry insert and succeed on second attempt', async () => {
