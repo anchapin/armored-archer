@@ -1276,11 +1276,23 @@ export function rpcUnlockModifierPool(
 
   const modifierId = validation.data.modifier_id;
 
-  // Unlock modifier pool using database function
-  const unlockResult = unlockModifierPoolInDB(nk, ctx.userId, modifierId, 'manual');
-
-  if (!unlockResult.success) {
-    logger.error('Failed to unlock modifier pool: %s', unlockResult.error);
+  const context = { rpc: 'armored_archer/unlock_modifier_pool', logger };
+  let unlockedPools: string[];
+  try {
+    const unlockResult = unlockModifierPoolInDB(
+      nk,
+      ctx.userId,
+      modifierId,
+      'manual',
+      undefined,
+      context
+    );
+    if (!unlockResult.success) {
+      return createErrorResponse('INTERNAL_ERROR', 'Failed to unlock modifier pool');
+    }
+    unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId, context);
+  } catch {
+    // The SQL observer already records fixed labels without driver details.
     logAudit(
       nk,
       ctx.userId,
@@ -1289,13 +1301,10 @@ export function rpcUnlockModifierPool(
       'modifiers',
       { modifier_id: modifierId },
       'failure',
-      unlockResult.error
+      'Failed to unlock modifier pool'
     );
     return createErrorResponse('INTERNAL_ERROR', 'Failed to unlock modifier pool');
   }
-
-  // Get all unlocked modifier pools from database
-  const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
 
   logger.info('Unlocked modifier pool %s for user %s', modifierId, ctx.userId);
 
