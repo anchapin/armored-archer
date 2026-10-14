@@ -30,6 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           AUTH_FILE=$(mktemp)
+          printf '%s\n' '{"auths":{}}' > "$AUTH_FILE"
           trap 'rm -f "$AUTH_FILE"' EXIT
           printf '%s' "$GH_TOKEN" | skopeo login --authfile "$AUTH_FILE" --username "$GH_ACTOR" --password-stdin ghcr.io
           TARGET="ghcr.io/${GH_REPOSITORY,,}/ci-postgres"
