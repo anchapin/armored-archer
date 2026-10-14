@@ -39,7 +39,7 @@ jobs:
             [[ "$tag" =~ ^(14|15)-alpine$ ]]
             [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
             skopeo copy --authfile "$AUTH_FILE" --all --preserve-digests \
-              "docker://public.ecr.aws/docker/library/postgres@$digest" "docker://$TARGET:$tag"
+              "docker://docker.io/library/postgres@$digest" "docker://$TARGET:$tag"
             actual=$(skopeo inspect --authfile "$AUTH_FILE" --raw "docker://$TARGET:$tag" | sha256sum | cut -d' ' -f1)
             test "sha256:$actual" = "$digest"
             printf '%s\n' "$TARGET@$digest" >> "$GITHUB_STEP_SUMMARY"
