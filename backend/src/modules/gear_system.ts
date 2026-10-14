@@ -1482,10 +1482,11 @@ export function recordBossDefeat(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  bossId: string
+  bossId: string,
+  context?: { rpc: string; logger: Runtime.Logger }
 ): { defeat_count: number; newly_unlocked_modifiers: string[] } {
   // Record the boss defeat in the database
-  const defeatResult = recordBossDefeatInDB(nk, ctx.userId, bossId);
+  const defeatResult = recordBossDefeatInDB(nk, ctx.userId, bossId, context);
 
   if (!defeatResult.success) {
     logger.error('Failed to record boss defeat: %s', defeatResult.error);
@@ -2131,7 +2132,10 @@ function processStageCompletion(
   // Process boss defeat if applicable
   const bossDefeatResult =
     request.boss_defeated && request.boss_id
-      ? recordBossDefeat(nk, ctx, logger, request.boss_id)
+      ? recordBossDefeat(nk, ctx, logger, request.boss_id, {
+          rpc: 'armored_archer/stage_complete',
+          logger,
+        })
       : undefined;
 
   // Unlock modifier pools from enemy defeats

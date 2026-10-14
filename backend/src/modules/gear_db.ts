@@ -473,7 +473,8 @@ export interface RecordBossDefeatResult {
 export function recordBossDefeatInDB(
   nk: Runtime.Nakama,
   userId: string,
-  bossId: string
+  bossId: string,
+  context?: InventoryReadContext
 ): RecordBossDefeatResult {
   // Check if this is the first defeat
   const checkQuery = `
@@ -485,10 +486,13 @@ export function recordBossDefeatInDB(
   let defeatCount = 1;
 
   try {
-    const checkResult = observedSqlQuery(nk, 'gear_db.recordBossDefeatInDB', checkQuery, [
-      userId,
-      bossId,
-    ]) as any[];
+    const checkResult = observedSqlQuery(
+      nk,
+      'gear_db.recordBossDefeatInDB',
+      checkQuery,
+      [userId, bossId],
+      context
+    ) as any[];
 
     if (checkResult && checkResult.length > 0) {
       defeatCount = checkResult[0].defeat_count + 1;
@@ -507,10 +511,13 @@ export function recordBossDefeatInDB(
       RETURNING defeat_count
     `;
 
-    const upsertResult = observedSqlQuery(nk, 'gear_db.recordBossDefeatInDB', upsertQuery, [
-      userId,
-      bossId,
-    ]) as any[];
+    const upsertResult = observedSqlQuery(
+      nk,
+      'gear_db.recordBossDefeatInDB',
+      upsertQuery,
+      [userId, bossId],
+      context
+    ) as any[];
     if (upsertResult && upsertResult.length > 0) {
       defeatCount = upsertResult[0].defeat_count;
     }
@@ -521,6 +528,7 @@ export function recordBossDefeatInDB(
       first_defeat: isFirstDefeat,
     };
   } catch (error) {
+    if (context) throw error;
     return {
       success: false,
       defeat_count: 0,

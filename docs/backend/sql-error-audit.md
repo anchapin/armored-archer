@@ -208,3 +208,18 @@ A failure can follow the existing claim and best-of stage-completion writes.
 The claim remains consumed, so an immediate replay is rejected; this patch adds
 no rollback, transaction or write retry. Boss/modifier writes, boss verification,
 no-improvement pool reads and other gear paths remain separate follow-up scope.
+
+### Stage-completion boss record SQL
+
+The stage reward path passes strict RPC context through `recordBossDefeat` to
+`recordBossDefeatInDB`. Failure of the existing defeat-count SELECT or boss
+upsert now stops completion through the safe stage error handler rather than
+returning a zero-count result and continuing rewards. The SQL observer emits
+fixed operation/RPC diagnostics and one native counter. Context-free helper
+callers keep the previous result contract; successful first/repeat defeats and
+modifier/XP processing are unchanged.
+
+The claim and best-of completion writes precede the boss SQL and stay consumed
+on failure. There is no write retry or rollback. An upsert error does not prove
+that no database write occurred. Pool unlock failures, empty upsert returns,
+boss verification reads and enemy unlocks remain separate audit scope.
