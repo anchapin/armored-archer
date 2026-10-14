@@ -1075,9 +1075,10 @@ describe('gear_system', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
-      // Make sqlQuery throw on all attempts to simulate persistent DB failure
-      mockNk.sqlQuery = jest.fn().mockImplementation(() => {
-        throw new Error('DB connection failed');
+      // Inventory reads succeed; fail only the insert attempts under test.
+      mockNk.sqlQuery = jest.fn().mockImplementation((sql: string) => {
+        if (sql.includes('INSERT INTO inventory_items')) throw new Error('DB connection failed');
+        return [];
       });
 
       const payload = JSON.stringify({
@@ -1098,13 +1099,12 @@ describe('gear_system', () => {
       mockNk.storageRead = jest.fn().mockReturnValue([]);
       jest.spyOn(Math, 'random').mockReturnValue(0.1);
 
-      // First call throws synchronously, second succeeds
+      // Fail the first insert, not the earlier inventory SELECT.
       let callCount = 0;
-      mockNk.sqlQuery = jest.fn().mockImplementation(() => {
+      mockNk.sqlQuery = jest.fn().mockImplementation((sql: string) => {
+        if (!sql.includes('INSERT INTO inventory_items')) return [];
         callCount++;
-        if (callCount === 1) {
-          throw new Error('DB connection failed');
-        }
+        if (callCount === 1) throw new Error('DB connection failed');
         return [{ item_id: 'gear-123' }];
       });
 
@@ -1120,6 +1120,7 @@ describe('gear_system', () => {
       expect(parsed.loot.dropped).toBe(true);
       expect(parsed.loot.gear).toBeDefined();
       expect(parsed.loot.gear.id).toBe('gear-123');
+      expect(callCount).toBe(2);
     });
   });
 
