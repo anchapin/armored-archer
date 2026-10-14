@@ -521,7 +521,19 @@ export function rpcSubmitCombatAction(
       }
       const match = matchValidation.match;
 
-      const matchState = getOrCreateMatchState(nk, action.match_id, match, logger);
+      let matchState: MatchState;
+      try {
+        matchState = getOrCreateMatchState(nk, action.match_id, match, logger, {
+          rpc: 'armored_archer/submit_combat_action',
+          logger,
+        });
+      } catch {
+        return JSON.stringify({
+          success: false,
+          error: 'Failed to load combat inventory',
+          error_code: 'DATABASE_ERROR',
+        });
+      }
 
       // Handle turn timeout
       if (isTurnTimedOut(matchState)) {
@@ -711,8 +723,19 @@ export function rpcGetMatchState(
     if (match.status !== 'active') return JSON.stringify({ error: 'Match state not found' });
     // Before the first shot, project the initial state without writing. A read
     // must not race a combat action and overwrite its newly persisted turn.
-    const state = getOrCreateMatchState(nk, request.match_id, match, logger);
-    return JSON.stringify(state);
+    try {
+      const state = getOrCreateMatchState(nk, request.match_id, match, logger, {
+        rpc: 'armored_archer/get_match_state',
+        logger,
+      });
+      return JSON.stringify(state);
+    } catch {
+      return JSON.stringify({
+        success: false,
+        error: 'Failed to load combat inventory',
+        error_code: 'DATABASE_ERROR',
+      });
+    }
   });
 }
 
@@ -729,7 +752,8 @@ function getOrCreateMatchState(
   nk: Runtime.Nakama,
   matchId: string,
   match: PvPMatch,
-  logger: Runtime.Logger
+  logger: Runtime.Logger,
+  context?: { rpc: string; logger: Runtime.Logger }
 ): MatchState {
   const stateObjects = nk.storageRead([
     {
@@ -757,8 +781,8 @@ function getOrCreateMatchState(
     }
   }
 
-  const creatorStats = getPlayerStats(nk, match.creator_id, logger);
-  const opponentStats = getPlayerStats(nk, match.opponent_id, logger);
+  const creatorStats = getPlayerStats(nk, match.creator_id, logger, context);
+  const opponentStats = getPlayerStats(nk, match.opponent_id, logger, context);
 
   const baseHealth = 100;
   const maxHealth = baseHealth + creatorStats.level * 10;
@@ -983,7 +1007,12 @@ function calculateCrit(critRate: number): boolean {
  * @param logger - Nakama logger instance
  * @returns Player stats with gear modifier bonuses applied
  */
-function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logger): PlayerStats {
+function getPlayerStats(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger,
+  context?: { rpc: string; logger: Runtime.Logger }
+): PlayerStats {
   const objects = wrapStorageRead(
     nk,
     [
@@ -1034,7 +1063,7 @@ function getPlayerStats(nk: Runtime.Nakama, userId: string, logger: Runtime.Logg
   }
 
   // Apply gear modifier bonuses from equipped gear
-  const inventory = getPlayerInventory(nk, userId, logger);
+  const inventory = getPlayerInventory(nk, userId, logger, context);
   const gearBonuses = getEquippedGearModifierBonuses(inventory);
 
   // Return stats with gear bonuses applied

@@ -261,3 +261,13 @@ can be complete; loot can already have been inserted and boss audit/analytics
 can already have run. This is not a rollback or a claim that no reward was
 written. XP is not written after this failure and immediate retry remains
 rejected. No query reorder, write retry or verification-policy change is added.
+
+### Combat initialization inventory reads
+
+New combat-state initialization passes the calling RPC's strict SQL context to
+both players' inventory reads. `get_match_state` and `submit_combat_action`
+return a safe `DATABASE_ERROR` if initialization fails, before action processing
+or state writes, rather than using empty-on-error gear bonuses. SQL observer
+logs/counters carry fixed operation and RPC labels. Existing persisted match
+states still bypass fresh inventory reads, and empty inventories remain valid.
+No damage formula, participant gate, reward, settlement or query scope changes.
