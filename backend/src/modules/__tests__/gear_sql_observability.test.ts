@@ -26,10 +26,11 @@ describe('gear SQL error observability through real database helpers', () => {
       return [];
     });
     nk.metricsCounterAdd = jest.fn();
+    const runtimeLogger = createMockLogger();
     const response = JSON.parse(
       rpcGenerateGear(
         createMockContext(),
-        createMockLogger(),
+        runtimeLogger,
         nk,
         JSON.stringify({ stage_id: 'stage_1', boss_defeated: false })
       )
@@ -37,13 +38,15 @@ describe('gear SQL error observability through real database helpers', () => {
     expect(response.success).not.toBe(true);
     expect(response.error_code).toBe('DATABASE_ERROR');
     expect(JSON.stringify(response)).not.toContain('private');
-    expect(logger.error).toHaveBeenCalledWith('Database query failed', {
-      operation: 'gear_db.insertGearItem',
-    });
+    expect(runtimeLogger.error).toHaveBeenCalledWith(
+      'Database query failed: rpc=%s op=%s',
+      'armored_archer/generate_gear',
+      'gear_db.insertGearItem'
+    );
     expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(1);
     expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
       'db_errors_total',
-      { op: 'gear_db.insertGearItem' },
+      { op: 'gear_db.insertGearItem', rpc: 'armored_archer/generate_gear' },
       1
     );
   });
