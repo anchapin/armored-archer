@@ -363,9 +363,10 @@ function createReplayRpc<Name extends keyof ReplayRequests>(
         return createValidationErrorResponse(name, validation.error);
       }
       return handle(validation.data, ctx, logger, nk);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(failureMessage, { error: errorMessage, userId: ctx.userId });
+    } catch {
+      // SQL observer already supplies fixed RPC/operation diagnostics.
+      // Never copy driver errors or private caller details into this catch.
+      logger.error(failureMessage);
       return JSON.stringify({ success: false, error: 'Internal server error' });
     }
   };

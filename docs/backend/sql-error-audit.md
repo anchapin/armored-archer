@@ -271,3 +271,12 @@ or state writes, rather than using empty-on-error gear bonuses. SQL observer
 logs/counters carry fixed operation and RPC labels. Existing persisted match
 states still bypass fresh inventory reads, and empty inventories remain valid.
 No damage formula, participant gate, reward, settlement or query scope changes.
+
+### Replay terminal catch diagnostics
+
+Replay RPCs already fail safely with SQL operation/RPC logs and native metrics.
+Their shared terminal catch now logs only its fixed failure message instead of
+copying driver error text and caller ID after the safe observer. Tests inspect
+all catch/observer log arguments, not just the observer subset, across all five
+handlers and unavailable native metrics. No query, response, admin gate or
+replay behavior changes.

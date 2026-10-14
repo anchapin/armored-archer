@@ -416,11 +416,7 @@ describe('synchronous runtime contract (issue #1462)', () => {
       rpcFlagMatchForQa,
       JSON.stringify({ match_id: 'm1', reason: 'suspicious' }),
     ],
-    [
-      'add_debug_notes',
-      rpcAddDebugNotes,
-      JSON.stringify({ match_id: 'm1', notes: 'note' }),
-    ],
+    ['add_debug_notes', rpcAddDebugNotes, JSON.stringify({ match_id: 'm1', notes: 'note' })],
     [
       'reconstruct_match_state',
       rpcReconstructMatchState,
@@ -462,11 +458,29 @@ describe('synchronous runtime contract (issue #1462)', () => {
       );
 
       const fixedErrorCalls = mockLogger.error.mock.calls.filter(
-        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Database query failed')
+        (call: unknown[]) =>
+          typeof call[0] === 'string' && call[0].includes('Database query failed')
       );
       expect(fixedErrorCalls.length).toBeGreaterThan(0);
-      const loggedText = JSON.stringify(fixedErrorCalls);
+      const loggedText = JSON.stringify(mockLogger.error.mock.calls);
       expect(loggedText).not.toContain('secret DSN details');
+      expect(loggedText).not.toContain(mockCtx.userId);
+      expect(mockNk.metricsCounterAdd).toHaveBeenCalledTimes(1);
     }
   );
+  it.each(handlers)('%s keeps SQL failure safe if metrics fail', (_rpcName, handler, payload) => {
+    mockNk.sqlQuery.mockImplementation(() => {
+      throw new Error('private driver token');
+    });
+    mockNk.metricsCounterAdd.mockImplementation(() => {
+      throw new Error('metrics down');
+    });
+    expect(JSON.parse(handler(mockCtx, mockLogger, mockNk, payload))).toEqual({
+      success: false,
+      error: 'Internal server error',
+    });
+    expect(mockNk.metricsCounterAdd).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain('private driver token');
+    expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain(mockCtx.userId);
+  });
 });
