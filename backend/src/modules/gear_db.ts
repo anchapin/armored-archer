@@ -84,7 +84,8 @@ export interface InsertGearResult {
 export function insertGearItem(
   nk: Runtime.Nakama,
   userId: string,
-  gear: GearItem
+  gear: GearItem,
+  context?: InventoryReadContext
 ): InsertGearResult {
   const query = `
     INSERT INTO inventory_items (
@@ -112,15 +113,13 @@ export function insertGearItem(
     // Convert modifiers array to JSONB
     const modifiersJson = JSON.stringify(gear.modifiers);
 
-    const result = observedSqlQuery(nk, 'gear_db.insertGearItem', query, [
-      userId,
-      gear.type,
-      gear.name,
-      gear.rarity,
-      gear.level,
-      statsJson,
-      modifiersJson,
-    ]) as any[];
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.insertGearItem',
+      query,
+      [userId, gear.type, gear.name, gear.rarity, gear.level, statsJson, modifiersJson],
+      context
+    ) as any[];
 
     if (result && result.length > 0) {
       return {
@@ -134,6 +133,7 @@ export function insertGearItem(
       error: 'Failed to insert gear item - no rows returned',
     };
   } catch (error) {
+    if (context) throw error;
     return {
       success: false,
       error: `Failed to insert gear item: ${String(error)}`,

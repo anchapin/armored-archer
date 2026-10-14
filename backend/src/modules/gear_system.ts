@@ -809,56 +809,67 @@ export function rpcGenerateGear(
 
   const request = validation.data;
 
-  // Gear lives in the inventory_items table (gear_db.ts); every other gear
-  // RPC reads from there, so generated gear must be written there too.
-  const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId);
-  const gear = generateGearItem(request.stage_id, unlockedPools, logger);
+  const context = { rpc: 'armored_archer/generate_gear', logger };
+  try {
+    // Gear lives in the inventory_items table (gear_db.ts); every other gear
+    // RPC reads from there, so generated gear must be written there too.
+    const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId, context);
+    const gear = generateGearItem(request.stage_id, unlockedPools, logger);
 
-  const insertResult = insertGearItem(nk, ctx.userId, gear);
-  if (!insertResult.success || !insertResult.item_id) {
-    logger.error('Failed to save generated gear: %s', insertResult.error ?? 'unknown');
+    const insertResult = insertGearItem(nk, ctx.userId, gear, context);
+    if (!insertResult.success || !insertResult.item_id) {
+      logger.error('Failed to save generated gear');
+      return generatedGearFailure(nk, ctx, request.stage_id);
+    }
+    gear.id = insertResult.item_id;
+
+    const dbInventory = getFullInventoryFromDB(nk, ctx.userId, context);
+
+    logger.info('Generated gear %s (%s) for user %s', gear.name, gear.rarity, ctx.userId);
+
     logAudit(
       nk,
       ctx.userId,
       ctx.ipAddress ?? null,
       'generate_gear',
       'player_inventory',
-      { stage_id: request.stage_id },
-      'failure',
-      'Failed to save generated gear'
+      {
+        stage_id: request.stage_id,
+        gear_id: gear.id,
+        gear_rarity: gear.rarity,
+        gear_type: gear.type,
+        inventory_size: dbInventory.gear.length,
+      },
+      'success'
     );
-    return createErrorResponse('DATABASE_ERROR', 'Failed to save generated gear');
+
+    return JSON.stringify({
+      success: true,
+      gear: gear,
+      inventory: {
+        gear: dbInventory.gear,
+        equipped_gear: dbInventory.equipped_gear,
+      },
+    });
+  } catch {
+    // Strict helpers already emitted fixed operation/RPC tags without driver text.
+    return generatedGearFailure(nk, ctx, request.stage_id);
   }
-  gear.id = insertResult.item_id;
+}
 
-  const dbInventory = getFullInventoryFromDB(nk, ctx.userId);
-
-  logger.info('Generated gear %s (%s) for user %s', gear.name, gear.rarity, ctx.userId);
-
+/** Keep insert and readback failures in the same existing safe audit envelope. */
+function generatedGearFailure(nk: Runtime.Nakama, ctx: Runtime.Context, stageId: string): string {
   logAudit(
     nk,
     ctx.userId,
     ctx.ipAddress ?? null,
     'generate_gear',
     'player_inventory',
-    {
-      stage_id: request.stage_id,
-      gear_id: gear.id,
-      gear_rarity: gear.rarity,
-      gear_type: gear.type,
-      inventory_size: dbInventory.gear.length,
-    },
-    'success'
+    { stage_id: stageId },
+    'failure',
+    'Failed to save generated gear'
   );
-
-  return JSON.stringify({
-    success: true,
-    gear: gear,
-    inventory: {
-      gear: dbInventory.gear,
-      equipped_gear: dbInventory.equipped_gear,
-    },
-  });
+  return createErrorResponse('DATABASE_ERROR', 'Failed to save generated gear');
 }
 
 /**

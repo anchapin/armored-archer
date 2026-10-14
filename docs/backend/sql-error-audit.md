@@ -177,3 +177,18 @@ A readback failure after insertion can mean the pool is already unlocked. This
 slice does not add rollback, atomicity or write retries. No auth, reward policy,
 schema or deployment changes. Other gear callers and legacy modules still need
 review; #1462 remains open.
+
+### Manual gear generation
+
+`generate_gear` supplies strict SQL context to its initial modifier-pool read,
+gear insert and full inventory readback. SQL errors return safe `DATABASE_ERROR`
+and fixed failure-audit text rather than success with empty inventory or gear
+rolled against a failed pool read. Each failed query records fixed RPC/operation
+logs and one native metric. Context-free insert helper callers retain their
+existing failure result. Queries, generation/drop policy, successful response,
+validation and user scope are unchanged.
+
+Readback failure can follow an already completed gear insert. This is not a
+rollback, transaction or write retry, and a failed response does not prove no
+gear was added. Other reward/combat/boss callers and legacy modules remain
+outside this slice; #1462 is still open.
