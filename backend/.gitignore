@@ -8,3 +8,8 @@ data/modules/
 .env.local
 .env.production
 .DS_Store
+
+# Advisory flake sampling outputs (uploaded as CI artifacts).
+/data/flaky-test-latest.json
+/data/flaky-test-history.json
+/data/flaky-tests-report.md

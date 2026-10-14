@@ -1,0 +1,45 @@
+name: Mirror Pinned CI Postgres
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-ci-postgres
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install registry copier
+        run: sudo apt-get update -qq && sudo apt-get install -y skopeo
+      - name: Copy approved source digests without rebuilding
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          AUTH_FILE=$(mktemp)
+          trap 'rm -f "$AUTH_FILE"' EXIT
+          printf '%s' "$GH_TOKEN" | skopeo login --authfile "$AUTH_FILE" --username "$GH_ACTOR" --password-stdin ghcr.io
+          TARGET="ghcr.io/${GH_REPOSITORY,,}/ci-postgres"
+          jq -e 'keys == ["14-alpine", "15-alpine"] and all(.[]; test("^sha256:[a-f0-9]{64}$"))' .github/ci/postgres-mirrors.json >/dev/null
+          while IFS=$'\t' read -r tag digest; do
+            [[ "$tag" =~ ^(14|15)-alpine$ ]]
+            [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+            skopeo copy --authfile "$AUTH_FILE" --all --preserve-digests \
+              "docker://public.ecr.aws/docker/library/postgres@$digest" "docker://$TARGET:$tag"
+            actual=$(skopeo inspect --authfile "$AUTH_FILE" --raw "docker://$TARGET:$tag" | sha256sum | cut -d' ' -f1)
+            test "sha256:$actual" = "$digest"
+            printf '%s\n' "$TARGET@$digest" >> "$GITHUB_STEP_SUMMARY"
+          done < <(jq -r 'to_entries[] | [.key, .value] | @tsv' .github/ci/postgres-mirrors.json)

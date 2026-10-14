@@ -2,70 +2,60 @@ name: Flaky Test Detection
 
 on:
   schedule:
-    # Run flaky test detection weekly on Sunday at 3 AM
+    # Existing weekly schedule; backend is outside the required push-job graph.
     - cron: '0 3 * * 0'
   workflow_dispatch:
     inputs:
       runs:
-        description: 'Number of runs per test'
+        description: 'Number of Godot runs per test'
         required: false
         default: '3'
         type: string
       target:
-        description: 'Target to test (backend, godot, all)'
+        description: 'Manual sampling is Godot-only; backend sampling is scheduled'
         required: false
-        default: 'all'
+        default: 'godot'
         type: choice
         options:
-          - all
-          - backend
           - godot
 
 permissions:
   contents: read
 
+concurrency:
+  group: flaky-test-sampling
+  cancel-in-progress: false
+
 jobs:
   flaky-tests-backend:
-    name: Backend Flaky Tests (Jest)
+    if: github.event_name == 'schedule'
+    name: Bounded Backend Flake Sample
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'backend') || github.event_name == 'schedule'
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: backend/package-lock.json
-      
       - name: Install dependencies
-        working-directory: ./backend
+        working-directory: backend
         run: npm ci
-      
-      - name: Run flaky test detection
-        working-directory: ./backend
-        run: npm run test:flaky
-        env:
-          FLAKY_RUNS: ${{ github.event.inputs.runs || '3' }}
-      
-      - name: Generate report
-        working-directory: ./backend
-        run: npm run test:report
-      
-      - name: Upload flaky test history
-        uses: actions/upload-artifact@v6
-        with:
-          name: backend-flaky-history
-          path: backend/data/flaky-test-history.json
-          retention-days: 30
-      
-      - name: Upload report
+      - name: Sample full suite twice
+        working-directory: backend
+        run: npm run test:flaky:ci -- --runs=2 --threshold=0.5
+      - name: Upload advisory report
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: backend-flaky-report
-          path: docs/flaky-tests-report.md
-          retention-days: 30
+          path: |
+            backend/data/flaky-test-latest.json
+            backend/data/flaky-test-history.json
+            backend/data/flaky-tests-report.md
+          retention-days: 7
+          if-no-files-found: warn
 
   flaky-tests-godot:
     name: Godot Flaky Tests (GDScript)
