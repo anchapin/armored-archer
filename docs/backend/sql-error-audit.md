@@ -247,3 +247,17 @@ empty-success pool list. Real empty/nonempty rows preserve the no-loot/no-XP
 success response. The claim is already written and stays consumed on failure;
 immediate retry remains rejected. No completion update, reward, rollback or
 write retry is added. Boss verification and other gear callers remain separate.
+
+### Stage boss verification read
+
+The existing boss-verification query carries strict stage RPC context. SQL
+failure stops the remaining XP/success response through the safe stage error,
+with fixed diagnostics and a native counter, rather than consulting the
+fallback after an empty-on-error result. Successful empty/nonempty query results
+preserve the existing verification decisions and boss-count fallback.
+
+This read is late in the existing sequence. Claim, best-of, boss and pool writes
+can be complete; loot can already have been inserted and boss audit/analytics
+can already have run. This is not a rollback or a claim that no reward was
+written. XP is not written after this failure and immediate retry remains
+rejected. No query reorder, write retry or verification-policy change is added.

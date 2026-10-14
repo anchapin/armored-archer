@@ -1875,7 +1875,10 @@ function verifyBossDefeat(
   logger: Runtime.Logger
 ): boolean {
   if (!request.boss_defeated || !request.boss_id) return false;
-  const defeatedBosses = getDefeatedBossesFromDB(nk, userId);
+  const defeatedBosses = getDefeatedBossesFromDB(nk, userId, {
+    rpc: 'armored_archer/stage_complete',
+    logger,
+  });
   if (defeatedBosses.includes(request.boss_id)) return true;
   if (result.bossDefeatResult && result.bossDefeatResult.defeat_count > 0) return true;
   logger.warn(
