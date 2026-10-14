@@ -145,3 +145,20 @@ prior fallback remain unchanged. The query sequence, user scope, validation
 and successful response shape are unchanged; no write, reward, auth, schema or
 transaction change. Other gear-read paths and legacy modules remain outside
 this slice; #1462 is not complete.
+
+### Equip/unequip SQL failure contract
+
+`equip_gear` and `unequip_gear` use strict SQL contexts for their initial reads,
+item verification, existing loadout mutation and readback. A SQL exception returns
+safe `DATABASE_ERROR` with fixed RPC/operation logs and a native metric, not a
+successful empty loadout or a misleading item/slot absence. Context-free helper
+callers keep their prior result/fallback behavior. Actual missing item/slot and
+type mismatch responses, queries, ownership checks, validation, successful data
+and non-SQL audit sequence are unchanged. SQL failures no longer copy driver
+text into a failed-write audit, and readback failure no longer records success.
+
+A readback failure after a successful mutation can mean the loadout already
+changed. This patch does not add rollback or atomicity, and does not retry a
+write. It withholds success and fabricated loadout data. No reward, combat,
+authentication, schema or deployment changes. Other gear readers and legacy
+modules remain outside this slice; #1462 remains open.
