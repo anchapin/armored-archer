@@ -223,3 +223,17 @@ The claim and best-of completion writes precede the boss SQL and stay consumed
 on failure. There is no write retry or rollback. An upsert error does not prove
 that no database write occurred. Pool unlock failures, empty upsert returns,
 boss verification reads and enemy unlocks remain separate audit scope.
+
+### Stage-completion modifier pool writes and boss audit read
+
+The strict stage context also covers boss/enemy modifier unlock checks and
+inserts, plus the boss audit's all-pools read. SQL failure stops the reward path
+through the safe stage error rather than being ignored or recorded as successful
+boss progress. Context-free boss helper callers retain their previous fallback.
+Successful unlocks and reward calculations are unchanged.
+
+Claim, best-of completion and boss-record writes can already have happened; for
+the boss audit read failure, a pool insert can also already be complete. They
+are not rolled back, and immediate replay remains rejected by the consumed
+claim. No retries or transaction are added. Boss verification, empty upsert
+returns, no-improvement pool reads and combat paths remain separate audit scope.
