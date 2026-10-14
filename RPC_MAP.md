@@ -140,7 +140,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 | Equip Gear | GearManager | `rpcEquipGear()` in `gear_system.ts` | `inventory_items` + `loadout` tables (PostgreSQL); SQL failures return `DATABASE_ERROR` | `/rpc/armored_archer/equip_gear` |
 | Unequip Gear | GearManager | `rpcUnequipGear()` in `gear_system.ts` | `loadout` table (PostgreSQL); SQL failures return `DATABASE_ERROR` | `/rpc/armored_archer/unequip_gear` |
 | Get Inventory | GearManager | `rpcGetInventory()` in `gear_system.ts` | `inventory_items` + `loadout` + `unlocked_modifier_pools` tables (PostgreSQL); SQL read failures return `DATABASE_ERROR`, not empty success | `/rpc/armored_archer/get_inventory` |
-| Unlock Modifier Pool | GearManager | `rpcUnlockModifierPool()` in `gear_system.ts` | `unlocked_modifiers` storage (custom collection) | `/rpc/armored_archer/unlock_modifier_pool` |
+| Unlock Modifier Pool | GearManager | `rpcUnlockModifierPool()` in `gear_system.ts` | `unlocked_modifier_pools` table (PostgreSQL); SQL failures return `INTERNAL_ERROR`, not empty success | `/rpc/armored_archer/unlock_modifier_pool` |
 | Get Unlocked Modifiers | GearManager | `rpcGetUnlockedModifiers()` in `gear_system.ts` | `unlocked_modifier_pools` + `boss_defeats` tables (PostgreSQL); SQL read failures return `DATABASE_ERROR`, not empty success | `/rpc/armored_archer/get_unlocked_modifiers` |
 
 **Storage Schema:**

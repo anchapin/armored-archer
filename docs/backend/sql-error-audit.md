@@ -162,3 +162,18 @@ changed. This patch does not add rollback or atomicity, and does not retry a
 write. It withholds success and fabricated loadout data. No reward, combat,
 authentication, schema or deployment changes. Other gear readers and legacy
 modules remain outside this slice; #1462 remains open.
+
+### Manual modifier unlock
+
+`unlock_modifier_pool` supplies strict SQL context for the existing unlock check,
+insert and pool readback. Each SQL error logs fixed RPC/operation labels and one
+native metric, then returns the existing safe `INTERNAL_ERROR` failure. Readback
+errors no longer report successful empty pools. Failure audit records contain a
+fixed reason, not driver text. The other boss/enemy unlock helper callers retain
+their prior behavior. Queries, validation, ownership scope, successful response,
+already-unlocked handling and manual unlock reason are unchanged.
+
+A readback failure after insertion can mean the pool is already unlocked. This
+slice does not add rollback, atomicity or write retries. No auth, reward policy,
+schema or deployment changes. Other gear callers and legacy modules still need
+review; #1462 remains open.

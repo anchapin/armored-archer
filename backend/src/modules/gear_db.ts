@@ -626,7 +626,8 @@ export function unlockModifierPoolInDB(
   userId: string,
   modifierId: string,
   unlockReason: string = 'boss_defeat',
-  sourceBossId?: string
+  sourceBossId?: string,
+  context?: InventoryReadContext
 ): UnlockModifierPoolResult {
   // Check if already unlocked
   const checkQuery = `
@@ -635,10 +636,13 @@ export function unlockModifierPoolInDB(
   `;
 
   try {
-    const checkResult = observedSqlQuery(nk, 'gear_db.unlockModifierPoolInDB', checkQuery, [
-      userId,
-      modifierId,
-    ]) as any[];
+    const checkResult = observedSqlQuery(
+      nk,
+      'gear_db.unlockModifierPoolInDB',
+      checkQuery,
+      [userId, modifierId],
+      context
+    ) as any[];
 
     if (checkResult && checkResult.length > 0) {
       return {
@@ -653,18 +657,20 @@ export function unlockModifierPoolInDB(
       VALUES ($1, $2, $3, $4)
     `;
 
-    observedSqlQuery(nk, 'gear_db.unlockModifierPoolInDB', insertQuery, [
-      userId,
-      modifierId,
-      unlockReason,
-      sourceBossId || null,
-    ]);
+    observedSqlQuery(
+      nk,
+      'gear_db.unlockModifierPoolInDB',
+      insertQuery,
+      [userId, modifierId, unlockReason, sourceBossId || null],
+      context
+    );
 
     return {
       success: true,
       newly_unlocked: true,
     };
   } catch (error) {
+    if (context) throw error;
     return {
       success: false,
       newly_unlocked: false,
