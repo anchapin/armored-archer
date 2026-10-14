@@ -169,7 +169,7 @@ jobs:
       # For act local testing, use: act -j backend-test --job-timeout=30m
       postgres:
         # Docker Official Image mirror avoids shared-runner Docker Hub pull limits.
-        image: public.ecr.aws/docker/library/postgres:14-alpine
+        image: ghcr.io/anchapin/armored-archer/ci-postgres@sha256:4ea9e5ed06591da7ea23eb65465e8d3187fe79f4d5ec3ae976d29a33b013e77a
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
@@ -483,7 +483,7 @@ jobs:
       # For act local testing, use: act -j sonarcloud --job-timeout=30m
       postgres:
         # Docker Official Image mirror avoids shared-runner Docker Hub pull limits.
-        image: public.ecr.aws/docker/library/postgres:14-alpine
+        image: ghcr.io/anchapin/armored-archer/ci-postgres@sha256:4ea9e5ed06591da7ea23eb65465e8d3187fe79f4d5ec3ae976d29a33b013e77a
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
@@ -654,7 +654,7 @@ jobs:
       # dev stack (backend/docker-compose.yml) binds permanently; reusing it
       # made parallel act runs fail with "port already allocated" (#858).
       postgres:
-        image: public.ecr.aws/docker/library/postgres:15-alpine
+        image: ghcr.io/anchapin/armored-archer/ci-postgres@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: nakama
