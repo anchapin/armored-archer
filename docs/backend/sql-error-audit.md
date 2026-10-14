@@ -237,3 +237,13 @@ the boss audit read failure, a pool insert can also already be complete. They
 are not rolled back, and immediate replay remains rejected by the consumed
 claim. No retries or transaction are added. Boss verification, empty upsert
 returns, no-improvement pool reads and combat paths remain separate audit scope.
+
+### No-improvement stage replay pool read
+
+The no-improvement response reads modifier pools with strict stage RPC context
+before recording a successful terminal outcome. SQL failure uses the existing
+safe stage error/audit, fixed SQL diagnostics and native metric rather than an
+empty-success pool list. Real empty/nonempty rows preserve the no-loot/no-XP
+success response. The claim is already written and stays consumed on failure;
+immediate retry remains rejected. No completion update, reward, rollback or
+write retry is added. Boss verification and other gear callers remain separate.

@@ -2031,6 +2031,10 @@ function applyCompletionAndRespond(
 
   // Handle case where replay didn't improve: no loot re-roll, no XP
   if (completionResult.noImprovement) {
+    const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId, {
+      rpc: 'armored_archer/stage_complete',
+      logger,
+    });
     recordStageCompleteOutcome(outcome);
     return JSON.stringify({
       success: true,
@@ -2044,7 +2048,7 @@ function applyCompletionAndRespond(
       drop_rate: 0,
       xp_gained: 0,
       gear_dropped: null,
-      unlocked_modifier_pools: getUnlockedModifierPoolsFromDB(nk, ctx.userId),
+      unlocked_modifier_pools: unlockedPools,
     });
   }
 
