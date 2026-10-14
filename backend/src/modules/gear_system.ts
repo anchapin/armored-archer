@@ -1182,10 +1182,11 @@ export function registerRpcGetInventory(initializer: Runtime.Initializer): void 
 export function getPlayerInventory(
   nk: Runtime.Nakama,
   userId: string,
-  _logger: Runtime.Logger
+  _logger: Runtime.Logger,
+  context?: { rpc: string; logger: Runtime.Logger }
 ): PlayerInventory {
   // Get gear, loadout, and unlocked modifier pools from database
-  const dbInventory = getFullInventoryFromDB(nk, userId);
+  const dbInventory = getFullInventoryFromDB(nk, userId, context);
 
   return {
     user_id: userId,
@@ -1953,11 +1954,11 @@ export function rpcStageComplete(
 
   try {
     return applyCompletionAndRespond(nk, ctx, logger, request);
-  } catch (error) {
+  } catch {
     // The claim marker written above persists, so a retry of this request is
     // rejected as DUPLICATE_COMPLETION for the cooldown window — no
     // double-grant can result from a mid-sequence failure.
-    logger.error('Error processing stage completion: %s', String(error));
+    logger.error('Failed to process stage completion');
 
     logAudit(
       nk,
@@ -1967,7 +1968,7 @@ export function rpcStageComplete(
       'stage_progression',
       { stage_id: request.stage_id },
       'failure',
-      String(error)
+      'Failed to process stage completion'
     );
 
     return JSON.stringify({
@@ -2137,7 +2138,10 @@ function processStageCompletion(
   const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type);
 
   // Get player inventory (after unlocking modifier pools to get updated pools)
-  const inventory = getPlayerInventory(nk, ctx.userId, logger);
+  const inventory = getPlayerInventory(nk, ctx.userId, logger, {
+    rpc: 'armored_archer/stage_complete',
+    logger,
+  });
 
   // Combine modifiers
   const allUnlockedModifiers = [

@@ -192,3 +192,19 @@ Readback failure can follow an already completed gear insert. This is not a
 rollback, transaction or write retry, and a failed response does not prove no
 gear was added. Other reward/combat/boss callers and legacy modules remain
 outside this slice; #1462 is still open.
+
+### Stage-completion inventory read
+
+The normal `stage_complete` reward path supplies strict SQL context to its
+inventory read (gear, loadout and modifier pools) before loot insertion and XP.
+A SQL failure returns the existing safe `INTERNAL_ERROR` rather than completing
+against an empty fallback inventory. Fixed RPC/operation logs and one native
+metric identify the failed query; the stage catch and failure audit no longer
+copy private exception text. Successful rewards, queries, user scope and the
+claim-first sequence are unchanged. Context-free inventory callers, including
+combat, keep their previous fallback for separate review.
+
+A failure can follow the existing claim and best-of stage-completion writes.
+The claim remains consumed, so an immediate replay is rejected; this patch adds
+no rollback, transaction or write retry. Boss/modifier writes, boss verification,
+no-improvement pool reads and other gear paths remain separate follow-up scope.

@@ -77,6 +77,9 @@ describe('DynamicDifficulty', () => {
       storageWrite: mockStorageWrite,
       storageRead: mockStorageRead,
       storageList: jest.fn().mockResolvedValue([]),
+      // Real inventory reads now fail closed; reward-neutrality fixtures
+      // supply successful empty SQL results rather than a missing host API.
+      sqlQuery: jest.fn().mockReturnValue([]),
       env: {},
     } as any;
 
@@ -697,9 +700,7 @@ describe('DynamicDifficulty', () => {
       expect(res.success).toBe(true);
 
       const readCalls = (mockCtx.storageRead as jest.Mock).mock.calls.flat();
-      const difficultyReads = readCalls.filter(
-        (obj: any) => obj.collection === 'difficulty_state'
-      );
+      const difficultyReads = readCalls.filter((obj: any) => obj.collection === 'difficulty_state');
       expect(difficultyReads).toEqual([]);
     });
   });
