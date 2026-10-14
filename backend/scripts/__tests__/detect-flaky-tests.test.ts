@@ -45,7 +45,7 @@ describe('bounded full-suite flake detection', () => {
     expect(analyzeSamples([sample('passed'), sample('failed'), sample('passed')], 0.5).flakyTests).toEqual([]);
   });
   test('rejects excessive or invalid runs before launching', async () => {
-    for (const arg of ['--runs=0', '--runs=4', '--runs=2.5', '--threshold=NaN', '--threshold=1.1']) {
+    for (const arg of ['--runs=0', '--runs=4', '--runs=2.5', '--threshold=NaN', '--threshold=1.1', `--test-pattern=${'a'.repeat(501)}`]) {
       await expect(main([arg])).rejects.toThrow();
     }
     expect(spawn).not.toHaveBeenCalled();

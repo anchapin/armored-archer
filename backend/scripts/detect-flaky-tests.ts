@@ -131,7 +131,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   const pattern = value('test-pattern', '');
   if (!Number.isInteger(runs) || runs < 2 || runs > 3) throw new Error('runs must be 2 or 3');
   if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) throw new Error('threshold must be between 0 and 1');
-  if (pattern) new RegExp(pattern); // Validate before launching anything.
+  if (pattern.length > 500) throw new Error('test-pattern exceeds the 500-character budget');
   const root = path.resolve(__dirname, '..');
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'aa-flaky-'));
   const start = Date.now();
