@@ -8,29 +8,54 @@ var stat_allocation_manager: Node
 var dynamic_difficulty_manager: Node
 var pacing_manager: Node
 var progression_indicator_manager: Node
+var campaign_manager: Node
 
-func before_all():
-	# Get references to autoloads
-	player_stats_manager = get_node_or_null("/root/PlayerStatsManager")
-	stat_allocation_manager = get_node_or_null("/root/StatAllocationManager")
-	dynamic_difficulty_manager = get_node_or_null("/root/DynamicDifficultyManager")
-	pacing_manager = get_node_or_null("/root/PacingManager")
-	progression_indicator_manager = get_node_or_null("/root/ProgressionIndicatorManager")
+# Keep production logic while isolating mutable managers from autoloads/files.
+class CampaignFixture extends Node:
+	var campaigns_data: Dictionary = {"campaigns": [{
+		"id": "chapter_1", "name": "Test chapter", "stages": [{
+			"id": "stage_1_1", "name": "Test stage"
+		}]
+	}]}
+	func is_stage_unlocked(_stage_id: String) -> bool:
+		return true
+	func is_stage_completed(_stage_id: String) -> bool:
+		return false
+	func get_chapter_progress(_chapter_id: String) -> float:
+		return 0.0
 
-	if player_stats_manager == null:
-		gut.p("WARNING: PlayerStatsManager not found")
-
-func before_each():
-	# Reset managers before each test
-	if player_stats_manager:
-		# Would need to reset player stats in real scenario
+class AllocationFixture extends "res://autoloads/StatAllocationManager.gd":
+	func save_data() -> void:
 		pass
-	if dynamic_difficulty_manager and dynamic_difficulty_manager.has_method("reset_difficulty"):
-		dynamic_difficulty_manager.reset_difficulty()
-	if pacing_manager and pacing_manager.has_method("reset_pacing_state"):
-		pacing_manager.reset_pacing_state()
-	if progression_indicator_manager and progression_indicator_manager.has_method("clear_progression_data"):
-		progression_indicator_manager.clear_progression_data()
+class DifficultyFixture extends "res://autoloads/DynamicDifficultyManager.gd":
+	func save_difficulty_state() -> void:
+		pass
+class PacingFixture extends "res://autoloads/PacingManager.gd":
+	func save_pacing_state() -> void:
+		pass
+class ProgressionFixture extends "res://autoloads/ProgressionIndicatorManager.gd":
+	func save_progression_data() -> void:
+		pass
+
+func before_each() -> void:
+	# Detached nodes do not run _ready or attach to network/service signals.
+	player_stats_manager = load("res://autoloads/PlayerStatsManager.gd").new()
+	stat_allocation_manager = AllocationFixture.new()
+	stat_allocation_manager.player_stats_manager = player_stats_manager
+	dynamic_difficulty_manager = DifficultyFixture.new()
+	pacing_manager = PacingFixture.new()
+	campaign_manager = CampaignFixture.new()
+	progression_indicator_manager = ProgressionFixture.new()
+	progression_indicator_manager.campaign_manager = campaign_manager
+	progression_indicator_manager.player_stats_manager = player_stats_manager
+
+func after_each() -> void:
+	progression_indicator_manager.free()
+	campaign_manager.free()
+	pacing_manager.free()
+	dynamic_difficulty_manager.free()
+	stat_allocation_manager.free()
+	player_stats_manager.free()
 
 func test_full_progression_flow():
 	# Test complete progression flow from level 1 to level 10
@@ -44,7 +69,7 @@ func test_full_progression_flow():
 	var initial_level: int = current_level
 
 	# Verify player stats are initialized
-	assert_ge(current_level, 1, "Player should be at least level 1")
+	assert_gte(current_level, 1, "Player should be at least level 1")
 
 	# In real scenario: Track XP gains, level ups, stat allocation
 	# For now, verify managers are available
@@ -74,7 +99,7 @@ func test_stat_allocation_after_level_up():
 
 	var ability_points: int = player_stats_manager.get_ability_points()
 
-	assert_ge(ability_points, 0, "Ability points should be non-negative")
+	assert_gte(ability_points, 0, "Ability points should be non-negative")
 
 	# Verify stat allocation exists
 	assert_true(stat_allocation_manager.has_method("validate_allocation"),
@@ -93,7 +118,7 @@ func test_respec_flow():
 	var is_on_cooldown: bool = stat_allocation_manager.is_respec_on_cooldown()
 
 	assert_true(has_free_respec == false or has_free_respec == true, "has_free_respec should return boolean")
-	assert_ge(respec_cost, 0, "Respec cost should be non-negative")
+	assert_gte(respec_cost, 0, "Respec cost should be non-negative")
 	assert_true(is_on_cooldown == false or is_on_cooldown == true, "is_on_cooldown should return boolean")
 
 func test_build_save_and_load():
@@ -127,7 +152,7 @@ func test_multiple_build_management():
 
 	var all_builds: Dictionary = stat_allocation_manager.get_all_builds()
 
-	assert_ge(all_builds.size(), 3, "Should have at least 3 builds")
+	assert_gte(all_builds.size(), 3, "Should have at least 3 builds")
 
 func test_quest_completion_flow():
 	# Player should complete quests and progress
@@ -170,8 +195,8 @@ func test_quest_objective_progression():
 			var target: int = objective.get("target", 0)
 			var current: int = objective.get("current", 0)
 
-			assert_ge(target, 0, "Objective target should be non-negative")
-			assert_ge(current, 0, "Objective current should be non-negative")
+			assert_gte(target, 0, "Objective target should be non-negative")
+			assert_gte(current, 0, "Objective current should be non-negative")
 
 func test_level_requirement_flow():
 	# Level requirements should gate content
@@ -220,7 +245,7 @@ func test_dynamic_adjustment_win_streak():
 	var new_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
 	# Difficulty should increase after 3 wins
-	assert_ge(new_modifier, initial_modifier, "Difficulty should not decrease on win streak")
+	assert_gte(new_modifier, initial_modifier, "Difficulty should not decrease on win streak")
 
 func test_dynamic_adjustment_lose_streak():
 	# Lose streak should decrease difficulty
@@ -240,7 +265,7 @@ func test_dynamic_adjustment_lose_streak():
 	var new_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
 	# Difficulty should decrease after 3 losses
-	assert_le(new_modifier, initial_modifier, "Difficulty should not increase on lose streak")
+	assert_lte(new_modifier, initial_modifier, "Difficulty should not increase on lose streak")
 
 func test_pacing_with_combat_streak():
 	# Pacing should recommend break after combat streak
