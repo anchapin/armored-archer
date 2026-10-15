@@ -339,3 +339,14 @@ remains outside the active RPC dependency graph. No scheduler is started, no
 notification is sent by this change, and no Stage 2 dispatch or auth is added.
 The observer covers real synchronous Nakama SQL throws, not a future async
 SQL provider. Legacy notifications and obsolete test cleanup remain separate.
+
+### Legacy notification read diagnostics
+
+The device-token read, preference read/default insert and pending-notification
+read now use the synchronous host SQL observer. Fixed secondary diagnostics
+exclude driver text and user IDs. Empty-array/null fallbacks and default
+preference creation are unchanged, as is the legacy default-true behavior of
+`shouldSendNotification` after a null preference result. The observer covers
+synchronous Nakama host throws, not future async SQL providers. This module
+remains outside the active RPC graph; no Firebase, dispatch or scheduler is
+enabled. Seven legacy notification writes and obsolete test cleanup remain.
