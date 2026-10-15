@@ -37,3 +37,10 @@ isolated scene preview, not a physical phone or full gameplay screenshot.
 Hardware touch/gesture feel and target-device safe areas remain unverified;
 synthetic events exercise input ownership and bounds. No deployment or live
 E2E/service execution. Normal own CI and fresh latest-main green gates apply.
+
+Hosted StageSmoke initially failed because its headless desktop host directly
+sent touch callbacks to correctly hidden joysticks. Its touch-teaching fixture
+now explicitly selects TOUCH preview mode; no workflow/gate/timeout changes.
+Isolated scripts/smoke_stage.sh60/10 passes: teaching/touch/release and60seconds
+configured1_1combat, no death, max5enemies, strict runtime-error check clean.
+Desktop visibility and real UI event routing remain separately tested.
