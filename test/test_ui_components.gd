@@ -208,7 +208,7 @@ func test_base_panel_dark_theme() -> void:
 	if panel.get_is_dark_theme() == true:
 		_pass("test_base_panel_dark_theme_default")
 	else:
-		_fail("test_base_panel_dark_theme_default", "Initial theme should match ThemeManager mode")
+		_fail("test_base_panel_dark_theme_default", "Default should be dark theme")
 
 	panel.set_dark_theme(false)
 	if panel.get_is_dark_theme() == false:
