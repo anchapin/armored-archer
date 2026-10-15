@@ -350,22 +350,25 @@ func get_enemy(scene: PackedScene = null) -> Node:
 ## Return an enemy to its correct per-type sub-pool (issue #1091).
 ## The scene key was stored as metadata on the node at get_enemy() time.
 func return_enemy(enemy: Node) -> void:
-	if not is_instance_valid(enemy):
+	if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
 		return
 
-	_park_pooled_node(enemy)
+	var scene_key: Variant = null
+	if enemy.has_meta("_pool_scene_key"):
+		scene_key = enemy.get_meta("_pool_scene_key")
+	var pool_path: String = _DEFAULT_ENEMY_SCENE_PATH
+	if scene_key != null and _enemy_pools.has(str(scene_key)):
+		pool_path = str(scene_key)
+	# Delayed death callbacks can arrive after cleanup_all cleared this pool,
+	# while a detached enemy is still valid. Never resurrect a cleared pool.
+	if not _enemy_pools.has(pool_path):
+		return
+	var pool_data: Dictionary = _enemy_pools[pool_path]
 
+	_park_pooled_node(enemy)
 	if enemy.has_method("reset_pooled_state"):
 		enemy.reset_pooled_state()
 
-	var scene_key: Variant = enemy.get_meta("_pool_scene_key")
-	var pool_path: String
-	if scene_key != null and _enemy_pools.has(str(scene_key)):
-		pool_path = str(scene_key)
-	else:
-		pool_path = _DEFAULT_ENEMY_SCENE_PATH
-
-	var pool_data: Dictionary = _enemy_pools.get(pool_path, {})
 	pool_data["available"].append(enemy)
 	pool_data["active"].erase(enemy)
 
