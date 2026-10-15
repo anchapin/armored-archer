@@ -80,7 +80,11 @@ describe('DynamicDifficulty', () => {
       // Real inventory reads now fail closed; reward-neutrality fixtures
       // supply real-shaped successful reads and a persisted loot item ID.
       sqlQuery: jest.fn((sql: string) =>
-        sql.includes('INSERT INTO inventory_items') ? [{ item_id: 'neutrality-item' }] : []
+        sql.includes('INSERT INTO inventory_items')
+          ? [{ item_id: 'neutrality-item' }]
+          : sql.includes('INSERT INTO boss_defeats')
+            ? [{ defeat_count: 1 }]
+            : []
       ),
       env: {},
     } as any;

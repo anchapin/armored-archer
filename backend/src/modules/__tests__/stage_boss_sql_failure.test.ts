@@ -73,6 +73,63 @@ describe('stage boss defeat SQL failure through real helpers', () => {
     }
   );
 
+  it.each([{ rows: [] }, { rows: [{}] }, { rows: [{ defeat_count: null }] }])(
+    'fails on unconfirmed boss upsert result %j without XP or unlocks',
+    ({ rows }) => {
+      const nk = createMockNakama();
+      const ctx = createMockContext();
+      const logger = createMockLogger();
+      const original = (nk.sqlQuery as jest.Mock).getMockImplementation()!;
+      (nk.sqlQuery as jest.Mock).mockImplementation((sql: string, params: unknown[]) => {
+        if (sql.includes('INSERT INTO boss_defeats')) return rows;
+        return original(sql, params);
+      });
+      nk.metricsCounterAdd = jest.fn();
+      const response = JSON.parse(rpcStageComplete(ctx, logger, nk, payload));
+      expect(response).toEqual({
+        success: false,
+        error: 'Failed to process stage completion',
+        error_code: 'INTERNAL_ERROR',
+      });
+      expect(logger.error).toHaveBeenCalledWith(
+        'Boss defeat persistence returned no confirmed count'
+      );
+      // SQL returned successfully; do not classify this as a thrown driver error.
+      expect(nk.metricsCounterAdd).not.toHaveBeenCalled();
+      expect((nk.sqlQuery as jest.Mock).mock.calls).toHaveLength(2);
+      const writes = (nk.storageWrite as jest.Mock).mock.calls.flat(2);
+      expect(writes.some((r: any) => r.collection === 'stage_completion_claims')).toBe(true);
+      expect(writes.some((r: any) => r.collection === 'stage_completion')).toBe(true);
+      expect(writes.some((r: any) => r.collection === 'player_stats')).toBe(false);
+      expect(testStorage.has(`unlocked_modifier_pools:${ctx.userId}`)).toBe(false);
+      expect(writes.some((r: any) => r.value?.action === 'boss_defeat')).toBe(false);
+      expect(
+        writes.some(
+          (r: any) => r.value?.action === 'stage_complete' && r.value?.result === 'success'
+        )
+      ).toBe(false);
+      expect(
+        writes.some(
+          (r: any) => r.value?.action === 'stage_complete' && r.value?.result === 'failure'
+        )
+      ).toBe(true);
+      expect(JSON.parse(rpcStageComplete(ctx, logger, nk, payload)).error_code).toBe(
+        'DUPLICATE_COMPLETION'
+      );
+      expect(nk.sqlQuery).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('keeps legacy context-free empty upsert result unchanged', () => {
+    const nk = createMockNakama();
+    (nk.sqlQuery as jest.Mock).mockReturnValue([]);
+    expect(recordBossDefeatInDB(nk, 'user', 'boss')).toEqual({
+      success: true,
+      defeat_count: 1,
+      first_defeat: true,
+    });
+  });
+
   it('preserves genuine first defeat, pool unlock and XP success', () => {
     const nk = createMockNakama();
     nk.metricsCounterAdd = jest.fn();
