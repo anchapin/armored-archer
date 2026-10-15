@@ -24,15 +24,16 @@ var _is_dark: bool = true
 
 func _ready() -> void:
 	# Get ThemeManager reference
-	_theme_manager = get_node_or_null("/root/ThemeManager")
+	if not _theme_manager:
+		_theme_manager = get_node_or_null("/root/ThemeManager")
 	
 	# Create toggle button
 	_create_toggle_button()
 	
 	# Connect to theme manager if available
 	if _theme_manager:
-		_theme_manager.theme_changed.connect(_on_theme_changed)
-		_is_dark = _theme_manager.is_dark_theme()
+		_theme_manager.dark_mode_changed.connect(_on_theme_changed)
+		_is_dark = _theme_manager.is_dark_mode()
 	else:
 		# Default to dark
 		_is_dark = true
@@ -81,7 +82,7 @@ func _on_toggle_pressed() -> void:
 		return
 	
 	# Toggle using theme manager
-	_theme_manager.toggle_theme()
+	_theme_manager.toggle_theme_mode()
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_is_dark = is_dark
@@ -100,7 +101,8 @@ func is_dark_theme() -> bool:
 func apply_theme(is_dark: bool) -> void:
 	_is_dark = is_dark
 	if _theme_manager:
-		_theme_manager.set_theme("dark" if is_dark else "light")
+		_theme_manager.set_theme_mode(
+			ThemeManager.ThemeMode.DARK if is_dark else ThemeManager.ThemeMode.LIGHT)
 	_update_button_display()
 
 ## Toggle theme
@@ -112,5 +114,5 @@ func toggle() -> void:
 # =============================================================================
 
 func _exit_tree() -> void:
-	if _theme_manager and _theme_manager.theme_changed.is_connected(_on_theme_changed):
-		_theme_manager.theme_changed.disconnect(_on_theme_changed)
+	if _theme_manager and _theme_manager.dark_mode_changed.is_connected(_on_theme_changed):
+		_theme_manager.dark_mode_changed.disconnect(_on_theme_changed)
