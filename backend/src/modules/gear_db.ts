@@ -518,6 +518,15 @@ export function recordBossDefeatInDB(
       [userId, bossId],
       context
     ) as any[];
+    if (
+      context &&
+      (!upsertResult?.length ||
+        upsertResult[0]?.defeat_count === undefined ||
+        upsertResult[0]?.defeat_count === null)
+    ) {
+      context.logger.error('Boss defeat persistence returned no confirmed count');
+      throw new Error('Boss defeat persistence returned no confirmed count');
+    }
     if (upsertResult && upsertResult.length > 0) {
       defeatCount = upsertResult[0].defeat_count;
     }

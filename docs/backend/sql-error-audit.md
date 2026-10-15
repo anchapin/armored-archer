@@ -304,3 +304,17 @@ rethrow. Each query failure still attempts one native operation-tagged counter,
 even if metrics are unavailable. Queries, scope, return values and rewards do
 not change. Legacy async notification/cleanup paths and empty boss-upsert
 semantics remain separate review scope; #1462 is not finished.
+
+### Unconfirmed boss upsert result (owner-approved stage failure)
+
+A strict stage boss upsert must return a row with a defeat count. An empty
+RETURNING result or missing/null count now enters the existing safe stage
+failure instead of reporting a guessed boss count and granting unlocks/XP.
+A fixed diagnostic identifies the failed confirmation; it is not a thrown SQL
+exception and does not increment the SQL-driver error counter. Successful
+first/repeat defeat processing and legacy context-free helpers are unchanged.
+
+Earlier claim and best-of completion writes remain consumed. No subsequent
+pool unlock, loot or XP runs, no rollback is added, and lack of a returned row
+does not prove a database write did not commit. Recovery/reconciliation remains
+deferred in #1558. This does not close the remaining #1462 audit.
