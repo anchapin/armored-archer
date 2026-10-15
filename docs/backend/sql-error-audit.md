@@ -350,3 +350,15 @@ preference creation are unchanged, as is the legacy default-true behavior of
 synchronous Nakama host throws, not future async SQL providers. This module
 remains outside the active RPC graph; no Firebase, dispatch or scheduler is
 enabled. Seven legacy notification writes and obsolete test cleanup remain.
+
+### Legacy notification write diagnostics
+
+The remaining seven SQL write sites now use the synchronous host observer and
+fixed secondary error logs. Five existing failure results keep `success: false`
+with fixed operation text instead of driver text. History and sent-status
+helpers retain their existing resolved-void failure fallback. Queries,
+parameters, retries, success results and async behavior are unchanged. Existing
+provider error-message columns remain unchanged; their stored values are not
+logged by these SQL catches. No notification dispatch or registration is added,
+and the module remains outside the active RPC graph. Obsolete test cleanup
+remains separate. This slice does not close the broader audit.
