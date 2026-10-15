@@ -26,7 +26,7 @@ Mid-core mobile gamers who enjoy ARPG progression, theory-crafting character bui
 
 * **Touch Controls:** Twin-stick mobile input (Left thumb: move, Right thumb: drag-to-aim/release-to-fire).  
 * **PvE Campaign:** Progression-based stages ending in Boss encounters. Auto-aim mechanics are enabled to facilitate dodging and movement.  
-* **Dynamic Difficulty:** PvE-only challenge adjustment, bounded within ±20% and disclosed to the player. Higher difficulty should grant higher rewards (owner direction, October 15, 2026). Reward scaling is planned, not shipped: authoritative server rewards remain reward-neutral until a separate server-authoritative design and implementation are approved. The eligible reward types, formula and caps are not yet decided. PvP remains outside Dynamic Difficulty.
+* **Dynamic Difficulty:** PvE-only challenge adjustment, bounded within ±20% and disclosed to the player. Higher difficulty should grant higher rewards (owner direction, October 15, 2026). Reward scaling is planned, not shipped: authoritative server rewards remain reward-neutral until a separate server-authoritative design and implementation are approved. Owner decisions: all earned PvE reward types follow the bonus promise, Normal remains the 1.0x floor and Extreme targets 1.5x. Per-type mechanics, challenge evidence and settlement remain under design review; purchased products and premium-currency faucets are unchanged. PvP remains outside Dynamic Difficulty.
 * **PvP Modes (Hybrid Duel Model):** Asynchronous matchmaking (challenge or queue, with a 24-hour acceptance window) precedes a live, short-session Duel — turn-based combat with 5-minute turn timers and reconnect grace.  
   * **Casual PvP:** Practice duels with reduced — but never negative — rewards; no Ladder Rating or season effect, and the Punch-Up wager is unavailable.  
   * **Ranked PvP:** Ladder system with a matchmaking toggle. Players can challenge similar opponents (standard risk/reward) or "Punch Up" against significantly more powerful ones.  
@@ -44,7 +44,7 @@ Mid-core mobile gamers who enjoy ARPG progression, theory-crafting character bui
 ### **C. The Economy & Rewards**
 
 * **Currencies:**  
-  * *Coins:* The earnable soft currency, paid out by matches and Season Rewards. Its primary sink ships Season 1 mid-season; Coins are never purchasable.  
+  * *Coins:* The earnable soft currency, paid out by matches and Season Rewards. Approved PvE plan (not shipped): 10 per eligible stage completion at Normal/easier, 12 on Hard and 15 on Extreme; replay/no-improvement remains non-paying. Its primary sink ships Season 1 mid-season; Coins are never purchasable.
   * *Gems:* The premium currency, bought with real money via IAP, plus small skill-gated earnable faucets (Punch-Up wins, season tiers). Gems buy Cosmetic Skins and nothing with stats.  
 * **Seasonal Leaderboards:** A 4-week ranked ladder cycle on Ladder Rating.  
   * *Season Rewards:* Tiered payouts of Coins, Gems, and exclusive (non-stat) cosmetic titles or auras by final Standing — no XP component ("massive XP bursts" superseded).  
