@@ -1028,7 +1028,7 @@ const stageClaimsTotal = new Counter({
 export type StageCompleteOutcome = 'success' | 'duplicate' | 'clamped' | 'validation_failed';
 
 /** Claim-marker results for {@link recordStageClaim} (issue #1139). */
-export type StageClaimResult = 'fresh' | 'replay_rejected' | 'cooldown_active';
+export type StageClaimResult = 'fresh' | 'replay_rejected' | 'cooldown_active' | 'resumed';
 
 /**
  * Records the terminal outcome of a stage_complete RPC invocation.

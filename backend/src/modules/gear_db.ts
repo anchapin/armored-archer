@@ -71,6 +71,10 @@ export interface InsertGearResult {
   item_id?: string;
   success: boolean;
   error?: string;
+  /** True when the grant ID already existed and the prior row was returned. */
+  alreadyGranted?: boolean;
+  /** The previously granted gear row, when alreadyGranted is true. */
+  gear?: GearItem;
 }
 
 /**
@@ -81,13 +85,67 @@ export interface InsertGearResult {
  * @param gear - Gear item to insert
  * @returns Result with item_id or error
  */
+/**
+ * Reads a gear row by its stage-completion grant ID.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param grantId - Deterministic grant key from the completion attempt
+ * @param context - RPC context for observability
+ * @returns The granted gear item, or null when no row carries the grant ID
+ */
+export function getGearItemByGrantId(
+  nk: Runtime.Nakama,
+  userId: string,
+  grantId: string,
+  context?: InventoryReadContext
+): GearItem | null {
+  const query = `${GEAR_ITEM_SELECT}
+    WHERE user_id = $1 AND grant_id = $2
+  `;
+  try {
+    const result = observedSqlQuery(
+      nk,
+      'gear_db.getGearItemByGrantId',
+      query,
+      [userId, grantId],
+      context
+    ) as GearItemRow[];
+    if (!result || result.length === 0) return null;
+    return mapGearRow(result[0]);
+  } catch (error) {
+    if (context) throw error;
+    return null;
+  }
+}
+
 export function insertGearItem(
   nk: Runtime.Nakama,
   userId: string,
   gear: GearItem,
-  context?: InventoryReadContext
+  context?: InventoryReadContext,
+  grantId?: string
 ): InsertGearResult {
-  const query = `
+  // Grant-ID idempotency: with a grant key the insert is insert-once. The
+  // partial unique index idx_inventory_items_grant_id arbitrates; a conflict
+  // means a prior (possibly crashed) attempt already granted this effect, and
+  // the existing row is read back instead of inserting a duplicate.
+  const query = grantId
+    ? `
+    INSERT INTO inventory_items (
+      user_id,
+      gear_type,
+      name,
+      rarity,
+      level,
+      stats,
+      modifiers,
+      grant_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    ON CONFLICT (grant_id) WHERE grant_id IS NOT NULL DO NOTHING
+    RETURNING item_id
+  `
+    : `
     INSERT INTO inventory_items (
       user_id,
       gear_type,
@@ -113,19 +171,24 @@ export function insertGearItem(
     // Convert modifiers array to JSONB
     const modifiersJson = JSON.stringify(gear.modifiers);
 
-    const result = observedSqlQuery(
-      nk,
-      'gear_db.insertGearItem',
-      query,
-      [userId, gear.type, gear.name, gear.rarity, gear.level, statsJson, modifiersJson],
-      context
-    ) as any[];
+    const params = grantId
+      ? [userId, gear.type, gear.name, gear.rarity, gear.level, statsJson, modifiersJson, grantId]
+      : [userId, gear.type, gear.name, gear.rarity, gear.level, statsJson, modifiersJson];
+    const result = observedSqlQuery(nk, 'gear_db.insertGearItem', query, params, context) as any[];
 
     if (result && result.length > 0) {
       return {
         item_id: result[0].item_id,
         success: true,
       };
+    }
+
+    // Insert-once conflict: the effect already landed under this grant ID.
+    if (grantId) {
+      const existing = getGearItemByGrantId(nk, userId, grantId, context);
+      if (existing) {
+        return { item_id: existing.id, success: true, alreadyGranted: true, gear: existing };
+      }
     }
 
     return {
@@ -158,6 +221,26 @@ function jsonbArray(value: unknown): unknown[] {
   return [];
 }
 
+/** Maps an inventory_items row to a GearItem. */
+function mapGearRow(row: GearItemRow): GearItem {
+  return {
+    id: row.item_id,
+    type: row.gear_type,
+    name: row.name,
+    rarity: row.rarity,
+    level: row.level,
+    stats: Array.isArray(jsonbArray(row.stats))
+      ? (jsonbArray(row.stats) as GearStatRow[]).map((stat: GearStatRow) => ({
+          name: stat.name,
+          base_value: stat.base_value,
+          value: stat.value,
+        }))
+      : [],
+    modifiers: jsonbArray(row.modifiers) as GearModifier[],
+    timestamp: new Date(row.created_at).getTime(),
+  };
+}
+
 /**
  * Retrieves all gear items for a player from the database.
  *
@@ -170,17 +253,7 @@ export function getPlayerGearFromDB(
   userId: string,
   context?: InventoryReadContext
 ): GearItem[] {
-  const query = `
-    SELECT
-      item_id,
-      gear_type,
-      name,
-      rarity,
-      level,
-      stats::text AS stats,
-      modifiers::text AS modifiers,
-      created_at
-    FROM inventory_items
+  const query = `${GEAR_ITEM_SELECT}
     WHERE user_id = $1
     ORDER BY created_at DESC
   `;
@@ -198,28 +271,27 @@ export function getPlayerGearFromDB(
       return [];
     }
 
-    return result.map((row: GearItemRow) => ({
-      id: row.item_id,
-      type: row.gear_type,
-      name: row.name,
-      rarity: row.rarity,
-      level: row.level,
-      stats: Array.isArray(jsonbArray(row.stats))
-        ? (jsonbArray(row.stats) as GearStatRow[]).map((stat: GearStatRow) => ({
-            name: stat.name,
-            base_value: stat.base_value,
-            value: stat.value,
-          }))
-        : [],
-      modifiers: jsonbArray(row.modifiers) as GearModifier[],
-      timestamp: new Date(row.created_at).getTime(),
-    }));
+    return result.map(mapGearRow);
   } catch (error) {
     if (context) throw error;
     logger.error('Failed to retrieve player gear');
     return [];
   }
 }
+
+/** Shared inventory_items projection for gear-row reads. */
+const GEAR_ITEM_SELECT = `
+    SELECT
+      item_id,
+      gear_type,
+      name,
+      rarity,
+      level,
+      stats::text AS stats,
+      modifiers::text AS modifiers,
+      created_at
+    FROM inventory_items
+  `;
 
 /**
  * Retrieves the loadout for a player from the database.
