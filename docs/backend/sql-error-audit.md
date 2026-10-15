@@ -328,3 +328,14 @@ Strict active RPC callers still rethrow through their existing safe handlers.
 The SQL observer still records one operation-tagged counter attempt and safe
 log per failed query, including metric outages. Queries, scope, retries and
 successful writes are unchanged. No legacy module is enabled or registered.
+
+### Legacy notification scheduler SQL diagnostics
+
+The four SQL sites in the legacy async scheduler use the synchronous host-call
+observer for fixed operation-tagged logs and native counter attempts. Secondary
+catch logs contain fixed text, not SQL/provider exceptions or caller/event IDs.
+The module stays async, keeps its existing resolved-void failure fallback, and
+remains outside the active RPC dependency graph. No scheduler is started, no
+notification is sent by this change, and no Stage 2 dispatch or auth is added.
+The observer covers real synchronous Nakama SQL throws, not a future async
+SQL provider. Legacy notifications and obsolete test cleanup remain separate.

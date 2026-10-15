@@ -1,5 +1,6 @@
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { observedSqlQuery } from '../utils/sql-observability';
 import {
   processScheduledNotifications,
   sendDailyRewardNotification,
@@ -28,8 +29,8 @@ async function processPendingNotifications(nk: Runtime.Nakama): Promise<void> {
         failed: result.failed,
       });
     }
-  } catch (error) {
-    logger.error('Error processing scheduled notifications', { error: String(error) });
+  } catch {
+    logger.error('Error processing scheduled notifications');
   } finally {
     isRunning = false;
   }
@@ -43,7 +44,9 @@ async function processPendingNotifications(nk: Runtime.Nakama): Promise<void> {
 async function sendDailyRewardReminders(nk: Runtime.Nakama): Promise<void> {
   try {
     // Get all users who have daily rewards enabled
-    const users = (await nk.sqlQuery(
+    const users = (await observedSqlQuery(
+      nk,
+      'notification_scheduler.dailyRecipients',
       `SELECT u.id, u.username FROM users u
        JOIN notification_preferences np ON u.id = np.user_id
        WHERE np.daily_rewards_enabled = true`
@@ -64,8 +67,8 @@ async function sendDailyRewardReminders(nk: Runtime.Nakama): Promise<void> {
     }
 
     logger.info('Daily reward reminders sent', { success: successCount, failed: failCount });
-  } catch (error) {
-    logger.error('Error sending daily reward reminders', { error: String(error) });
+  } catch {
+    logger.error('Error sending daily reward reminders');
   }
 }
 
@@ -79,7 +82,9 @@ export async function scheduleNextDailyReward(
   nextAvailableTime: Date
 ): Promise<void> {
   try {
-    await nk.sqlQuery(
+    await observedSqlQuery(
+      nk,
+      'notification_scheduler.scheduleNextDailyReward',
       `INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)
        VALUES ($1, 'daily_reward', '🎁 Daily Rewards Available!', 'Your daily rewards are ready to claim!', '{}', $2, 'pending')
        ON CONFLICT DO NOTHING`,
@@ -90,8 +95,8 @@ export async function scheduleNextDailyReward(
       userId,
       nextAvailable: nextAvailableTime.toISOString(),
     });
-  } catch (error) {
-    logger.error('Error scheduling next daily reward', { error: String(error), userId });
+  } catch {
+    logger.error('Error scheduling next daily reward');
   }
 }
 
@@ -109,12 +114,19 @@ export async function notifyUsersAboutEvent(
 
     if (targetUserIds && targetUserIds.length > 0) {
       // Get specific users
-      users = (await nk.sqlQuery(`SELECT id FROM users WHERE id = ANY($1)`, [targetUserIds])) as {
+      users = (await observedSqlQuery(
+        nk,
+        'notification_scheduler.eventRecipients',
+        `SELECT id FROM users WHERE id = ANY($1)`,
+        [targetUserIds]
+      )) as {
         id: string;
       }[];
     } else {
       // Get all users with events enabled
-      users = (await nk.sqlQuery(
+      users = (await observedSqlQuery(
+        nk,
+        'notification_scheduler.eventRecipients',
         `SELECT u.id FROM users u
          JOIN notification_preferences np ON u.id = np.user_id
          WHERE np.events_enabled = true`
@@ -126,8 +138,8 @@ export async function notifyUsersAboutEvent(
     for (const user of users) {
       await sendEventNotification(nk, user.id, eventName, eventId);
     }
-  } catch (error) {
-    logger.error('Error sending event notifications', { error: String(error), eventId });
+  } catch {
+    logger.error('Error sending event notifications');
   }
 }
 
@@ -142,8 +154,8 @@ export async function notifyUserAboutPvpChallenge(
   try {
     const result = await sendPvpChallengeNotification(nk, userId, opponentName);
     logger.info('PvP challenge notification sent', { userId, success: result.success });
-  } catch (error) {
-    logger.error('Error sending PvP challenge notification', { error: String(error), userId });
+  } catch {
+    logger.error('Error sending PvP challenge notification');
   }
 }
 
