@@ -76,7 +76,7 @@ func _create_base_button() -> Button:
 	return btn
 
 func test_base_button_default_type() -> void:
-	var btn = _create_base_button()
+	var btn = await _create_base_button()
 	if btn.button_type == "primary":
 		_pass("test_base_button_default_type")
 	else:
@@ -84,7 +84,7 @@ func test_base_button_default_type() -> void:
 	btn.queue_free()
 
 func test_base_button_state_enum() -> void:
-	var btn = _create_base_button()
+	var btn = await _create_base_button()
 	# Verify ButtonState enum values exist
 	if btn.ButtonState.NORMAL == 0 and btn.ButtonState.HOVER == 1 and btn.ButtonState.PRESSED == 2 and btn.ButtonState.DISABLED == 3 and btn.ButtonState.FOCUSED == 4:
 		_pass("test_base_button_state_enum")
@@ -93,7 +93,7 @@ func test_base_button_state_enum() -> void:
 	btn.queue_free()
 
 func test_base_button_set_type() -> void:
-	var btn = _create_base_button()
+	var btn = await _create_base_button()
 	btn.set_button_type("secondary")
 	if btn.button_type == "secondary":
 		_pass("test_base_button_set_type")
@@ -102,7 +102,7 @@ func test_base_button_set_type() -> void:
 	btn.queue_free()
 
 func test_base_button_toggle() -> void:
-	var btn = _create_base_button()
+	var btn = await _create_base_button()
 	if btn.is_toggle == false and btn.is_toggled_on() == false:
 		_pass("test_base_button_toggle_default")
 	else:
@@ -110,21 +110,22 @@ func test_base_button_toggle() -> void:
 	btn.queue_free()
 
 func test_base_button_state_signal() -> void:
-	var btn = _create_base_button()
-	var received_state = ""
-	btn.state_changed.connect(func(state): received_state = state)
+	var btn = await _create_base_button()
+	# Array capture: GDScript lambdas copy captured scalars.
+	var received: Array = []
+	btn.state_changed.connect(func(state): received.append(state))
 	# Manually emit signal to test connectivity
 	btn.state_changed.emit("hover")
 	await get_tree().create_timer(0.05).timeout
-	if received_state == "hover":
+	if received == ["hover"]:
 		_pass("test_base_button_state_signal")
 	else:
 		_fail("test_base_button_state_signal", "state_changed signal should emit state string")
 	btn.queue_free()
 
 func test_base_button_disabled_state() -> void:
-	var btn = _create_base_button()
-	btn.set_disabled(true)
+	var btn = await _create_base_button()
+	btn.apply_disabled(true)
 	if btn.disabled and btn.get_current_state() == btn.ButtonState.DISABLED:
 		_pass("test_base_button_disabled_state")
 	else:
@@ -142,7 +143,7 @@ func _create_base_label() -> Label:
 	return lbl
 
 func test_base_label_default_type() -> void:
-	var lbl = _create_base_label()
+	var lbl = await _create_base_label()
 	if lbl.label_type == lbl.LabelType.BODY:
 		_pass("test_base_label_default_type")
 	else:
@@ -150,7 +151,7 @@ func test_base_label_default_type() -> void:
 	lbl.queue_free()
 
 func test_base_label_type_enum() -> void:
-	var lbl = _create_base_label()
+	var lbl = await _create_base_label()
 	var passed = (
 		lbl.LabelType.TITLE == 0 and
 		lbl.LabelType.HEADER == 1 and
@@ -168,7 +169,7 @@ func test_base_label_type_enum() -> void:
 	lbl.queue_free()
 
 func test_base_label_set_type() -> void:
-	var lbl = _create_base_label()
+	var lbl = await _create_base_label()
 	lbl.set_label_type(lbl.LabelType.TITLE)
 	if lbl.label_type == lbl.LabelType.TITLE:
 		_pass("test_base_label_set_type")
@@ -187,7 +188,7 @@ func _create_base_panel() -> PanelContainer:
 	return panel
 
 func test_base_panel_default_type() -> void:
-	var panel = _create_base_panel()
+	var panel = await _create_base_panel()
 	if panel.panel_type == "default":
 		_pass("test_base_panel_default_type")
 	else:
@@ -195,7 +196,7 @@ func test_base_panel_default_type() -> void:
 	panel.queue_free()
 
 func test_base_panel_set_type() -> void:
-	var panel = _create_base_panel()
+	var panel = await _create_base_panel()
 	panel.set_panel_type("card")
 	if panel.panel_type == "card":
 		_pass("test_base_panel_set_type")
@@ -204,7 +205,7 @@ func test_base_panel_set_type() -> void:
 	panel.queue_free()
 
 func test_base_panel_dark_theme() -> void:
-	var panel = _create_base_panel()
+	var panel = await _create_base_panel()
 	if panel.get_is_dark_theme() == true:
 		_pass("test_base_panel_dark_theme_default")
 	else:
@@ -218,7 +219,7 @@ func test_base_panel_dark_theme() -> void:
 	panel.queue_free()
 
 func test_base_panel_corner_radius() -> void:
-	var panel = _create_base_panel()
+	var panel = await _create_base_panel()
 	panel.set_corner_radius(16)
 	if panel.corner_radius == 16:
 		_pass("test_base_panel_corner_radius")
@@ -227,7 +228,7 @@ func test_base_panel_corner_radius() -> void:
 	panel.queue_free()
 
 func test_base_panel_shadow() -> void:
-	var panel = _create_base_panel()
+	var panel = await _create_base_panel()
 	panel.set_show_shadow(true)
 	if panel.show_shadow == true:
 		_pass("test_base_panel_shadow")
@@ -246,7 +247,7 @@ func _create_base_container() -> Container:
 	return container
 
 func test_base_container_default_type() -> void:
-	var container = _create_base_container()
+	var container = await _create_base_container()
 	if container.container_type == "default":
 		_pass("test_base_container_default_type")
 	else:
@@ -254,7 +255,7 @@ func test_base_container_default_type() -> void:
 	container.queue_free()
 
 func test_base_container_set_type() -> void:
-	var container = _create_base_container()
+	var container = await _create_base_container()
 	container.set_container_type("vertical")
 	if container.container_type == "vertical":
 		_pass("test_base_container_set_type")
@@ -263,7 +264,7 @@ func test_base_container_set_type() -> void:
 	container.queue_free()
 
 func test_base_container_padding() -> void:
-	var container = _create_base_container()
+	var container = await _create_base_container()
 	container.set_padding(20)
 	if container.padding_top == 20 and container.padding_bottom == 20 and container.padding_left == 20 and container.padding_right == 20:
 		_pass("test_base_container_padding")
@@ -272,7 +273,7 @@ func test_base_container_padding() -> void:
 	container.queue_free()
 
 func test_base_container_spacing() -> void:
-	var container = _create_base_container()
+	var container = await _create_base_container()
 	container.set_spacing(15)
 	if container.spacing == 15:
 		_pass("test_base_container_spacing")
@@ -291,7 +292,7 @@ func _create_base_icon() -> TextureRect:
 	return icon
 
 func test_base_icon_default_color() -> void:
-	var icon = _create_base_icon()
+	var icon = await _create_base_icon()
 	if icon.icon_color == Color.WHITE:
 		_pass("test_base_icon_default_color")
 	else:
@@ -299,7 +300,7 @@ func test_base_icon_default_color() -> void:
 	icon.queue_free()
 
 func test_base_icon_set_color() -> void:
-	var icon = _create_base_icon()
+	var icon = await _create_base_icon()
 	var test_color = Color.RED
 	icon.set_icon_color(test_color)
 	if icon.icon_color == test_color:
@@ -309,7 +310,7 @@ func test_base_icon_set_color() -> void:
 	icon.queue_free()
 
 func test_base_icon_disabled_state() -> void:
-	var icon = _create_base_icon()
+	var icon = await _create_base_icon()
 	icon.set_disabled(true)
 	if icon.get_disabled() == true:
 		_pass("test_base_icon_disabled_state")
@@ -318,7 +319,7 @@ func test_base_icon_disabled_state() -> void:
 	icon.queue_free()
 
 func test_base_icon_accessibility_label() -> void:
-	var icon = _create_base_icon()
+	var icon = await _create_base_icon()
 	icon.set_accessibility_label("Close button")
 	if icon.get_accessibility_label() == "Close button":
 		_pass("test_base_icon_accessibility_label")
@@ -337,7 +338,7 @@ func _create_loading_indicator() -> Control:
 	return indicator
 
 func test_loading_indicator_initial_state() -> void:
-	var indicator = _create_loading_indicator()
+	var indicator = await _create_loading_indicator()
 	if indicator.is_animating() == false:
 		_pass("test_loading_indicator_initial_state")
 	else:
@@ -345,7 +346,7 @@ func test_loading_indicator_initial_state() -> void:
 	indicator.queue_free()
 
 func test_loading_indicator_is_animating() -> void:
-	var indicator = _create_loading_indicator()
+	var indicator = await _create_loading_indicator()
 	indicator._is_animating = true
 	if indicator.is_animating() == true:
 		_pass("test_loading_indicator_is_animating")
@@ -364,20 +365,24 @@ func _create_theme_toggle() -> Control:
 	return toggle
 
 func test_theme_toggle_default_dark() -> void:
-	var toggle = _create_theme_toggle()
-	if toggle.is_dark_theme() == true:
+	var toggle = await _create_theme_toggle()
+	var theme_manager: Node = get_node_or_null("/root/ThemeManager")
+	if theme_manager and toggle.is_dark_theme() == theme_manager.is_dark_mode():
+		_pass("test_theme_toggle_default_dark")
+	elif theme_manager == null and toggle.is_dark_theme() == true:
+		# Fallback path without a manager defaults to dark.
 		_pass("test_theme_toggle_default_dark")
 	else:
-		_fail("test_theme_toggle_default_dark", "Default should be dark theme")
+		_fail("test_theme_toggle_default_dark", "Toggle should mirror the ThemeManager default")
 	toggle.queue_free()
 
 func test_theme_toggle_signal() -> void:
-	var toggle = _create_theme_toggle()
-	var received = false
-	toggle.theme_toggled.connect(func(_is_dark): received = true)
+	var toggle = await _create_theme_toggle()
+	var received: Array = []
+	toggle.theme_toggled.connect(func(is_dark): received.append(is_dark))
 	toggle.theme_toggled.emit(true)
 	await get_tree().create_timer(0.05).timeout
-	if received:
+	if received == [true]:
 		_pass("test_theme_toggle_signal")
 	else:
 		_fail("test_theme_toggle_signal", "theme_toggled signal should emit")

@@ -28,7 +28,6 @@ var theme_manager: Node
 @onready var no_quests_label: Label = $NoQuestsLabel
 
 # --- Quest Tracker Constants ---
-const QUEST_PANEL_SCENE = preload("res://scenes/ui/components/quest_panel.tscn")
 
 func _ready() -> void:
 	# Get DesignTokens reference

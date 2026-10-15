@@ -87,9 +87,9 @@ func _ready() -> void:
 	_setup_node_references()
 	_setup_delay_timer()
 
-	print("=" * 60)
+	print("=".repeat(60))
 	print("ARMORED ARCHER - VERTICAL SLICE DEMO")
-	print("=" * 60)
+	print("=".repeat(60))
 	print("This automated demo walks through the complete core loop:")
 	print("  1. Login")
 	print("  2. Navigate to Campaign Map")
@@ -102,7 +102,7 @@ func _ready() -> void:
 	print("  9. Simulate PvP Combat (Win)")
 	print(" 10. View Match Results")
 	print(" 11. Return to Main Menu")
-	print("=" * 60)
+	print("=".repeat(60))
 	print()
 
 ## Start the automated demo
@@ -451,9 +451,9 @@ func _step_complete() -> void:
 	_demo_running = false
 
 	print()
-	print("=" * 60)
+	print("=".repeat(60))
 	print("VERTICAL SLICE DEMO COMPLETE")
-	print("=" * 60)
+	print("=".repeat(60))
 	print()
 	print("Summary:")
 	print("  ✓ All 11 steps completed successfully")
@@ -469,7 +469,7 @@ func _step_complete() -> void:
 	print("    - State transition works")
 	print()
 	print("The vertical slice is ready for testing!")
-	print("=" * 60)
+	print("=".repeat(60))
 
 	demo_finished.emit(true)
 
