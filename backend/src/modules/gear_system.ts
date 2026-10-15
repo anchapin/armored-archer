@@ -11,6 +11,12 @@ import { createErrorResponse } from '../utils/safeParse';
 import { createTracedRpcHandler } from '../utils/tracing';
 import { logAudit } from './audit';
 import { recordStageAttempt, recordDrop } from './balance_analytics';
+import { grantStageCoins } from './currency';
+import {
+  planDifficultyRewards,
+  type DifficultyRewardPlan,
+  type DynamicRewardTier,
+} from './difficulty_reward_plan';
 import {
   insertGearItem,
   getGearItemByGrantId,
@@ -33,7 +39,7 @@ import {
   incrementGearUnlock,
 } from './metrics';
 import { checkRateLimit } from './rate_limit';
-import { consumeStageChallenge, readStageChallenge } from './stage_challenge';
+import { consumeStageChallenge, deriveChallengeRoll, readStageChallenge } from './stage_challenge';
 import { makeStageGrantId, readStageOutcome, writeStageOutcome } from './stage_grants';
 import {
   applyStageCompletion,
@@ -1593,6 +1599,9 @@ export interface StageCompleteRequest {
   // and valid, the reward tier comes from the server snapshot and this value
   // doubles as the attempt key when attempt_id is absent.
   challenge_id?: string;
+  // Server-populated by the gate from the verified challenge record; any
+  // client-supplied value is overwritten before use and never trusted.
+  challenge_seed?: number;
   attempt_id?: string;
 }
 
@@ -1605,6 +1614,8 @@ export interface StageCompleteRequest {
 export interface LootResult {
   dropped: boolean;
   gear: GearItem | null;
+  /** Second item when the difficulty reward plan yields gearCount 2 (contract section 4). */
+  extra_gear?: GearItem | null;
   error?: string;
 }
 
@@ -1892,6 +1903,7 @@ function gateStageCompletion(
         return { terminalResponse: prior.error };
       }
       request.difficulty = prior.tier;
+      request.challenge_seed = prior.seed;
     }
     return { terminalResponse: resumeCompletionAndRespond(nk, ctx, logger, request) };
   }
@@ -1901,6 +1913,7 @@ function gateStageCompletion(
       return { terminalResponse: challenge.error };
     }
     request.difficulty = challenge.tier;
+    request.challenge_seed = challenge.seed;
   }
   return { claimVersion: dedupResult.claimVersion };
 }
@@ -2089,6 +2102,128 @@ function resumeCompletionAndRespond(
  * the complexity budget; records the terminal outcome telemetry
  * (success / clamped) on both success paths.
  */
+/**
+ * Maps the canonical stage difficulty vocabulary onto the reward-plan tiers
+ * (contract A activation). easy->easy, medium->normal, hard->hard,
+ * nightmare->extreme. Unknown tiers fail closed (planDifficultyRewards
+ * rejects them) so a misconfigured tier can never silently pay a bonus.
+ */
+function planTierForStageDifficulty(difficulty: string): DynamicRewardTier {
+  const map: { [key: string]: DynamicRewardTier } = {
+    easy: 'easy',
+    medium: 'normal',
+    normal: 'normal',
+    hard: 'hard',
+    nightmare: 'extreme',
+  };
+  const tier = map[difficulty];
+  if (!tier) throw new Error('Unmapped stage difficulty for reward plan');
+  return tier;
+}
+
+/**
+ * Computes the difficulty reward plan for a challenge-verified completion
+ * (contract A). Returns undefined without a verified challenge, which keeps
+ * the completion on base rewards exactly as before.
+ */
+function resolveDifficultyRewardPlan(
+  request: StageCompleteRequest,
+  baseXP: number,
+  result: { dropRate: number; roll: number; extraRoll: number }
+): DifficultyRewardPlan | undefined {
+  if (!request.challenge_id) return undefined;
+  return planDifficultyRewards(
+    planTierForStageDifficulty(request.difficulty),
+    baseXP,
+    result.dropRate,
+    result.roll,
+    result.extraRoll
+  );
+}
+
+/**
+ * Resolves the plan's second gear item (contract section 4): a resumed
+ * attempt recovers the crashed attempt's gear:1 grant; a fresh attempt
+ * generates one only when the plan yields gearCount 2.
+ */
+function resolveExtraGearItem(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  inventory: PlayerInventory,
+  plan: DifficultyRewardPlan | undefined,
+  resumed?: boolean
+): GearItem | null {
+  const secondGearGrantId = request.attempt_id
+    ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'gear:1')
+    : undefined;
+  if (resumed && secondGearGrantId) {
+    return (
+      getGearItemByGrantId(nk, ctx.userId, secondGearGrantId, stageCompletionDbContext(logger)) ??
+      null
+    );
+  }
+  if (plan && plan.gearCount >= 2) {
+    return (
+      generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger, secondGearGrantId)
+        .gear ?? null
+    );
+  }
+  return null;
+}
+
+/**
+ * Grants the completion's XP and (for challenge-verified completions) the
+ * plan's coins, each exactly once under its per-attempt grant ID.
+ */
+function grantCompletionRewards(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  xpGained: number,
+  plan: DifficultyRewardPlan | undefined
+): void {
+  grantStageXP(
+    nk,
+    ctx,
+    logger,
+    xpGained,
+    request.attempt_id
+      ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'xp')
+      : undefined
+  );
+  grantPlanCoins(nk, ctx, logger, request, plan);
+}
+
+/**
+ * Grants the plan's coins exactly once under the attempt's coins grant ID.
+ */
+function grantPlanCoins(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  plan: DifficultyRewardPlan | undefined
+): void {
+  if (!plan || plan.coins.total <= 0) return;
+  grantStageCoins(
+    nk,
+    ctx.userId,
+    plan.coins.total,
+    'stage_complete',
+    logger,
+    request.attempt_id
+      ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'coins')
+      : undefined
+  );
+}
+
+/**
+ * Applies the effects of a gated stage completion (best-of record already
+ * written by the caller) and builds the success response.
+ */
 function applyCompletionAndRespond(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
@@ -2157,16 +2292,22 @@ function applyCompletionAndRespond(
 
   // Calculate XP gained for stage completion (verify boss defeat claim server-side)
   const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
-  const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
-  grantStageXP(
-    nk,
-    ctx,
-    logger,
-    xpGained,
-    request.attempt_id
-      ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'xp')
-      : undefined
-  );
+  const baseXP = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
+
+  // Reward integration contract A activation: a completion carrying a
+  // server-issued challenge (verified and consumed/read back by the gate,
+  // which also overrode request.difficulty with the server-snapshotted
+  // tier) earns the difficulty reward plan: tier multiplier on XP, bonus
+  // coins, and up to one extra gear item. Without a verified challenge the
+  // base behavior is exactly as before - no multiplier, no coins, one roll.
+  const plan = resolveDifficultyRewardPlan(request, baseXP, result);
+  const extraGear = resolveExtraGearItem(nk, ctx, logger, request, result.inventory, plan, resumed);
+  const lootResult: LootResult = extraGear
+    ? { ...result.lootResult, extra_gear: extraGear }
+    : result.lootResult;
+
+  const xpGained = plan ? plan.xp.total : baseXP;
+  grantCompletionRewards(nk, ctx, logger, request, xpGained, plan);
 
   // Audit the stage completion
   logAudit(
@@ -2175,28 +2316,73 @@ function applyCompletionAndRespond(
     ctx.ipAddress ?? null,
     'stage_complete',
     'stage_progression',
-    buildAuditData(request, result),
+    buildAuditData(request, result, lootResult, plan),
     'success'
   );
 
   recordStageCompleteOutcome(outcome);
-  return JSON.stringify({
+  return JSON.stringify(
+    buildCompletionSuccessResponse(
+      request,
+      result,
+      lootResult,
+      completionResult,
+      safeStars,
+      safeScore,
+      xpGained,
+      plan
+    )
+  );
+}
+
+/**
+ * Builds the stage-complete success response. Singular gear fields keep the
+ * first item for backward compatibility (deprecated); gear_dropped_v2 is
+ * the contract section 4 plural form (0..2 entries). Bonus fields are
+ * populated only for challenge-verified completions (contract A).
+ */
+function buildCompletionSuccessResponse(
+  request: StageCompleteRequest,
+  result: {
+    inventory: PlayerInventory;
+    dropRate: number;
+    bossDefeatResult?: { defeat_count: number; newly_unlocked_modifiers: string[] };
+    allUnlockedModifiers: string[];
+  },
+  lootResult: LootResult,
+  completionResult: { isNewCompletion: boolean; previousBest?: unknown },
+  safeStars: number,
+  safeScore: number,
+  xpGained: number,
+  plan?: DifficultyRewardPlan
+): Record<string, unknown> {
+  return {
     success: true,
     stage_id: request.stage_id,
-    loot: result.lootResult,
+    loot: lootResult,
     drop_rate: result.dropRate,
     unlocked_modifier_pools: result.inventory.unlocked_modifier_pools,
     boss_defeat_count: result.bossDefeatResult?.defeat_count,
     newly_unlocked_modifiers: result.allUnlockedModifiers,
     // Client expects these fields at top level for contract compatibility
     xp_gained: xpGained,
-    gear_dropped: result.lootResult.gear,
+    gear_dropped: lootResult.gear,
+    gear_dropped_v2: [lootResult.gear, lootResult.extra_gear ?? null].filter(Boolean),
+    coins_gained: plan ? plan.coins.total : 0,
+    bonus: plan
+      ? {
+          tier: planTierForStageDifficulty(request.difficulty),
+          multiplier: plan.multiplier,
+          xp: plan.xp,
+          coins: plan.coins,
+        }
+      : null,
     // Completion-record echo (absorbed from complete_stage, issue #1069)
     stars_earned: safeStars,
     score: safeScore,
     is_new_completion: completionResult.isNewCompletion,
     previous_best: completionResult.previousBest,
-  });
+  };
 }
 
 /**
@@ -2351,6 +2537,7 @@ function processStageCompletion(
   bossDefeatResult?: { defeat_count: number; newly_unlocked_modifiers: string[] };
   allUnlockedModifiers: string[];
   roll: number;
+  extraRoll: number;
 } {
   // Calculate drop rate and roll for loot
   const dropRate = calculateDropRate(request.difficulty, request.boss_defeated);
@@ -2385,6 +2572,15 @@ function processStageCompletion(
     ...newlyUnlockedModifiers,
   ];
 
+  // Contract B: the bonus extra-item draw derives from the server-issued
+  // challenge seed - deterministic per run, so a retry cannot re-roll for a
+  // luckier outcome, and no ambient PRNG enters the reward path. Unused
+  // when no verified challenge is present.
+  const extraRoll =
+    request.challenge_seed !== undefined && request.challenge_id
+      ? deriveChallengeRoll(request.challenge_seed, request.challenge_id)
+      : 1; // no challenge -> no plan -> value unused
+
   const lootResult = resolveLootResult(
     nk,
     ctx,
@@ -2407,6 +2603,25 @@ function processStageCompletion(
     bossDefeatResult,
     allUnlockedModifiers,
     roll,
+    extraRoll,
+  };
+}
+
+/**
+ * Audit fields for the loot and bonus effects of a completion, extracted to
+ * keep buildAuditData within the complexity budget.
+ */
+function completionEffectsAuditFields(
+  lootResult: LootResult,
+  plan?: DifficultyRewardPlan
+): Record<string, unknown> {
+  return {
+    loot_dropped: lootResult.dropped,
+    loot_gear_id: lootResult.gear?.id ?? null,
+    loot_gear_rarity: lootResult.gear?.rarity ?? null,
+    loot_extra_gear_id: lootResult.extra_gear?.id ?? null,
+    bonus_multiplier: plan?.multiplier ?? null,
+    bonus_coins: plan?.coins.total ?? 0,
   };
 }
 
@@ -2417,12 +2632,13 @@ function buildAuditData(
   request: StageCompleteRequest,
   result: {
     inventory: PlayerInventory;
-    lootResult: LootResult;
     dropRate: number;
     allUnlockedModifiers: string[];
     roll: number;
     bossDefeatResult?: { defeat_count: number; newly_unlocked_modifiers: string[] };
-  }
+  },
+  lootResult: LootResult,
+  plan?: DifficultyRewardPlan
 ): Record<string, unknown> {
   return {
     stage_id: request.stage_id,
@@ -2431,9 +2647,7 @@ function buildAuditData(
     boss_id: request.boss_id ?? null,
     boss_defeat_count: result.bossDefeatResult?.defeat_count ?? null,
     enemy_type: request.enemy_type ?? null,
-    loot_dropped: result.lootResult.dropped,
-    loot_gear_id: result.lootResult.gear?.id ?? null,
-    loot_gear_rarity: result.lootResult.gear?.rarity ?? null,
+    ...completionEffectsAuditFields(lootResult, plan),
     unlocked_modifiers_from_boss: result.bossDefeatResult?.newly_unlocked_modifiers ?? [],
     unlocked_modifiers_from_enemy: result.allUnlockedModifiers.filter((m: string) =>
       request.enemy_type ? getModifiersUnlockedByEnemy(request.enemy_type).includes(m) : false

@@ -227,3 +227,20 @@ export function rpcStageStart(
 export function registerRpcStageStart(initializer: Runtime.Initializer): void {
   initializer.registerRpc('armored_archer/stage_start', rpcStageStart);
 }
+
+/**
+ * Derives a deterministic reward draw in [0,1) from the server-issued
+ * challenge (FNV-1a over seed + challenge ID). The bonus extra-item roll
+ * uses this instead of an ambient PRNG: the draw is fixed at stage_start
+ * (a retry cannot re-roll for a luckier outcome) and no predictable PRNG
+ * enters the reward path.
+ */
+export function deriveChallengeRoll(seed: number, challengeId: string): number {
+  const input = `${seed}:${challengeId}`;
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash / 0x100000000;
+}
