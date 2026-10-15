@@ -52,9 +52,11 @@ review. Matching the Extreme cap alone does not approve a new continuous curve.
 XP and any existing eligible integer currency amount would be multiplied once
 and rounded once, with safe-integer bounds and a returned base/bonus/final
 breakdown. Proposed rounding: nearest integer, matching current XP convention.
-Coins require a mapped authoritative earning route and approved base award
-before implementation; this proposal does not invent one. Premium Gems and
-purchased products remain unchanged.
+Later owner approval (October 15, 08:31): add a small PvE Coins faucet of 10
+per eligible stage completion at Normal, 12 on Hard and 15 on Extreme; easier
+keeps the 10-Coin floor. This is a new grant, not an existing route. PvP and
+season Coin payouts remain untouched. No-improvement/replayed completions must
+not gain a new payout. Premium Gems and purchased products remain unchanged.
 
 ## Drops need a concrete choice
 
@@ -95,8 +97,7 @@ rollout controls and migration authority do not follow from approval of a cap.
 
 ## Review sequence
 
-1. Review base-versus-dynamic composition, intermediate curve/rounding, Coins
-   route and drop quantity-versus-probability choice. Confirm exclusions and
+1. Review base-versus-dynamic composition, intermediate curve/rounding, the approved 10-Coin PvE base and drop quantity-versus-probability choice. Confirm exclusions and
    client plural compatibility explicitly.
 2. Review exact authoritative stage-start/evidence and grant-ledger contracts,
    including schema needs, retention, offline rules and partial-failure recovery.
