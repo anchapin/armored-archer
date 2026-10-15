@@ -125,6 +125,9 @@ export const ValibotSchemas = {
     stage_prefix: optional(pipe(string(), minLength(1), maxLength(50))),
     stars_earned: optional(pipe(number(), integer(), minValue(0), maxValue(3))),
     score: optional(pipe(number(), integer(), minValue(0), maxValue(MAX_STAGE_SCORE))),
+    // Per-attempt idempotency key (reward integration contract); a retry
+    // carrying the same key resumes instead of duplicating effects.
+    attempt_id: optional(pipe(string(), minLength(1), maxLength(100))),
   }),
 
   equip_gear: object({

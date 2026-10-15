@@ -13,6 +13,7 @@ import { logAudit } from './audit';
 import { recordStageAttempt, recordDrop } from './balance_analytics';
 import {
   insertGearItem,
+  getGearItemByGrantId,
   getPlayerGearFromDB,
   getPlayerLoadoutFromDB,
   equipItemInDB,
@@ -32,6 +33,7 @@ import {
   incrementGearUnlock,
 } from './metrics';
 import { checkRateLimit } from './rate_limit';
+import { makeStageGrantId, readStageOutcome, writeStageOutcome } from './stage_grants';
 import {
   applyStageCompletion,
   checkStageCompletionClaim,
@@ -1582,6 +1584,11 @@ export interface StageCompleteRequest {
   stage_prefix?: string;
   stars_earned?: number;
   score?: number;
+  // Client-generated per-attempt key (reward integration contract). Present:
+  // a retry of the same attempt resumes unfinished effects instead of being
+  // rejected as a duplicate. Absent: legacy behavior (retry within cooldown
+  // is rejected and any partial effects are lost), unchanged.
+  attempt_id?: string;
 }
 
 /**
@@ -1760,15 +1767,21 @@ function claimStageCompletionOrReject(
   nk: Runtime.Nakama,
   userId: string,
   stageId: string,
-  logger: Runtime.Logger
-): string | null {
+  logger: Runtime.Logger,
+  attemptId?: string
+): { error?: string; resume?: boolean } {
   const claimStartedAtMs = Date.now();
-  const dedupResult = checkStageCompletionClaim(nk, userId, stageId, logger);
+  const dedupResult = checkStageCompletionClaim(nk, userId, stageId, logger, attemptId);
   if (dedupResult.error) {
     observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
     recordStageClaim('replay_rejected');
     recordStageCompleteOutcome('duplicate');
-    return dedupResult.error;
+    return { error: dedupResult.error };
+  }
+  if (dedupResult.resume) {
+    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
+    recordStageClaim('resumed');
+    return { resume: true };
   }
 
   // Issue #1069 claim-first atomicity: write the versioned dedup marker
@@ -1776,7 +1789,7 @@ function claimStageCompletionOrReject(
   // persists and a retry is rejected as a duplicate for the cooldown
   // window, so rewards can never be double-granted.
   try {
-    writeStageCompletionClaim(nk, userId, stageId, dedupResult.claimVersion);
+    writeStageCompletionClaim(nk, userId, stageId, dedupResult.claimVersion, attemptId);
   } catch (error) {
     logger.warn(
       'Stage claim write failed for user %s stage %s: %s',
@@ -1784,18 +1797,20 @@ function claimStageCompletionOrReject(
       stageId,
       String(error)
     );
-    return JSON.stringify({
-      success: false,
-      error: 'Stage completion claim could not be acquired',
-      error_code: 'CLAIM_CONFLICT',
-    });
+    return {
+      error: JSON.stringify({
+        success: false,
+        error: 'Stage completion claim could not be acquired',
+        error_code: 'CLAIM_CONFLICT',
+      }),
+    };
   }
   observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
   // claimVersion is only defined when a prior claim object existed (i.e. the
   // cooldown had expired and this completion proceeded through a versioned
   // claim overwrite) — distinguish that from a genuinely fresh claim (#1139).
   recordStageClaim(dedupResult.claimVersion ? 'cooldown_active' : 'fresh');
-  return null;
+  return {};
 }
 
 /**
@@ -1960,13 +1975,31 @@ export function rpcStageComplete(
   }
 
   // Dedup check + claim-first marker, with #1139 telemetry.
-  const claimError = claimStageCompletionOrReject(nk, ctx.userId, request.stage_id, logger);
-  if (claimError) {
-    return claimError;
+  const claimResult = claimStageCompletionOrReject(
+    nk,
+    ctx.userId,
+    request.stage_id,
+    logger,
+    request.attempt_id
+  );
+  if (claimResult.error) {
+    return claimResult.error;
   }
 
   try {
-    return applyCompletionAndRespond(nk, ctx, logger, request);
+    if (claimResult.resume) {
+      return resumeCompletionAndRespond(nk, ctx, logger, request);
+    }
+    const responseBody = applyCompletionAndRespond(nk, ctx, logger, request);
+    // Terminal outcome record: a replayed request for this attempt is
+    // answered from the record without re-applying any effect.
+    if (request.attempt_id) {
+      const parsed = JSON.parse(responseBody) as Record<string, unknown>;
+      if (parsed.success === true) {
+        writeStageOutcome(nk, ctx.userId, request.stage_id, request.attempt_id, parsed);
+      }
+    }
+    return responseBody;
   } catch {
     // The claim marker written above persists, so a retry of this request is
     // rejected as DUPLICATE_COMPLETION for the cooldown window — no
@@ -1993,6 +2026,34 @@ export function rpcStageComplete(
 }
 
 /**
+ * Answers a same-attempt retry (reward integration contract). The attempt's
+ * recorded terminal outcome is replayed verbatim when it exists; a crashed
+ * attempt without an outcome record is resumed through the normal path with
+ * per-effect grant IDs, so already-landed effects no-op and missing effects
+ * are applied exactly once. Re-rolls never happen: the loot decision is
+ * recovered from the grant-keyed row or the outcome record.
+ */
+function resumeCompletionAndRespond(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest
+): string {
+  const attemptId = request.attempt_id as string;
+  const { outcome, version } = readStageOutcome(nk, ctx.userId, request.stage_id, attemptId);
+  if (outcome) {
+    logger.info('Replaying recorded outcome for resumed attempt %s user %s', attemptId, ctx.userId);
+    return JSON.stringify({ ...outcome.response, resumed: true });
+  }
+  const responseBody = applyCompletionAndRespond(nk, ctx, logger, request, true);
+  const parsed = JSON.parse(responseBody) as Record<string, unknown>;
+  if (parsed.success === true) {
+    writeStageOutcome(nk, ctx.userId, request.stage_id, attemptId, parsed, version);
+  }
+  return JSON.stringify({ ...parsed, resumed: true });
+}
+
+/**
  * Applies the completion records and builds the success response for a
  * stage_complete RPC whose claim marker was already written.
  *
@@ -2004,7 +2065,8 @@ function applyCompletionAndRespond(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  request: StageCompleteRequest
+  request: StageCompleteRequest,
+  resumed?: boolean
 ): string {
   // Issue #1068/#1069: clamp client-declared stars/score before anything
   // is persisted or echoed (defaults match the completion convention
@@ -2032,8 +2094,10 @@ function applyCompletionAndRespond(
     logger
   );
 
-  // Handle case where replay didn't improve: no loot re-roll, no XP
-  if (completionResult.noImprovement) {
+  // Handle case where replay didn't improve: no loot re-roll, no XP.
+  // Skipped on resume: the crashed attempt may have written the best-of
+  // record while its loot/XP effects are still owed.
+  if (completionResult.noImprovement && !resumed) {
     const unlockedPools = getUnlockedModifierPoolsFromDB(nk, ctx.userId, {
       rpc: 'armored_archer/stage_complete',
       logger,
@@ -2056,7 +2120,7 @@ function applyCompletionAndRespond(
   }
 
   // Process stage completion (boss defeats, modifier unlocks, loot via DB)
-  const result = processStageCompletion(nk, ctx, logger, request);
+  const result = processStageCompletion(nk, ctx, logger, request, resumed);
 
   // Issue #1093: pve_stages_completed_total stayed at 0 on the dashboard; record
   // the just-finished stage (clamped stars). The noImprovement path above is
@@ -2066,7 +2130,15 @@ function applyCompletionAndRespond(
   // Calculate XP gained for stage completion (verify boss defeat claim server-side)
   const verifiedBossDefeated = verifyBossDefeat(request, nk, ctx.userId, result, logger);
   const xpGained = calculateStageXPGain(verifiedBossDefeated, request.difficulty);
-  grantStageXP(nk, ctx, logger, xpGained);
+  grantStageXP(
+    nk,
+    ctx,
+    logger,
+    xpGained,
+    request.attempt_id
+      ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'xp')
+      : undefined
+  );
 
   // Audit the stage completion
   logAudit(
@@ -2116,6 +2188,125 @@ function handleValidationFailure(nk: Runtime.Nakama, ctx: Runtime.Context, error
   return createValidationErrorResponse('stage_complete', error);
 }
 
+/** Observability context for stage-completion DB reads on this path. */
+function stageCompletionDbContext(logger: Runtime.Logger): {
+  rpc: string;
+  logger: Runtime.Logger;
+} {
+  return { rpc: 'armored_archer/stage_complete', logger };
+}
+
+/**
+ * Records the boss defeat for a completion unless a resumed attempt's
+ * crashed predecessor already recorded it (defeat_count must not
+ * double-count; verification reads the same list either way).
+ */
+function recordBossDefeatIfNeeded(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  resumed?: boolean
+): { defeat_count: number; newly_unlocked_modifiers: string[] } | undefined {
+  if (!request.boss_defeated || !request.boss_id) return undefined;
+  const alreadyRecorded = resumed
+    ? getDefeatedBossesFromDB(nk, ctx.userId, stageCompletionDbContext(logger)).includes(
+        request.boss_id
+      )
+    : false;
+  if (alreadyRecorded) return undefined;
+  return recordBossDefeat(nk, ctx, logger, request.boss_id, {
+    rpc: 'armored_archer/stage_complete',
+    logger,
+  });
+}
+
+/**
+ * Resolves the loot effect for a completion. Grant-keyed when the client
+ * supplied an attempt_id: a resumed attempt first recovers the gear row the
+ * crashed attempt granted (no re-roll), and a fresh attempt's insert is
+ * insert-once under the key.
+ */
+function resolveLootResult(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  inventory: PlayerInventory,
+  dropRate: number,
+  roll: number,
+  resumed?: boolean
+): LootResult {
+  const gearGrantId = request.attempt_id
+    ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'gear:0')
+    : undefined;
+  if (resumed && gearGrantId) {
+    const priorGrant = getGearItemByGrantId(
+      nk,
+      ctx.userId,
+      gearGrantId,
+      stageCompletionDbContext(logger)
+    );
+    if (priorGrant) return { dropped: true, gear: priorGrant };
+  }
+  return roll < dropRate
+    ? generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger, gearGrantId)
+    : { dropped: false, gear: null };
+}
+
+/**
+ * Records stage-attempt and drop analytics for a completion (non-blocking).
+ * Skipped entirely on resume: the crashed attempt may already have recorded
+ * them, and analytics double-counting skews the balance dashboards.
+ */
+function recordCompletionAnalytics(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  dropRate: number,
+  roll: number,
+  lootResult: LootResult
+): void {
+  recordStageAttempt(nk, {
+    userId,
+    timestamp: Date.now(),
+    stageId: request.stage_id,
+    stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
+    difficulty: request.difficulty,
+    bossDefeated: request.boss_defeated,
+    completed: true, // This is called only on successful completion
+    starsEarned: 3, // Default to 3 stars for completion (can be enhanced later)
+    score: 0, // Score tracking not currently implemented in request
+    attemptNumber: 1, // Simple tracking for now
+  }).catch((error) => {
+    logger.warn('Failed to record stage attempt for balance analytics: %s', String(error));
+    // Don't fail the main flow if analytics recording fails
+  });
+
+  if (lootResult.dropped && lootResult.gear) {
+    // Issue #1093: gear_unlocks_total stayed at 0; record the drop here so
+    // dashboards reflect rarity distribution from real loot rolls.
+    incrementGearUnlock(lootResult.gear.rarity);
+    recordDrop(nk, {
+      userId,
+      timestamp: Date.now(),
+      stageId: request.stage_id,
+      stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
+      difficulty: request.difficulty,
+      bossDefeated: request.boss_defeated,
+      gearRarity: lootResult.gear.rarity,
+      gearType: lootResult.gear.type,
+      gearId: lootResult.gear.id,
+      dropRateUsed: dropRate,
+      rollValue: roll,
+    }).catch((error) => {
+      logger.warn('Failed to record drop for balance analytics: %s', String(error));
+      // Don't fail the main flow if analytics recording fails
+    });
+  }
+}
+
 /**
  * Process stage completion logic
  */
@@ -2123,7 +2314,8 @@ function processStageCompletion(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  request: StageCompleteRequest
+  request: StageCompleteRequest,
+  resumed?: boolean
 ): {
   inventory: PlayerInventory;
   lootResult: LootResult;
@@ -2145,14 +2337,7 @@ function processStageCompletion(
     request.boss_defeated
   );
 
-  // Process boss defeat if applicable
-  const bossDefeatResult =
-    request.boss_defeated && request.boss_id
-      ? recordBossDefeat(nk, ctx, logger, request.boss_id, {
-          rpc: 'armored_archer/stage_complete',
-          logger,
-        })
-      : undefined;
+  const bossDefeatResult = recordBossDefeatIfNeeded(nk, ctx, logger, request, resumed);
 
   // Unlock modifier pools from enemy defeats
   const newlyUnlockedModifiers = unlockModifierPools(nk, ctx.userId, logger, request.enemy_type, {
@@ -2172,50 +2357,19 @@ function processStageCompletion(
     ...newlyUnlockedModifiers,
   ];
 
-  // Roll for loot
-  const lootResult =
-    roll < dropRate
-      ? generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger)
-      : { dropped: false, gear: null };
+  const lootResult = resolveLootResult(
+    nk,
+    ctx,
+    logger,
+    request,
+    inventory,
+    dropRate,
+    roll,
+    resumed
+  );
 
-  // Record stage attempt for balance analytics (non-blocking)
-  recordStageAttempt(nk, {
-    userId: ctx.userId,
-    timestamp: Date.now(),
-    stageId: request.stage_id,
-    stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
-    difficulty: request.difficulty,
-    bossDefeated: request.boss_defeated,
-    completed: true, // This is called only on successful completion
-    starsEarned: 3, // Default to 3 stars for completion (can be enhanced later)
-    score: 0, // Score tracking not currently implemented in request
-    attemptNumber: 1, // Simple tracking for now
-  }).catch((error) => {
-    logger.warn('Failed to record stage attempt for balance analytics: %s', String(error));
-    // Don't fail the main flow if analytics recording fails
-  });
-
-  // Record drop if gear was dropped for balance analytics (non-blocking)
-  if (lootResult.dropped && lootResult.gear) {
-    // Issue #1093: gear_unlocks_total stayed at 0; record the drop here so
-    // dashboards reflect rarity distribution from real loot rolls.
-    incrementGearUnlock(lootResult.gear.rarity);
-    recordDrop(nk, {
-      userId: ctx.userId,
-      timestamp: Date.now(),
-      stageId: request.stage_id,
-      stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
-      difficulty: request.difficulty,
-      bossDefeated: request.boss_defeated,
-      gearRarity: lootResult.gear.rarity,
-      gearType: lootResult.gear.type,
-      gearId: lootResult.gear.id,
-      dropRateUsed: dropRate,
-      rollValue: roll,
-    }).catch((error) => {
-      logger.warn('Failed to record drop for balance analytics: %s', String(error));
-      // Don't fail the main flow if analytics recording fails
-    });
+  if (!resumed) {
+    recordCompletionAnalytics(nk, ctx.userId, logger, request, dropRate, roll, lootResult);
   }
 
   return {
@@ -2279,7 +2433,8 @@ function generateLootResult(
   userId: string,
   stageId: string,
   inventory: PlayerInventory,
-  logger: Runtime.Logger
+  logger: Runtime.Logger,
+  grantId?: string
 ): LootResult {
   const gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
 
@@ -2287,15 +2442,27 @@ function generateLootResult(
   let insertResult: ReturnType<typeof insertGearItem>;
   for (let attempt = 1; attempt <= MAX_INSERT_ATTEMPTS; attempt++) {
     try {
-      insertResult = insertGearItem(nk, userId, gear, {
-        rpc: 'armored_archer/stage_complete',
-        logger,
-      });
+      insertResult = insertGearItem(
+        nk,
+        userId,
+        gear,
+        {
+          rpc: 'armored_archer/stage_complete',
+          logger,
+        },
+        grantId
+      );
     } catch {
       // Keep the existing bounded retry; never copy driver details.
       insertResult = { success: false };
     }
     if (insertResult.success && insertResult.item_id) {
+      if (insertResult.alreadyGranted && insertResult.gear) {
+        // Insert-once hit: return the row the earlier attempt granted; never
+        // substitute the freshly rolled gear for it in the response.
+        inventory.gear.push(insertResult.gear);
+        return { dropped: true, gear: insertResult.gear };
+      }
       gear.id = insertResult.item_id;
       inventory.gear.push(gear);
       // Issue #1093: feed the gear-unlock counter (per-rarity) so the loot

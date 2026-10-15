@@ -75,6 +75,10 @@ export interface PlayerStats {
     dodge: number;
     crit_rate: number;
   };
+  // Stage-grant idempotency: grant IDs already applied to this record.
+  // Bounded to the most recent entries; written in the same OCC write as xp
+  // so an XP grant is atomically idempotent with its own storage object.
+  applied_stage_grants?: string[];
 }
 
 /**

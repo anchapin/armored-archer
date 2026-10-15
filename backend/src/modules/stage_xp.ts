@@ -6,12 +6,15 @@ import { incrementPlayerLevelUp } from './metrics';
 import type { PlayerStats } from './rpg_system';
 import { getLevelForXp } from './xp_manager';
 
+const MAX_APPLIED_STAGE_GRANTS = 50;
+
 export function grantStageXP(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  xp: number
-): void {
+  xp: number,
+  grantId?: string
+): { alreadyApplied: boolean } {
   if (!Number.isSafeInteger(xp) || xp <= 0) throw new Error('Invalid server stage XP');
   // A version conflict fails closed. The claim remains consumed; never report
   // awarded XP when its storage write failed, or overwrite concurrent stats.
@@ -25,6 +28,17 @@ export function grantStageXP(
       };
   validateStats(stats, ctx.userId);
   stats.user_id = ctx.userId;
+  // Grant-ID idempotency: a resumed attempt that already applied this grant
+  // skips the mutation. The marker lives inside the same OCC write as xp, so
+  // the check and the write cannot drift apart.
+  if (grantId && stats.applied_stage_grants?.includes(grantId)) {
+    return { alreadyApplied: true };
+  }
+  if (grantId) {
+    stats.applied_stage_grants = [...(stats.applied_stage_grants ?? []), grantId].slice(
+      -MAX_APPLIED_STAGE_GRANTS
+    );
+  }
   const totalXP = stats.xp + xp;
   if (!Number.isSafeInteger(totalXP)) throw new Error('Player XP overflow');
   const levelsGained = Math.max(0, getLevelForXp(totalXP) - stats.level);
@@ -44,6 +58,7 @@ export function grantStageXP(
   ]);
   invalidatePlayerStatsCache(ctx.userId, logger);
   for (let i = 0; i < levelsGained; i++) incrementPlayerLevelUp();
+  return { alreadyApplied: false };
 }
 
 function validateStats(stats: PlayerStats, userId: string): void {

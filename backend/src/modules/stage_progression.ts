@@ -97,6 +97,52 @@ export function clampCompletionClaims(
   };
 }
 
+/** Storage version of a claim object, when it is one. */
+function claimVersionOf(stored: Runtime.StorageObject): string | undefined {
+  return stored.collection === STAGE_COMPLETION_CLAIM_COLLECTION && stored.version
+    ? stored.version
+    : undefined;
+}
+
+/**
+ * Decides what a stored claim marker means for the incoming request.
+ * Returns undefined when the marker is expired or unreadable and the
+ * completion may proceed; a same-attempt match resumes, anything else fresh
+ * inside the cooldown is a duplicate.
+ */
+function evaluateExistingClaim(
+  stored: Runtime.StorageObject,
+  userId: string,
+  stageId: string,
+  attemptId: string | undefined,
+  logger: Runtime.Logger
+): { error?: string; claimVersion?: string; resume?: boolean } | undefined {
+  try {
+    const claim = JSON.parse(getStorageRawValue(stored.value) ?? '');
+    if (!claim || !claim.claimed_at) return undefined;
+    const timeSinceClaim = Date.now() - claim.claimed_at;
+    if (timeSinceClaim >= STAGE_COMPLETION_CLAIM_COOLDOWN_MS) return undefined;
+    // Same-attempt retry (client supplies the attempt_id the crashed or
+    // replayed request carried): resume unfinished effects instead of
+    // rejecting. A different or absent attempt_id is a duplicate.
+    if (attemptId && claim.attempt_id === attemptId) {
+      return { resume: true, claimVersion: claimVersionOf(stored) };
+    }
+    logger.warn('Duplicate stage completion rejected for user %s stage %s', userId, stageId);
+    return {
+      error: JSON.stringify({
+        success: false,
+        error: 'Stage completion already processed',
+        error_code: 'DUPLICATE_COMPLETION',
+        retry_after_ms: STAGE_COMPLETION_CLAIM_COOLDOWN_MS - timeSinceClaim,
+      }),
+    };
+  } catch {
+    // Corrupted claim data - allow the completion to proceed
+    return undefined;
+  }
+}
+
 /**
  * Checks the claim marker for a stage completion.
  *
@@ -111,8 +157,9 @@ export function checkStageCompletionClaim(
   nk: Runtime.Nakama,
   userId: string,
   stageId: string,
-  logger: Runtime.Logger
-): { error?: string; claimVersion?: string } {
+  logger: Runtime.Logger,
+  attemptId?: string
+): { error?: string; claimVersion?: string; resume?: boolean } {
   const claimKey = `${userId}:${stageId}`;
   let existingClaims: Runtime.StorageObject[] = [];
   try {
@@ -123,33 +170,12 @@ export function checkStageCompletionClaim(
     // Storage error during dedup check - proceed with completion
   }
   if (existingClaims.length > 0 && existingClaims[0].value) {
-    try {
-      const claim = JSON.parse(getStorageRawValue(existingClaims[0].value) ?? '');
-      if (claim && claim.claimed_at) {
-        const timeSinceClaim = Date.now() - claim.claimed_at;
-        if (timeSinceClaim < STAGE_COMPLETION_CLAIM_COOLDOWN_MS) {
-          logger.warn('Duplicate stage completion rejected for user %s stage %s', userId, stageId);
-          return {
-            error: JSON.stringify({
-              success: false,
-              error: 'Stage completion already processed',
-              error_code: 'DUPLICATE_COMPLETION',
-              retry_after_ms: STAGE_COMPLETION_CLAIM_COOLDOWN_MS - timeSinceClaim,
-            }),
-          };
-        }
-      }
-    } catch {
-      // Corrupted claim data - allow the completion to proceed
-    }
+    const verdict = evaluateExistingClaim(existingClaims[0], userId, stageId, attemptId, logger);
+    if (verdict) return verdict;
   }
-  const claimVersion =
-    existingClaims.length > 0 &&
-    existingClaims[0].collection === STAGE_COMPLETION_CLAIM_COLLECTION &&
-    existingClaims[0].version
-      ? existingClaims[0].version
-      : undefined;
-  return { claimVersion };
+  return {
+    claimVersion: existingClaims.length > 0 ? claimVersionOf(existingClaims[0]) : undefined,
+  };
 }
 
 /**
@@ -169,14 +195,15 @@ export function writeStageCompletionClaim(
   nk: Runtime.Nakama,
   userId: string,
   stageId: string,
-  claimVersion?: string
+  claimVersion?: string,
+  attemptId?: string
 ): void {
   nk.storageWrite([
     {
       collection: STAGE_COMPLETION_CLAIM_COLLECTION,
       key: `${userId}:${stageId}`,
       userId,
-      value: toStorageValue({ claimed_at: Date.now(), stage_id: stageId }),
+      value: toStorageValue({ claimed_at: Date.now(), stage_id: stageId, attempt_id: attemptId }),
       version: claimVersion ?? '*',
     },
   ]);
