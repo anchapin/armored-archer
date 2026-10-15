@@ -1,10 +1,10 @@
 extends Control
 
 # --- Virtual Joystick Configuration ---
-@export var joystick_radius: float = 100.0
+@export var joystick_radius: float = 42.0
 @export var deadzone: float = 0.15
 @export var return_speed: float = 10.0
-@export var relative_joystick_size: float = 0.3
+@export var relative_joystick_size: float = 0.3 # Retained scene property; geometry is local-size based.
 
 # --- Visual Components ---
 @onready var background: TextureRect = $Background
@@ -17,8 +17,8 @@ var output_vector: Vector2 = Vector2.ZERO
 var _thumb_returning: bool = false
 
 # --- Visual Constants ---
-const BASE_OPACITY: float = 0.3
-const ACTIVE_OPACITY: float = 0.6
+const BASE_OPACITY: float = 0.22
+const ACTIVE_OPACITY: float = 0.85
 const THUMB_BASE_SCALE: float = 1.0
 const THUMB_ACTIVE_SCALE: float = 1.2
 const OPACITY_SMOOTH_SPEED: float = 8.0
@@ -29,20 +29,19 @@ signal joystick_released()
 func _ready() -> void:
 	set_process_input(true)
 	_scale_joystick_to_viewport()
-	_add_visual_effects()
-
-func _add_visual_effects() -> void:
-	# Add glow effect to thumb when active
-	if thumb:
-		var thumb_material := ShaderMaterial.new()
-		thumb.material = thumb_material
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	resized.connect(_scale_joystick_to_viewport)
 
 func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			if touch_index == -1:
 				var joy_center: Vector2 = _get_joystick_center()
-				if event.position.distance_to(joy_center) <= joystick_radius * 1.5:
+				if event.position.distance_to(joy_center) <= minf(size.x, size.y) * 0.5:
 					touch_index = event.index
 					is_active = true
 					_thumb_returning = false
@@ -77,7 +76,7 @@ func _update_opacity_smooth(delta: float) -> void:
 	var target_opacity: float = ACTIVE_OPACITY if is_active else BASE_OPACITY
 	if background:
 		var current: Color = background.modulate
-		background.modulate = Color(current.r, current.g, current.b, lerp(current.a, target_opacity, delta * OPACITY_SMOOTH_SPEED))
+		background.modulate = Color(current.r, current.g, current.b, lerp(current.a, target_opacity, minf(1.0, delta * OPACITY_SMOOTH_SPEED)))
 
 func _add_idle_pulse(delta: float) -> void:
 	# Subtle breathing animation for the background
@@ -149,21 +148,14 @@ func _release_joystick() -> void:
 	joystick_released.emit()
 
 func _scale_joystick_to_viewport() -> void:
-	var viewport_size: Vector2 = get_viewport_rect().size
-	var scale_factor: float = min(viewport_size.x, viewport_size.y) * relative_joystick_size / 200.0
-
-	joystick_radius *= scale_factor
-
+	# Derive from current local bounds, never multiply an already-scaled radius.
+	var diameter: float = minf(size.x, size.y)
+	joystick_radius = diameter * 0.35
 	if background:
-		var new_bg_size: Vector2 = background.size * scale_factor
-		background.offset_left = -new_bg_size.x / 2.0
-		background.offset_top = -new_bg_size.y / 2.0
-		background.offset_right = new_bg_size.x / 2.0
-		background.offset_bottom = new_bg_size.y / 2.0
-
+		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if thumb:
-		var new_thumb_size: Vector2 = thumb.size * scale_factor
-		thumb.offset_left = -new_thumb_size.x / 2.0
-		thumb.offset_top = -new_thumb_size.y / 2.0
-		thumb.offset_right = new_thumb_size.x / 2.0
-		thumb.offset_bottom = new_thumb_size.y / 2.0
+		var half_thumb: float = diameter * 0.125
+		thumb.offset_left = -half_thumb
+		thumb.offset_top = -half_thumb
+		thumb.offset_right = half_thumb
+		thumb.offset_bottom = half_thumb

@@ -1,5 +1,10 @@
 extends Control
 
+enum ControlsMode { AUTO, TOUCH, DESKTOP }
+@export var controls_mode: ControlsMode = ControlsMode.AUTO
+const STICK_SIZE: float = 120.0
+const EDGE_PADDING: float = 12.0
+
 @onready var movement_joystick: Control = get_node_or_null("MovementJoystick")
 @onready var aiming_joystick: Control = get_node_or_null("AimingJoystick")
 
@@ -14,6 +19,8 @@ var _safe_area_changed_callable: Callable
 var player: CharacterBody2D
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	apply_controls_mode()
 	_connect_signals()
 	_connect_safe_area_manager()
 
@@ -59,20 +66,36 @@ func _cleanup_signal_connection(node: Node, signal_name: String, callable: Calla
 		node.disconnect(signal_name, callable)
 
 func _on_safe_area_changed() -> void:
+	clear_input()
 	_adjust_joysticks_for_safe_area()
 
+func apply_controls_mode() -> void:
+	var touch_enabled: bool = controls_mode == ControlsMode.TOUCH or (
+		controls_mode == ControlsMode.AUTO and DisplayServer.is_touchscreen_available())
+	if not touch_enabled:
+		clear_input()
+	for joystick in [movement_joystick, aiming_joystick]:
+		if joystick:
+			joystick.visible = touch_enabled
+			joystick.set_process_input(touch_enabled)
+
 func _adjust_joysticks_for_safe_area() -> void:
-	var safe_margins: Dictionary = SafeAreaManager.get_safe_margins()
-
-	# Movement joystick is bottom-left
+	var margins: Dictionary = SafeAreaManager.get_safe_margins()
+	var bottom: float = maxf(0.0, margins.bottom) + EDGE_PADDING
 	if movement_joystick:
-		movement_joystick.offset_right = 200.0 - safe_margins.left
-		movement_joystick.offset_top = -200.0 - safe_margins.bottom
-
-	# Aiming joystick is bottom-right
+		var left: float = maxf(0.0, margins.left) + EDGE_PADDING
+		movement_joystick.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+		movement_joystick.offset_left = left
+		movement_joystick.offset_right = left + STICK_SIZE
+		movement_joystick.offset_top = -bottom - STICK_SIZE
+		movement_joystick.offset_bottom = -bottom
 	if aiming_joystick:
-		aiming_joystick.offset_left = -200.0 - safe_margins.right
-		aiming_joystick.offset_bottom = 200.0 - safe_margins.bottom
+		var right: float = maxf(0.0, margins.right) + EDGE_PADDING
+		aiming_joystick.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+		aiming_joystick.offset_left = -right - STICK_SIZE
+		aiming_joystick.offset_right = -right
+		aiming_joystick.offset_top = -bottom - STICK_SIZE
+		aiming_joystick.offset_bottom = -bottom
 
 func _on_movement_joystick_moved(vector: Vector2) -> void:
 	if is_instance_valid(player):

@@ -48,6 +48,9 @@ func _start_configured_stage() -> void:
 	var spawner: Node = root.get_node("EnemySpawner")
 	var player: Node = current_scene.get_node("Player")
 	var touch: Node = current_scene.get_node("HUD/TouchUI")
+	# This scenario exercises touch teaching even on a headless desktop host.
+	touch.controls_mode = touch.ControlsMode.TOUCH
+	touch.apply_controls_mode()
 	if gm.current_stage_id != "1_1" or gm.current_encounter_data.is_empty():
 		_fail("stage ID or encounter configuration missing")
 		return

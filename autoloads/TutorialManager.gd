@@ -44,7 +44,7 @@ const TUTORIALS := {
 			{
 				"id": "aiming",
 				"title": "Drag to Aim",
-				"description": "Press and drag on the screen (or move the right stick / move the mouse while holding the mouse button) to aim your bow. An aiming arc shows where your arrow will fly.",
+				"description": "Press and drag on the screen (or move the right stick / move the mouse) to aim your bow. An aiming arc shows where your arrow will fly.",
 				"action": "aim",
 				"position": "top_right",
 				"duration": 0,
@@ -53,7 +53,7 @@ const TUTORIALS := {
 			{
 				"id": "shooting",
 				"title": "Release to Fire",
-				"description": "Release to fire the arrow. On desktop, click and release the mouse button (or tap Space / Enter). The harder you draw back, the more powerful the shot!",
+				"description": "Release to fire the arrow. On desktop, left-click to fire (or tap Space / Enter). The harder you draw back, the more powerful the shot!",
 				"action": "shoot",
 				"position": "center_bottom",
 				"duration": 0,
