@@ -12,7 +12,7 @@ Observed failures:
 - Button state signal and theme toggle signal tests assign captured local
   variables in lambdas; those assignments do not update the outer local.
 - Disabled state expects set_disabled to update custom button state; production
-  exposes set_button_disabled for that behavior.
+  exposes apply_disabled for that behavior.
 
 Observed runtime errors:
 
