@@ -43,7 +43,7 @@ _Avoid_: rarity tier (conflates the two vocabularies)
 ### Difficulty
 
 **Dynamic Difficulty**:
-A PvE-only rubber-banding system that adjusts challenge within ±20% based on win/lose streaks (3-game threshold). Owner direction on October 15, 2026 replaces the reward-neutral promise: higher difficulty should grant higher rewards. Authoritative server rewards remain reward-neutral pending a separately approved server-authoritative design and implementation. PvE-only, bounded and disclosed constraints remain.
+A PvE-only rubber-banding system that adjusts challenge within ±20% based on win/lose streaks (4-game threshold, owner direction October 15, 2026). Owner direction on October 15, 2026 replaces the reward-neutral promise: higher difficulty should grant higher rewards. Authoritative server rewards remain reward-neutral pending a separately approved server-authoritative design and implementation. PvE-only, bounded and disclosed constraints remain.
 _Avoid_: adaptive difficulty, difficulty scaling (that's `difficulty_scaling.ts`, a different module)
 
 **Difficulty Modifier**:

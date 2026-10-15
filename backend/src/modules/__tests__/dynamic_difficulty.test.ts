@@ -353,12 +353,12 @@ describe('DynamicDifficulty', () => {
   });
 
   describe('Difficulty adjustment on streaks', () => {
-    it('should increase difficulty after 3+ corroborated win streak', () => {
+    it('should increase difficulty after 4 corroborated win streak', () => {
       const initialModifier = getDifficultyModifier(mockCtx, testUserId);
 
-      // Three server-accepted stage completions, three reported wins.
-      seedStageCompletions(['stage_1', 'stage_2', 'stage_3']);
-      for (let i = 0; i < 3; i++) {
+      // Four distinct server-accepted completions, four reported wins.
+      seedStageCompletions(['stage_1', 'stage_2', 'stage_3', 'stage_4']);
+      for (let i = 0; i < 4; i++) {
         trackMatchOutcome(mockCtx, testUserId, { won: true, match_type: 'pve' });
       }
 
@@ -366,14 +366,14 @@ describe('DynamicDifficulty', () => {
       expect(newModifier).toBeGreaterThan(initialModifier);
     });
 
-    it('should decrease difficulty after 3+ lose streak', () => {
+    it('should decrease difficulty after 4 lose streak', () => {
       // Set to higher difficulty first
       setDifficultyModifier(mockCtx, testUserId, 0.15);
 
       const initialModifier = getDifficultyModifier(mockCtx, testUserId);
 
-      // Track 3 losses
-      for (let i = 0; i < 3; i++) {
+      // Track 4 losses
+      for (let i = 0; i < 4; i++) {
         trackMatchOutcome(mockCtx, testUserId, { won: false, match_type: 'pve' });
       }
 
@@ -382,9 +382,9 @@ describe('DynamicDifficulty', () => {
     });
 
     it('should not increase difficulty below threshold', () => {
-      // Two server-accepted completions: verified streak of 2 (< threshold).
-      seedStageCompletions(['stage_1', 'stage_2']);
-      for (let i = 0; i < 2; i++) {
+      // Three accepted completions are below the owner-selected threshold.
+      seedStageCompletions(['stage_1', 'stage_2', 'stage_3']);
+      for (let i = 0; i < 3; i++) {
         trackMatchOutcome(mockCtx, testUserId, { won: true, match_type: 'pve' });
       }
 
@@ -406,8 +406,8 @@ describe('DynamicDifficulty', () => {
       // Set to higher difficulty first
       setDifficultyModifier(mockCtx, testUserId, 0.1);
 
-      // Track only 2 losses (below threshold)
-      for (let i = 0; i < 2; i++) {
+      // Three losses must not adjust before the fourth.
+      for (let i = 0; i < 3; i++) {
         trackMatchOutcome(mockCtx, testUserId, { won: false, match_type: 'pve' });
       }
 
