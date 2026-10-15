@@ -3,8 +3,7 @@ extends GutTest
 ## Tests for DynamicDifficultyManager autoload.
 ## Tests win/lose streak tracking, difficulty modifiers, and performance ratings.
 ##
-## NOTE: DynamicDifficultyManager should be implemented.
-## This test verifies the expected API and behavior.
+## Uses the real manager with persistence disabled for isolated behavior checks.
 
 var dynamic_difficulty_manager: Node
 
@@ -86,7 +85,7 @@ func test_lose_streak_reset_on_win():
 	assert_eq(lose_streak, 0, "Lose streak should reset to 0 after win")
 
 func test_difficulty_increase_on_win_streak():
-	# Difficulty should increase after 3+ wins
+	# Difficulty should increase after 4 wins
 	# Modifier should increase by +10%
 	if dynamic_difficulty_manager == null:
 		gut.p("SKIP: DynamicDifficultyManager not available")
@@ -94,9 +93,13 @@ func test_difficulty_increase_on_win_streak():
 
 	var initial_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
-	# Trigger win streak threshold (3 wins)
+	# Trigger win streak threshold (4 wins)
 	dynamic_difficulty_manager.track_match_outcome(true, "pve")
 	dynamic_difficulty_manager.track_match_outcome(true, "pve")
+	dynamic_difficulty_manager.track_match_outcome(true, "pve")
+
+	assert_eq(dynamic_difficulty_manager.get_difficulty_modifier(), initial_modifier,
+		"Three wins must not adjust difficulty")
 	dynamic_difficulty_manager.track_match_outcome(true, "pve")
 
 	var new_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
@@ -104,7 +107,7 @@ func test_difficulty_increase_on_win_streak():
 	assert_gt(new_modifier, initial_modifier, "Difficulty should increase after win streak")
 
 func test_difficulty_decrease_on_lose_streak():
-	# Difficulty should decrease after 3+ losses
+	# Difficulty should decrease after 4 losses
 	# Modifier should decrease by -10%
 	if dynamic_difficulty_manager == null:
 		gut.p("SKIP: DynamicDifficultyManager not available")
@@ -115,9 +118,13 @@ func test_difficulty_decrease_on_lose_streak():
 	# Set to higher difficulty first
 	dynamic_difficulty_manager.set_difficulty_modifier(0.1)
 
-	# Trigger lose streak threshold (3 losses)
+	# Trigger lose streak threshold (4 losses)
 	dynamic_difficulty_manager.track_match_outcome(false, "pve")
 	dynamic_difficulty_manager.track_match_outcome(false, "pve")
+	dynamic_difficulty_manager.track_match_outcome(false, "pve")
+
+	assert_eq(dynamic_difficulty_manager.get_difficulty_modifier(), 0.1,
+		"Three losses must not adjust difficulty")
 	dynamic_difficulty_manager.track_match_outcome(false, "pve")
 
 	var new_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
@@ -328,7 +335,7 @@ func test_win_rate_custom_window():
 
 func test_reward_modifier():
 	# Reward modifier should increase with difficulty
-	# Easy: 0.8x, Normal: 1.0x, Hard: 1.2x, Extreme: 1.4x
+	# Easy: 0.8x, Normal: 1.0x, Hard: 1.2x, Extreme: 1.5x
 	if dynamic_difficulty_manager == null:
 		gut.p("SKIP: DynamicDifficultyManager not available")
 		return
@@ -343,7 +350,7 @@ func test_reward_modifier():
 
 	dynamic_difficulty_manager.set_difficulty_modifier(0.20)
 	var extreme_reward: float = dynamic_difficulty_manager.get_encounter_reward_modifier()
-	assert_almost_eq(extreme_reward, 1.4, 0.01, "Extreme should give 1.4x rewards")
+	assert_almost_eq(extreme_reward, 1.5, 0.01, "Extreme should give 1.5x rewards")
 
 func test_match_history_tracking():
 	# Match history should be tracked for performance calculation
