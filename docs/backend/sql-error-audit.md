@@ -362,3 +362,15 @@ provider error-message columns remain unchanged; their stored values are not
 logged by these SQL catches. No notification dispatch or registration is added,
 and the module remains outside the active RPC graph. Obsolete test cleanup
 remains separate. This slice does not close the broader audit.
+
+### Obsolete test-cleanup diagnostics
+
+The unreferenced `test_cleanup.ts` module now observes synchronous SQL host
+throws using fixed operation/RPC tags. SQL/storage secondary failure logs omit
+driver text. Its existing async/delete scope/continue-on-error/success fallback
+are deliberately unchanged. It remains outside the entry-point dependency
+graph and is not registered or enabled by this slice. This is not the guarded,
+synchronous active `cleanup_test_user` handler and must not replace it. Future
+async SQL providers are not covered by the observer. The legacy success result
+still does not prove all deletes succeeded. No authorization or registration
+change is included, and the broader audit remains open.

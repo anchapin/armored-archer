@@ -1,4 +1,5 @@
 import { Runtime } from '../types/nakama';
+import { observedSqlQuery } from '../utils/sql-observability';
 
 const PLAYER_INVENTORY_COLLECTION = 'player_inventory';
 const UNLOCKED_MODIFIER_POOLS_COLLECTION = 'unlocked_modifier_pools';
@@ -53,8 +54,8 @@ export async function rpcCleanupUserStorage(
         userId: userId,
       },
     ]);
-  } catch (err) {
-    logger.info(`player_inventory storage delete: ${(err as Error).message}`);
+  } catch {
+    logger.info('player_inventory storage delete failed');
   }
 
   try {
@@ -65,8 +66,8 @@ export async function rpcCleanupUserStorage(
         userId: userId,
       },
     ]);
-  } catch (err) {
-    logger.info(`unlocked_modifier_pools storage delete: ${(err as Error).message}`);
+  } catch {
+    logger.info('unlocked_modifier_pools storage delete failed');
   }
 
   // Clean PostgreSQL game tables (mirrors cleanupDatabaseForUser in helpers.ts)
@@ -81,9 +82,15 @@ export async function rpcCleanupUserStorage(
 
   for (const table of pgTables) {
     try {
-      await nk.sqlQuery(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
-    } catch (err) {
-      logger.info(`${table} delete: ${(err as Error).message}`);
+      await observedSqlQuery(
+        nk,
+        'test_cleanup.delete',
+        `DELETE FROM ${table} WHERE user_id = $1`,
+        [userId],
+        { rpc: 'test.cleanup_user_storage', logger }
+      );
+    } catch {
+      logger.info('Legacy test cleanup SQL delete failed');
     }
   }
 
