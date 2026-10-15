@@ -43,7 +43,7 @@ _Avoid_: rarity tier (conflates the two vocabularies)
 ### Difficulty
 
 **Dynamic Difficulty**:
-A PvE-only rubber-banding system that adjusts challenge within ±20% based on win/lose streaks (3-game threshold). Owner direction on October 15, 2026 replaces the reward-neutral promise: higher difficulty should grant higher rewards. Production remains reward-neutral pending a separately approved server-authoritative design and implementation. PvE-only, bounded and disclosed constraints remain.
+A PvE-only rubber-banding system that adjusts challenge within ±20% based on win/lose streaks (3-game threshold). Owner direction on October 15, 2026 replaces the reward-neutral promise: higher difficulty should grant higher rewards. Authoritative server rewards remain reward-neutral pending a separately approved server-authoritative design and implementation. PvE-only, bounded and disclosed constraints remain.
 _Avoid_: adaptive difficulty, difficulty scaling (that's `difficulty_scaling.ts`, a different module)
 
 **Difficulty Modifier**:
@@ -122,7 +122,7 @@ _Avoid_: unranked (when precision needed — "unranked" implies no Elo effect, "
 
 - A **Cosmetic Skin** renders over exactly one **Base Gear** slot's appearance; **Base Gear** carries all stats
 - **Gems** purchase **Cosmetic Skins** only; **Coins** are earned by gameplay and never purchased
-- **Dynamic Difficulty** adjusts PvE challenge. Higher-difficulty rewards are planned by owner direction; production remains reward-neutral until separately approved implementation. It does not affect PvP.
+- **Dynamic Difficulty** adjusts PvE challenge. Higher-difficulty rewards are planned by owner direction; authoritative server rewards remain reward-neutral until separately approved implementation. It does not affect PvP.
 - **Punch-Up** exists only inside ranked duels; **Casual PvP** never exposes the punch-up wager
 - **Punch-Up** eligibility keys on **Power Rating**; the wager itself is **Ladder Rating** — build strength gates who you may challenge, Elo is what you stake
 - **Duel Matchmaking** precedes exactly one **Duel**; a **Duel** ends only in server-declared **Match Settlement**
@@ -134,7 +134,7 @@ _Avoid_: unranked (when precision needed — "unranked" implies no Elo effect, "
 > **Domain expert:** "No. Anything bought with **Gems** is a **Cosmetic Skin** — it renders over the **Base Gear** you already earned. The stats never leave the **Base Gear**."
 
 > **Dev:** "Losing streak has him at the -20% **Difficulty Modifier** — should we bump his drop rate too so he doesn't quit?"
-> **Domain expert:** "Not from a client-side modifier. The owner wants higher difficulty to grant higher rewards, but the server-authoritative formula and eligible rewards still need approval. Production remains reward-neutral meanwhile."
+> **Domain expert:** "Not from a client-side modifier. The owner wants higher difficulty to grant higher rewards, but the server-authoritative formula and eligible rewards still need approval. Authoritative server rewards remain reward-neutral meanwhile."
 
 ## Flagged ambiguities
 

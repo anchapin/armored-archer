@@ -14,4 +14,4 @@ rewards. This supersedes only the reward-neutral player-facing promise from the
 2026-08 Dynamic Difficulty ratification. PvE-only scope, bounded challenge and
 player disclosure remain. Eligible rewards, formula, caps and production rollout
 require a separate server-authoritative design approval. This documentation
-amendment does not enable reward changes; current code remains reward-neutral.
+amendment does not enable reward changes; current authoritative server rewards remain reward-neutral.
