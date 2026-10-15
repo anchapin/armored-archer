@@ -2285,9 +2285,16 @@ function generateLootResult(
 
   // Persist gear to database with retry
   let insertResult: ReturnType<typeof insertGearItem>;
-  let lastError = '';
   for (let attempt = 1; attempt <= MAX_INSERT_ATTEMPTS; attempt++) {
-    insertResult = insertGearItem(nk, userId, gear);
+    try {
+      insertResult = insertGearItem(nk, userId, gear, {
+        rpc: 'armored_archer/stage_complete',
+        logger,
+      });
+    } catch {
+      // Keep the existing bounded retry; never copy driver details.
+      insertResult = { success: false };
+    }
     if (insertResult.success && insertResult.item_id) {
       gear.id = insertResult.item_id;
       inventory.gear.push(gear);
@@ -2304,21 +2311,11 @@ function generateLootResult(
       );
       return { dropped: true, gear };
     }
-    lastError = insertResult.error ?? 'Unknown error';
-    logger.warn(
-      'Failed to persist gear to database (attempt %d/%d): %s',
-      attempt,
-      MAX_INSERT_ATTEMPTS,
-      lastError
-    );
+    logger.warn('Failed to persist stage loot (attempt %d/%d)', attempt, MAX_INSERT_ATTEMPTS);
   }
 
-  // All retries exhausted — log server-side audit and return dropped:false
-  logger.error(
-    'Failed to persist gear to database after %d attempts: %s',
-    MAX_INSERT_ATTEMPTS,
-    lastError
-  );
+  // Exhausted inserts fail the stage; earlier writes and claim remain consumed.
+  logger.error('Failed to persist stage loot after %d attempts', MAX_INSERT_ATTEMPTS);
   logAudit(
     nk,
     userId,
@@ -2327,9 +2324,9 @@ function generateLootResult(
     'loot_persistence',
     { stage_id: stageId, gear_name: gear.name, gear_rarity: gear.rarity },
     'failure',
-    `PERSISTENCE_FAILED: ${lastError}`
+    'PERSISTENCE_FAILED: Failed to persist stage loot'
   );
-  return { dropped: false, gear: null, error: 'PERSISTENCE_FAILED' };
+  throw new Error('Failed to persist stage loot');
 }
 
 /**
