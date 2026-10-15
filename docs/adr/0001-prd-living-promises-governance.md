@@ -12,6 +12,8 @@ The PRD (`docs/armored-archer_prd.md`) is the source of truth for player-facing 
 The owner explicitly chose to revise the PRD so higher difficulty grants higher
 rewards. This supersedes only the reward-neutral player-facing promise from the
 2026-08 Dynamic Difficulty ratification. PvE-only scope, bounded challenge and
-player disclosure remain. Eligible rewards, formula, caps and production rollout
-require a separate server-authoritative design approval. This documentation
+player disclosure remain. Later owner answers select all earned reward types, a
+Normal 1.0x floor and the client 1.5x Extreme target. Per-type mechanics,
+challenge evidence, settlement and production rollout still require a separate
+server-authoritative design approval. This documentation
 amendment does not enable reward changes; current authoritative server rewards remain reward-neutral.
