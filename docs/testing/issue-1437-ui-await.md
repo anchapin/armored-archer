@@ -23,3 +23,8 @@ ThemeManager APIs. This PR must wait for that dependency before merge, and own
 hosted checks plus fresh latest-main green remain required. Earlier parse-only
 probe reached24pass3fail plus fixture/runtime errors, now repaired explicitly
 rather than hidden or waived.
+
+Dependency update: ThemeToggle repair merged into main as a7747d0 on October15.
+This branch is rebased onto that actual main. Scoped27checks pass0fail with no
+SCRIPT ERROR; scoped lint/diffcheck pass. No temporary source application now
+needed. Fresh own hosted checks are required on this rebased head before merge.
