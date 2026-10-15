@@ -7,6 +7,7 @@ import {
   getSchedulerStatus,
 } from '../notification_scheduler';
 import * as notifications from '../notifications';
+import { logger } from '../../config/logger';
 
 jest.mock('../notifications', () => ({
   processScheduledNotifications: jest.fn().mockResolvedValue({ sent: 0, failed: 0 }),
@@ -32,6 +33,48 @@ describe('notification_scheduler', () => {
     jest.clearAllMocks();
     stopNotificationScheduler();
   });
+
+  it.each([false, true])(
+    'observes synchronous SQL host failures safely (metric fails=%s)',
+    async (metricFails) => {
+      const nk = {
+        sqlQuery: jest.fn(() => {
+          throw new Error('private SQL token');
+        }),
+        metricsCounterAdd: jest.fn(() => {
+          if (metricFails) throw new Error('private metric token');
+        }),
+      } as any;
+      await expect(
+        scheduleNextDailyReward(nk, 'private-user', new Date('2026-10-15T00:00:00Z'))
+      ).resolves.toBeUndefined();
+      await expect(
+        notifyUsersAboutEvent(nk, 'private-event', 'private-name', ['private-user'])
+      ).resolves.toBeUndefined();
+      await expect(
+        notifyUsersAboutEvent(nk, 'private-event', 'private-name')
+      ).resolves.toBeUndefined();
+      expect(nk.sqlQuery).toHaveBeenCalledTimes(3);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(3);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'notification_scheduler.scheduleNextDailyReward' },
+        1
+      );
+      expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'notification_scheduler.eventRecipients' },
+        1
+      );
+      expect(notifications.sendEventNotification).not.toHaveBeenCalled();
+      expect(
+        JSON.stringify([
+          (logger.error as jest.Mock).mock.calls,
+          (logger.warn as jest.Mock).mock.calls,
+        ])
+      ).not.toContain('private');
+    }
+  );
 
   describe('scheduleNextDailyReward', () => {
     it('should schedule next daily reward', async () => {
@@ -416,16 +459,13 @@ describe('notification_scheduler', () => {
       );
     });
 
-    it('should log error with userId when sqlQuery fails', async () => {
+    it('should log fixed error when sqlQuery fails', async () => {
       const { logger } = require('../../config/logger');
       logger.error.mockClear();
       mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('DB write error'));
       await scheduleNextDailyReward(mockNakama, 'user-xyz', new Date());
 
-      expect(logger.error).toHaveBeenCalledWith(
-        'Error scheduling next daily reward',
-        expect.objectContaining({ userId: 'user-xyz' })
-      );
+      expect(logger.error).toHaveBeenCalledWith('Error scheduling next daily reward');
     });
   });
 
@@ -458,7 +498,7 @@ describe('notification_scheduler', () => {
       );
     });
 
-    it('should log error with userId when notification fails', async () => {
+    it('should log fixed error when notification fails', async () => {
       const { logger } = require('../../config/logger');
       logger.error.mockClear();
       (notifications.sendPvpChallengeNotification as jest.Mock).mockRejectedValue(
@@ -466,10 +506,7 @@ describe('notification_scheduler', () => {
       );
       await notifyUserAboutPvpChallenge(mockNakama, 'user-err', 'OpponentZ');
 
-      expect(logger.error).toHaveBeenCalledWith(
-        'Error sending PvP challenge notification',
-        expect.objectContaining({ userId: 'user-err' })
-      );
+      expect(logger.error).toHaveBeenCalledWith('Error sending PvP challenge notification');
     });
   });
 
@@ -486,16 +523,13 @@ describe('notification_scheduler', () => {
       );
     });
 
-    it('should log error with eventId when query fails', async () => {
+    it('should log fixed error when query fails', async () => {
       const { logger } = require('../../config/logger');
       logger.error.mockClear();
       mockNakama.sqlQuery = jest.fn().mockRejectedValue(new Error('Query fail'));
       await notifyUsersAboutEvent(mockNakama, 'evt-99', 'Winter Event');
 
-      expect(logger.error).toHaveBeenCalledWith(
-        'Error sending event notifications',
-        expect.objectContaining({ eventId: 'evt-99' })
-      );
+      expect(logger.error).toHaveBeenCalledWith('Error sending event notifications');
     });
   });
 
