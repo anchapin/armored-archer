@@ -30,7 +30,7 @@ func test_repeat_hit_gate_and_recovery_keep_health_mirrored() -> void:
 	var after_first: int = player.current_health
 	player.take_damage(10)
 	assert_eq(player.current_health, after_first)
-	GameManager._process(0.11)
+	GameManager._process(GameManager.PLAYER_INVULNERABILITY_DURATION + 0.01)
 	player.take_damage(10)
 	assert_lt(player.current_health, after_first)
 	assert_eq(player.current_health, GameManager.player_current_health)

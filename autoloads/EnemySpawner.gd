@@ -13,6 +13,8 @@ extends Node2D
 # --- Spawner Settings ---
 @export var spawn_area: Rect2 = Rect2(-300, -200, 600, 400)
 @export var time_between_waves: float = 4.0
+## Delay before the first enemy of wave 1 spawns (#1446).
+const STAGE_START_GRACE_SECONDS: float = 3.0
 @export var time_between_enemies: float = 0.5
 
 # --- Wave Configuration ---
@@ -255,7 +257,10 @@ func start_next_wave() -> void:
 		wave_timer_node.stop()
 
 	if spawn_timer_node:
-		spawn_timer_node.wait_time = time_between_enemies
+		# Wave 1 gets a grace period (#1446): the player gets a few seconds to
+		# orient at stage start (and after the tutorial unfreezes combat,
+		# since the paused timer resumes with this time remaining).
+		spawn_timer_node.wait_time = STAGE_START_GRACE_SECONDS if current_wave == 1 else time_between_enemies
 		spawn_timer_node.start()
 
 func spawn_enemy() -> void:
