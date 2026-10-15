@@ -3,22 +3,20 @@ extends GutTest
 ## Tests for DynamicDifficultyManager autoload.
 ## Tests win/lose streak tracking, difficulty modifiers, and performance ratings.
 ##
-## NOTE: DynamicDifficultyManager should be implemented.
-## This test verifies the expected API and behavior.
+## Uses the real manager with persistence disabled for isolated behavior checks.
 
 var dynamic_difficulty_manager: Node
 
-func before_all():
-	# Get reference to DynamicDifficultyManager autoload
-	dynamic_difficulty_manager = get_node("/root/DynamicDifficultyManager")
+class DifficultyFixture extends "res://autoloads/DynamicDifficultyManager.gd":
+	func save_difficulty_state() -> void:
+		pass
 
-	if dynamic_difficulty_manager == null:
-		gut.p("WARNING: DynamicDifficultyManager autoload not found.")
+func before_each() -> void:
+	dynamic_difficulty_manager = DifficultyFixture.new()
+	dynamic_difficulty_manager.reset_difficulty()
 
-func before_each():
-	# Reset difficulty state before each test
-	if dynamic_difficulty_manager and dynamic_difficulty_manager.has_method("reset_difficulty"):
-		dynamic_difficulty_manager.reset_difficulty()
+func after_each() -> void:
+	dynamic_difficulty_manager.free()
 
 func test_win_streak_tracking():
 	# Win streaks should be tracked correctly
@@ -87,7 +85,7 @@ func test_lose_streak_reset_on_win():
 	assert_eq(lose_streak, 0, "Lose streak should reset to 0 after win")
 
 func test_difficulty_increase_on_win_streak():
-	# Difficulty should increase after 3+ wins
+	# Difficulty should increase after 4 wins
 	# Modifier should increase by +10%
 	if dynamic_difficulty_manager == null:
 		gut.p("SKIP: DynamicDifficultyManager not available")
@@ -95,9 +93,13 @@ func test_difficulty_increase_on_win_streak():
 
 	var initial_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
-	# Trigger win streak threshold (3 wins)
+	# Trigger win streak threshold (4 wins)
 	dynamic_difficulty_manager.track_match_outcome(true, "pve")
 	dynamic_difficulty_manager.track_match_outcome(true, "pve")
+	dynamic_difficulty_manager.track_match_outcome(true, "pve")
+
+	assert_eq(dynamic_difficulty_manager.get_difficulty_modifier(), initial_modifier,
+		"Three wins must not adjust difficulty")
 	dynamic_difficulty_manager.track_match_outcome(true, "pve")
 
 	var new_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
@@ -105,7 +107,7 @@ func test_difficulty_increase_on_win_streak():
 	assert_gt(new_modifier, initial_modifier, "Difficulty should increase after win streak")
 
 func test_difficulty_decrease_on_lose_streak():
-	# Difficulty should decrease after 3+ losses
+	# Difficulty should decrease after 4 losses
 	# Modifier should decrease by -10%
 	if dynamic_difficulty_manager == null:
 		gut.p("SKIP: DynamicDifficultyManager not available")
@@ -116,9 +118,13 @@ func test_difficulty_decrease_on_lose_streak():
 	# Set to higher difficulty first
 	dynamic_difficulty_manager.set_difficulty_modifier(0.1)
 
-	# Trigger lose streak threshold (3 losses)
+	# Trigger lose streak threshold (4 losses)
 	dynamic_difficulty_manager.track_match_outcome(false, "pve")
 	dynamic_difficulty_manager.track_match_outcome(false, "pve")
+	dynamic_difficulty_manager.track_match_outcome(false, "pve")
+
+	assert_eq(dynamic_difficulty_manager.get_difficulty_modifier(), 0.1,
+		"Three losses must not adjust difficulty")
 	dynamic_difficulty_manager.track_match_outcome(false, "pve")
 
 	var new_modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
@@ -138,7 +144,7 @@ func test_difficulty_modifier_max():
 
 	var modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
-	assert_le(modifier, 0.20, "Difficulty modifier should not exceed +20%")
+	assert_lte(modifier, 0.20, "Difficulty modifier should not exceed +20%")
 
 func test_difficulty_modifier_min():
 	# Difficulty modifier should not go below -20% (-0.20)
@@ -156,7 +162,7 @@ func test_difficulty_modifier_min():
 
 	var modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
-	assert_ge(modifier, -0.20, "Difficulty modifier should not go below -20%")
+	assert_gte(modifier, -0.20, "Difficulty modifier should not go below -20%")
 
 func test_difficulty_levels():
 	# Difficulty levels should be: Easy, Normal, Hard, Extreme
@@ -281,11 +287,11 @@ func test_target_difficulty_clamping():
 
 	var max_base: float = 1.0
 	var max_difficulty: float = dynamic_difficulty_manager.calculate_target_difficulty(max_base, 0.20)
-	assert_le(max_difficulty, 1.5, "Max difficulty should be clamped to 1.5")
+	assert_lte(max_difficulty, 1.5, "Max difficulty should be clamped to 1.5")
 
 	var min_base: float = 0.5
 	var min_difficulty: float = dynamic_difficulty_manager.calculate_target_difficulty(min_base, -0.20)
-	assert_ge(min_difficulty, 0.0, "Min difficulty should be clamped to 0.0")
+	assert_gte(min_difficulty, 0.0, "Min difficulty should be clamped to 0.0")
 
 func test_win_rate_calculation():
 	# Win rate should be calculated for recent matches
@@ -324,12 +330,12 @@ func test_win_rate_custom_window():
 	var win_rate_10: float = dynamic_difficulty_manager.get_win_rate(10)
 
 	# Different windows may give different results
-	assert_ge(win_rate_5, 0.0, "Win rate should be valid")
-	assert_ge(win_rate_10, 0.0, "Win rate should be valid")
+	assert_gte(win_rate_5, 0.0, "Win rate should be valid")
+	assert_gte(win_rate_10, 0.0, "Win rate should be valid")
 
 func test_reward_modifier():
 	# Reward modifier should increase with difficulty
-	# Easy: 0.8x, Normal: 1.0x, Hard: 1.2x, Extreme: 1.4x
+	# Easy: 0.8x, Normal: 1.0x, Hard: 1.2x, Extreme: 1.5x
 	if dynamic_difficulty_manager == null:
 		gut.p("SKIP: DynamicDifficultyManager not available")
 		return
@@ -344,7 +350,7 @@ func test_reward_modifier():
 
 	dynamic_difficulty_manager.set_difficulty_modifier(0.20)
 	var extreme_reward: float = dynamic_difficulty_manager.get_encounter_reward_modifier()
-	assert_almost_eq(extreme_reward, 1.4, 0.01, "Extreme should give 1.4x rewards")
+	assert_almost_eq(extreme_reward, 1.5, 0.01, "Extreme should give 1.5x rewards")
 
 func test_match_history_tracking():
 	# Match history should be tracked for performance calculation
