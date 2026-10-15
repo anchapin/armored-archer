@@ -1,32 +1,25 @@
-# UI component suite parse restoration probe
+# UI component suite restoration
 
 Twenty-six calls to coroutine fixture helpers lacked await. Adding await restores
-parsing without changing test assertions, production source or CI configuration.
+parsing and reaches all26test methods (27reported checks). Fixture repairs:
 
-Scoped Godot 4.6 execution of the existing runner reaches all checks: 24 pass,
-three fail (27 reported checks across 26 test methods). This draft is not a
-clean-test result and must not be treated as completed UI coverage.
+- Collect signal arguments in mutable arrays instead of assigning captured
+  locals in lambdas. Check the same emitted payloads.
+- Call existing component apply_disabled API and retain both native disabled
+  and custom DISABLED-state expectations. No production callers requiring a
+  disabled-state change were found in scenes/scripts.
+- Instantiate the real loading-indicator scene with CenterContainer/Spinner.
+- Compare initial ThemeToggle state with manager's actual current mode, not
+  an assumed dark default (manager defaults LIGHT and may load a saved mode).
 
-Observed failures:
+Scoped Godot4.6 execution with the separate ThemeToggle mode API repair applied:
+27pass0fail, no SCRIPT ERROR. Temporary SceneTree driver records the existing
+node's counters at tree_exiting and returns nonzero for failures. Driver is not
+committed. Scoped gdlint/diff checks pass. This slice changes no production code,
+reward, threshold, workflow or baseline. Full-suite green is not claimed.
 
-- Button state signal and theme toggle signal tests assign captured local
-  variables in lambdas; those assignments do not update the outer local.
-- Disabled state expects set_disabled to update custom button state; production
-  exposes apply_disabled for that behavior.
-
-Observed runtime errors:
-
-- Loading indicator fixtures attach a script to bare Control nodes without its
-  required CenterContainer and Spinner children.
-- ThemeToggle calls ThemeManager.is_dark_theme in _ready, but the production
-  ThemeManager does not provide that method.
-
-No assertions are weakened, no production APIs are changed, and no failures are
-waived here. The two fixture/expectation repairs and production theme API mismatch
-need a separately reviewed continuation. Missing await restoration is kept
-separate so the previously absent suite's actual results are visible.
-
-Validation: original check-only fails; updated check-only, scoped gdlint and diff
-check pass. A temporary SceneTree driver instantiates the existing test node,
-records its counters at tree_exiting and exits nonzero for failures; the driver
-is not committed. Full-suite green is not claimed.
+Without the separate production repair, the legacy suite still hits missing
+ThemeManager APIs. This PR must wait for that dependency before merge, and own
+hosted checks plus fresh latest-main green remain required. Earlier parse-only
+probe reached24pass3fail plus fixture/runtime errors, now repaired explicitly
+rather than hidden or waived.
