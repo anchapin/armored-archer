@@ -6,18 +6,43 @@ extends GutTest
 ## NOTE: StatAllocationManager should be implemented.
 ## This test verifies the expected API and behavior.
 
+# Detached fixtures avoid network/autoload state and persisted user builds.
+class StoreStub extends Node:
+	var gems: int = 0
+	func _set_gems(value: int) -> void:
+		gems = value
+	func get_gems() -> int:
+		return gems
+
+class PlayerStatsStub extends Node:
+	var player_stats: Dictionary = {"stats": {}, "level": 1}
+	var ability_points: int = 30
+	func get_ability_points() -> int:
+		return ability_points
+	func get_level() -> int:
+		return player_stats.level
+
+class AllocationFixture extends "res://autoloads/StatAllocationManager.gd":
+	func save_data() -> void:
+		pass
+	func load_data() -> void:
+		pass
+
 var stat_allocation_manager: Node
 var player_stats_manager: Node
 var store_manager: Node
 
-func before_all():
-	# Get references to autoloads
-	stat_allocation_manager = get_node("/root/StatAllocationManager")
-	player_stats_manager = get_node("/root/PlayerStatsManager")
-	store_manager = get_node("/root/StoreManager")
+func before_each() -> void:
+	store_manager = StoreStub.new()
+	player_stats_manager = PlayerStatsStub.new()
+	stat_allocation_manager = AllocationFixture.new()
+	stat_allocation_manager.store_manager = store_manager
+	stat_allocation_manager.player_stats_manager = player_stats_manager
 
-	if stat_allocation_manager == null:
-		gut.p("WARNING: StatAllocationManager autoload not found.")
+func after_each() -> void:
+	stat_allocation_manager.free()
+	player_stats_manager.free()
+	store_manager.free()
 
 func test_respec_cost_calculation_min():
 	# Respec cost should have minimum of 100 gems
@@ -32,7 +57,7 @@ func test_respec_cost_calculation_min():
 
 	var cost: int = stat_allocation_manager.get_respec_cost(false)
 
-	assert_ge(cost, 100, "Respec cost should be at least 100 gems")
+	assert_gte(cost, 100, "Respec cost should be at least 100 gems")
 
 func test_respec_cost_calculation_max():
 	# Respec cost should have maximum of 1000 gems
@@ -47,7 +72,7 @@ func test_respec_cost_calculation_max():
 
 	var cost: int = stat_allocation_manager.get_respec_cost(false)
 
-	assert_le(cost, 1000, "Respec cost should be at most 1000 gems")
+	assert_lte(cost, 1000, "Respec cost should be at most 1000 gems")
 
 func test_respec_cost_calculation_percent():
 	# Respec cost should be 5% of current gems
@@ -257,7 +282,7 @@ func test_respec_cooldown():
 
 	var cooldown_remaining: int = stat_allocation_manager.get_respec_cooldown_remaining()
 
-	assert_ge(cooldown_remaining, 0, "Cooldown remaining should be non-negative")
+	assert_gte(cooldown_remaining, 0, "Cooldown remaining should be non-negative")
 
 func test_respec_cooldown_max():
 	# Cooldown should be at most 24 hours (86400 seconds)
@@ -267,7 +292,7 @@ func test_respec_cooldown_max():
 
 	var cooldown_remaining: int = stat_allocation_manager.get_respec_cooldown_remaining()
 
-	assert_le(cooldown_remaining, 86400, "Cooldown should be at most 24 hours")
+	assert_lte(cooldown_remaining, 86400, "Cooldown should be at most 24 hours")
 
 func test_is_respec_on_cooldown():
 	# Should report whether respec is on cooldown
@@ -311,7 +336,7 @@ func test_get_all_builds():
 
 	var all_builds: Dictionary = stat_allocation_manager.get_all_builds()
 
-	assert_ge(all_builds.size(), 2, "Should have at least 2 builds")
+	assert_gte(all_builds.size(), 2, "Should have at least 2 builds")
 
 func test_valid_stat_names():
 	# Only valid stats should be allowed: attack, defense, dodge, crit_rate
@@ -326,6 +351,7 @@ func test_valid_stat_names():
 		"crit_rate": 5
 	}
 
+	player_stats_manager.ability_points = 20
 	var validation: Dictionary = stat_allocation_manager.validate_allocation(valid_stats)
 
 	assert_true(validation.get("valid", false), "All valid stats should pass validation")
