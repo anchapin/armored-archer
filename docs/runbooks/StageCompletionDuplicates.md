@@ -22,7 +22,7 @@ Two very different root causes present identically here:
 
 ## Signal Chain
 
-- RPC handler: `claimStageCompletionOrReject` (gear_system.ts#claimStageCompletionOrReject) calls
+- RPC handler: `gateStageCompletion` (gear_system.ts#gateStageCompletion) calls
   `checkStageCompletionClaim` (stage_progression.ts#checkStageCompletionClaim) and records
   `recordStageClaim('replay_rejected')` (metrics.ts#recordStageClaim) plus the
   `duplicate` terminal outcome of `armored_archer_stage_complete_total`
