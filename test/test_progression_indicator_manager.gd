@@ -10,19 +10,40 @@ var progression_indicator_manager: Node
 var campaign_manager: Node
 var player_stats_manager: Node
 
-func before_all():
-	# Get references to autoloads
-	progression_indicator_manager = get_node_or_null("/root/ProgressionIndicatorManager")
-	campaign_manager = get_node("/root/CampaignManager")
-	player_stats_manager = get_node("/root/PlayerStatsManager")
+class CampaignFixture extends Node:
+	var campaigns_data: Dictionary = {"campaigns": [{
+		"id": "chapter_1", "name": "Test chapter", "stages": [{
+			"id": "stage_1_1", "name": "Test stage"
+		}]
+	}]}
+	func is_stage_unlocked(_stage_id: String) -> bool:
+		return true
+	func is_stage_completed(_stage_id: String) -> bool:
+		return false
+	func get_chapter_progress(_chapter_id: String) -> float:
+		return 0.0
 
-	if progression_indicator_manager == null:
-		gut.p("WARNING: ProgressionIndicatorManager autoload not found.")
+class ProgressionFixture extends "res://autoloads/ProgressionIndicatorManager.gd":
+	func save_progression_data() -> void:
+		pass
 
-func before_each():
-	# Reset progression state before each test
-	if progression_indicator_manager and progression_indicator_manager.has_method("clear_progression_data"):
-		progression_indicator_manager.clear_progression_data()
+func before_each() -> void:
+	campaign_manager = CampaignFixture.new()
+	player_stats_manager = load("res://autoloads/PlayerStatsManager.gd").new()
+	progression_indicator_manager = ProgressionFixture.new()
+	progression_indicator_manager.campaign_manager = campaign_manager
+	progression_indicator_manager.player_stats_manager = player_stats_manager
+
+func after_each() -> void:
+	progression_indicator_manager.free()
+	player_stats_manager.free()
+	campaign_manager.free()
+
+func _prepare_level_target_fixture() -> void:
+	# No unfinished stage: production can reach its level-up quest branch.
+	campaign_manager.campaigns_data = {"campaigns": []}
+	player_stats_manager.player_stats = {"level": 1, "xp": 75}
+	player_stats_manager.is_initialized = true
 
 func test_map_marker_updates():
 	# Map markers should update when progression changes
@@ -169,6 +190,7 @@ func test_quest_type_stage_completion():
 			assert_ne(quest.get("stage_id", ""), "", "Stage ID should not be empty")
 
 func test_quest_type_level_target():
+	_prepare_level_target_fixture()
 	# Level target quests should track level progression
 	# Quest type: LEVEL_TARGET (3)
 	if progression_indicator_manager == null:
@@ -224,7 +246,7 @@ func test_quest_priority():
 
 	for quest in active_quests:
 		var priority: int = quest.get("priority", 0)
-		assert_ge(priority, 0, "Quest priority should be non-negative")
+		assert_gte(priority, 0, "Quest priority should be non-negative")
 
 func test_quest_is_locked_flag():
 	# Locked quests should have is_locked flag
@@ -318,6 +340,7 @@ func test_quest_completion_tracking():
 		"initialize_active_quests() method should exist")
 
 func test_xp_curve_for_level():
+	_prepare_level_target_fixture()
 	# Progression manager should use XP curve for level requirements
 	# XP values should match expected curve
 	if progression_indicator_manager == null:
