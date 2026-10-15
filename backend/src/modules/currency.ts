@@ -72,6 +72,12 @@ export interface PlayerCurrency {
   gems: number;
   coins: number;
   wallet_bridged?: boolean;
+  /**
+   * Bounded ledger of applied stage-completion coin grant IDs (reward
+   * integration contract). Checked and written in the same OCC write as the
+   * coins mutation, so a retried grant can never double-apply.
+   */
+  applied_stage_grants?: string[];
 }
 
 /**
@@ -158,6 +164,9 @@ function readCurrencyRecord(
     gems: typeof parsed.gems === 'number' && Number.isFinite(parsed.gems) ? parsed.gems : 0,
     coins,
     wallet_bridged: parsed.wallet_bridged,
+    applied_stage_grants: Array.isArray(parsed.applied_stage_grants)
+      ? parsed.applied_stage_grants.filter((g): g is string => typeof g === 'string')
+      : undefined,
   };
 
   return { currency, version: objects[0].version, hadLegacyGold };
@@ -492,33 +501,75 @@ export function applyCurrencyDelta(
 
   invalidateCurrencyCache(userId, log);
 
+  const updated = mutateCurrencyWithRetry(
+    nk,
+    userId,
+    source,
+    log,
+    (current) => {
+      let newGems = current.gems + gemsDelta;
+      const newCoins = Math.max(0, current.coins + coinsDelta);
+      if (newGems > MAX_GEM_BALANCE) {
+        log.warn(
+          'Currency award for %s via %s saturated gems at MAX_GEM_BALANCE (%d)',
+          userId,
+          source,
+          MAX_GEM_BALANCE
+        );
+        newGems = MAX_GEM_BALANCE;
+      }
+      // Debits floor at zero; credits always keep the floor harmless.
+      newGems = Math.max(0, newGems);
+
+      return {
+        user_id: userId,
+        gems: newGems,
+        coins: newCoins,
+        // Preserve an absent bridge marker so a stranded legacy wallet is
+        // still folded in on the next read.
+        wallet_bridged: current.wallet_bridged,
+        applied_stage_grants: current.applied_stage_grants,
+      };
+    },
+    gemsDelta,
+    coinsDelta,
+    undefined,
+    preloadedRead
+  );
+  if (!updated) throw new Error(`currency: failed to apply delta for ${userId} via ${source}`);
+  return updated;
+}
+
+/**
+ * Read-compute-write loop for ledger mutations with one version-conflict
+ * retry, shared by applyCurrencyDelta and grantStageCoins. A null from
+ * computeUpdated aborts the mutation without writing (already-applied
+ * grant) and returns null.
+ *
+ * A propagated conflict fails closed: match settlement stamps its
+ * settled_at idempotency marker BEFORE applying awards (issue #1078), so a
+ * propagated conflict is caught by the settlement's degraded-settlement
+ * handler: the match stays marked settled and the failure is audited
+ * rather than retried - a re-settlement attempt can never re-apply
+ * currency. Season distribution callers still abort before stamping their
+ * own markers, where a whole-operation retry remains safe.
+ */
+function mutateCurrencyWithRetry(
+  nk: Runtime.Nakama,
+  userId: string,
+  source: string,
+  log: Runtime.Logger,
+  computeUpdated: (current: PlayerCurrency) => PlayerCurrency | null,
+  gemsDelta: number,
+  coinsDelta: number,
+  auditExtra?: Record<string, unknown>,
+  preloadedRead?: NormalizedCurrencyRead
+): PlayerCurrency | null {
   for (let attempt = 0; attempt < 2; attempt++) {
     const read: NormalizedCurrencyRead =
       attempt === 0 && preloadedRead ? preloadedRead : readCurrencyRecord(nk, userId, log);
-    const current = read.currency;
-
-    let newGems = current.gems + gemsDelta;
-    const newCoins = Math.max(0, current.coins + coinsDelta);
-    if (newGems > MAX_GEM_BALANCE) {
-      log.warn(
-        'Currency award for %s via %s saturated gems at MAX_GEM_BALANCE (%d)',
-        userId,
-        source,
-        MAX_GEM_BALANCE
-      );
-      newGems = MAX_GEM_BALANCE;
-    }
-    // Debits floor at zero; credits always keep the floor harmless.
-    newGems = Math.max(0, newGems);
-
-    const updated: PlayerCurrency = {
-      user_id: userId,
-      gems: newGems,
-      coins: newCoins,
-      // Preserve an absent bridge marker so a stranded legacy wallet is
-      // still folded in on the next read.
-      wallet_bridged: current.wallet_bridged,
-    };
+    const updated = computeUpdated(read.currency);
+    if (!updated) return null;
 
     try {
       writeCurrencyRecord(nk, userId, updated, read.version);
@@ -527,57 +578,76 @@ export function applyCurrencyDelta(
         log.warn('Currency write conflict for %s via %s, retrying: %s', userId, source, error);
         continue;
       }
-      // Let the conflict propagate. Match settlement stamps its settled_at
-      // idempotency marker BEFORE applying awards (issue #1078), so a
-      // propagated conflict is caught by the settlement's degraded-
-      // settlement handler: the match stays marked settled and the failure
-      // is audited rather than retried — a re-settlement attempt can never
-      // re-apply currency. Season distribution callers still abort before
-      // stamping their own markers, where a whole-operation retry remains
-      // safe.
       throw error;
     }
 
-    invalidateCurrencyCache(userId, log);
-    getCacheManager(log).set(PLAYER_CURRENCY_COLLECTION, userId, updated);
-
-    // Issue #1093: feed the existing economy counters so dashboards reflect
-    // real earn/spend traffic (issue #1092 reported zeros for these labels).
-    // `source` is the audit identifier the caller already supplies, so label
-    // cardinality stays bounded to known earn/spend paths.
-    recordCurrencyDelta(source, gemsDelta, coinsDelta);
-
-    logAudit(
+    recordCommittedCurrencyMutation(
       nk,
       userId,
-      null,
-      'currency_delta',
-      PLAYER_CURRENCY_COLLECTION,
-      {
-        source,
-        gems_delta: gemsDelta,
-        coin_delta: coinsDelta,
-        new_gem_balance: updated.gems,
-        new_coin_balance: updated.coins,
-      },
-      'success'
-    );
-
-    log.info(
-      'Currency delta for %s via %s: gems %d, coins %d (new balances: %d gems, %d coins)',
-      userId,
+      updated,
       source,
       gemsDelta,
       coinsDelta,
-      updated.gems,
-      updated.coins
+      log,
+      auditExtra
     );
-
     return updated;
   }
 
   // Unreachable: the loop either returns or throws.
-  throw new Error(`currency: failed to apply delta for ${userId} via ${source}`);
+  throw new Error(`currency: failed to apply mutation for ${userId} via ${source}`);
+}
+
+/**
+ * Post-write side effects of a committed ledger mutation, shared by
+ * applyCurrencyDelta and grantStageCoins: cache refresh, the #1093 economy
+ * counters, the audit entry, and the info log.
+ */
+function recordCommittedCurrencyMutation(
+  nk: Runtime.Nakama,
+  userId: string,
+  updated: PlayerCurrency,
+  source: string,
+  gemsDelta: number,
+  coinsDelta: number,
+  log: Runtime.Logger,
+  auditExtra?: Record<string, unknown>
+): void {
+  invalidateCurrencyCache(userId, log);
+  getCacheManager(log).set(PLAYER_CURRENCY_COLLECTION, userId, updated);
+
+  // Issue #1093: feed the existing economy counters so dashboards reflect
+  // real earn/spend traffic (issue #1092 reported zeros for these labels).
+  // `source` is the audit identifier the caller already supplies, so label
+  // cardinality stays bounded to known earn/spend paths.
+  recordCurrencyDelta(source, gemsDelta, coinsDelta);
+
+  logAudit(
+    nk,
+    userId,
+    null,
+    'currency_delta',
+    PLAYER_CURRENCY_COLLECTION,
+    {
+      source,
+      gems_delta: gemsDelta,
+      coin_delta: coinsDelta,
+      new_gem_balance: updated.gems,
+      new_coin_balance: updated.coins,
+      ...auditExtra,
+    },
+    'success'
+  );
+
+  log.info(
+    'Currency delta for %s via %s: gems %d, coins %d (new balances: %d gems, %d coins)',
+    userId,
+    source,
+    gemsDelta,
+    coinsDelta,
+    updated.gems,
+    updated.coins
+  );
 }
 
 /**
@@ -595,4 +665,59 @@ function recordCurrencyDelta(source: string, gemsDelta: number, coinsDelta: numb
   } else if (coinsDelta < 0) {
     recordCurrencySpent('coins', source, -coinsDelta);
   }
+}
+
+/** Upper bound on retained stage coin grant IDs per player. */
+const MAX_APPLIED_STAGE_GRANTS = 50;
+
+/**
+ * Applies a server-planned stage-completion coin grant exactly once
+ * (reward integration contract). The grant ID is checked and recorded in
+ * the same versioned write as the coins mutation, so a resumed attempt
+ * skips an already-applied grant and a concurrent write retries against a
+ * fresh version instead of double-paying.
+ *
+ * @param nk - Nakama server interface
+ * @param userId - ID of the player
+ * @param coins - Server-calculated coins to grant (positive integer)
+ * @param source - Audit/metrics source label
+ * @param logger - Logger instance
+ * @param grantId - Deterministic per-attempt grant ID; omit for non-resumable callers
+ * @returns Whether the grant had already been applied
+ */
+export function grantStageCoins(
+  nk: Runtime.Nakama,
+  userId: string,
+  coins: number,
+  source: string,
+  logger?: Runtime.Logger,
+  grantId?: string
+): { alreadyApplied: boolean } {
+  const log = logger ?? fallbackLogger;
+  if (!Number.isSafeInteger(coins) || coins <= 0) throw new Error('Invalid stage coin grant');
+
+  invalidateCurrencyCache(userId, log);
+
+  const updated = mutateCurrencyWithRetry(
+    nk,
+    userId,
+    source,
+    log,
+    (current) => {
+      if (grantId && current.applied_stage_grants?.includes(grantId)) {
+        return null; // already applied
+      }
+      return {
+        ...current,
+        coins: Math.max(0, current.coins + coins),
+        applied_stage_grants: grantId
+          ? [...(current.applied_stage_grants ?? []), grantId].slice(-MAX_APPLIED_STAGE_GRANTS)
+          : current.applied_stage_grants,
+      };
+    },
+    0,
+    coins,
+    { stage_grant: grantId ?? null }
+  );
+  return { alreadyApplied: updated === null };
 }
