@@ -67,7 +67,7 @@ func _run_all() -> void:
 		var cat_passed: int = 0
 		var cat_failed: int = 0
 		for test_path in tests:
-			var result = _run_test(test_path)
+			var result = await _run_test(test_path)
 			if result == "PASS":
 				cat_passed += 1
 			elif result == "FAIL":

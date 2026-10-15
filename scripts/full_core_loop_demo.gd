@@ -695,9 +695,9 @@ func _step_results_view() -> void:
 	var result = _demo_state.match_result
 
 	print()
-	print("=" * 50)
+	print("=".repeat(50))
 	print("          MATCH RESULTS")
-	print("=" * 50)
+	print("=".repeat(50))
 	print()
 
 	# Outcome
@@ -735,7 +735,7 @@ func _step_results_view() -> void:
 	print("  [b]DURATION:[/b] %s" % duration_str)
 
 	print()
-	print("=" * 50)
+	print("=".repeat(50))
 
 	_print_pass("Match results displayed successfully")
 	_advance_step(DemoStep.PROGRESSION_UPDATE, true)
@@ -881,7 +881,7 @@ func _advance_step(next_step: DemoStep, verified: bool) -> void:
 ## Emit step started
 func _emit_step_start(step: DemoStep, description: String) -> void:
 	print()
-	print("-" * 50)
+	print("-".repeat(50))
 	demo_step_started.emit(step, description)
 
 ## Handle step failure

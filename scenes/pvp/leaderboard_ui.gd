@@ -118,7 +118,7 @@ func _setup_mode_filter() -> void:
 
 		# Set toggle state
 		button.toggle_mode = true
-		child.set_pressed_no_signal(current_mode == str(mode).to_lower())
+		button.set_pressed_no_signal(current_mode == str(mode).to_lower())
 
 		button.pressed.connect(_on_mode_button_pressed.bind(str(mode).to_lower()))
 		mode_filter_container.add_child(button)
