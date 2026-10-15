@@ -8,17 +8,19 @@ extends GutTest
 
 var pacing_manager: Node
 
-func before_all():
-	# Get reference to PacingManager autoload
-	pacing_manager = get_node("/root/PacingManager")
+class PacingFixture extends "res://autoloads/PacingManager.gd":
+	func _ready() -> void:
+		_init_encounter_classifications()
+	func save_pacing_state() -> void:
+		pass
 
-	if pacing_manager == null:
-		gut.p("WARNING: PacingManager autoload not found.")
+func before_each() -> void:
+	pacing_manager = PacingFixture.new()
+	add_child(pacing_manager)
+	pacing_manager.reset_pacing_state()
 
-func before_each():
-	# Reset pacing state before each test
-	if pacing_manager and pacing_manager.has_method("reset_pacing_state"):
-		pacing_manager.reset_pacing_state()
+func after_each() -> void:
+	pacing_manager.free()
 
 func test_encounter_classification_combat():
 	# Combat encounters should be classified correctly
@@ -108,12 +110,12 @@ func test_pacing_distribution_targets():
 
 func test_pacing_streak_constraints():
 	# Pacing should enforce streak constraints
-	# Max combat streak: 5, Min exploration streak: 3
+	# Current client tuning: max combat streak 6, min exploration streak 3
 	if pacing_manager == null:
 		gut.p("SKIP: PacingManager not available")
 		return
 
-	assert_eq(pacing_manager.MAX_COMBAT_STREAK, 5, "Max combat streak should be 5")
+	assert_eq(pacing_manager.MAX_COMBAT_STREAK, 6, "Current client max combat streak should be 6")
 	assert_eq(pacing_manager.MIN_EXPLORATION_STREAK, 3, "Min exploration streak should be 3")
 
 func test_fatigue_level_calculation():
@@ -143,29 +145,29 @@ func test_fatigue_clamping():
 
 	# High intensity and duration should still cap at 100
 	var max_fatigue: float = pacing_manager.get_fatigue_level(1.0, 1000.0)
-	assert_le(max_fatigue, 100.0, "Fatigue should not exceed 100")
+	assert_lte(max_fatigue, 100.0, "Fatigue should not exceed 100")
 
 	# Low values should produce valid fatigue
 	var min_fatigue: float = pacing_manager.get_fatigue_level(0.0, 0.0)
-	assert_ge(min_fatigue, 0.0, "Fatigue should not be negative")
+	assert_gte(min_fatigue, 0.0, "Fatigue should not be negative")
 
 func test_fatigue_high_threshold():
-	# Fatigue high threshold should be 70%
+	# Current client fatigue high threshold is 75%
 	# Should trigger high fatigue warning
 	if pacing_manager == null:
 		gut.p("SKIP: PacingManager not available")
 		return
 
-	assert_eq(pacing_manager.FATIGUE_THRESHOLD_HIGH, 70, "High fatigue threshold should be 70")
+	assert_eq(pacing_manager.FATIGUE_THRESHOLD_HIGH, 75, "Current client high fatigue threshold should be 75")
 
 func test_fatigue_critical_threshold():
-	# Fatigue critical threshold should be 85%
+	# Current client fatigue critical threshold is 88%
 	# Should trigger critical fatigue warning
 	if pacing_manager == null:
 		gut.p("SKIP: PacingManager not available")
 		return
 
-	assert_eq(pacing_manager.FATIGUE_THRESHOLD_CRITICAL, 85, "Critical fatigue threshold should be 85")
+	assert_eq(pacing_manager.FATIGUE_THRESHOLD_CRITICAL, 88, "Current client critical fatigue threshold should be 88")
 
 func test_fatigue_by_encounter_type():
 	# Different encounter types should increase fatigue differently
@@ -302,34 +304,35 @@ func test_suggest_break_critical_fatigue():
 
 	pacing_manager.reset_pacing_state()
 
-	# Simulate high fatigue through many combat encounters
-	for i in range(10):
-		pacing_manager.track_pacing_state(0, 60.0)  # Combat, 1 minute each
+	# Reach critical fatigue without a combat streak overriding the recommendation.
+	pacing_manager.track_pacing_state(2, 4500.0)  # Narrative: 90 fatigue.
+	assert_gte(pacing_manager.current_fatigue, float(pacing_manager.FATIGUE_THRESHOLD_CRITICAL),
+		"Fixture must actually reach critical fatigue")
 
 	var recommendation: Dictionary = pacing_manager.suggest_break()
 
-	if recommendation.get("should_break", false):
-		assert_ge(recommendation.get("break_duration", 0), 300, "Critical fatigue should suggest 5+ min break")
-		assert_eq(recommendation.get("suggested_next_type", ""), "narrative", "Should suggest narrative after break")
+	assert_true(recommendation.get("should_break", false), "Critical fatigue must recommend a break")
+	assert_gte(recommendation.get("break_duration", 0), 300, "Critical fatigue should suggest 5+ min break")
+	assert_eq(recommendation.get("suggested_next_type", ""), "narrative", "Should suggest narrative after break")
 
 func test_suggest_break_combat_streak():
 	# Break should be recommended after excessive combat streak
-	# >5 combat encounters in a row
+	# More than the current six-combat limit
 	if pacing_manager == null:
 		gut.p("SKIP: PacingManager not available")
 		return
 
 	pacing_manager.reset_pacing_state()
 
-	# Track 6 combat encounters in a row
-	for i in range(6):
+	# Track 7 combat encounters in a row
+	for i in range(7):
 		pacing_manager.track_pacing_state(0, 30.0)
 
 	var recommendation: Dictionary = pacing_manager.suggest_break()
 
-	if recommendation.get("should_break", false):
-		assert_eq(recommendation.get("suggested_next_type", ""), "exploration", "Should suggest exploration after combat streak")
-		assert_ne(recommendation.get("reason", ""), "", "Should provide reason for break")
+	assert_true(recommendation.get("should_break", false), "Excessive combat streak must recommend a break")
+	assert_eq(recommendation.get("suggested_next_type", ""), "exploration", "Should suggest exploration after combat streak")
+	assert_ne(recommendation.get("reason", ""), "", "Should provide reason for break")
 
 func test_recommended_encounter_type():
 	# Should recommend next encounter type based on pacing
