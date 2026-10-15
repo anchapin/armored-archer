@@ -284,3 +284,12 @@ Earlier claim, best-of, boss and pool writes can remain. The claim rejects an
 immediate retry, and the retained best-of record can make a later non-improving
 retry a no-loot/no-XP success. This makes failure visible, not recoverable or
 transactional: no claim clearing, rollback, reconciliation or new retry is added.
+
+### Replay terminal catch diagnostics
+
+Replay RPCs already fail safely with SQL operation/RPC logs and native metrics.
+Their shared terminal catch now logs only its fixed failure message instead of
+copying driver error text and caller ID after the safe observer. Tests inspect
+all catch/observer log arguments, not just the observer subset, across all five
+handlers and unavailable native metrics. No query, response, admin gate or
+replay behavior changes.
