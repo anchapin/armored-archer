@@ -8,17 +8,16 @@ extends GutTest
 
 var dynamic_difficulty_manager: Node
 
-func before_all():
-	# Get reference to DynamicDifficultyManager autoload
-	dynamic_difficulty_manager = get_node("/root/DynamicDifficultyManager")
+class DifficultyFixture extends "res://autoloads/DynamicDifficultyManager.gd":
+	func save_difficulty_state() -> void:
+		pass
 
-	if dynamic_difficulty_manager == null:
-		gut.p("WARNING: DynamicDifficultyManager autoload not found.")
+func before_each() -> void:
+	dynamic_difficulty_manager = DifficultyFixture.new()
+	dynamic_difficulty_manager.reset_difficulty()
 
-func before_each():
-	# Reset difficulty state before each test
-	if dynamic_difficulty_manager and dynamic_difficulty_manager.has_method("reset_difficulty"):
-		dynamic_difficulty_manager.reset_difficulty()
+func after_each() -> void:
+	dynamic_difficulty_manager.free()
 
 func test_win_streak_tracking():
 	# Win streaks should be tracked correctly
@@ -138,7 +137,7 @@ func test_difficulty_modifier_max():
 
 	var modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
-	assert_le(modifier, 0.20, "Difficulty modifier should not exceed +20%")
+	assert_lte(modifier, 0.20, "Difficulty modifier should not exceed +20%")
 
 func test_difficulty_modifier_min():
 	# Difficulty modifier should not go below -20% (-0.20)
@@ -156,7 +155,7 @@ func test_difficulty_modifier_min():
 
 	var modifier: float = dynamic_difficulty_manager.get_difficulty_modifier()
 
-	assert_ge(modifier, -0.20, "Difficulty modifier should not go below -20%")
+	assert_gte(modifier, -0.20, "Difficulty modifier should not go below -20%")
 
 func test_difficulty_levels():
 	# Difficulty levels should be: Easy, Normal, Hard, Extreme
@@ -281,11 +280,11 @@ func test_target_difficulty_clamping():
 
 	var max_base: float = 1.0
 	var max_difficulty: float = dynamic_difficulty_manager.calculate_target_difficulty(max_base, 0.20)
-	assert_le(max_difficulty, 1.5, "Max difficulty should be clamped to 1.5")
+	assert_lte(max_difficulty, 1.5, "Max difficulty should be clamped to 1.5")
 
 	var min_base: float = 0.5
 	var min_difficulty: float = dynamic_difficulty_manager.calculate_target_difficulty(min_base, -0.20)
-	assert_ge(min_difficulty, 0.0, "Min difficulty should be clamped to 0.0")
+	assert_gte(min_difficulty, 0.0, "Min difficulty should be clamped to 0.0")
 
 func test_win_rate_calculation():
 	# Win rate should be calculated for recent matches
@@ -324,8 +323,8 @@ func test_win_rate_custom_window():
 	var win_rate_10: float = dynamic_difficulty_manager.get_win_rate(10)
 
 	# Different windows may give different results
-	assert_ge(win_rate_5, 0.0, "Win rate should be valid")
-	assert_ge(win_rate_10, 0.0, "Win rate should be valid")
+	assert_gte(win_rate_5, 0.0, "Win rate should be valid")
+	assert_gte(win_rate_10, 0.0, "Win rate should be valid")
 
 func test_reward_modifier():
 	# Reward modifier should increase with difficulty
