@@ -53,6 +53,8 @@ import {
   getUserDeviceTokens,
   getNotificationPreferences,
   getPendingNotifications,
+  markNotificationSent,
+  logNotificationHistory,
   updateNotificationPreferences,
   scheduleNotification,
   cancelScheduledNotification,
@@ -72,6 +74,85 @@ const createMockNk = () => ({
 });
 
 describe('Notifications Module', () => {
+  it.each([false, true])(
+    'observes legacy SQL write failures with fixed failure values (metric fails=%s)',
+    async (metricFails) => {
+      jest.clearAllMocks();
+      const nk = {
+        sqlQuery: jest.fn(() => {
+          throw new Error('private SQL token');
+        }),
+        metricsCounterAdd: jest.fn(() => {
+          if (metricFails) throw new Error('private metric token');
+        }),
+      } as any;
+      expect(await registerDeviceToken(nk, 'private-user', 'private-device', 'ios')).toEqual({
+        success: false,
+        error: 'Failed to register device token',
+      });
+      expect(await removeDeviceToken(nk, 'private-device')).toEqual({
+        success: false,
+        error: 'Failed to remove device token',
+      });
+      expect(
+        await updateNotificationPreferences(nk, 'private-user', { eventsEnabled: true })
+      ).toEqual({ success: false, error: 'Failed to update notification preferences' });
+      expect(
+        await scheduleNotification(
+          nk,
+          'private-user',
+          'event',
+          'private-title',
+          'private-body',
+          new Date('2026-10-15T00:00:00Z')
+        )
+      ).toEqual({ success: false, error: 'Failed to schedule notification' });
+      expect(await cancelScheduledNotification(nk, 'private-notification')).toEqual({
+        success: false,
+        error: 'Failed to cancel notification',
+      });
+      await expect(
+        markNotificationSent(nk, 'private-notification', false, 'private-provider')
+      ).resolves.toBeUndefined();
+      await expect(
+        logNotificationHistory(
+          nk,
+          'private-notification',
+          'private-user',
+          'event',
+          'private-title',
+          'private-body',
+          'private-device',
+          'failed',
+          'private-provider'
+        )
+      ).resolves.toBeUndefined();
+      expect(nk.sqlQuery).toHaveBeenCalledTimes(7);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(7);
+      for (const op of [
+        'registerDeviceToken',
+        'removeDeviceToken',
+        'updateNotificationPreferences',
+        'scheduleNotification',
+        'cancelScheduledNotification',
+        'markNotificationSent',
+        'logNotificationHistory',
+      ]) {
+        expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+          'db_errors_total',
+          { op: `notifications.${op}` },
+          1
+        );
+      }
+      expect(
+        JSON.stringify([
+          (logger.error as jest.Mock).mock.calls,
+          (logger.warn as jest.Mock).mock.calls,
+        ])
+      ).not.toContain('private');
+    }
+  );
+
   it.each([false, true])(
     'observes synchronous legacy SQL read failures safely (metric fails=%s)',
     async (metricFails) => {
@@ -251,7 +332,7 @@ describe('Notifications Module', () => {
       nk.sqlQuery.mockRejectedValueOnce(new Error('DB error'));
       const result = await registerDeviceToken(nk as any, 'user_123', 'device_token', 'ios');
       expect(result.success).toBe(false);
-      expect(result.error).toBe('DB error');
+      expect(result.error).toBe('Failed to register device token');
     });
 
     it('should include optional parameters', async () => {
@@ -360,7 +441,7 @@ describe('Notifications Module', () => {
         notificationsEnabled: true,
       });
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Update failed');
+      expect(result.error).toBe('Failed to update notification preferences');
     });
 
     it('should handle non-Error database exceptions', async () => {
@@ -370,7 +451,7 @@ describe('Notifications Module', () => {
         dailyRewardsEnabled: true,
       });
       expect(result.success).toBe(false);
-      expect(result.error).toContain('string exception');
+      expect(result.error).toBe('Failed to update notification preferences');
     });
 
     it('should update all preference fields', async () => {
@@ -419,7 +500,7 @@ describe('Notifications Module', () => {
         new Date()
       );
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Insert failed');
+      expect(result.error).toBe('Failed to schedule notification');
     });
 
     it('should handle non-Error scheduling exceptions', async () => {
@@ -434,7 +515,7 @@ describe('Notifications Module', () => {
         new Date()
       );
       expect(result.success).toBe(false);
-      expect(result.error).toContain('string error');
+      expect(result.error).toBe('Failed to schedule notification');
     });
   });
 
@@ -450,7 +531,7 @@ describe('Notifications Module', () => {
       nk.sqlQuery.mockRejectedValueOnce(new Error('Cancel failed'));
       const result = await cancelScheduledNotification(nk as any, 'notif_123');
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Cancel failed');
+      expect(result.error).toBe('Failed to cancel notification');
     });
 
     it('should handle non-Error cancel exceptions', async () => {
@@ -458,7 +539,7 @@ describe('Notifications Module', () => {
       nk.sqlQuery.mockRejectedValueOnce('cancel error string');
       const result = await cancelScheduledNotification(nk as any, 'notif_456');
       expect(result.success).toBe(false);
-      expect(result.error).toContain('cancel error string');
+      expect(result.error).toBe('Failed to cancel notification');
     });
   });
 

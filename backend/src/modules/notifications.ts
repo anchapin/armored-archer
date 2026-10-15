@@ -241,7 +241,9 @@ export async function registerDeviceToken(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Use raw SQL for device tokens table
-    await nk.sqlQuery(
+    await observedSqlQuery(
+      nk,
+      'notifications.registerDeviceToken',
       `INSERT INTO device_tokens (user_id, device_token, platform, app_version, fcm_token, updated_at, last_used_at)
        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
        ON CONFLICT (device_token) DO UPDATE SET
@@ -257,10 +259,9 @@ export async function registerDeviceToken(
 
     logger.info('Device token registered', { userId, platform });
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to register device token', { error: errorMessage });
-    return { success: false, error: errorMessage };
+  } catch {
+    logger.error('Failed to register device token');
+    return { success: false, error: 'Failed to register device token' };
   }
 }
 
@@ -272,14 +273,18 @@ export async function removeDeviceToken(
   deviceToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await nk.sqlQuery(`DELETE FROM device_tokens WHERE device_token = $1`, [deviceToken]);
+    await observedSqlQuery(
+      nk,
+      'notifications.removeDeviceToken',
+      `DELETE FROM device_tokens WHERE device_token = $1`,
+      [deviceToken]
+    );
 
     logger.info('Device token removed', { deviceToken });
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to remove device token', { error: errorMessage });
-    return { success: false, error: errorMessage };
+  } catch {
+    logger.error('Failed to remove device token');
+    return { success: false, error: 'Failed to remove device token' };
   }
 }
 
@@ -415,17 +420,18 @@ export async function updateNotificationPreferences(
     updates.push(`updated_at = NOW()`);
     values.push(userId);
 
-    await nk.sqlQuery(
+    await observedSqlQuery(
+      nk,
+      'notifications.updateNotificationPreferences',
       `UPDATE notification_preferences SET ${updates.join(', ')} WHERE user_id = $${paramIndex}`,
       values
     );
 
     logger.info('Notification preferences updated', { userId });
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to update notification preferences', { error: errorMessage, userId });
-    return { success: false, error: errorMessage };
+  } catch {
+    logger.error('Failed to update notification preferences');
+    return { success: false, error: 'Failed to update notification preferences' };
   }
 }
 
@@ -442,7 +448,9 @@ export async function scheduleNotification(
   data: Record<string, string> = {}
 ): Promise<{ success: boolean; notificationId?: string; error?: string }> {
   try {
-    const result = (await nk.sqlQuery(
+    const result = (await observedSqlQuery(
+      nk,
+      'notifications.scheduleNotification',
       `INSERT INTO scheduled_notifications (user_id, notification_type, title, body, data, scheduled_for, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending')
        RETURNING notification_id`,
@@ -451,10 +459,9 @@ export async function scheduleNotification(
 
     logger.info('Notification scheduled', { userId, type, scheduledFor });
     return { success: true, notificationId: result[0]?.notification_id };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to schedule notification', { error: errorMessage, userId });
-    return { success: false, error: errorMessage };
+  } catch {
+    logger.error('Failed to schedule notification');
+    return { success: false, error: 'Failed to schedule notification' };
   }
 }
 
@@ -466,7 +473,9 @@ export async function cancelScheduledNotification(
   notificationId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await nk.sqlQuery(
+    await observedSqlQuery(
+      nk,
+      'notifications.cancelScheduledNotification',
       `UPDATE scheduled_notifications SET status = 'cancelled', updated_at = NOW() 
        WHERE notification_id = $1 AND status = 'pending'`,
       [notificationId]
@@ -474,10 +483,9 @@ export async function cancelScheduledNotification(
 
     logger.info('Scheduled notification cancelled', { notificationId });
     return { success: true };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to cancel notification', { error: errorMessage, notificationId });
-    return { success: false, error: errorMessage };
+  } catch {
+    logger.error('Failed to cancel notification');
+    return { success: false, error: 'Failed to cancel notification' };
   }
 }
 
@@ -515,14 +523,16 @@ export async function markNotificationSent(
   errorMessage?: string
 ): Promise<void> {
   try {
-    await nk.sqlQuery(
+    await observedSqlQuery(
+      nk,
+      'notifications.markNotificationSent',
       `UPDATE scheduled_notifications 
        SET status = $1, sent_at = NOW(), error_message = $2, updated_at = NOW()
        WHERE notification_id = $3`,
       [success ? 'sent' : 'failed', errorMessage || null, notificationId]
     );
-  } catch (error) {
-    logger.error('Failed to mark notification sent', { error: String(error), notificationId });
+  } catch {
+    logger.error('Failed to mark notification sent');
   }
 }
 
@@ -541,7 +551,9 @@ export async function logNotificationHistory(
   errorMessage?: string
 ): Promise<void> {
   try {
-    await nk.sqlQuery(
+    await observedSqlQuery(
+      nk,
+      'notifications.logNotificationHistory',
       `INSERT INTO notification_history 
        (notification_id, user_id, notification_type, title, body, device_token, status, error_message)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -556,8 +568,8 @@ export async function logNotificationHistory(
         errorMessage || null,
       ]
     );
-  } catch (error) {
-    logger.error('Failed to log notification history', { error: String(error) });
+  } catch {
+    logger.error('Failed to log notification history');
   }
 }
 
