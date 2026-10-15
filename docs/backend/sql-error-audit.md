@@ -318,3 +318,13 @@ Earlier claim and best-of completion writes remain consumed. No subsequent
 pool unlock, loot or XP runs, no rollback is added, and lack of a returned row
 does not prove a database write did not commit. Recovery/reconciliation remains
 deferred in #1558. This does not close the remaining #1462 audit.
+
+### Context-free gear write error values
+
+Legacy gear write helper failures now carry fixed error values, not raw driver
+text. Failed insert, loadout verification/update, unequip, boss record and pool
+unlock keep their unsuccessful result shape and existing fallback flags/counts.
+Strict active RPC callers still rethrow through their existing safe handlers.
+The SQL observer still records one operation-tagged counter attempt and safe
+log per failed query, including metric outages. Queries, scope, retries and
+successful writes are unchanged. No legacy module is enabled or registered.

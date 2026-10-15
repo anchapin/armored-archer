@@ -136,7 +136,7 @@ export function insertGearItem(
     if (context) throw error;
     return {
       success: false,
-      error: `Failed to insert gear item: ${String(error)}`,
+      error: 'Failed to insert gear item',
     };
   }
 }
@@ -312,7 +312,7 @@ function failedLoadoutResult(
   message: string
 ): UpdateLoadoutResult {
   if (context) throw error;
-  return { success: false, error: `${message}: ${String(error)}` };
+  return { success: false, error: message };
 }
 
 export function equipItemInDB(
@@ -542,7 +542,7 @@ export function recordBossDefeatInDB(
       success: false,
       defeat_count: 0,
       first_defeat: false,
-      error: `Failed to record boss defeat: ${String(error)}`,
+      error: 'Failed to record boss defeat',
     };
   }
 }
@@ -691,7 +691,7 @@ export function unlockModifierPoolInDB(
     return {
       success: false,
       newly_unlocked: false,
-      error: `Failed to unlock modifier pool: ${String(error)}`,
+      error: 'Failed to unlock modifier pool',
     };
   }
 }
