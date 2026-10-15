@@ -2947,12 +2947,8 @@ export function rpcGetMatchHistory(
         win_rate: Math.round(winRate * 100) / 100,
       },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to get match history from database', {
-      error: errorMessage,
-      userId: ctx.userId,
-    });
+  } catch {
+    logger.error('Failed to get match history from database');
     return JSON.stringify({
       success: false,
       error: 'Failed to retrieve match history',
@@ -3113,13 +3109,8 @@ export function rpcGetMatchDetails(
       success: true,
       match: match,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to get match details', {
-      error: errorMessage,
-      userId: ctx.userId,
-      matchId: match_id,
-    });
+  } catch {
+    logger.error('Failed to get match details');
     return JSON.stringify({
       success: false,
       error: 'Failed to retrieve match details',
@@ -3306,13 +3297,8 @@ export function rpcAdminQueryMatches(
       per_page: limit,
       total_pages: Math.ceil(total / limit),
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to execute admin match query', {
-      error: errorMessage,
-      userId: ctx.userId,
-      filters: request,
-    });
+  } catch {
+    logger.error('Failed to execute admin match query');
     return JSON.stringify({
       success: false,
       error: 'Failed to query matches',

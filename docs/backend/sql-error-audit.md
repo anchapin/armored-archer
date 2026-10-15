@@ -374,3 +374,13 @@ synchronous active `cleanup_test_user` handler and must not replace it. Future
 async SQL providers are not covered by the observer. The legacy success result
 still does not prove all deletes succeeded. No authorization or registration
 change is included, and the broader audit remains open.
+
+### Match-query terminal catch diagnostics
+
+History, details and admin-query RPCs already fail on SQL exceptions with
+operation/RPC metrics. Their terminal catches now log fixed text only, rather
+than copying driver text, caller IDs and filters after the observer. Count and
+page failure tests inspect all error/warning arguments, including metric outages.
+Query text, parameters, response shapes, pagination and admin gates are unchanged.
+The broader audit remains open; direct SQL observation alone does not establish
+that every caller's failure semantics or all post-write recovery is finished.

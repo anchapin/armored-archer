@@ -22,6 +22,7 @@ import {
   generatePunchUpDescription,
   type PunchUpInfo,
 } from '../matchmaker';
+import { logger as appLogger } from '../../config/logger';
 import { resetRateLimiting, initializeRateLimiting } from '../rate_limit';
 import { resetPunchUpWatchState } from '../punchup_watch';
 
@@ -2641,4 +2642,74 @@ describe('matchmaker', () => {
       );
     });
   });
+
+  it.each([
+    ['history', 'count', false],
+    ['history', 'count', true],
+    ['history', 'page', false],
+    ['history', 'page', true],
+    ['details', 'details', false],
+    ['details', 'details', true],
+    ['admin', 'count', false],
+    ['admin', 'count', true],
+    ['admin', 'page', false],
+    ['admin', 'page', true],
+  ])(
+    'keeps SQL terminal logs safe for %s/%s (metric fails=%s)',
+    (route, operation, metricFails) => {
+      const ctx = createMockContext();
+      ctx.userId = 'private-user';
+      const logger = createMockLogger();
+      const nk = createMockNakama();
+      const warn = jest.spyOn(appLogger, 'warn').mockImplementation(() => appLogger);
+      try {
+        (nk.sqlQuery as jest.Mock).mockImplementation((sql: string) => {
+          if (operation === 'page' && sql.includes('COUNT(*)')) return [{ total: 1 }];
+          throw new Error('private SQL token');
+        });
+        nk.metricsCounterAdd = jest.fn(() => {
+          if (metricFails) throw new Error('private metric token');
+        });
+        const handler =
+          route === 'history'
+            ? rpcGetMatchHistory
+            : route === 'details'
+              ? rpcGetMatchDetails
+              : rpcAdminQueryMatches;
+        const payload =
+          route === 'details'
+            ? { match_id: 'private-match' }
+            : route === 'admin'
+              ? { user_id: 'private-filter' }
+              : {};
+        const response = JSON.parse(handler(ctx, logger, nk, JSON.stringify(payload)));
+        expect(response.success).toBe(false);
+        expect(response.error).toBe(
+          route === 'history'
+            ? 'Failed to retrieve match history'
+            : route === 'details'
+              ? 'Failed to retrieve match details'
+              : 'Failed to query matches'
+        );
+        const rpc =
+          route === 'history'
+            ? 'get_match_history'
+            : route === 'details'
+              ? 'get_match_details'
+              : 'admin_query_matches';
+        expect(nk.sqlQuery).toHaveBeenCalledTimes(operation === 'page' ? 2 : 1);
+        expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(1);
+        expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+          'db_errors_total',
+          { op: `match_results.${operation}`, rpc: `armored_archer/${rpc}` },
+          1
+        );
+        expect(
+          JSON.stringify([(logger.error as jest.Mock).mock.calls, warn.mock.calls, response])
+        ).not.toContain('private');
+      } finally {
+        warn.mockRestore();
+      }
+    }
+  );
 });
