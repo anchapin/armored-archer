@@ -111,12 +111,13 @@ func test_base_button_toggle() -> void:
 
 func test_base_button_state_signal() -> void:
 	var btn = await _create_base_button()
-	var received_state = ""
-	btn.state_changed.connect(func(state): received_state = state)
+	# Array capture: GDScript lambdas copy captured scalars.
+	var received: Array = []
+	btn.state_changed.connect(func(state): received.append(state))
 	# Manually emit signal to test connectivity
 	btn.state_changed.emit("hover")
 	await get_tree().create_timer(0.05).timeout
-	if received_state == "hover":
+	if received == ["hover"]:
 		_pass("test_base_button_state_signal")
 	else:
 		_fail("test_base_button_state_signal", "state_changed signal should emit state string")
@@ -124,7 +125,7 @@ func test_base_button_state_signal() -> void:
 
 func test_base_button_disabled_state() -> void:
 	var btn = await _create_base_button()
-	btn.set_disabled(true)
+	btn.apply_disabled(true)
 	if btn.disabled and btn.get_current_state() == btn.ButtonState.DISABLED:
 		_pass("test_base_button_disabled_state")
 	else:
@@ -365,19 +366,23 @@ func _create_theme_toggle() -> Control:
 
 func test_theme_toggle_default_dark() -> void:
 	var toggle = await _create_theme_toggle()
-	if toggle.is_dark_theme() == true:
+	var theme_manager: Node = get_node_or_null("/root/ThemeManager")
+	if theme_manager and toggle.is_dark_theme() == theme_manager.is_dark_mode():
+		_pass("test_theme_toggle_default_dark")
+	elif theme_manager == null and toggle.is_dark_theme() == true:
+		# Fallback path without a manager defaults to dark.
 		_pass("test_theme_toggle_default_dark")
 	else:
-		_fail("test_theme_toggle_default_dark", "Default should be dark theme")
+		_fail("test_theme_toggle_default_dark", "Toggle should mirror the ThemeManager default")
 	toggle.queue_free()
 
 func test_theme_toggle_signal() -> void:
 	var toggle = await _create_theme_toggle()
-	var received = false
-	toggle.theme_toggled.connect(func(_is_dark): received = true)
+	var received: Array = []
+	toggle.theme_toggled.connect(func(is_dark): received.append(is_dark))
 	toggle.theme_toggled.emit(true)
 	await get_tree().create_timer(0.05).timeout
-	if received:
+	if received == [true]:
 		_pass("test_theme_toggle_signal")
 	else:
 		_fail("test_theme_toggle_signal", "theme_toggled signal should emit")
