@@ -24,6 +24,9 @@ var aim_direction: Vector2 = Vector2.RIGHT
 var virtual_move_direction: Vector2 = Vector2.ZERO
 var virtual_aim_direction: Vector2 = Vector2.ZERO
 var _smoothed_aim_direction: Vector2 = Vector2.RIGHT
+var _mouse_aim_active: bool = false
+var _mouse_aim_position: Vector2 = Vector2.ZERO
+var _mouse_screen_position: Vector2 = Vector2.ZERO
 
 # --- Signals ---
 signal movement_started
@@ -102,7 +105,7 @@ func _physics_process(delta: float) -> void:
 			movement_stopped.emit()
 
 	# Handle aiming from keyboard or virtual joystick
-	var aim_pressed := Input.is_action_pressed("aim") or virtual_aim_direction != Vector2.ZERO
+	var aim_pressed := Input.is_action_pressed("aim") or virtual_aim_direction != Vector2.ZERO or _mouse_aim_active
 
 	if aim_pressed:
 		is_aiming = true
@@ -126,6 +129,35 @@ func _physics_process(delta: float) -> void:
 	# Clamp player position to viewport bounds
 	_clamp_to_viewport()
 
+
+## Desktop pointer aim and click-to-fire. UI-consumed clicks never reach this path.
+func _unhandled_input(event: InputEvent) -> void:
+	if DisplayServer.is_touchscreen_available() or event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
+	if get_tree().paused or not GameManager.is_game_active:
+		return
+	if event is InputEventMouseMotion:
+		_set_pointer_aim(event.position)
+		_notify_pointer_action("aim_right")
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_set_pointer_aim(event.position)
+		# The clicked position, not the previous smoothing frame, determines this shot.
+		var direction: Vector2 = _mouse_aim_position - global_position
+		if not direction.is_zero_approx():
+			aim_direction = direction.normalized()
+			_smoothed_aim_direction = aim_direction
+			_rotate_bow_toward_aim()
+		_handle_shoot()
+		_notify_pointer_action("shoot")
+		get_viewport().set_input_as_handled()
+
+func _notify_pointer_action(action_name: String) -> void:
+	TutorialManager.on_input_action(action_name)
+
+func _set_pointer_aim(screen_position: Vector2) -> void:
+	_mouse_screen_position = screen_position
+	_mouse_aim_position = get_canvas_transform().affine_inverse() * screen_position
+	_mouse_aim_active = true
 
 ## Handle shooting when player presses shoot button
 func _handle_shoot() -> void:
@@ -178,6 +210,11 @@ func _update_aim_direction(delta: float) -> void:
 	# Use virtual joystick aim if available
 	if virtual_aim_direction != Vector2.ZERO:
 		aim_input = virtual_aim_direction
+
+	if aim_input == Vector2.ZERO and _mouse_aim_active:
+		# Keep aim under a stationary pointer when the world camera moves.
+		_mouse_aim_position = get_canvas_transform().affine_inverse() * _mouse_screen_position
+		aim_input = _mouse_aim_position - global_position
 
 	if aim_input != Vector2.ZERO:
 		var target := aim_input.normalized()
