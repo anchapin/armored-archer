@@ -10,8 +10,10 @@ not a settlement API. Do not pass client tier strings into a future integration.
 - XP rounded once, safe-integer bounds. Invalid tier/input/random draw fails.
 - Existing base roll first, extra-item chance multiplier minus1after success.
   No probability inflation or cap saturation. No rarity/stat/ID transformations.
-- No currency award is created. Existing Coins routes found in matchmaker and
-  season_admin are PvP/seasons, outside this PvE feature; unchanged.
+- Pure plan includes the owner-approved new PvE Coins base10, Hard12, Extreme15.
+  No balance write or award occurs. Existing matchmaker/season_admin payouts
+  are outside this PvE feature and unchanged. Replay/no-improvement eligibility
+  must be enforced by the future reviewed settlement, not this pure function.
 
 Validation:31focused cases, including deterministic midpoint grids over base
 chance0/0.45/0.99/1.0and all tiers, exact equality at drop/extra boundaries,

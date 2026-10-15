@@ -11,6 +11,11 @@ describe('Pure dynamic reward plan (no settlement callers)', () => {
       multiplier,
       xp: { base: 125, bonus: total - 125, total },
       gearCount: multiplier === 1 ? 1 : 2,
+      coins: {
+        base: 10,
+        bonus: Math.round(10 * multiplier) - 10,
+        total: Math.round(10 * multiplier),
+      },
     });
   });
 

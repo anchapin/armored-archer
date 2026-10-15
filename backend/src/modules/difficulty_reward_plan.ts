@@ -17,11 +17,12 @@ export interface DifficultyRewardPlan {
   multiplier: number;
   xp: { base: number; bonus: number; total: number };
   gearCount: number;
+  coins: { base: number; bonus: number; total: number };
 }
 
 /**
  * Plan integer XP and gear quantity without changing base drop probability,
- * rarity, stats, unlocks, currencies, or persistence. Both independent random
+ * rarity, stats, unlocks, existing currency balances, or persistence. Both independent random
  * draws must be in [0,1). Inputs fail closed, including unrecognized tiers.
  */
 export function planDifficultyRewards(
@@ -48,5 +49,11 @@ export function planDifficultyRewards(
   if (!Number.isSafeInteger(total)) throw new Error('Reward XP overflow');
   const gearCount =
     baseDropRoll < baseDropProbability ? 1 + Number(extraItemRoll < multiplier - 1) : 0;
-  return { multiplier, xp: { base: baseXP, bonus: total - baseXP, total }, gearCount };
+  const coinsTotal = Math.round(10 * multiplier);
+  return {
+    multiplier,
+    xp: { base: baseXP, bonus: total - baseXP, total },
+    gearCount,
+    coins: { base: 10, bonus: coinsTotal - 10, total: coinsTotal },
+  };
 }
