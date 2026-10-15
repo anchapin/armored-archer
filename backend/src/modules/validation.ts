@@ -128,6 +128,14 @@ export const ValibotSchemas = {
     // Per-attempt idempotency key (reward integration contract); a retry
     // carrying the same key resumes instead of duplicating effects.
     attempt_id: optional(pipe(string(), minLength(1), maxLength(100))),
+    // Server-issued run challenge from stage_start; when present the reward
+    // tier comes from the server snapshot, not this claim.
+    challenge_id: optional(pipe(string(), minLength(1), maxLength(100))),
+  }),
+
+  // Opens a server-snapshotted run challenge (reward integration contract).
+  stage_start: object({
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
   }),
 
   equip_gear: object({

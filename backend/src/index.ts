@@ -14,6 +14,7 @@ import { initAntiCheatCleanup } from './modules/anti_cheat';
 import { registerRpcQueryAuditLogs, rpcQueryAuditLogs } from './modules/audit';
 import { registerBalanceAnalyticsEndpoints } from './modules/balance_analytics';
 import { registerRpcRunBalanceSession } from './modules/balance_session';
+import { registerRpcCleanupTestUser, cleanupTestUserEnabled } from './modules/cleanup_test_user';
 import {
   registerRpcSubmitCombatAction,
   registerRpcGetMatchState,
@@ -112,6 +113,7 @@ import {
   registerRpcGetProjectedNextSeasonElo,
 } from './modules/season_system';
 import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
+import { registerRpcStageStart } from './modules/stage_challenge';
 import {
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
@@ -148,7 +150,6 @@ import {
   rpcGetBundleCatalog,
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
-import { registerRpcCleanupTestUser, cleanupTestUserEnabled } from './modules/cleanup_test_user';
 import { registerTestFixtureRpcs } from './modules/test_fixtures';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
@@ -617,6 +618,7 @@ const InitModule: InitModule = function (
     registerRpcGetInventory(initializer);
     registerRpcUnlockModifierPool(initializer);
     registerRpcStageComplete(initializer);
+    registerRpcStageStart(initializer);
     registerRpcReportPlayer(initializer);
     registerRpcGetPlayerReports(initializer);
     // registerRpcCompleteStage removed — `armored_archer/complete_stage` was

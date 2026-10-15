@@ -33,6 +33,7 @@ import {
   incrementGearUnlock,
 } from './metrics';
 import { checkRateLimit } from './rate_limit';
+import { consumeStageChallenge, readStageChallenge } from './stage_challenge';
 import { makeStageGrantId, readStageOutcome, writeStageOutcome } from './stage_grants';
 import {
   applyStageCompletion,
@@ -1588,6 +1589,10 @@ export interface StageCompleteRequest {
   // a retry of the same attempt resumes unfinished effects instead of being
   // rejected as a duplicate. Absent: legacy behavior (retry within cooldown
   // is rejected and any partial effects are lost), unchanged.
+  // Server-issued run challenge (reward integration contract). When present
+  // and valid, the reward tier comes from the server snapshot and this value
+  // doubles as the attempt key when attempt_id is absent.
+  challenge_id?: string;
   attempt_id?: string;
 }
 
@@ -1755,65 +1760,6 @@ export function registerRpcStageComplete(initializer: Runtime.Initializer): void
 }
 
 /**
- * Runs the claim-first dedup segment of stage_complete and records its
- * telemetry (issue #1139): claim-segment timing, the claim outcome
- * (fresh / replay_rejected / cooldown_active), and the duplicate terminal
- * outcome on rejection.
- *
- * @returns The error response string when the request must be rejected as a
- *          replay, or null when the claim was written and processing continues
- */
-function claimStageCompletionOrReject(
-  nk: Runtime.Nakama,
-  userId: string,
-  stageId: string,
-  logger: Runtime.Logger,
-  attemptId?: string
-): { error?: string; resume?: boolean } {
-  const claimStartedAtMs = Date.now();
-  const dedupResult = checkStageCompletionClaim(nk, userId, stageId, logger, attemptId);
-  if (dedupResult.error) {
-    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
-    recordStageClaim('replay_rejected');
-    recordStageCompleteOutcome('duplicate');
-    return { error: dedupResult.error };
-  }
-  if (dedupResult.resume) {
-    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
-    recordStageClaim('resumed');
-    return { resume: true };
-  }
-
-  // Issue #1069 claim-first atomicity: write the versioned dedup marker
-  // BEFORE granting loot/XP/stars. If any later write fails, the claim
-  // persists and a retry is rejected as a duplicate for the cooldown
-  // window, so rewards can never be double-granted.
-  try {
-    writeStageCompletionClaim(nk, userId, stageId, dedupResult.claimVersion, attemptId);
-  } catch (error) {
-    logger.warn(
-      'Stage claim write failed for user %s stage %s: %s',
-      userId,
-      stageId,
-      String(error)
-    );
-    return {
-      error: JSON.stringify({
-        success: false,
-        error: 'Stage completion claim could not be acquired',
-        error_code: 'CLAIM_CONFLICT',
-      }),
-    };
-  }
-  observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
-  // claimVersion is only defined when a prior claim object existed (i.e. the
-  // cooldown had expired and this completion proceeded through a versioned
-  // claim overwrite) — distinguish that from a genuinely fresh claim (#1139).
-  recordStageClaim(dedupResult.claimVersion ? 'cooldown_active' : 'fresh');
-  return {};
-}
-
-/**
  * Handles stage completion with server-side loot generation.
  * This prevents client-side drop-rate hacking by rolling drops server-side.
  *
@@ -1906,6 +1852,60 @@ function verifyBossDefeat(
 }
 
 /**
+ * Gates a stage completion before any effect runs (with #1139 claim
+ * telemetry): read-only dedup check first so a failed challenge cannot burn
+ * the claim and a same-attempt retry reaches the resume path even though
+ * its challenge is already consumed; then the server-issued challenge is
+ * honored - consumed one-shot on the fresh path, read back (consumed state
+ * accepted) on resume, overriding the client difficulty claim with the
+ * server-snapshotted tier in both cases.
+ *
+ * @returns terminalResponse when the request is fully answered or rejected;
+ *          otherwise the claim version for the caller's claim write
+ */
+function gateStageCompletion(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  claimStartedAtMs: number
+): { terminalResponse?: string; claimVersion?: string } {
+  const dedupResult = checkStageCompletionClaim(
+    nk,
+    ctx.userId,
+    request.stage_id,
+    logger,
+    request.attempt_id
+  );
+  if (dedupResult.error) {
+    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
+    recordStageClaim('replay_rejected');
+    recordStageCompleteOutcome('duplicate');
+    return { terminalResponse: dedupResult.error };
+  }
+  if (dedupResult.resume) {
+    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
+    recordStageClaim('resumed');
+    if (request.challenge_id) {
+      const prior = readStageChallenge(nk, ctx.userId, request.challenge_id, request.stage_id);
+      if ('error' in prior) {
+        return { terminalResponse: prior.error };
+      }
+      request.difficulty = prior.tier;
+    }
+    return { terminalResponse: resumeCompletionAndRespond(nk, ctx, logger, request) };
+  }
+  if (request.challenge_id) {
+    const challenge = consumeStageChallenge(nk, ctx.userId, request.challenge_id, request.stage_id);
+    if ('error' in challenge) {
+      return { terminalResponse: challenge.error };
+    }
+    request.difficulty = challenge.tier;
+  }
+  return { claimVersion: dedupResult.claimVersion };
+}
+
+/**
  * Handle stage completion RPC
  *
  * Issue #1069 consolidated the two duplicate stage-completion RPCs into this
@@ -1974,22 +1974,50 @@ export function rpcStageComplete(
     });
   }
 
-  // Dedup check + claim-first marker, with #1139 telemetry.
-  const claimResult = claimStageCompletionOrReject(
-    nk,
-    ctx.userId,
-    request.stage_id,
-    logger,
-    request.attempt_id
-  );
-  if (claimResult.error) {
-    return claimResult.error;
+  // The challenge ID doubles as the attempt key so the pair shares one
+  // idempotency record.
+  if (request.challenge_id && !request.attempt_id) {
+    request.attempt_id = request.challenge_id;
+  }
+
+  const claimStartedAtMs = Date.now();
+  const gate = gateStageCompletion(nk, ctx, logger, request, claimStartedAtMs);
+  if (gate.terminalResponse) {
+    return gate.terminalResponse;
   }
 
   try {
-    if (claimResult.resume) {
-      return resumeCompletionAndRespond(nk, ctx, logger, request);
+    // Issue #1069 claim-first atomicity: write the versioned dedup marker
+    // BEFORE granting loot/XP/stars. If any later write fails, the claim
+    // persists and a retry is rejected as a duplicate for the cooldown
+    // window, so rewards can never be double-granted.
+    try {
+      writeStageCompletionClaim(
+        nk,
+        ctx.userId,
+        request.stage_id,
+        gate.claimVersion,
+        request.attempt_id
+      );
+    } catch (claimWriteError) {
+      logger.warn(
+        'Stage claim write failed for user %s stage %s: %s',
+        ctx.userId,
+        request.stage_id,
+        String(claimWriteError)
+      );
+      return JSON.stringify({
+        success: false,
+        error: 'Stage completion claim could not be acquired',
+        error_code: 'CLAIM_CONFLICT',
+      });
     }
+    observeStageClaimSeconds((Date.now() - claimStartedAtMs) / 1000);
+    // claimVersion is only defined when a prior claim object existed (i.e. the
+    // cooldown had expired and this completion proceeded through a versioned
+    // claim overwrite) — distinguish that from a genuinely fresh claim (#1139).
+    recordStageClaim(gate.claimVersion ? 'cooldown_active' : 'fresh');
+
     const responseBody = applyCompletionAndRespond(nk, ctx, logger, request);
     // Terminal outcome record: a replayed request for this attempt is
     // answered from the record without re-applying any effect.
