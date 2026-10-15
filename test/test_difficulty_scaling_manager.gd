@@ -28,11 +28,11 @@ func test_enemy_damage_scaling_early_levels():
 	var level_10_mult: float = difficulty_scaling_manager.get_enemy_damage_mult(10)
 
 	# Early levels should have lower damage multiplier
-	assert_ge(level_1_mult, 0.8, "Level 1 damage multiplier should be at least 0.8")
-	assert_le(level_1_mult, 1.0, "Level 1 damage multiplier should be at most 1.0")
+	assert_gte(level_1_mult, 0.8, "Level 1 damage multiplier should be at least 0.8")
+	assert_lte(level_1_mult, 1.0, "Level 1 damage multiplier should be at most 1.0")
 
 	# Damage multiplier should increase with level
-	assert_ge(level_10_mult, level_5_mult, "Damage multiplier should increase with level")
+	assert_gte(level_10_mult, level_5_mult, "Damage multiplier should increase with level")
 
 func test_enemy_damage_scaling_mid_levels():
 	# Mid levels (11-20): 1.0x-1.2x damage multiplier
@@ -45,11 +45,11 @@ func test_enemy_damage_scaling_mid_levels():
 	var level_20_mult: float = difficulty_scaling_manager.get_enemy_damage_mult(20)
 
 	# Mid levels should have 1.0x-1.2x damage
-	assert_ge(level_11_mult, 1.0, "Level 11 damage multiplier should be at least 1.0")
-	assert_le(level_20_mult, 1.2, "Level 20 damage multiplier should be at most 1.2")
+	assert_gte(level_11_mult, 1.0, "Level 11 damage multiplier should be at least 1.0")
+	assert_lte(level_20_mult, 1.2, "Level 20 damage multiplier should be at most 1.2")
 
 	# Growth should be gradual
-	assert_ge(level_20_mult, level_11_mult, "Damage multiplier should increase with level")
+	assert_gte(level_20_mult, level_11_mult, "Damage multiplier should increase with level")
 
 func test_enemy_damage_scaling_late_levels():
 	# Late levels (21-50): 1.2x-2.0x damage multiplier
@@ -62,8 +62,8 @@ func test_enemy_damage_scaling_late_levels():
 	var level_50_mult: float = difficulty_scaling_manager.get_enemy_damage_mult(50)
 
 	# Late levels should have higher damage multiplier
-	assert_ge(level_21_mult, 1.2, "Level 21 damage multiplier should be at least 1.2")
-	assert_le(level_50_mult, 2.0, "Level 50 damage multiplier should be at most 2.0")
+	assert_gte(level_21_mult, 1.2, "Level 21 damage multiplier should be at least 1.2")
+	assert_lte(level_50_mult, 2.0, "Level 50 damage multiplier should be at most 2.0")
 
 	# Late game should have significantly higher multiplier
 	assert_gt(level_50_mult, level_21_mult, "Level 50 should have higher multiplier than level 21")
@@ -81,14 +81,14 @@ func test_ai_difficulty_tiers():
 
 	# Tier 1 should have simple AI
 	assert_eq(tier_1.get("name", ""), "Simple", "Tier 1 AI should be named 'Simple'")
-	assert_le(tier_1.get("aggression", 1.0), 0.5, "Tier 1 should have low aggression")
+	assert_lte(tier_1.get("aggression", 1.0), 0.5, "Tier 1 should have low aggression")
 
 	# Tier 2 should have moderate AI
 	assert_eq(tier_2.get("name", ""), "Aggressive", "Tier 2 AI should be named 'Aggressive'")
 
 	# Tier 3 should have sophisticated AI
 	assert_eq(tier_3.get("name", ""), "Sophisticated", "Tier 3 AI should be named 'Sophisticated'")
-	assert_ge(tier_3.get("aggression", 0.0), 0.7, "Tier 3 should have high aggression")
+	assert_gte(tier_3.get("aggression", 0.0), 0.7, "Tier 3 should have high aggression")
 
 func test_boss_phase_progression():
 	# Boss difficulty should increase with phases
@@ -108,7 +108,7 @@ func test_boss_phase_progression():
 	assert_eq(phase_2.get("phases", 0), 2, "Phase 2 boss should have 2 phases")
 
 	# Phase 3 should have complex boss
-	assert_ge(phase_3.get("phases", 0), 3, "Phase 3 boss should have at least 3 phases")
+	assert_gte(phase_3.get("phases", 0), 3, "Phase 3 boss should have at least 3 phases")
 
 func test_difficulty_indicators():
 	# Difficulty should be displayed as Easy/Medium/Hard/Extreme
@@ -133,8 +133,8 @@ func test_scaling_formula_valid():
 
 	for level in range(1, 51):
 		var mult: float = difficulty_scaling_manager.get_enemy_damage_mult(level)
-		assert_ge(mult, 0.5, "Damage multiplier should not be negative (level %d)" % level)
-		assert_le(mult, 3.0, "Damage multiplier should be reasonable (level %d)" % level)
+		assert_gte(mult, 0.5, "Damage multiplier should not be negative (level %d)" % level)
+		assert_lte(mult, 3.0, "Damage multiplier should be reasonable (level %d)" % level)
 
 func test_damage_multiplier_monotonic():
 	# Damage multiplier should increase monotonically with player level
@@ -145,7 +145,7 @@ func test_damage_multiplier_monotonic():
 	var previous_mult: float = -1.0
 	for level in range(1, 51):
 		var mult: float = difficulty_scaling_manager.get_enemy_damage_mult(level)
-		assert_ge(mult, previous_mult, "Damage multiplier should not decrease at level %d" % level)
+		assert_gte(mult, previous_mult, "Damage multiplier should not decrease at level %d" % level)
 		previous_mult = mult
 
 func test_encounter_difficulty_calculation():
@@ -176,8 +176,8 @@ func test_ai_pattern_complexity():
 	var tier_3: Dictionary = difficulty_scaling_manager.get_ai_difficulty_tier(3)
 
 	# Higher tier should have more complex patterns
-	assert_le(tier_1.get("pattern_complexity", 10), 3, "Tier 1 should have simple patterns (1-3)")
-	assert_ge(tier_3.get("pattern_complexity", 0), 7, "Tier 3 should have complex patterns (7+)")
+	assert_lte(tier_1.get("pattern_complexity", 10), 3, "Tier 1 should have simple patterns (1-3)")
+	assert_gte(tier_3.get("pattern_complexity", 0), 7, "Tier 3 should have complex patterns (7+)")
 
 func test_boss_special_abilities():
 	# Boss abilities should scale with level
