@@ -44,7 +44,7 @@ Mid-core mobile gamers who enjoy ARPG progression, theory-crafting character bui
 ### **C. The Economy & Rewards**
 
 * **Currencies:**  
-  * *Coins:* The earnable soft currency, paid out by matches and Season Rewards. Approved PvE plan (not shipped): 10 per eligible stage completion at Normal/easier, 12 on Hard and 15 on Extreme; replay/no-improvement remains non-paying. Its primary sink ships Season 1 mid-season; Coins are never purchasable.  
+  * *Coins:* The earnable soft currency, paid out by matches and Season Rewards. Approved PvE plan (not shipped): 10 per eligible stage completion at Normal/easier, 12 on Hard and 15 on Extreme; replay/no-improvement remains non-paying. Its primary sink ships Season 1 mid-season; Coins are never purchasable.
   * *Gems:* The premium currency, bought with real money via IAP, plus small skill-gated earnable faucets (Punch-Up wins, season tiers). Gems buy Cosmetic Skins and nothing with stats.  
 * **Seasonal Leaderboards:** A 4-week ranked ladder cycle on Ladder Rating.  
   * *Season Rewards:* Tiered payouts of Coins, Gems, and exclusive (non-stat) cosmetic titles or auras by final Standing — no XP component ("massive XP bursts" superseded).  
