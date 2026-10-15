@@ -61,8 +61,8 @@ const MIN_MODIFIER = -0.2;
 /**
  * Streak thresholds for difficulty adjustment.
  */
-const WIN_STREAK_THRESHOLD = 3;
-const LOSE_STREAK_THRESHOLD = 3;
+const WIN_STREAK_THRESHOLD = 4;
+const LOSE_STREAK_THRESHOLD = 4;
 
 /**
  * Maximum number of match history entries retained (server-side ledger).
