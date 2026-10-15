@@ -7,6 +7,11 @@ import {
 import { logger } from '../../config/logger';
 import { rpcGenerateGear } from '../gear_system';
 import {
+  insertGearItem,
+  equipItemInDB,
+  unequipItemInDB,
+  recordBossDefeatInDB,
+  unlockModifierPoolInDB,
   getPlayerGearFromDB,
   getPlayerLoadoutFromDB,
   getDefeatedBossesFromDB,
@@ -117,6 +122,54 @@ describe('gear SQL error observability through real database helpers', () => {
       }
       expect(
         JSON.stringify([
+          (logger.error as jest.Mock).mock.calls,
+          (logger.warn as jest.Mock).mock.calls,
+        ])
+      ).not.toContain('private');
+    }
+  );
+  it.each([false, true])(
+    'keeps legacy write failures sanitized (metric fails=%s)',
+    (metricFails) => {
+      const nk = createMockNakama();
+      (nk.sqlQuery as jest.Mock).mockImplementation(() => {
+        throw new Error('private driver SQL token');
+      });
+      nk.metricsCounterAdd = jest.fn(() => {
+        if (metricFails) throw new Error('private metric token');
+      });
+      const gear = {
+        type: 'bow',
+        name: 'test',
+        rarity: 'common',
+        level: 1,
+        stats: [],
+        modifiers: [],
+      } as any;
+      const results = [
+        insertGearItem(nk, 'private-user', gear),
+        equipItemInDB(nk, 'private-user', 'private-item', 'bow'),
+        unequipItemInDB(nk, 'private-user', 'bow'),
+        recordBossDefeatInDB(nk, 'private-user', 'private-boss'),
+        unlockModifierPoolInDB(nk, 'private-user', 'private-modifier', 'test'),
+      ];
+      expect(results).toEqual([
+        { success: false, error: 'Failed to insert gear item' },
+        { success: false, error: 'Failed to verify item' },
+        { success: false, error: 'Failed to unequip item' },
+        {
+          success: false,
+          defeat_count: 0,
+          first_defeat: false,
+          error: 'Failed to record boss defeat',
+        },
+        { success: false, newly_unlocked: false, error: 'Failed to unlock modifier pool' },
+      ]);
+      expect(nk.sqlQuery).toHaveBeenCalledTimes(5);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(5);
+      expect(
+        JSON.stringify([
+          results,
           (logger.error as jest.Mock).mock.calls,
           (logger.warn as jest.Mock).mock.calls,
         ])
