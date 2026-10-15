@@ -8,8 +8,9 @@ October 15 owner decisions: higher difficulty rewards all earned reward types;
 match the existing client 1.5x Extreme target; Normal stays 1.0x with scaling
 above it. Four-game streaks are a separate approved behavior change.
 
-The scope approval settles the player promise, not every payout mechanic below.
-All mechanics marked proposed still need design review. PvE only; ranked,
+The owner approved this design direction at 08:21 on October 15, including
+base-tier composition and the extra-item approach. Exact integration contracts
+below still require review; approval does not enable payouts. PvE only; ranked,
 seasons, Punch-Up, purchased products and premium-currency faucets stay outside
 this PvE bonus. IDs, rarity enums, gear stats, modifier pools, unlock counts and
 score/stars are not quantities to multiply. A generic numeric-field loop is not
@@ -45,13 +46,13 @@ an acceptable implementation of "everything."
 Use one validated dynamic bonus for all eligible earned reward quantities, on
 an explicitly defined base. Preserve existing campaign tier math as that base;
 do not apply the same bonus twice at client, helper and settlement layers.
-Normal and easier get dynamic multiplier 1.0; proposed Hard is 1.2; Extreme cap
-is the selected 1.5. The exact intermediate curve/label boundaries remain for
-review. Matching the Extreme cap alone does not approve a new continuous curve.
+Normal and easier get dynamic multiplier 1.0; Hard is 1.2; Extreme cap is 1.5.
+Do not infer a new continuous curve between those discrete labels; exact
+challenge-to-label boundaries remain part of the reviewed start contract.
 
 XP and any existing eligible integer currency amount would be multiplied once
 and rounded once, with safe-integer bounds and a returned base/bonus/final
-breakdown. Proposed rounding: nearest integer, matching current XP convention.
+breakdown. Rounding: nearest integer, matching current XP convention.
 Later owner approval (October 15, 08:31): add a small PvE Coins faucet of 10
 per eligible stage completion at Normal, 12 on Hard and 15 on Extreme; easier
 keeps the 10-Coin floor. This is a new grant, not an existing route. PvP and
@@ -65,7 +66,7 @@ same bonus in expected gear when base probability is near 100%. Current single
 item response also cannot represent multiple drops. Multiplying rarity or gear
 stats would change a different promise and is not proposed.
 
-Proposed option for review: scale expected item quantity, retaining the existing
+Approved design direction: scale expected item quantity, retaining the existing
 base loot roll. After a successful base roll, award one item plus a server-side
 extra-item roll of `multiplier - 1` (0..0.5). That preserves the base chance and
 rarity distribution, gives expected quantity exactly `base chance * multiplier`,
@@ -73,8 +74,9 @@ and never uses a probability above 100%. Each extra item is independently rolled
 and persisted. It requires a versioned plural `gear_drops`/`loot.items` contract
 and client handling, plus a durable per-completion grant ledger before any retry
 can grant twice. Normal/easier remains one roll. The alternative is a capped
-probability bonus with explicitly non-uniform gains at saturation. The owner
-has not yet approved either mechanic or a plural contract.
+probability bonus with explicitly non-uniform gains at saturation; this is not
+the selected approach. Exact plural API and grant-ledger contracts still need
+review before integration.
 
 ## Authority and failure design required before code
 
@@ -97,8 +99,9 @@ rollout controls and migration authority do not follow from approval of a cap.
 
 ## Review sequence
 
-1. Review base-versus-dynamic composition, intermediate curve/rounding, the approved 10-Coin PvE base and drop quantity-versus-probability choice. Confirm exclusions and
-   client plural compatibility explicitly.
+1. Direction approved: existing campaign-tier base, discrete 1.0/1.2/1.5 bonus,
+   nearest-integer rounding, 10-Coin PvE base and extra-item loot approach.
+   Review exact challenge-label mapping and client plural compatibility.
 2. Review exact authoritative stage-start/evidence and grant-ledger contracts,
    including schema needs, retention, offline rules and partial-failure recovery.
 3. Add failing tests for forged/missing/mismatched snapshots, replay, duplicate
