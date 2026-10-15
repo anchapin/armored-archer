@@ -1,6 +1,7 @@
 import { config } from '../config';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import { observedSqlQuery } from '../utils/sql-observability';
 
 // Firebase Admin SDK types
 interface FirebaseMessagingPayload {
@@ -290,7 +291,9 @@ export async function getUserDeviceTokens(
   userId: string
 ): Promise<{ deviceToken: string; platform: string; fcmToken: string }[]> {
   try {
-    const result = await nk.sqlQuery(
+    const result = await observedSqlQuery(
+      nk,
+      'notifications.getUserDeviceTokens',
       `SELECT device_token, platform, fcm_token FROM device_tokens WHERE user_id = $1`,
       [userId]
     );
@@ -306,8 +309,8 @@ export async function getUserDeviceTokens(
       platform: row.platform,
       fcmToken: row.fcm_token,
     }));
-  } catch (error) {
-    logger.error('Failed to get user device tokens', { error: String(error), userId });
+  } catch {
+    logger.error('Failed to get user device tokens');
     return [];
   }
 }
@@ -320,13 +323,18 @@ export async function getNotificationPreferences(
   userId: string
 ): Promise<{ user_id: string; [key: string]: unknown } | null> {
   try {
-    const result = await nk.sqlQuery(`SELECT * FROM notification_preferences WHERE user_id = $1`, [
-      userId,
-    ]);
+    const result = await observedSqlQuery(
+      nk,
+      'notifications.getNotificationPreferences',
+      `SELECT * FROM notification_preferences WHERE user_id = $1`,
+      [userId]
+    );
 
     if (result.length === 0) {
       // Create default preferences
-      const insertResult = await nk.sqlQuery(
+      const insertResult = await observedSqlQuery(
+        nk,
+        'notifications.createDefaultPreferences',
         `INSERT INTO notification_preferences (user_id) VALUES ($1) RETURNING *`,
         [userId]
       );
@@ -334,8 +342,8 @@ export async function getNotificationPreferences(
     }
 
     return result[0] as { user_id: string; [key: string]: unknown };
-  } catch (error) {
-    logger.error('Failed to get notification preferences', { error: String(error), userId });
+  } catch {
+    logger.error('Failed to get notification preferences');
     return null;
   }
 }
@@ -481,7 +489,9 @@ export async function getPendingNotifications(
   limit: number = 100
 ): Promise<any[]> {
   try {
-    const result = await nk.sqlQuery(
+    const result = await observedSqlQuery(
+      nk,
+      'notifications.getPendingNotifications',
       `SELECT * FROM scheduled_notifications 
        WHERE status = 'pending' AND scheduled_for <= NOW()
        ORDER BY scheduled_for ASC
@@ -489,8 +499,8 @@ export async function getPendingNotifications(
       [limit]
     );
     return result;
-  } catch (error) {
-    logger.error('Failed to get pending notifications', { error: String(error) });
+  } catch {
+    logger.error('Failed to get pending notifications');
     return [];
   }
 }

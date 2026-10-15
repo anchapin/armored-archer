@@ -52,6 +52,7 @@ import {
   removeDeviceToken,
   getUserDeviceTokens,
   getNotificationPreferences,
+  getPendingNotifications,
   updateNotificationPreferences,
   scheduleNotification,
   cancelScheduledNotification,
@@ -61,6 +62,7 @@ import {
   sendEventNotification,
   sendPvpChallengeNotification,
 } from '../notifications';
+import { logger } from '../../config/logger';
 import type { NotificationType } from '../notifications';
 
 const createMockNk = () => ({
@@ -70,6 +72,80 @@ const createMockNk = () => ({
 });
 
 describe('Notifications Module', () => {
+  it.each([false, true])(
+    'observes synchronous legacy SQL read failures safely (metric fails=%s)',
+    async (metricFails) => {
+      jest.clearAllMocks();
+      const nk = {
+        sqlQuery: jest.fn(() => {
+          throw new Error('private SQL token');
+        }),
+        metricsCounterAdd: jest.fn(() => {
+          if (metricFails) throw new Error('private metric token');
+        }),
+      } as any;
+      expect(await getUserDeviceTokens(nk, 'private-user')).toEqual([]);
+      expect(await getNotificationPreferences(nk, 'private-user')).toBeNull();
+      expect(await getPendingNotifications(nk, 7)).toEqual([]);
+      expect(nk.sqlQuery).toHaveBeenCalledTimes(3);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(3);
+      for (const op of [
+        'getUserDeviceTokens',
+        'getNotificationPreferences',
+        'getPendingNotifications',
+      ]) {
+        expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+          'db_errors_total',
+          { op: `notifications.${op}` },
+          1
+        );
+      }
+      expect(
+        JSON.stringify([
+          (logger.error as jest.Mock).mock.calls,
+          (logger.warn as jest.Mock).mock.calls,
+        ])
+      ).not.toContain('private');
+    }
+  );
+
+  it.each([false, true])(
+    'observes default preference insert failure without changing null fallback (metric fails=%s)',
+    async (metricFails) => {
+      jest.clearAllMocks();
+      const nk = {
+        sqlQuery: jest
+          .fn()
+          .mockReturnValueOnce([])
+          .mockImplementationOnce(() => {
+            throw new Error('private SQL token');
+          }),
+        metricsCounterAdd: jest.fn(() => {
+          if (metricFails) throw new Error('private metric token');
+        }),
+      } as any;
+      expect(await getNotificationPreferences(nk, 'private-user')).toBeNull();
+      expect(nk.sqlQuery).toHaveBeenCalledTimes(2);
+      expect(nk.sqlQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('INSERT INTO notification_preferences'),
+        ['private-user']
+      );
+      expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(1);
+      expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+        'db_errors_total',
+        { op: 'notifications.createDefaultPreferences' },
+        1
+      );
+      expect(
+        JSON.stringify([
+          (logger.error as jest.Mock).mock.calls,
+          (logger.warn as jest.Mock).mock.calls,
+        ])
+      ).not.toContain('private');
+    }
+  );
+
   describe('getNotificationTemplate', () => {
     it('should return daily_reward template', () => {
       const template = getNotificationTemplate('daily_reward');
