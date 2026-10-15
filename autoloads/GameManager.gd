@@ -48,6 +48,10 @@ var current_difficulty: int = 1
 
 # --- Health Management ---
 var damage_cooldown: float = 0.0
+## Seconds of invulnerability after any player hit (#1446). Sized so a
+## standing-still player on stage 1_1 (8 dmg scouts, 100 HP) survives ~18s
+## of continuous contact, clearing the issue's 15s acceptance bar.
+const PLAYER_INVULNERABILITY_DURATION: float = 1.5
 
 func _ready() -> void:
 	"""Initialize manager references and connect to stat updates."""
@@ -92,10 +96,12 @@ func take_player_damage(damage: int) -> void:
 	if not is_game_active:
 		return
 
-	# Small cooldown to prevent damage spam (0.1s between hits)
+	# Post-hit invulnerability window (#1446): one hit per window no matter how
+	# many enemies are in contact. Was a 0.1s spam guard, which let a crowd
+	# deal full DPS (8 dmg x 10 hits/s = dead in ~1.3s on stage 1_1).
 	if damage_cooldown > 0:
 		return
-	damage_cooldown = 0.1
+	damage_cooldown = PLAYER_INVULNERABILITY_DURATION
 
 	var previous_health := player_current_health
 	player_current_health = max(0, player_current_health - damage)

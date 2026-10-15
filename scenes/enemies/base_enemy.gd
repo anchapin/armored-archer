@@ -14,6 +14,9 @@ extends CharacterBody2D
 @export var max_health: int = 100
 @export var move_speed: float = 150.0
 @export var damage: int = 10
+## Minimum seconds between this enemy's contact-damage applications (#1446).
+const CONTACT_DAMAGE_COOLDOWN: float = 0.75
+var _last_contact_damage_msec: int = -1
 @export var xp_reward: int = 25
 
 # --- State ---
@@ -170,12 +173,19 @@ func _return_to_pool_deferred() -> void:
 func _on_hurt_area_body_entered(body: Node2D) -> void:
 	if body and body.is_in_group("Player"):
 		if body.has_method("take_damage"):
+			# Per-enemy contact cooldown (#1446): physics re-entry can re-fire
+			# body_entered rapidly; one hit per enemy per cooldown window.
+			var now_msec: int = Time.get_ticks_msec()
+			if _last_contact_damage_msec >= 0 and now_msec - _last_contact_damage_msec < int(CONTACT_DAMAGE_COOLDOWN * 1000.0):
+				return
+			_last_contact_damage_msec = now_msec
 			body.take_damage(damage)
 
 ## Reset state when returning to pool - called by ObjectPool
 func reset_pooled_state() -> void:
 	# Note: Signals will be disconnected by the spawner when needed
 
+	_last_contact_damage_msec = -1
 	current_health = max_health
 	collision_layer = 2
 	collision_mask = 1
