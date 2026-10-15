@@ -74,7 +74,7 @@ func test_no_random_fallback_for_ch1_stages() -> void:
 	spawner.current_chapter = 1
 	spawner.current_stage = 1
 	spawner.last_stage_enemy_stats = {"type": "Goblin Scout"}
-	var scene := spawner._resolve_current_stage_scene()
+	var scene: PackedScene = spawner._resolve_current_stage_scene()
 	assert_not_null(scene, "Ch1 stage 1_1 must resolve to a mapped scene")
 	assert_eq(scene, spawner.SCOUT_ENEMY_SCENE,
 		"Ch1 stage 1_1 (Goblin Scout) must map to SCOUT_ENEMY_SCENE")
