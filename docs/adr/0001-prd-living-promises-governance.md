@@ -6,3 +6,12 @@ The PRD (`docs/armored-archer_prd.md`) is the source of truth for player-facing 
 
 - Future conflicts resolve via the three rules; "the PRD is outdated" is never itself an argument.
 - Ratified 2026-08 session: Coins, Gear Rarity, Season Rewards, Dynamic Difficulty (four constraints), hybrid duel model, power-based punch-up. Superseded: "massive XP bursts" (season rewards), "severe XP penalties" (punch-up loss → Ladder Rating only).
+
+## Amendment: October 15, 2026 difficulty reward direction
+
+The owner explicitly chose to revise the PRD so higher difficulty grants higher
+rewards. This supersedes only the reward-neutral player-facing promise from the
+2026-08 Dynamic Difficulty ratification. PvE-only scope, bounded challenge and
+player disclosure remain. Eligible rewards, formula, caps and production rollout
+require a separate server-authoritative design approval. This documentation
+amendment does not enable reward changes; current authoritative server rewards remain reward-neutral.
