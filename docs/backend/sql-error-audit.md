@@ -384,3 +384,19 @@ page failure tests inspect all error/warning arguments, including metric outages
 Query text, parameters, response shapes, pagination and admin gates are unchanged.
 The broader audit remains open; direct SQL observation alone does not establish
 that every caller's failure semantics or all post-write recovery is finished.
+
+### Direct runtime SQL regression guard
+
+A TypeScript syntax-tree test scans runtime source, excluding tests, mocks and
+declarations. Direct statically named `sqlQuery`, `sqlExec` and obsolete `dbQuery`
+calls are rejected outside the shared observer; its one direct `sqlQuery` is
+pinned. Dot, string-literal bracket and optional calls are covered. Comments,
+strings and method declarations are not calls. This is not alias/data-flow
+analysis or a proof against computed/dynamic API access. No workflow, required
+check, production code or threshold changes are included.
+
+At this snapshot all direct production SQL calls pass through the observer.
+That does not close #1462: context-free legacy fallbacks, optional report
+enrichment, and late-write/recovery limitations remain documented above.
+Recovery in #1558 remains deferred. A green scanner is not proof that every
+caller returns a failed RPC or that earlier writes have been rolled back.
