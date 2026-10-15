@@ -8,17 +8,19 @@ extends GutTest
 
 var pacing_manager: Node
 
-func before_all():
-	# Get reference to PacingManager autoload
-	pacing_manager = get_node("/root/PacingManager")
+class PacingFixture extends "res://autoloads/PacingManager.gd":
+	func _ready() -> void:
+		_init_encounter_classifications()
+	func save_pacing_state() -> void:
+		pass
 
-	if pacing_manager == null:
-		gut.p("WARNING: PacingManager autoload not found.")
+func before_each() -> void:
+	pacing_manager = PacingFixture.new()
+	add_child(pacing_manager)
+	pacing_manager.reset_pacing_state()
 
-func before_each():
-	# Reset pacing state before each test
-	if pacing_manager and pacing_manager.has_method("reset_pacing_state"):
-		pacing_manager.reset_pacing_state()
+func after_each() -> void:
+	pacing_manager.free()
 
 func test_encounter_classification_combat():
 	# Combat encounters should be classified correctly
@@ -143,11 +145,11 @@ func test_fatigue_clamping():
 
 	# High intensity and duration should still cap at 100
 	var max_fatigue: float = pacing_manager.get_fatigue_level(1.0, 1000.0)
-	assert_le(max_fatigue, 100.0, "Fatigue should not exceed 100")
+	assert_lte(max_fatigue, 100.0, "Fatigue should not exceed 100")
 
 	# Low values should produce valid fatigue
 	var min_fatigue: float = pacing_manager.get_fatigue_level(0.0, 0.0)
-	assert_ge(min_fatigue, 0.0, "Fatigue should not be negative")
+	assert_gte(min_fatigue, 0.0, "Fatigue should not be negative")
 
 func test_fatigue_high_threshold():
 	# Fatigue high threshold should be 70%
@@ -309,7 +311,7 @@ func test_suggest_break_critical_fatigue():
 	var recommendation: Dictionary = pacing_manager.suggest_break()
 
 	if recommendation.get("should_break", false):
-		assert_ge(recommendation.get("break_duration", 0), 300, "Critical fatigue should suggest 5+ min break")
+		assert_gte(recommendation.get("break_duration", 0), 300, "Critical fatigue should suggest 5+ min break")
 		assert_eq(recommendation.get("suggested_next_type", ""), "narrative", "Should suggest narrative after break")
 
 func test_suggest_break_combat_streak():
