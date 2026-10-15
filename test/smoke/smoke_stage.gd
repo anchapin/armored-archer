@@ -9,6 +9,7 @@ var _won: bool = false
 var _playing: bool = false
 var _max_enemies: int = 0
 var _exit_code: int = 0
+var _cleaning_up: bool = false
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -19,6 +20,9 @@ func _initialize() -> void:
 	call_deferred("_start_configured_stage")
 
 func _fail(reason: String) -> void:
+	if _cleaning_up:
+		return
+	_report_state("failure")
 	printerr("SMOKE FAIL: " + reason)
 	_exit_code = 1
 	_cleanup_and_quit()
@@ -100,6 +104,7 @@ func _start_configured_stage() -> void:
 func _on_player_died() -> void:
 	if _died_at < 0.0:
 		_died_at = _elapsed
+		_report_state("player_died")
 
 func _touch(joystick: Node, index: int, pressed: bool) -> void:
 	var event := InputEventScreenTouch.new()
@@ -145,7 +150,25 @@ func _finish() -> void:
 		return
 	_cleanup_and_quit()
 
+func _report_state(reason: String) -> void:
+	var gm: Node = root.get_node("GameManager")
+	var spawner: Node = root.get_node("EnemySpawner")
+	var player: Node2D = current_scene.get_node_or_null("Player") as Node2D if current_scene else null
+	var enemies: Array[Dictionary] = []
+	for enemy in spawner.active_enemies:
+		if is_instance_valid(enemy):
+			enemies.append({"position": str(enemy.global_position), "max_health": enemy.max_health,
+				"damage": enemy.damage, "speed": enemy.move_speed})
+	print("SMOKE STATE: ", JSON.stringify({"reason": reason, "combat_seconds": _elapsed,
+		"died_at": _died_at, "health": gm.player_current_health, "max_health": gm.player_max_health,
+		"player_position": str(player.global_position) if player else "unavailable",
+		"wave": spawner.current_wave, "max_waves": spawner.max_waves,
+		"enemies": enemies}))
+
 func _cleanup_and_quit() -> void:
+	if _cleaning_up:
+		return
+	_cleaning_up = true
 	_playing = false
 	root.get_node("AudioManager").stop_all()
 	root.get_node("AudioManager").stop_music()
@@ -159,5 +182,5 @@ func _cleanup_and_quit() -> void:
 	await process_frame
 	OS.delay_msec(200)
 	await create_timer(0.2).timeout
-	print("SMOKE PASS")
+	print("SMOKE PASS" if _exit_code == 0 else "SMOKE FAILED")
 	quit(_exit_code)
