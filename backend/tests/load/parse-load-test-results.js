@@ -35,15 +35,21 @@ for (const scenario of scenarios) {
     failed = true;
     continue;
   }
+  // k6 v1.x --summary-export flattens metric values onto the metric object
+  // ({avg, min, 'p(95)', ...}); k6 0.x nested them under .values. Accept both.
   const latencyMetric = summary.metrics[scenario.metric] || summary.metrics.http_req_duration;
-  const errorMetric = summary.metrics.errors;
-  if (!latencyMetric || !latencyMetric.values || typeof latencyMetric.values['p(95)'] !== 'number') {
+  const latencyValues = latencyMetric && (latencyMetric.values || latencyMetric);
+  if (!latencyValues || typeof latencyValues['p(95)'] !== 'number') {
     rows.push(`${scenario.file}: missing ${scenario.metric} p(95)`);
     failed = true;
     continue;
   }
-  const p95 = latencyMetric.values['p(95)'];
-  const rate = errorMetric && errorMetric.values ? errorMetric.values.rate || 0 : null;
+  const p95 = latencyValues['p(95)'];
+  const errorMetric = summary.metrics.errors;
+  const rate = errorMetric
+    ? (typeof errorMetric.value === 'number' ? errorMetric.value
+       : (errorMetric.values ? errorMetric.values.rate || 0 : null))
+    : null;
   if (rate === null) {
     rows.push(`${scenario.file}: missing errors rate`);
     failed = true;
