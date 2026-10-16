@@ -45,7 +45,6 @@ services:
       - "7351:7351"
     depends_on:
       - postgres
-      - redis
 
   postgres:
     container_name: armored_archer_beta_db
@@ -55,13 +54,6 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-beta_db_password_change_me}
     volumes:
       - beta_postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  redis:
-    container_name: armored_archer_beta_redis
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - beta_redis_data:/data
     restart: unless-stopped
 
   prometheus:
@@ -101,7 +93,6 @@ services:
 # Beta-specific volumes
 volumes:
   beta_postgres_data:
-  beta_redis_data:
   beta_prometheus_data:
   beta_grafana_data:
   beta_loki_data:
