@@ -198,7 +198,7 @@ start_services() {
         compose_opts="-f ${REGULAR_COMPOSE} -p ci-armored-archer"
     fi
 
-    docker compose $compose_opts up -d postgres redis nakama 2>&1 || {
+    docker compose $compose_opts up -d postgres nakama 2>&1 || {
         log_error "Failed to start services"
         return 1
     }

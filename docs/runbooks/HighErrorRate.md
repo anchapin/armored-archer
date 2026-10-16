@@ -125,8 +125,6 @@ docker exec postgres psql -U postgres -c \
 # Check if external APIs are responding
 # (Add your external service checks here)
 
-# Check Redis if used
-docker exec redis redis-cli ping
 
 # Check if any circuit breakers are open
 curl -s http://nakama:7350/metrics | grep circuit

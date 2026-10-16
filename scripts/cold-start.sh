@@ -231,7 +231,7 @@ else
 fi
 
 # --- 4. Image pre-pull (idempotent) ---------------------------------------
-# We pre-pull only the *application* images (postgres, redis, nakama) — the
+# We pre-pull only the *application* images (postgres, nakama) — the
 # observability stack is already addressable in #895 / #923 and is not on the
 # cold-start critical path (they don't gate the Nakama <-> postgres link).
 if [ "$SKIP_PULL" = "0" ]; then
@@ -251,10 +251,8 @@ if [ "$SKIP_PULL" = "0" ]; then
     }
     # Read images straight from the compose file so we don't drift.
     pg_image=$(grep -E '^[[:space:]]*image:' "$COMPOSE_FILE" | awk -F: '/postgres:/{print $2":"$3; exit}' | tr -d '"' | tr -d "'")
-    redis_image=$(grep -E '^[[:space:]]*image:' "$COMPOSE_FILE" | awk -F: '/redis:/{print $2":"$3; exit}' | tr -d '"' | tr -d "'")
     nakama_image=$(grep -E '^[[:space:]]*image:' "$COMPOSE_FILE" | awk -F: '/heroiclabs\/nakama:/{print $2":"$3; exit}' | tr -d '"' | tr -d "'")
     [ -n "$pg_image" ]    && pull_one "$pg_image"
-    [ -n "$redis_image" ] && pull_one "$redis_image"
     [ -n "$nakama_image" ] && pull_one "$nakama_image"
 else
     info "4/9 Skipping image pre-pull (--skip-pull)"

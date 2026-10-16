@@ -87,5 +87,5 @@ If you prefer full CI/CD compatibility, consider:
 
 ## Related Files
 
-- `backend/docker-compose.yml` - Defines PostgreSQL, Nakama, Redis, and other services
+- `backend/docker-compose.yml` - Defines PostgreSQL, Nakama, and other services
 - `backend/nakama.yml` - Nakama server configuration

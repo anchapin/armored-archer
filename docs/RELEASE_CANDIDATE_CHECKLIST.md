@@ -66,7 +66,7 @@ Every gate must be **GREEN** before a build is declared RC. A single red gate = 
 
 | # | Gate Criterion | Verification Method | Owner | Status |
 |---|----------------|---------------------|-------|--------|
-| D1 | Full local stack healthy | `make services-start` then `make services-health` (Nakama, PostgreSQL, Redis, Prometheus, Grafana, Loki, Alertmanager) | DevOps Lead | Pending |
+| D1 | Full local stack healthy | `make services-start` then `make services-health` (Nakama, PostgreSQL, Prometheus, Grafana, Loki, Alertmanager) | DevOps Lead | Pending |
 | D2 | Prometheus metrics scraped | `/metrics` endpoint scraped; `armored_archer_*` series present | DevOps Lead | Done |
 | D3 | Grafana dashboards loaded | API latency / error rate / player count + Progressive Rollout panel (`backend/grafana/provisioning/dashboards/`) | DevOps Lead | Done |
 | D4 | Alert rules active | Error-rate + latency + infra alert rules fire to Alertmanager (`backend/alerts.yml`); client crash thresholds are monitored via the Firebase Crashlytics console only (`docs/CRASH_ALERT_THRESHOLDS.md`) | DevOps Lead | Done |

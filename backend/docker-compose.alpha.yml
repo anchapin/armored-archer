@@ -49,13 +49,6 @@ services:
       - alpha_postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  redis:
-    container_name: armored_archer_alpha_redis
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - alpha_redis_data:/data
-    restart: unless-stopped
-
   prometheus:
     container_name: armored_archer_alpha_prometheus
     volumes:
@@ -86,7 +79,6 @@ services:
 # Alpha-specific volumes
 volumes:
   alpha_postgres_data:
-  alpha_redis_data:
   alpha_prometheus_data:
   alpha_grafana_data:
   alpha_loki_data:
