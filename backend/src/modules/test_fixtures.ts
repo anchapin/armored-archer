@@ -145,6 +145,55 @@ export function rpcDiagHttpProbe(
   }
 }
 
+/**
+ * Maximum hang the fixture will simulate; keeps a typo in a CI scenario from
+ * stalling a job for longer than the k6 job's own timeout budget.
+ */
+const DIAG_HANG_PROBE_MAX_MS = 30000;
+const DIAG_HANG_PROBE_DEFAULT_MS = 10000;
+
+/**
+ * Resolve the requested hang duration from the probe payload
+ * (`{"hang_ms": N}`). Exported for unit tests: the RPC itself busy-waits,
+ * so the clamp/fallback logic is verified without sleeping.
+ */
+export function resolveDiagHangMs(payload: string): number {
+  let requested = DIAG_HANG_PROBE_DEFAULT_MS;
+  try {
+    const parsed = JSON.parse(payload || '{}') as { hang_ms?: unknown };
+    if (typeof parsed.hang_ms === 'number' && Number.isFinite(parsed.hang_ms)) {
+      requested = parsed.hang_ms;
+    }
+  } catch {
+    // Invalid JSON falls back to the default hang.
+  }
+  return Math.min(Math.max(Math.trunc(requested), 0), DIAG_HANG_PROBE_MAX_MS);
+}
+
+/**
+ * Hung-request fixture (#1348, PD-2026-04-12 A3): simulates a handler whose
+ * downstream dependency never answers, so the k6 hung_request scenario can
+ * prove the client timeout fires promptly and the server keeps serving
+ * afterwards. Busy-waits because the goja runtime has no timers; the hang is
+ * clamped to DIAG_HANG_PROBE_MAX_MS. CI-only: the registration path keeps it
+ * off any deployment without TEST_FIXTURE_RPCS_ENABLED=true.
+ */
+export function rpcDiagHangProbe(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  void nk;
+  const hangMs = resolveDiagHangMs(payload);
+  logger.info('diag_hang_probe: hanging for %d ms (user %s)', hangMs, ctx.userId);
+  const end = Date.now() + hangMs;
+  while (Date.now() < end) {
+    // Busy-wait: the goja runtime has no setTimeout/sleep.
+  }
+  return JSON.stringify({ success: true, hung_ms: hangMs });
+}
+
 export function registerTestFixtureRpcs(
   initializer: Runtime.Initializer,
   logger: Runtime.Logger,
@@ -163,5 +212,7 @@ export function registerTestFixtureRpcs(
   initializer.registerRpc('armored_archer/test_leaderboard_fixture', rpcTestLeaderboardFixture);
   // #1423 spike: sync nk.httpRequest proof on the real goja runtime.
   initializer.registerRpc('armored_archer/diag_http_probe', rpcDiagHttpProbe);
+  // #1348: hung-request fixture for the k6 hung_request scenario.
+  initializer.registerRpc('armored_archer/diag_hang_probe', rpcDiagHangProbe);
   return true;
 }

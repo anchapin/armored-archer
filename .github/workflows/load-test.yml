@@ -226,6 +226,13 @@ jobs:
           NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
         run: k6 run --summary-export=mixed-workload-results.json tests/load/scenarios/mixed_workload.js
 
+      - name: Run hung request scenario
+        working-directory: ./backend
+        env:
+          NAKAMA_BASE_URL: http://127.0.0.1:7350
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: k6 run --summary-export=hung-request-results.json tests/load/scenarios/hung_request.js
+
       - name: Parse load test results
         if: always()
         working-directory: ./backend
