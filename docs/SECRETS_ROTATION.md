@@ -301,7 +301,7 @@ Every credential-pattern variable class present in `backend/.env.*` (names per `
 | `POSTGRES_PASSWORD`, `DB_PASSWORD` | Database | [Database Password Rotation](#1-database-password-rotation) below — include the `ALTER USER` step |
 | `SESSION_ENCRYPTION_KEY`, `REFRESH_ENCRYPTION_KEY`, `TOKEN_ENCRYPTION_KEY` | Encryption keys | [Session Encryption Keys Rotation](#3-session-encryption-keys-rotation) below |
 | `REVENUECAT_PUBLIC_KEY`, `REVENUECAT_SECRET_KEY`, `REVENUECAT_WEBHOOK_SECRET` | IAP | [RevenueCat API Keys Rotation](#4-revenuecat-api-keys-rotation) below |
-| `FIREBASE_API_KEY` (+ service-account keys) | Auth | [Firebase Configuration Rotation](#5-firebase-configuration-rotation) below |
+| `FIREBASE_PRIVATE_KEY` (service-account key) | Push notifications (FCM) | [Firebase Configuration Rotation](#5-firebase-configuration-rotation) below |
 | `HMAC_SECRET` | Webhook signing | Generate (`openssl rand -hex 32`), update every affected `backend/.env.*`, redeploy |
 | `PAGERDUTY_API_KEY`, `PAGERDUTY_INTEGRATION_KEY`, `ALERT_WEBHOOK_PASSWORD`, `ALERT_WEBHOOK_TOKEN`, `SMTP_PASSWORD` | Alerting / email | Rotate at the provider, update every affected `backend/.env.*` |
 | `MIXPANEL_API_KEY`, `AMPLITUDE_API_KEY`, `SEGMENT_WRITE_KEY`, `ANALYTICS_CUSTOM_API_KEY` | Analytics | Rotate at the provider, update every affected `backend/.env.*` |

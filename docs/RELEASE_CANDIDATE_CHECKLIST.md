@@ -11,7 +11,7 @@
 
 ## Overview
 
-This document is the release candidate (RC) checklist and sign-off package for Armored Archer v3.6.0 — a Godot 4.6 mobile archery auto-shooter with a server-authoritative Nakama (TypeScript) backend, PostgreSQL database, Firebase authentication, and RevenueCat in-app purchases.
+This document is the release candidate (RC) checklist and sign-off package for Armored Archer v3.6.0 — a Godot 4.6 mobile archery auto-shooter with a server-authoritative Nakama (TypeScript) backend, PostgreSQL database, Nakama device authentication, and RevenueCat in-app purchases.
 
 It builds on the Closed Beta Checklist (`docs/CLOSED_BETA_CHECKLIST.md`) and adds RC-specific verification gates, trust-system blockers, a staged rollout plan, and the formal sign-off record.
 
@@ -84,7 +84,7 @@ Every gate must be **GREEN** before a build is declared RC. A single red gate = 
 | E3 | Export compliance filed | Documentation complete (`docs/EXPORT_COMPLIANCE.md`) | Product Manager | Done |
 | E4 | Age ratings set | 12+ iOS, Teen Android; cosmetic-only monetization documented | Product Manager | Done |
 | E5 | IAP policy compliant | Gems purchase cosmetics only — zero combat impact, enforced server-side; no pay-to-win (`docs/IAP_SECURITY_AUDIT.md`) | Security Lead | Done |
-| E6 | TLS on all external endpoints | Firebase auth, Nakama API, RevenueCat traffic encrypted in production | Security Lead | Pending |
+| E6 | TLS on all external endpoints | Nakama API/auth and RevenueCat traffic encrypted in production | Security Lead | Pending |
 | E7 | DAST scan clean | `.github/workflows/dast-scanning.yml` run with no critical/high findings | Security Lead | Pending |
 | E8 | Secrets audit clean | No credentials in code or bundles; `docs/SECRETS_ROTATION.md` schedule current | Security Lead | Pending |
 
@@ -160,7 +160,7 @@ Player progression must never be lost, duplicated, or client-forged.
 |---|---------------|---------------------|--------|----------|
 | T-P1 | XP/level/gear writes are transactional | Progression RPCs use try/catch + DB transactions; no partial-write paths | Done | Unit + integration tests |
 | T-P2 | Client cannot forge progression payloads | All progression deltas recomputed server-side from stored state | Done | Input validation tests |
-| T-P3 | Save/load round-trip verified | Device playthrough: XP, levels, gear, gems survive app restart and re-login (Firebase auth session loss handled) | Pending | Manual device test |
+| T-P3 | Save/load round-trip verified | Device playthrough: XP, levels, gear, gems survive app restart and re-login (device auth session loss handled) | Pending | Manual device test |
 | T-P4 | Seasonal soft-reset correct | Leaderboard soft reset + prestige preserves what it must, resets what it should (`docs/SEASONAL_LEADERBOARD.md`) | Pending | Staging seasonal drill |
 | T-P5 | No unresolved progression-loss issues in tracker | Zero open issues labeled progression/data-loss | Pending | Tracker sweep at RC |
 
@@ -235,7 +235,7 @@ Requires a device (or emulator) connected to a running backend stack.
 | 3.10 | Touch controls | Dual joystick, aim smoothing, safe areas on device | Done | |
 | 3.11 | Memory within limits | < 512 MB flagship, < 256 MB budget | Pending | |
 | 3.12 | Gameplay balance verified | Stage pacing, drop rates, risk/reward tuned | Done | Sprint 8 tuning pass |
-| 3.13 | Firebase auth flows | Login, session refresh, logout, account recovery on device | Pending | |
+| 3.13 | Auth flows (Nakama device auth) | Login, session refresh, logout, account recovery on device | Pending | |
 
 ### Category 4: App Store Readiness
 
@@ -263,7 +263,7 @@ Full store procedures: `docs/APP_SUBMISSION_CHECKLIST.md`, `docs/APP_STORE_IOS.m
 | 5.1 | DAST scan clean | `.github/workflows/dast-scanning.yml` results | Pending | Gate E7 |
 | 5.2 | Server-authoritative design | All combat/progression calculated server-side | Done | Section 3 |
 | 5.3 | Input validation complete | All RPC inputs validated server-side (zod) | Done | |
-| 5.4 | Authentication secure | Nakama session tokens handled correctly; Firebase auth flow reviewed | Done | |
+| 5.4 | Authentication secure | Nakama session tokens handled correctly; device auth flow reviewed | Done | |
 | 5.5 | TLS on external endpoints | All external traffic encrypted in production | Pending | Gate E6 |
 | 5.6 | IAP compliance verified | No pay-to-win; follows store guidelines | Done | Cosmetic-only gems |
 | 5.7 | Audit logging operational | Purchase and entitlement logs complete | Done | T-E4 |
