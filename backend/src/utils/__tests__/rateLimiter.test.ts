@@ -14,11 +14,67 @@ jest.mock('../../config/logger', () => ({
   logger: { warn: jest.fn(), info: jest.fn(), error: jest.fn() },
 }));
 
+/**
+ * Stateful in-memory storage backing so the durable rate-limit counter
+ * behaves like Nakama storage across instances (SEC-004). Two mocks built
+ * on the SAME `records` map simulate two Nakama pods sharing a backend.
+ */
+const createStorageNk = (sharedRecords?: Map<string, { value: string; version: string }>) => {
+  const records = sharedRecords ?? new Map<string, { value: string; version: string }>();
+  const storageRead = jest.fn((objects: { collection: string; key: string }[]) =>
+    objects
+      .map((obj) => {
+        const record = records.get(`${obj.collection}:${obj.key}`);
+        if (!record) return null;
+        return {
+          collection: obj.collection,
+          key: obj.key,
+          userId: '',
+          value: record.value,
+          version: record.version,
+          permissionRead: 0,
+          permissionWrite: 0,
+          createTime: 0,
+          updateTime: 0,
+        };
+      })
+      .filter(Boolean)
+  );
+  const storageWrite = jest.fn(
+    (objects: { collection: string; key: string; value: unknown; version?: string }[]) => {
+      objects.forEach((obj) => {
+        const mapKey = `${obj.collection}:${obj.key}`;
+        // Nakama OCC: '*' is create-only-if-absent; a specific version must
+        // match the stored one.
+        if (obj.version === '*' && records.has(mapKey)) {
+          throw new Error('Storage write rejected - version check failed');
+        }
+        if (obj.version && obj.version !== '*') {
+          const current = records.get(mapKey);
+          if (!current || current.version !== obj.version) {
+            throw new Error('Storage write rejected - version check failed');
+          }
+        }
+        const normalized = typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
+        records.set(mapKey, { value: normalized, version: String(Date.now()) });
+      });
+      return [];
+    }
+  );
+  const storageDelete = jest.fn((objects: { collection: string; key: string }[]) => {
+    objects.forEach((obj) => records.delete(`${obj.collection}:${obj.key}`));
+  });
+  return { records, nk: { storageRead, storageWrite, storageDelete } as any, storageWrite };
+};
+
 describe('RateLimiter', () => {
+  let nk: any;
+  let records: Map<string, { value: string; version: string }>;
   beforeEach(() => {
-    resetUserRateLimit('test-user', 'test-endpoint');
-    resetUserRateLimit('another-user', 'test-endpoint');
-    resetUserRateLimit('test-user', 'other-endpoint');
+    ({ nk, records } = createStorageNk());
+    resetUserRateLimit(nk, 'test-user', 'test-endpoint');
+    resetUserRateLimit(nk, 'another-user', 'test-endpoint');
+    resetUserRateLimit(nk, 'test-user', 'other-endpoint');
   });
 
   test('should allow requests within limit', () => {
@@ -28,7 +84,7 @@ describe('RateLimiter', () => {
     });
 
     for (let i = 0; i < 5; i++) {
-      const result = checkRateLimit('test-user', 'test-endpoint');
+      const result = checkRateLimit(nk, 'test-user', 'test-endpoint');
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(4 - i);
     }
@@ -41,10 +97,10 @@ describe('RateLimiter', () => {
     });
 
     for (let i = 0; i < 3; i++) {
-      checkRateLimit('test-user', 'test-endpoint');
+      checkRateLimit(nk, 'test-user', 'test-endpoint');
     }
 
-    const blockedResult = checkRateLimit('test-user', 'test-endpoint');
+    const blockedResult = checkRateLimit(nk, 'test-user', 'test-endpoint');
     expect(blockedResult.allowed).toBe(false);
     expect(blockedResult.remaining).toBe(0);
     expect(blockedResult.retryAfter).toBeDefined();
@@ -57,8 +113,8 @@ describe('RateLimiter', () => {
       windowMs: 60000,
     });
 
-    checkRateLimit('test-user', 'test-endpoint');
-    checkRateLimit('another-user', 'test-endpoint');
+    checkRateLimit(nk, 'test-user', 'test-endpoint');
+    checkRateLimit(nk, 'another-user', 'test-endpoint');
 
     const stats = getRateLimitStats();
     expect(stats.totalEntries).toBe(2);
@@ -73,14 +129,14 @@ describe('RateLimiter', () => {
       windowMs: 60000,
     });
 
-    checkRateLimit('test-user', 'test-endpoint');
-    checkRateLimit('test-user', 'test-endpoint');
+    checkRateLimit(nk, 'test-user', 'test-endpoint');
+    checkRateLimit(nk, 'test-user', 'test-endpoint');
 
-    let result = checkRateLimit('test-user', 'test-endpoint');
+    let result = checkRateLimit(nk, 'test-user', 'test-endpoint');
     expect(result.allowed).toBe(false);
 
-    resetUserRateLimit('test-user', 'test-endpoint');
-    result = checkRateLimit('test-user', 'test-endpoint');
+    resetUserRateLimit(nk, 'test-user', 'test-endpoint');
+    result = checkRateLimit(nk, 'test-user', 'test-endpoint');
     expect(result.allowed).toBe(true);
   });
 
@@ -101,25 +157,25 @@ describe('RateLimiter', () => {
     setEndpointRateLimit('endpoint-a', { maxRequests: 2, windowMs: 60000 });
     setEndpointRateLimit('endpoint-b', { maxRequests: 3, windowMs: 60000 });
 
-    checkRateLimit('user', 'endpoint-a');
-    checkRateLimit('user', 'endpoint-a');
-    const blockedA = checkRateLimit('user', 'endpoint-a');
+    checkRateLimit(nk, 'user', 'endpoint-a');
+    checkRateLimit(nk, 'user', 'endpoint-a');
+    const blockedA = checkRateLimit(nk, 'user', 'endpoint-a');
     expect(blockedA.allowed).toBe(false);
 
-    const allowedB = checkRateLimit('user', 'endpoint-b');
+    const allowedB = checkRateLimit(nk, 'user', 'endpoint-b');
     expect(allowedB.allowed).toBe(true);
   });
 
   test('should track different users independently', () => {
     setEndpointRateLimit('shared-endpoint', { maxRequests: 1, windowMs: 60000 });
 
-    const user1Result = checkRateLimit('user1', 'shared-endpoint');
+    const user1Result = checkRateLimit(nk, 'user1', 'shared-endpoint');
     expect(user1Result.allowed).toBe(true);
 
-    const user2Result = checkRateLimit('user2', 'shared-endpoint');
+    const user2Result = checkRateLimit(nk, 'user2', 'shared-endpoint');
     expect(user2Result.allowed).toBe(true);
 
-    const user1Blocked = checkRateLimit('user1', 'shared-endpoint');
+    const user1Blocked = checkRateLimit(nk, 'user1', 'shared-endpoint');
     expect(user1Blocked.allowed).toBe(false);
   });
 
@@ -142,7 +198,7 @@ describe('RateLimiter', () => {
 
   test('should handle zero maxRequests', () => {
     setEndpointRateLimit('zero-limit', { maxRequests: 0, windowMs: 60000 });
-    const result = checkRateLimit('any-user', 'zero-limit');
+    const result = checkRateLimit(nk, 'any-user', 'zero-limit');
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
   });
@@ -150,21 +206,23 @@ describe('RateLimiter', () => {
   test('should handle large maxRequests', () => {
     setEndpointRateLimit('high-limit', { maxRequests: 10000, windowMs: 60000 });
     for (let i = 0; i < 100; i++) {
-      const result = checkRateLimit('user', 'high-limit');
+      const result = checkRateLimit(nk, 'user', 'high-limit');
       expect(result.allowed).toBe(true);
     }
   });
 
   test('resetTime should be in the future', () => {
     setEndpointRateLimit('future-endpoint', { maxRequests: 5, windowMs: 60000 });
-    const result = checkRateLimit('user', 'future-endpoint');
+    const result = checkRateLimit(nk, 'user', 'future-endpoint');
     expect(result.resetTime).toBeGreaterThan(Date.now());
   });
 });
 
 describe('createRateLimitedRpcHandler', () => {
+  let nk: any;
   beforeEach(() => {
-    resetUserRateLimit('rpc-user', 'rate-limited-rpc');
+    ({ nk } = createStorageNk());
+    resetUserRateLimit(nk, 'rpc-user', 'rate-limited-rpc');
   });
 
   test('should allow handler execution within limit', async () => {
@@ -175,7 +233,7 @@ describe('createRateLimitedRpcHandler', () => {
 
     const mockCtx = { userId: 'rpc-user' } as any;
     const mockLogger = {} as any;
-    const mockNk = {} as any;
+    const mockNk = nk;
 
     const result = await wrapped(mockCtx, mockLogger, mockNk, '{}');
     expect(result).toBe('{"result":"ok"}');
@@ -190,7 +248,7 @@ describe('createRateLimitedRpcHandler', () => {
 
     const mockCtx = { userId: 'rpc-user' } as any;
     const mockLogger = {} as any;
-    const mockNk = {} as any;
+    const mockNk = nk;
 
     await wrapped(mockCtx, mockLogger, mockNk, '{}');
     const blockedResult = await wrapped(mockCtx, mockLogger, mockNk, '{}');
@@ -209,7 +267,7 @@ describe('createRateLimitedRpcHandler', () => {
 
     const mockCtx = { userId: '' } as any;
     const mockLogger = {} as any;
-    const mockNk = {} as any;
+    const mockNk = nk;
 
     const result = await wrapped(mockCtx, mockLogger, mockNk, '{}');
     expect(result).toBe('{"ok":true}');
@@ -230,10 +288,70 @@ describe('createRateLimitedRpcHandler', () => {
 
     const mockCtx = { userId: 'async-user' } as any;
     const mockLogger = {} as any;
-    const mockNk = {} as any;
+    const mockNk = nk;
 
     expect(() => wrapped(mockCtx, mockLogger, mockNk, '{}')).toThrow(
       /async handlers are unsupported by the Nakama JS runtime/
     );
+  });
+});
+
+describe('SEC-004: distributed rate limiting (issue #1301)', () => {
+  test('counter is shared across instances (two pods, one backend)', () => {
+    const shared = createStorageNk();
+    const podA = shared.nk;
+    const podB = createStorageNk(shared.records).nk;
+
+    setEndpointRateLimit('shared-pod-endpoint', { maxRequests: 3, windowMs: 60000 });
+
+    expect(checkRateLimit(podA, 'attacker', 'shared-pod-endpoint').allowed).toBe(true);
+    expect(checkRateLimit(podB, 'attacker', 'shared-pod-endpoint').allowed).toBe(true);
+    expect(checkRateLimit(podA, 'attacker', 'shared-pod-endpoint').allowed).toBe(true);
+    // The fourth request exceeds maxRequests=3 across BOTH pods - the old
+    // in-memory Map would have allowed 3 per pod (6 total).
+    const blocked = checkRateLimit(podB, 'attacker', 'shared-pod-endpoint');
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.retryAfter).toBeGreaterThan(0);
+  });
+
+  test('retries a CAS conflict and still converges on a single shared count', () => {
+    const { nk, records, storageWrite } = createStorageNk();
+    setEndpointRateLimit('cas-endpoint', { maxRequests: 10, windowMs: 60000 });
+
+    // First check establishes the record.
+    expect(checkRateLimit(nk, 'cas-user', 'cas-endpoint').allowed).toBe(true);
+
+    // Force exactly one version conflict on the next write.
+    let sabotaged = false;
+    storageWrite.mockImplementation((objects: any[]) => {
+      if (!sabotaged && objects[0]?.version && objects[0].version !== '*') {
+        sabotaged = true;
+        throw new Error('Storage write rejected - version check failed');
+      }
+      objects.forEach((obj: any) => {
+        records.set(`${obj.collection}:${obj.key}`, {
+          value: typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value),
+          version: String(Date.now()) + 'x',
+        });
+      });
+      return [];
+    });
+
+    const result = checkRateLimit(nk, 'cas-user', 'cas-endpoint');
+    expect(result.allowed).toBe(true);
+    expect(sabotaged).toBe(true); // the conflict path really ran
+  });
+
+  test('fails open with a loud log when storage errors (availability during outage)', () => {
+    const { nk, storageWrite } = createStorageNk();
+    setEndpointRateLimit('outage-endpoint', { maxRequests: 1, windowMs: 60000 });
+    storageWrite.mockImplementation(() => {
+      throw new Error('connection refused');
+    });
+
+    const result = checkRateLimit(nk, 'outage-user', 'outage-endpoint');
+    expect(result.allowed).toBe(true);
+    const { logger } = require('../../config/logger');
+    expect(logger.error).toHaveBeenCalled();
   });
 });
