@@ -15,7 +15,7 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage",
     "test:benchmark": "jest -c jest.benchmark.config.js",
-    "test:integration": "jest -c jest.integration.config.js --detectOpenHandles",
+    "test:integration": "jest -c jest.integration.config.js",
     "test:integration:summary": "ts-node scripts/integration-test-summary.ts",
     "test:schema": "jest -c jest.schema.config.js --detectOpenHandles",
     "test:flaky": "ts-node scripts/detect-flaky-tests.ts",
