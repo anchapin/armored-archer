@@ -125,7 +125,7 @@ gh issue list --repo anchapin/armored-archer \
 # Season / push notification batch
 # (notification_scheduler.ts was removed with Firebase; scheduled rows live in
 # the scheduled_notifications table — inspect them directly)
-grep -n "scheduleNextDailyReward\|notifyUsersAboutEvent" backend/src/modules/notifications_rpc.ts | head -10
+psql "$DATABASE_URL" -c "SELECT notification_type, count(*) FROM scheduled_notifications WHERE created_at > now() - interval '7 days' GROUP BY 1" 
 ```
 
 ### Step 4: Database / Telemetry Health
