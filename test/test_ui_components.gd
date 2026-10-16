@@ -111,13 +111,12 @@ func test_base_button_toggle() -> void:
 
 func test_base_button_state_signal() -> void:
 	var btn = await _create_base_button()
-	# Array capture: GDScript lambdas copy captured scalars.
-	var received: Array = []
-	btn.state_changed.connect(func(state): received.append(state))
+	var received_state: Array[String] = []
+	btn.state_changed.connect(func(state): received_state.append(state))
 	# Manually emit signal to test connectivity
 	btn.state_changed.emit("hover")
 	await get_tree().create_timer(0.05).timeout
-	if received == ["hover"]:
+	if received_state == ["hover"]:
 		_pass("test_base_button_state_signal")
 	else:
 		_fail("test_base_button_state_signal", "state_changed signal should emit state string")
@@ -129,7 +128,7 @@ func test_base_button_disabled_state() -> void:
 	if btn.disabled and btn.get_current_state() == btn.ButtonState.DISABLED:
 		_pass("test_base_button_disabled_state")
 	else:
-		_fail("test_base_button_disabled_state", "set_disabled(true) should set disabled state")
+		_fail("test_base_button_disabled_state", "apply_disabled(true) should set native and custom disabled state")
 	btn.queue_free()
 
 # --- BaseLabel Tests ---
@@ -330,8 +329,8 @@ func test_base_icon_accessibility_label() -> void:
 # --- LoadingIndicator Tests ---
 
 func _create_loading_indicator() -> Control:
-	var indicator = Control.new()
-	indicator.set_script(load("res://scenes/ui/components/loading_indicator.gd"))
+	var scene: PackedScene = load("res://scenes/ui/components/loading_indicator.tscn")
+	var indicator: Control = scene.instantiate()
 	add_child(indicator)
 	# Wait for _ready() to complete
 	await get_tree().process_frame
@@ -366,19 +365,16 @@ func _create_theme_toggle() -> Control:
 
 func test_theme_toggle_default_dark() -> void:
 	var toggle = await _create_theme_toggle()
-	var theme_manager: Node = get_node_or_null("/root/ThemeManager")
-	if theme_manager and toggle.is_dark_theme() == theme_manager.is_dark_mode():
-		_pass("test_theme_toggle_default_dark")
-	elif theme_manager == null and toggle.is_dark_theme() == true:
-		# Fallback path without a manager defaults to dark.
+	var manager = get_node("/root/ThemeManager")
+	if toggle.is_dark_theme() == manager.is_dark_mode():
 		_pass("test_theme_toggle_default_dark")
 	else:
-		_fail("test_theme_toggle_default_dark", "Toggle should mirror the ThemeManager default")
+		_fail("test_theme_toggle_default_dark", "Initial theme should match ThemeManager mode")
 	toggle.queue_free()
 
 func test_theme_toggle_signal() -> void:
 	var toggle = await _create_theme_toggle()
-	var received: Array = []
+	var received: Array[bool] = []
 	toggle.theme_toggled.connect(func(is_dark): received.append(is_dark))
 	toggle.theme_toggled.emit(true)
 	await get_tree().create_timer(0.05).timeout
