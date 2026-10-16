@@ -189,7 +189,7 @@ jobs:
                    'ability_points', 0,
                    'stats', json_build_object('attack', 10, 'defense', 10, 'dodge', 10, 'crit_rate', 5)
                  )::jsonb,
-                 gen_random_uuid(), 1, 1
+                 replace(gen_random_uuid()::text, '-', ''), 1, 1
           FROM users u
           WHERE u.username LIKE 'k6\_loadtest\_%'
           ON CONFLICT (collection, key, user_id) DO NOTHING;
