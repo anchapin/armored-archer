@@ -22,7 +22,7 @@ Strictly Free-to-Play. Zero Pay-to-Win. Cosmetics only.
 | Backend Server | [Nakama](https://heroiclabs.com/) (TypeScript) |
 | Database | PostgreSQL |
 | IAP Infrastructure | RevenueCat |
-| Authentication | Firebase |
+| Authentication | Nakama (device authentication) |
 
 ## 📋 Prerequisites
 

@@ -21,7 +21,7 @@ It defines the launch criteria, specifies the data review that must happen befor
 
 ## 2. Background
 
-- The product is F2P with **cosmetic-only IAP** (zero pay-to-win), server-authoritative combat and loot on Nakama, Firebase auth, and RevenueCat IAP (`docs/armored-archer_prd.md`).
+- The product is F2P with **cosmetic-only IAP** (zero pay-to-win), server-authoritative combat and loot on Nakama, device auth via Nakama, and RevenueCat IAP (`docs/armored-archer_prd.md`).
 - Sprint 8's primary goal is to "use real usage data to fix the last retention, fairness, and economy issues before MVP release" (#735), monitoring the funnel: **install → first PvE completion → first PvP duel → first purchase**.
 - Sprint 8's trust mandate: zero unresolved P0/P1 issues affecting **combat authority, ranked fairness, progression loss, or purchase entitlement**.
 - The Release Candidate checklist (`docs/RELEASE_CANDIDATE_CHECKLIST.md`, v3.6.0-rc.1) defines hard blockers RC-H1…H10 and soft blockers RC-S1…S7; several remain `Pending` verification as of this draft (RC-H1, H3–H6, H9, H10; RC-S2–S4). Gameplay-balance tuning (item 3.12: stage pacing, drop rates, risk/reward) is marked `Done` for the Sprint 8 tuning pass, but efficacy against live telemetry is exactly what this decision reviews.
