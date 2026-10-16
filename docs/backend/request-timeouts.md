@@ -46,6 +46,7 @@ criterion asks to be verified.
 - Cancellation at session teardown: `test/suites/autoloads/test_network_manager.gd::test_logout_cancels_pending_async_rpcs`.
 - RevenueCat timeout pin: `backend/src/modules/__tests__/store.test.ts` ("should pass the 5s timeout to nk.httpRequest for RevenueCat calls").
 - 401-storm and recovery deadlock behaviour: `test/suites/autoloads/test_network_manager_401_storm.gd`.
-- Hung-request behaviour under load: NOT covered - the load-test workflow is
-  currently disabled and its scenario files are absent from main (#1347).
-  This is the remaining acceptance gap for A3.
+- Hung-request behaviour under load: `backend/tests/load/scenarios/hung_request.js`
+  (nightly via `load-test.yml`) fires the CI-only `diag_hang_probe` fixture
+  (10s server-side hang) with a 3s client timeout, then asserts a normal RPC
+  still succeeds - client timeout wins, no pile-up.

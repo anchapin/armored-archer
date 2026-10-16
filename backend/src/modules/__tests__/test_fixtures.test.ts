@@ -4,12 +4,42 @@
  */
 
 import {
+  registerTestFixtureRpcs,
+  resolveDiagHangMs,
+  rpcDiagHangProbe,
   rpcDiagHttpProbe,
   testFixtureRpcsEnabled,
-  registerTestFixtureRpcs,
 } from '../test_fixtures';
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
 import type { Runtime } from '../../types/nakama';
+
+describe('resolveDiagHangMs (#1348)', () => {
+  it('uses the 10s default when the payload is empty or invalid', () => {
+    expect(resolveDiagHangMs('')).toBe(10000);
+    expect(resolveDiagHangMs('not-json{')).toBe(10000);
+    expect(resolveDiagHangMs('{}')).toBe(10000);
+    expect(resolveDiagHangMs('{"hang_ms":"5"}')).toBe(10000);
+  });
+
+  it('clamps the hang to [0, 30000]', () => {
+    expect(resolveDiagHangMs('{"hang_ms":5000}')).toBe(5000);
+    expect(resolveDiagHangMs('{"hang_ms":-3}')).toBe(0);
+    expect(resolveDiagHangMs('{"hang_ms":999999}')).toBe(30000);
+    expect(resolveDiagHangMs('{"hang_ms":1500.9}')).toBe(1500);
+  });
+});
+
+describe('rpcDiagHangProbe (#1348)', () => {
+  it('hangs for the requested duration and reports it', () => {
+    const nk = createMockNakama();
+    const logger = createMockLogger();
+    const start = Date.now();
+    const res = JSON.parse(rpcDiagHangProbe(createMockContext(), logger, nk, '{"hang_ms":5}'));
+    const elapsed = Date.now() - start;
+    expect(res).toEqual({ success: true, hung_ms: 5 });
+    expect(elapsed).toBeGreaterThanOrEqual(4);
+  });
+});
 
 describe('rpcDiagHttpProbe (#1423)', () => {
   it('returns the healthcheck status code when nk.httpRequest succeeds', () => {
@@ -66,6 +96,7 @@ describe('registerTestFixtureRpcs', () => {
     expect(ids).toEqual([
       'armored_archer/test_leaderboard_fixture',
       'armored_archer/diag_http_probe',
+      'armored_archer/diag_hang_probe',
     ]);
     expect(logger.warn).toHaveBeenCalled();
   });
