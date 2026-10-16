@@ -293,15 +293,21 @@ export function rpcGetPlayerReports(
     callerIsAdmin && requestedUserId !== undefined ? requestedUserId : sessionUserId;
   const reports = getReportsForUser(effectiveUserId);
 
-  // Enhance reports with match details when available
-  const enhancedReports = reports.map((report: any) => {
-    if (!report.match_id) {
-      return report;
-    }
-
+  // Enhance reports with match details in ONE batched query (issue #1349):
+  // the previous per-report lookup was an N+1 on the match-results read
+  // path (N reports -> N match_results queries).
+  const matchIds = Array.from(
+    new Set(
+      reports
+        .map((report: any) => report.match_id)
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+    )
+  );
+  const matchDetailsById: Record<string, any> = {};
+  if (matchIds.length > 0) {
     try {
-      // Try to fetch match details from the database
-      const matchResult = observedSqlQuery(
+      const placeholders = matchIds.map((_, i) => `$${i + 1}`).join(', ');
+      const matchRows = observedSqlQuery(
         nk,
         'player_reports.match_details',
         `
@@ -318,37 +324,41 @@ export function rpcGetPlayerReports(
           creator_health_remaining,
           opponent_health_remaining
         FROM match_results
-        WHERE match_id = $1
-        LIMIT 1
+        WHERE match_id IN (${placeholders})
       `,
-        [report.match_id],
+        matchIds,
         { rpc: 'armored_archer/get_player_reports', logger }
       ) as any[];
 
-      if (matchResult && matchResult.length > 0) {
-        const match = matchResult[0];
-        return {
-          ...report,
-          match_details: {
-            match_id: match.match_id,
-            creator_id: match.creator_id,
-            opponent_id: match.opponent_id,
-            winner_id: match.winner_id,
-            loser_id: match.loser_id,
-            match_type: match.match_type,
-            is_punch_up: match.is_punch_up,
-            end_reason: match.end_reason,
-            created_at: match.created_at,
-            creator_health_remaining: match.creator_health_remaining,
-            opponent_health_remaining: match.opponent_health_remaining,
-          },
-        };
+      for (const match of matchRows || []) {
+        matchDetailsById[match.match_id] = match;
       }
     } catch {
       // Match details are optional; SQL failures are recorded by the observer.
     }
+  }
 
-    return report;
+  const enhancedReports = reports.map((report: any) => {
+    const match = report.match_id ? matchDetailsById[report.match_id] : undefined;
+    if (!match) {
+      return report;
+    }
+    return {
+      ...report,
+      match_details: {
+        match_id: match.match_id,
+        creator_id: match.creator_id,
+        opponent_id: match.opponent_id,
+        winner_id: match.winner_id,
+        loser_id: match.loser_id,
+        match_type: match.match_type,
+        is_punch_up: match.is_punch_up,
+        end_reason: match.end_reason,
+        created_at: match.created_at,
+        creator_health_remaining: match.creator_health_remaining,
+        opponent_health_remaining: match.opponent_health_remaining,
+      },
+    };
   });
 
   return JSON.stringify({
