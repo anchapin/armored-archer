@@ -2,8 +2,8 @@
 
 Per-dependency timeout inventory for the HighLatency runbook
 (`docs/runbooks/HighLatency.md`, postmortem PD-2026-04-12 action item A3).
-Values below are the currently configured values; per the issue they are
-documented pending review.
+Values below are the currently configured values, reviewed and approved by
+the project owner on Oct 16, 2026 (issue #1348).
 
 ## Client (Godot) -> Nakama
 
