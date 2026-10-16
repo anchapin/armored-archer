@@ -3588,6 +3588,153 @@ function recordWebhookOutcome(
 }
 
 /**
+ * How long a bare webhook claim may live before a later delivery may take
+ * it over (issue #1299 / SEC-002). A claim older than this without a
+ * recorded outcome means the processor crashed mid-flight.
+ */
+const WEBHOOK_CLAIM_STALE_MS = 10 * 60 * 1000;
+
+interface WebhookEventLedgerRecord {
+  outcome?: string;
+  claimed_at?: number;
+}
+
+/**
+ * Read the durable webhook event ledger record (claim or outcome) with its
+ * storage version for OCC writes (issue #1299 / SEC-002).
+ */
+function readWebhookEventLedgerRecord(
+  nk: Runtime.Nakama,
+  eventId: string,
+  logger: Runtime.Logger
+): { record: WebhookEventLedgerRecord | null; version: string } | null {
+  const objects = nk.storageRead([
+    { collection: WEBHOOK_EVENT_COLLECTION, key: `event_${eventId}`, userId: '' },
+  ]);
+  if (objects.length === 0) return null;
+  const record = safeParsePayload<WebhookEventLedgerRecord>(
+    getStorageRawValue(objects[0].value) ?? '',
+    logger,
+    'webhook_event_ledger'
+  );
+  return { record, version: objects[0].version };
+}
+
+/**
+ * Atomically claim a webhook event BEFORE applying any side effects
+ * (issue #1299 / SEC-002).
+ *
+ * The pre-claim code path read the dedup ledger, processed side effects,
+ * and only then recorded the outcome - two concurrent deliveries of the
+ * same event_id could both pass the read and both award gems. Nakama
+ * storage optimistic concurrency gives single-winner semantics without
+ * Redis: the claim write uses version '*' (create-only-if-absent), so a
+ * concurrent duplicate loses the version check at the database, on every
+ * instance at once. goja cannot drive promise-based Redis SETNX
+ * (ADR-0008); durable storage OCC is the sync substitute.
+ *
+ * The claim record deliberately has NO `outcome` field, so
+ * getRecordedWebhookOutcome never mistakes an in-flight claim for a
+ * completed event.
+ *
+ * @returns status 'claimed' (with this delivery's claimed_at) when this
+ *   call won the claim, 'duplicate' when the event is already claimed or
+ *   processed, 'error' when storage itself failed (caller should ask
+ *   RevenueCat to retry)
+ */
+function tryClaimWebhookEvent(
+  nk: Runtime.Nakama,
+  eventId: string,
+  userId: string,
+  logger: Runtime.Logger
+): { status: 'claimed'; claimedAt: number } | { status: 'duplicate' } | { status: 'error' } {
+  const claimedAt = Date.now();
+  const writeClaim = (version: string): boolean => {
+    try {
+      nk.storageWrite([
+        {
+          collection: WEBHOOK_EVENT_COLLECTION,
+          key: `event_${eventId}`,
+          userId: '',
+          value: toStorageValue({
+            event_id: eventId,
+            app_user_id: userId,
+            claimed_at: claimedAt,
+          }),
+          version,
+          permissionRead: 0,
+          permissionWrite: 0,
+        },
+      ]);
+      return true;
+    } catch (e) {
+      const msg = String(e).toLowerCase();
+      if (msg.includes('version check failed') || msg.includes('storage write rejected')) {
+        return false;
+      }
+      logger.error('Storage write error claiming webhook event %s: %s', eventId, e);
+      throw e;
+    }
+  };
+
+  try {
+    if (writeClaim('*')) return { status: 'claimed', claimedAt };
+
+    // Lost the create race: either a completed outcome or an in-flight
+    // claim exists. Only a STALE claim (processor died) may be taken over,
+    // via a CAS write at the version observed on read.
+    const existing = readWebhookEventLedgerRecord(nk, eventId, logger);
+    if (!existing) return { status: 'duplicate' }; // raced a release; next retry sorts it out
+    const { record, version } = existing;
+    if (!record || record.outcome !== undefined) return { status: 'duplicate' }; // already processed
+    const priorClaimedAt = typeof record.claimed_at === 'number' ? record.claimed_at : 0;
+    if (Date.now() - priorClaimedAt < WEBHOOK_CLAIM_STALE_MS) return { status: 'duplicate' }; // live in-flight claim
+    logger.warn(
+      'Taking over stale webhook claim for event %s (claimed_at %s, no outcome recorded)',
+      eventId,
+      priorClaimedAt
+    );
+    return writeClaim(version) ? { status: 'claimed', claimedAt } : { status: 'duplicate' };
+  } catch (e) {
+    logger.error('Storage error claiming webhook event %s: %s', eventId, e);
+    return { status: 'error' };
+  }
+}
+
+/**
+ * Release a webhook claim after processing FAILED, so a later delivery can
+ * re-attempt (failures are intentionally not recorded - a retry of a failed
+ * event re-attempts, matching the existing outcome-ledger policy).
+ *
+ * The delete is content-guarded: the record is removed only when it is
+ * still a bare claim carrying THIS delivery's claimed_at. If another
+ * delivery has since taken the claim over or recorded an outcome, nothing
+ * is deleted.
+ */
+function releaseWebhookEventClaim(
+  nk: Runtime.Nakama,
+  eventId: string,
+  claimedAt: number,
+  logger: Runtime.Logger
+): void {
+  try {
+    const existing = readWebhookEventLedgerRecord(nk, eventId, logger);
+    if (!existing || !existing.record) return;
+    const { record } = existing;
+    if (record.outcome !== undefined || record.claimed_at !== claimedAt) return;
+    nk.storageDelete([
+      { collection: WEBHOOK_EVENT_COLLECTION, key: `event_${eventId}`, userId: '' },
+    ]);
+  } catch (e) {
+    logger.warn(
+      'Could not release webhook claim for event %s (stale-claim takeover will recover): %s',
+      eventId,
+      e
+    );
+  }
+}
+
+/**
  * Read the pending webhook award queue for a player.
  *
  * @param nk - Nakama server interface
@@ -4290,6 +4437,7 @@ export function rpcRevenueCatWebhook(
     return JSON.stringify({ success: false, error: 'Missing event identifier' });
   }
 
+  let webhookClaimedAt: number | null = null;
   if (requiresEventDedup) {
     const recorded = getRecordedWebhookOutcome(nk, eventId, logger);
     if (recorded !== undefined) {
@@ -4301,14 +4449,32 @@ export function rpcRevenueCatWebhook(
       recordWebhookEvent(normalizedEventType, 'duplicate');
       return recorded;
     }
-    // Issue #1299 asked for a Redis SETNX lock here so two instances could not
-    // process the same event concurrently. That is not reachable in this runtime:
-    // ioredis is promise-based and the Nakama JS runtime (goja) has no microtask
-    // queue to drive it, so the await would never settle and the RPC would hang
-    // (ADR-0008). The durable storage dedup above remains the authoritative
-    // idempotency guard; a true cross-instance lock needs the sync-HTTP/Redis
-    // migration tracked by #1423.
-    void getRedisClient(logger);
+    // Issue #1299 / SEC-002: claim-before-process. A bare read here let two
+    // concurrent duplicate deliveries both pass dedup and both award. The
+    // durable OCC claim is the atomic gate - a concurrent duplicate loses
+    // the version check at the database and returns without re-applying.
+    const claimResult = tryClaimWebhookEvent(nk, eventId, appUserId, logger);
+    if (claimResult.status === 'duplicate') {
+      logger.warn(
+        'Concurrent duplicate RevenueCat webhook event %s (%s) - already claimed, not re-applying',
+        eventId,
+        normalizedEventType
+      );
+      recordWebhookEvent(normalizedEventType, 'duplicate');
+      return JSON.stringify({
+        success: true,
+        event_type: normalizedEventType,
+        duplicate: true,
+        message: 'Event already being processed or already recorded',
+      });
+    }
+    if (claimResult.status === 'error') {
+      // Storage unavailable before anything was applied: ask RevenueCat to
+      // retry rather than drop the event or risk a double award.
+      recordWebhookEvent(normalizedEventType, 'failed');
+      return JSON.stringify({ success: false, error: 'Event dedup unavailable - safe to retry' });
+    }
+    webhookClaimedAt = claimResult.claimedAt;
   }
 
   let result: {
@@ -4402,6 +4568,10 @@ export function rpcRevenueCatWebhook(
   // re-attempts (nothing was applied).
   if (requiresEventDedup && result.success) {
     recordWebhookOutcome(nk, eventId, appUserId, result, logger);
+  } else if (webhookClaimedAt !== null) {
+    // Claimed but processing failed: release the claim so a retry can
+    // re-attempt (failures are intentionally not recorded).
+    releaseWebhookEventClaim(nk, eventId, webhookClaimedAt, logger);
   }
 
   // Ledger observability (issue #1140): one event_type × outcome sample

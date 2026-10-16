@@ -10,7 +10,12 @@
  * - Max-balance queueing: paid awards cap and queue instead of failing
  */
 import { createHmac } from 'crypto';
-import { rpcRevenueCatWebhook, processRefund, RefundReason, clearWebhookEventLedgersForTests } from '../store';
+import {
+  rpcRevenueCatWebhook,
+  processRefund,
+  RefundReason,
+  clearWebhookEventLedgersForTests,
+} from '../store';
 import { getMetricsRegistry } from '../metrics';
 import { createMockLogger, createMockNakama } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
@@ -62,34 +67,51 @@ const createTestNakama = (overrides?: Partial<Runtime.Nakama>): Runtime.Nakama =
  */
 const createStatefulStorage = () => {
   const records = new Map<string, { value: string; version: string }>();
-  const storageRead = jest.fn(
-    (objects: { collection: string; key: string; userId?: string }[]) =>
-      objects
-        .map((obj) => {
-          const record = records.get(`${obj.collection}:${obj.key}`);
-          if (!record) return null;
-          return {
-            collection: obj.collection,
-            key: obj.key,
-            userId: obj.userId ?? '',
-            value: record.value,
-            version: record.version,
-            permissionRead: 0,
-            permissionWrite: 0,
-            createTime: 0,
-            updateTime: 0,
-          };
-        })
-        .filter(Boolean)
+  const storageRead = jest.fn((objects: { collection: string; key: string; userId?: string }[]) =>
+    objects
+      .map((obj) => {
+        const record = records.get(`${obj.collection}:${obj.key}`);
+        if (!record) return null;
+        return {
+          collection: obj.collection,
+          key: obj.key,
+          userId: obj.userId ?? '',
+          value: record.value,
+          version: record.version,
+          permissionRead: 0,
+          permissionWrite: 0,
+          createTime: 0,
+          updateTime: 0,
+        };
+      })
+      .filter(Boolean)
   );
   const storageWrite = jest.fn(
-    (objects: { collection: string; key: string; userId?: string; value: string }[]) => {
+    (
+      objects: {
+        collection: string;
+        key: string;
+        userId?: string;
+        value: unknown;
+        version?: string;
+      }[]
+    ) => {
       objects.forEach((obj) => {
-        const normalized =
-          typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
+        // Nakama OCC: version '*' is create-only-if-absent (SEC-002 tests
+        // depend on the conflict). Other version values pass through, as
+        // before.
+        if (obj.version === '*' && records.has(`${obj.collection}:${obj.key}`)) {
+          throw new Error('Storage write rejected - version check failed');
+        }
+        const normalized = typeof obj.value === 'string' ? obj.value : JSON.stringify(obj.value);
         records.set(`${obj.collection}:${obj.key}`, { value: normalized, version: '1' });
       });
       return [];
+    }
+  );
+  const storageDelete = jest.fn(
+    (objects: { collection: string; key: string; userId?: string }[]) => {
+      objects.forEach((obj) => records.delete(`${obj.collection}:${obj.key}`));
     }
   );
   const seedCurrency = (userId: string, gems: number, coins = 0): void => {
@@ -103,9 +125,25 @@ const createStatefulStorage = () => {
   };
   const readCurrency = (userId: string): { gems: number; coins: number } | undefined => {
     const record = records.get(`player_currency:${userId}`);
-    return record ? ((typeof record.value === 'string' ? (typeof record.value === 'string' ? (typeof record.value === 'string' ? JSON.parse(record.value) : record.value) : record.value) : record.value) as { gems: number; coins: number }) : undefined;
+    return record
+      ? ((typeof record.value === 'string'
+          ? typeof record.value === 'string'
+            ? typeof record.value === 'string'
+              ? JSON.parse(record.value)
+              : record.value
+            : record.value
+          : record.value) as { gems: number; coins: number })
+      : undefined;
   };
-  return { records, storageRead, storageWrite, seedCurrency, setCurrency, readCurrency };
+  return {
+    records,
+    storageRead,
+    storageWrite,
+    storageDelete,
+    seedCurrency,
+    setCurrency,
+    readCurrency,
+  };
 };
 
 /** Compute a valid RevenueCat HMAC-SHA256 signature for a payload. */
@@ -155,7 +193,10 @@ describe('rpcRevenueCatWebhook', () => {
       });
 
       // Signed with the WRONG secret — a forged signature
-      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload, 'wrong-secret') } };
+      const ctx = {
+        ...mockCtx,
+        variables: { 'x-revenuecat-signature': sign(payload, 'wrong-secret') },
+      };
 
       const result = await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload);
 
@@ -437,6 +478,173 @@ describe('rpcRevenueCatWebhook', () => {
     });
   });
 
+  describe('Concurrent duplicate prevention (SEC-002, issue #1299)', () => {
+    const seedClaim = (
+      records: Map<string, { value: string; version: string }>,
+      eventId: string,
+      claimedAt: number
+    ): void => {
+      records.set(`revenuecat_webhook_events:event_${eventId}`, {
+        value: JSON.stringify({
+          event_id: eventId,
+          app_user_id: 'race-user',
+          claimed_at: claimedAt,
+        }),
+        version: '1',
+      });
+    };
+
+    it('does not award twice when a duplicate arrives while the first delivery is in flight', async () => {
+      const { records, storageRead, storageWrite, storageDelete, readCurrency } =
+        createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite, storageDelete });
+
+      // The first delivery claimed the event but has not recorded an
+      // outcome yet - the concurrent-delivery window from #1299.
+      seedClaim(records, 'evt-race', Date.now());
+
+      const payload = buildPayload({
+        event_id: 'evt-race',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'race-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-race',
+      });
+      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } };
+
+      const second = await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload);
+      const parsed = JSON.parse(second);
+      expect(parsed.success).toBe(true);
+      expect(parsed.duplicate).toBe(true);
+      // The duplicate delivery awarded nothing.
+      expect(readCurrency('race-user')).toBeUndefined();
+      // The in-flight claim is untouched.
+      const claim = JSON.parse(records.get('revenuecat_webhook_events:event_evt-race')!.value);
+      expect(claim.outcome).toBeUndefined();
+    });
+
+    it('releases the claim when processing fails so a retry can complete', async () => {
+      const { records, storageRead, storageWrite, storageDelete, readCurrency } =
+        createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite, storageDelete });
+
+      // First delivery fails AFTER claiming (unknown product).
+      const badPayload = buildPayload({
+        event_id: 'evt-flaky',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'flaky-user',
+        product_id: 'com.armoredarcher.gems.nonexistent',
+        transaction_id: 'tx-flaky',
+      });
+      const badCtx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(badPayload) } };
+      const first = JSON.parse(
+        await rpcRevenueCatWebhook(badCtx as any, createMockLogger(), nk, badPayload)
+      );
+      expect(first.success).toBe(false);
+
+      // The claim was released - no ledger record left behind.
+      expect(records.get('revenuecat_webhook_events:event_evt-flaky')).toBeUndefined();
+
+      // RevenueCat retries the same event id with the corrected product:
+      // it must process and award, not be swallowed as a duplicate.
+      const goodPayload = buildPayload({
+        event_id: 'evt-flaky',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'flaky-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-flaky',
+      });
+      const goodCtx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(goodPayload) } };
+      const second = JSON.parse(
+        await rpcRevenueCatWebhook(goodCtx as any, createMockLogger(), nk, goodPayload)
+      );
+      expect(second.success).toBe(true);
+      expect(second.gems_awarded).toBe(100);
+      expect(readCurrency('flaky-user')?.gems).toBe(100);
+    });
+
+    it('returns a safe-to-retry error and awards nothing when storage fails while claiming', async () => {
+      const { storageRead, storageWrite, storageDelete, readCurrency } = createStatefulStorage();
+      // Storage write fails with a NON-version error on the claim write.
+      storageWrite.mockImplementationOnce(() => {
+        throw new Error('connection reset by peer');
+      });
+      const nk = createTestNakama({ storageRead, storageWrite, storageDelete });
+
+      const payload = buildPayload({
+        event_id: 'evt-storage-down',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'down-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-storage-down',
+      });
+      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } };
+
+      const result = JSON.parse(
+        await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload)
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Event dedup unavailable - safe to retry');
+      // Nothing was awarded before the failure.
+      expect(readCurrency('down-user')).toBeUndefined();
+    });
+
+    it('takes over a stale claim (dead processor) and processes the event', async () => {
+      const { records, storageRead, storageWrite, storageDelete, readCurrency } =
+        createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite, storageDelete });
+
+      // Claim older than the 10-minute stale window: the original
+      // processor died before recording an outcome.
+      seedClaim(records, 'evt-stale', Date.now() - 11 * 60 * 1000);
+
+      const payload = buildPayload({
+        event_id: 'evt-stale',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'race-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-stale',
+      });
+      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } };
+
+      const result = JSON.parse(
+        await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload)
+      );
+      expect(result.success).toBe(true);
+      expect(result.gems_awarded).toBe(100);
+      expect(readCurrency('race-user')?.gems).toBe(100);
+      // The final ledger record carries the recorded outcome.
+      const record = JSON.parse(records.get('revenuecat_webhook_events:event_evt-stale')!.value);
+      expect(record.outcome).toBeDefined();
+    });
+
+    it('later replays still return the recorded outcome after a successful claim-and-process', async () => {
+      const { storageRead, storageWrite, storageDelete, readCurrency } = createStatefulStorage();
+      const nk = createTestNakama({ storageRead, storageWrite, storageDelete });
+
+      const payload = buildPayload({
+        event_id: 'evt-seq',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'seq-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-seq',
+      });
+      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } };
+
+      const first = JSON.parse(
+        await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload)
+      );
+      expect(first.success).toBe(true);
+      expect(first.gems_awarded).toBe(100);
+
+      // Later replay returns the recorded outcome verbatim (claim record
+      // was replaced by the outcome record).
+      const second = await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload);
+      expect(JSON.parse(second)).toEqual(first);
+      expect(readCurrency('seq-user')?.gems).toBe(100);
+    });
+  });
+
   describe('Max-balance queueing (issue #1067)', () => {
     it('queues the paid remainder instead of failing when MAX_GEM_BALANCE would be exceeded', async () => {
       const { storageRead, storageWrite, seedCurrency, readCurrency, records } =
@@ -523,7 +731,9 @@ describe('rpcRevenueCatWebhook', () => {
       expect(readCurrency('whale-drain-user')?.gems).toBe(9_999_150);
       // The queue is empty now
       const pendingRecord = records.get('revenuecat_pending_awards:whale-drain-user');
-      const pending = JSON.parse((pendingRecord as { value: string } | undefined)?.value ?? '{"awards":[]}');
+      const pending = JSON.parse(
+        (pendingRecord as { value: string } | undefined)?.value ?? '{"awards":[]}'
+      );
       expect(pending.awards).toHaveLength(0);
     });
   });
@@ -863,9 +1073,7 @@ describe('rpcRevenueCatWebhook', () => {
     async function eventTotal(eventType: string, outcome: string): Promise<number> {
       const samples = await metricSamples('armored_archer_webhook_events_total');
       return samples
-        .filter(
-          (s) => s.labels.event_type === eventType && s.labels.outcome === outcome
-        )
+        .filter((s) => s.labels.event_type === eventType && s.labels.outcome === outcome)
         .reduce((sum, s) => sum + s.value, 0);
     }
 
