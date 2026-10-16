@@ -129,16 +129,6 @@ REVENUECAT_SECRET_API_KEY=your_revenuecat_sandbox_secret_key_here
 REVENUECAT_PUBLIC_KEY=your_revenuecat_sandbox_public_key_here
 
 # ============================================
-# Firebase Configuration
-# ============================================
-FIREBASE_API_KEY=your_firebase_api_key_here
-FIREBASE_PROJECT_ID=your_firebase_project_id_here
-FIREBASE_AUTH_DOMAIN=your_project_id_here.firebaseapp.com
-FIREBASE_DATABASE_URL=https://your_project_id_here.firebaseio.com
-FIREBASE_STORAGE_BUCKET=your_project_id_here.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id_here
-
-# ============================================
 # Rate Limiting Configuration
 # ============================================
 RATE_LIMIT_ENABLED=true

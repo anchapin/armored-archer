@@ -233,7 +233,7 @@ This checklist covers all requirements for submitting Armored Archer to the iOS 
 ## Post-Launch Checklist
 
 ### ✓ Monitoring
-- [ ] Set up Firebase Crashlytics to monitor crashes
+- [ ] Review platform crash logs (Play Console / Xcode Organizer) during beta testing
 - [ ] Monitor analytics for user behavior
 - [ ] Check download numbers
 - [ ] Monitor rating and reviews

@@ -19,7 +19,7 @@ Welcome to Armored Archer ("the Game"). This Privacy Policy explains how we coll
 - **Save Data**: Character progress and game state
 
 ### 3. Analytics and Performance Data
-- **Crash Reports**: Automatically collected via Firebase Crashlytics
+- **Crash Reports**: Non-fatal error reports are sent to our self-hosted backend; fatal crash details stay on the device (platform crash reporting from Apple/Google may apply separately)
 - **Usage Statistics**: Time spent playing, feature usage patterns
 - **Performance Data**: Frame rates, load times (for optimization)
 
@@ -61,7 +61,6 @@ We may share your information in the following circumstances:
 
 ### 1. Service Providers
 - **Nakama**: Backend services for multiplayer and account management
-- **Firebase Crashlytics**: Crash reporting and analytics
 - **RevenueCat**: In-app purchase processing
 - **Apple/Google**: Payment processing and app store requirements
 
@@ -181,10 +180,7 @@ Armored Archer integrates with the following third-party services:
 1. **Nakama**: Multiplayer and backend services
    - Privacy Policy: https://heroiclabs.com/privacy/
    
-2. **Firebase Crashlytics**: Crash reporting
-   - Privacy Policy: https://firebase.google.com/terms/analytics-policy
-   
-3. **RevenueCat**: In-app purchases
+2. **RevenueCat**: In-app purchases
    - Privacy Policy: https://www.revenuecat.com/privacy
 
 ## Contact Us

@@ -40,7 +40,7 @@ absolute launch date is set; until then, weeks are relative to launch.
 | **Week 1 (T+0 → T+6)** | Launch week double XP (PvE + PvP, server-side multiplier) | Campaign Ch. 1–2 featured; first boss modifier unlock highlighted ("Wind Boss → Piercing Arrow" per PRD §4B) | Season 1 skin set live: **Launch Ember** bundle (bow + arrow skins) | Ranked + casual duels open at launch — asynchronous matchmaking + live short-session duels (ADR-0003); punch-up toggle on | Daily dev diary posts; launch AMA; telemetry watch daily |
 | **Week 2 (T+7 → T+13)** | **Bounty Duel Weekend** (T+11 → T+13): casual duels award +50% Coins (server config; casual stays Ladder Rating/Gem-free per `CASUAL_VS_RANKED_REWARDS.md`) | Campaign Ch. 3 featured; build-guide spotlight (community builds) | Rotation: **Frost Warden** armor + helm skins | Ranked ladder milestone push — mid-season Ladder Rating snapshot published | First community build-contest announcement; Discord ladder screenshot channel |
 | **Week 3 (T+14 → T+20)** | **Punch-Up Week**: punch-up win Gem bonus highlighted (3–10 Gems per win, scaling with the Power Rating gap; ranked only); anti-abuse monitoring on punch-up queue | Campaign Ch. 4 featured; modifier drop-pool reminder for unlocked bosses | Rotation: **Legendary Hunt** aura + amulet skin bundle | Mid-season (T+14): leaderboard freeze check + top-100 published; matchmaking pool health review | Mid-season state-of-the-game post; telemetry review vs. §5 targets (go/no-go on cadence adjustments) |
-| **Week 4 (T+21 → T+27)** | **Final Push Weekend** (T+25 → T+27): ranked XP +25% (config-driven); last-chance ladder climbing | All chapters featured (catch-up week); season rewards preview screen live in client | Last call: full Season 1 cosmetic set (all rotations return for the weekend) | Final ranked push; ladder closes end of `T+27` | "Final 48 hours" push notification via `notification_scheduler.ts`; content-creator ladder race |
+| **Week 4 (T+21 → T+27)** | **Final Push Weekend** (T+25 → T+27): ranked XP +25% (config-driven); last-chance ladder climbing | All chapters featured (catch-up week); season rewards preview screen live in client | Last call: full Season 1 cosmetic set (all rotations return for the weekend) | Final ranked push; ladder closes end of `T+27` | "Final 48 hours" push notification (push delivery not yet implemented — see `notifications_rpc.ts`); content-creator ladder race |
 | **Rollover (T+28)** | Season end: Ladder Ratings locked, rewards claimable, `season_2` auto-starts | Season 1 recap (most-used builds, top duel replays via match replay system) | Season 1 cosmetics move to legacy availability (decision in §5) | Off-season grace (~24h): casual duels only; `season_2` ladder opens at `T+29` | Season 1 awards ceremony post; Season 2 theme tease |
 
 ---
@@ -59,7 +59,7 @@ systems** — no new gameplay code is required for Season 1.
 | Featured campaign chapters | Rotating spotlight + drop-rate focus on unlocked modifier pools | PvE stage completion & server-side loot rolls (`gear_system.ts`); campaign chapter prefix already in stage IDs | Base Gear only — never sold |
 | Store rotation | Weekly cosmetic skin set swap | RevenueCat (receipt validation) + `armored_archer/validate_purchase` / `spend_gems`; Gem packs 100/$0.99, 550/$4.99, 1200/$9.99 | Cosmetics are visual-only transmog; zero stat impact |
 | Season rewards | End-of-season distribution | `season_system.ts` RPCs; rewards = Rank-tier Coins + Gems + exclusive title/aura | One-time claim per season; cosmetics are non-stat |
-| Community beats | Scheduled posts, contests, push notifications | `notification_scheduler.ts` / `notifications_rpc.ts` for client pings | Social/community only |
+| Community beats | Scheduled posts, contests, push notifications | `notifications_rpc.ts` for client pings (push delivery not yet implemented) | Social/community only |
 
 **Hard constraints carried into every event:**
 
@@ -81,7 +81,7 @@ All items are server config, catalog, or store-metadata changes unless noted. Ow
 | C3 | Season 1 cosmetic set (3 rotations) authored & approved | Art + Game Director | Live-Ops/Art | T−10 | — | ☐ |
 | C4 | RevenueCat products + App Store / Play console metadata approved | RevenueCat / store consoles | Release Manager | T−7 | C3 | ☐ |
 | C5 | Season rewards preview UI (client) | `SeasonManager.gd` + UI | Client Engineer | T−14 | C1 | ☐ |
-| C6 | Push notification campaign copy + schedule | `notification_scheduler.ts` | Community/Live-Ops | T−5 | — | ☐ |
+| C6 | Push notification campaign copy + schedule | `notifications_rpc.ts` (delivery not yet implemented) | Community/Live-Ops | T−5 | — | ☐ |
 | C7 | Telemetry dashboards configured (funnel, retention, match health) | `analytics.ts`, `funnel_analytics.ts`, `matchmaking_analytics.ts` | Data/Analytics | T−3 | — | ☐ |
 | C8 | Mid-season review checkpoint (T+14) scheduled with decision template (§5) | Process | Live-Ops Lead | T+0 | C7 | ☐ |
 | C9 | Rollover runbook rehearsal: `end_season` → `season_2` in staging | `season_system.ts` | Backend Engineer | T−3 | C1 | ☐ |

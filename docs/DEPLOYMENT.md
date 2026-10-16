@@ -625,7 +625,6 @@ Rotate quarterly to annually depending on secret type:
 | Nakama server key | Semi-annually | Invalidates sessions |
 | Session encryption keys | Monthly | Forces re-login |
 | RevenueCat keys | Quarterly | Minimal |
-| Firebase keys | Semi-annually | Varies |
 
 **Generation**: `openssl rand -base64 32` for most keys.
 
@@ -769,7 +768,6 @@ Store secrets in GitHub repository settings.
 | Caching Strategy | `backend/CACHE_STRATEGY.md` |
 | Secrets Rotation | `SECRETS_ROTATION.md` |
 | Godot Export (iOS/Android) | `EXPORT_GUIDE.md` |
-| Firebase Setup | `FIREBASE_SETUP.md` |
 | App Store Submission | `APP_STORE_IOS.md`, `APP_STORE_ANDROID.md` |
 | Submission Checklist | `APP_SUBMISSION_CHECKLIST.md` |
 

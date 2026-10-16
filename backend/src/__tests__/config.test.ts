@@ -387,22 +387,6 @@ describe('config module', () => {
     });
   });
 
-  describe('config object - firebase configuration', () => {
-    it('should parse firebase configuration', () => {
-      process.env.FIREBASE_ENABLED = 'true';
-      process.env.FIREBASE_PROJECT_ID = 'test-project';
-      process.env.FIREBASE_PRIVATE_KEY = 'private-key';
-      process.env.FIREBASE_CLIENT_EMAIL = 'test@test.com';
-      process.env.FIREBASE_DATABASE_URL = 'https://test.firebaseio.com';
-      const { config } = require('../config');
-      expect(config.firebase.enabled).toBe(true);
-      expect(config.firebase.projectId).toBe('test-project');
-      expect(config.firebase.privateKey).toBe('private-key');
-      expect(config.firebase.clientEmail).toBe('test@test.com');
-      expect(config.firebase.databaseUrl).toBe('https://test.firebaseio.com');
-    });
-  });
-
   describe('config object - session configuration', () => {
     it('should parse session configuration', () => {
       process.env.SESSION_ENCRYPTION_KEY = 'session-key';

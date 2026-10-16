@@ -13,7 +13,6 @@ Regular secret rotation is a security best practice that limits the exposure win
 - Nakama server keys and console credentials
 - Database passwords
 - RevenueCat API keys
-- Firebase configuration
 - Session / token encryption keys
 - Webhook, HMAC, and third-party service secrets (PagerDuty, SMTP, analytics)
 
@@ -176,33 +175,6 @@ Before rotating any secret:
 
 6. Verify functionality with test purchases
 
-### 5. Firebase Configuration Rotation
-
-**Impact:** Varies - depends on which values are changed
-
-**Steps:**
-
-1. Log in to Firebase Console (https://console.firebase.google.com)
-
-2. Navigate to Project Settings
-
-3. Rotate credentials as needed:
-   - **API Key:** Generate new key in Project Settings > General
-   - **Service Account Keys:** Generate new private key in Project Settings > Service Accounts
-   - **Database Rules:** Update Firebase Realtime Database or Firestore rules
-
-4. Update `.env` file:
-   ```bash
-   FIREBASE_API_KEY=new_api_key_here
-   FIREBASE_PROJECT_ID=existing_project_id
-   FIREBASE_AUTH_DOMAIN=existing_project_id.firebaseapp.com
-   FIREBASE_DATABASE_URL=https://existing_project_id-default-rtdb.firebaseio.com
-   FIREBASE_STORAGE_BUCKET=existing_project_id.appspot.com
-   FIREBASE_MESSAGING_SENDER_ID=existing_sender_id
-   ```
-
-5. Rebuild and redeploy client if necessary
-
 ## Post-Rotation Verification
 
 After any secret rotation, perform these checks:
@@ -260,8 +232,6 @@ Recommended rotation intervals:
 | Nakama Server Key | Semi-annually | High |
 | Session Encryption Keys | Monthly | Medium |
 | RevenueCat API Keys | Quarterly | Medium |
-| Firebase Service Account Keys | Semi-annually | Medium |
-| Firebase API Keys | Annually or upon compromise | Low |
 
 ## Security Best Practices
 
@@ -301,7 +271,6 @@ Every credential-pattern variable class present in `backend/.env.*` (names per `
 | `POSTGRES_PASSWORD`, `DB_PASSWORD` | Database | [Database Password Rotation](#1-database-password-rotation) below — include the `ALTER USER` step |
 | `SESSION_ENCRYPTION_KEY`, `REFRESH_ENCRYPTION_KEY`, `TOKEN_ENCRYPTION_KEY` | Encryption keys | [Session Encryption Keys Rotation](#3-session-encryption-keys-rotation) below |
 | `REVENUECAT_PUBLIC_KEY`, `REVENUECAT_SECRET_KEY`, `REVENUECAT_WEBHOOK_SECRET` | IAP | [RevenueCat API Keys Rotation](#4-revenuecat-api-keys-rotation) below |
-| `FIREBASE_PRIVATE_KEY` (service-account key) | Push notifications (FCM) | [Firebase Configuration Rotation](#5-firebase-configuration-rotation) below |
 | `HMAC_SECRET` | Webhook signing | Generate (`openssl rand -hex 32`), update every affected `backend/.env.*`, redeploy |
 | `PAGERDUTY_API_KEY`, `PAGERDUTY_INTEGRATION_KEY`, `ALERT_WEBHOOK_PASSWORD`, `ALERT_WEBHOOK_TOKEN`, `SMTP_PASSWORD` | Alerting / email | Rotate at the provider, update every affected `backend/.env.*` |
 | `MIXPANEL_API_KEY`, `AMPLITUDE_API_KEY`, `SEGMENT_WRITE_KEY`, `ANALYTICS_CUSTOM_API_KEY` | Analytics | Rotate at the provider, update every affected `backend/.env.*` |
@@ -318,7 +287,7 @@ Every credential-pattern variable class present in `backend/.env.*` (names per `
    ```
 3. **Rotate PostgreSQL first** (the `ALTER USER` step in [Database Password Rotation](#1-database-password-rotation)) so the new password is live before services restart against it.
 4. **Update every affected `backend/.env.*` file** with the new values. All `.env.*` files (except `.example` variants) are gitignored — keep them out of commits.
-5. **Rotate provider-side credentials** (RevenueCat, Firebase, PagerDuty, SMTP, analytics) per the sections above — generating new local values alone does not invalidate the old credential at the provider.
+5. **Rotate provider-side credentials** (RevenueCat, PagerDuty, SMTP, analytics) per the sections above — generating new local values alone does not invalidate the old credential at the provider.
 6. **Restart and verify** per [Post-Rotation Verification](#post-rotation-verification) below.
 
 ### Git History Purge (owner decision, coordinated — never unilateral)

@@ -472,7 +472,7 @@ The original 5-phase bootstrap plan below is preserved as historical reference. 
 | 2 | Weeks 4-6 | AI & Auto-Aim Logic | Spawning simple enemies, implementing auto-aim logic, health systems, and core game loop (win/loss states). |
 | 3 | Weeks 7-9 | Backend & Database Setup | Local Nakama Docker setup, user authentication, database schemas (catalog, inventory, loadout). |
 | 4 | Weeks 10-13 | UI, IAP, & Turn-Based PvP | Modular sprite system, cosmetic shop UI, RevenueCat integration, Nakama matchmaker, and turn-based RPCs. |
-| 5 | Weeks 14-16 | Polish & App Store Submission | Safe-area UI adjustments, analytics (Crashlytics), TestFlight (iOS) / Play Console (Android) beta distribution. |
+| 5 | Weeks 14-16 | Polish & App Store Submission | Safe-area UI adjustments, analytics, TestFlight (iOS) / Play Console (Android) beta distribution. |
 
 ### Active Work
 

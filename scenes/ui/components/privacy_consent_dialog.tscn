@@ -44,7 +44,7 @@ bbcode_enabled = true
 text = "Before you play, here's what we collect:
 
 • [b]Email[/b] — for your account
-• [b]Crash reports[/b] — to fix bugs (via Firebase)
+• [b]Crash reports[/b] — to fix bugs
 • [b]Gameplay stats[/b] — to improve balance
 
 We [b]do not sell[/b] your data. No ads, no tracking.

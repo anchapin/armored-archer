@@ -71,12 +71,6 @@ echo "Checking RevenueCat Configuration..."
 check_var "REVENUECAT_PUBLIC_API_KEY" "false"
 check_var "REVENUECAT_SECRET_API_KEY" "false"
 
-# Check Firebase Configuration (optional)
-echo ""
-echo "Checking Firebase Configuration..."
-check_var "FIREBASE_API_KEY" "false"
-check_var "FIREBASE_PROJECT_ID" "false"
-
 # Check Environment
 echo ""
 echo "Checking Environment..."

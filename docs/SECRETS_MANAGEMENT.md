@@ -15,7 +15,7 @@ Armored Archer uses environment variables for managing sensitive configuration d
 
 Secrets are sensitive values that should never be committed to version control, including:
 
-- **API Keys**: Nakama server keys, RevenueCat keys, Firebase keys
+- **API Keys**: Nakama server keys, RevenueCat keys
 - **Database Credentials**: PostgreSQL passwords, connection strings
 - **Encryption Keys**: Session encryption keys, token encryption keys
 - **Authentication Credentials**: Admin console credentials, service account keys
@@ -268,7 +268,6 @@ Before deploying to any environment:
 - [SECRETS_ROTATION.md](SECRETS_ROTATION.md) - Procedures for rotating secrets
 - [ENVIRONMENTS.md](backend/ENVIRONMENTS.md) - Environment-specific configuration
 - [LOCAL_SERVICES_SETUP.md](docs/LOCAL_SERVICES_SETUP.md) - Local development setup
-- [FIREBASE_SETUP.md](FIREBASE_SETUP.md) - Firebase configuration
 - [REVENUECAT_SETUP.md](REVENUECAT_SETUP.md) - RevenueCat configuration
 - [SECURITY.md](SECURITY.md) - Security considerations
 

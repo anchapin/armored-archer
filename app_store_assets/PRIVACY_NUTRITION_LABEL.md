@@ -18,7 +18,7 @@ Reference for filling out the App Privacy section in App Store Connect.
 
 ### 3. Crash Data
 - **Type**: App info and performance → Crash data
-- **Purpose**: Analytics (bug fixing via Firebase Crashlytics)
+- **Purpose**: Analytics (bug fixing via self-hosted backend)
 - **Linked to identity**: No
 - **Used for tracking**: No
 

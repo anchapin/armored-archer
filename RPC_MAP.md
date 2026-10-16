@@ -233,7 +233,7 @@ This document provides a comprehensive mapping of all RPC endpoints in the Armor
 - `scheduled_notifications` table: `{ user_id, notification_id, type, title, body, scheduled_for, data, status }`
 
 **Deployment Notes:**
-- Requires Firebase Cloud Messaging (FCM) configuration
+- Push delivery is not implemented; token registration is persistence-only
 - Device tokens support both iOS and Android platforms
 - Quiet hours feature respects user timezone
 
@@ -665,7 +665,7 @@ The seven notification RPC names stay unchanged. Their handlers now return strin
 
 Preference reads use an atomic upsert; updates create defaults when needed and return success only after a row is persisted. Timezone names are checked against PostgreSQL's catalog, quiet-hour syntax and timestamp calendar values are validated, and input uses typed schemas. Persistence ceilings are 65,536 payload characters, 4,096 token/title/body/identifier characters, 128 app-version/timezone characters. These are protective database/RPC limits, not FCM delivery limits. Existing external/mobile consumers were not located in the repository, so compatibility still needs observation.
 
-Scheduling success means a durable pending row with `notificationId`, not a sent push. Status preserves `{firebaseEnabled, registeredDevices}` but reports `firebaseEnabled:false`: Stage 1 does not initialize a transport or claim worker health. The legacy async Firebase/scheduler modules remain unchanged and outside the RPC dependency graph. Quiet-hour dispatch, fail-closed preference checks during dispatch, durable claims/retries, per-token outcomes, provider acceptance versus delivered acknowledgements, old pending-row cutover and worker deployment belong to Stage 2 and are not enabled here. No schema migration is included.
+Scheduling success means a durable pending row with `notificationId`, not a sent push. Status preserves `{firebaseEnabled, registeredDevices}` but reports `firebaseEnabled:false`: Stage 1 does not initialize a transport or claim worker health. The legacy async Firebase/scheduler modules were removed when Firebase was decommissioned; push delivery remains unimplemented. Quiet-hour dispatch, fail-closed preference checks during dispatch, durable claims/retries, per-token outcomes, provider acceptance versus delivered acknowledgements, old pending-row cutover and worker deployment belong to Stage 2 and are not enabled here. No schema migration is included.
 
 ### Test cleanup RPC
 

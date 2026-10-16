@@ -167,7 +167,7 @@ The backend module `analytics.ts` provides:
 
 The Godot client includes `AnalyticsManager` (in `addons/analytics_manager/analytics_manager.gd`) which provides:
 
-- Firebase Analytics integration for mobile
+- Local analytics events, forwarded to the backend
 - Local analytics fallback for desktop/web
 - Backend RPC forwarding for event aggregation
 - Session and performance monitoring
@@ -257,79 +257,3 @@ ANALYTICS_CUSTOM_ENDPOINT=https://your-server.com/track
 1. Analytics events are queued and sent asynchronously
 2. In high-traffic scenarios, consider batching events
 3. Monitor server resource usage for external API calls
-
-## Firebase Analytics Setup
-
-### Configuration
-
-Firebase Analytics is automatically configured when running on mobile platforms (iOS/Android). The following configuration files are required:
-
-- **Android**: `res://firebase_config/google-services.json`
-- **iOS**: `res://firebase_config/GoogleService-Info.plist`
-
-### Firebase Console Dashboard
-
-View your analytics data in the Firebase Console:
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Select your project
-3. Navigate to **Analytics** > **Dashboard**
-
-### Key Firebase Analytics Reports
-
-#### User Acquisition
-- New vs Returning Users
-- Traffic Sources
-- User Properties (platform, version, country)
-
-#### Engagement
-- Daily/Weekly Active Users
-- Session Duration
-- Screens Views
-
-#### Monetization (Conversion Tracking)
-- In-App Purchase Revenue
-- Conversion Rate
-- ARPPU
-
-#### Events
-- Event Count
-- Key Events (automatically tracked)
-- Custom Events
-
-### Recommended Funnels (Firebase)
-
-1. **App Open → Main Menu → Store → Purchase**
-   - Track store conversion rate
-
-2. **App Open → Tutorial Start → Tutorial Complete**
-   - Track tutorial completion
-
-3. **Campaign Start → Campaign Stage Complete**
-   - Track stage progression
-
-4. **PvP Lobby → Match Start → Match Complete**
-   - Track PvP engagement
-
-### Debugging Firebase Events
-
-Use Firebase DebugView to test events during development:
-
-```bash
-# Android
-adb shell setprop debug.firebase.analytics.app com.armoredarcher.game
-
-# iOS (via Xcode)
-- Enable "Debug" scheme
-- Set launch argument: -FIRDebugEnabled
-```
-
-### Converting Firebase Events to Custom Dashboard
-
-Firebase events are also forwarded to the backend for cross-platform analytics. Configure backend integration in:
-
-```
-# Backend environment
-ANALYTICS_ENABLED=true
-FIREBASE_ENABLED=true
-```

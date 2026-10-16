@@ -80,7 +80,7 @@ Armored Archer is committed to protecting user privacy and being transparent abo
 | App Version | Support | INTERNAL | Legitimate Interest |
 | Session Data | Authentication | RESTRICTED | Consent |
 
-#### 4. Analytics Data (via Firebase/Analytics Manager)
+#### 4. Analytics Data (via Analytics Manager, self-hosted backend)
 
 | Data Type | Purpose | Sensitivity | Legal Basis |
 |-----------|---------|-------------|-------------|
@@ -126,7 +126,7 @@ Armored Archer is committed to protecting user privacy and being transparent abo
 │                      ▼                       ▼                ▼ │
 │              ┌──────────────┐        ┌──────────────┐  ┌─────┐ │
 │              │   Storage    │        │   Analytics  │  │Logs │ │
-│              │  (Nakama/DB) │        │  (Firebase)  │  │     │ │
+│              │  (Nakama/DB) │        │  (backend)   │  │     │ │
 │              └──────────────┘        └──────────────┘  └─────┘ │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -225,7 +225,7 @@ Users can manage their consent preferences through:
 │  4. Data Deletion (Within 30 days)                              │
 │     ├── Delete from PostgreSQL                                   │
 │     ├── Delete from Nakama                                       │
-│     ├── Delete from Firebase Analytics                          │
+│     ├── (no third-party analytics store)                      │
 │     └── Anonymize remaining logs                                │
 │                           │                                     │
 │                           ▼                                     │
@@ -457,7 +457,6 @@ Armored Archer uses the following third-party services:
 | Service | Purpose | Data Processed |
 |---------|---------|----------------|
 | **Nakama** | Multiplayer backend | Account data, game data |
-| **Firebase Crashlytics** | Crash reporting | Device info, crash traces |
 | **RevenueCat** | In-app purchases | Transaction data |
 | **Apple App Store** | iOS distribution | Device identifiers |
 | **Google Play Store** | Android distribution | Device identifiers |
@@ -467,7 +466,6 @@ Armored Archer uses the following third-party services:
 | Service | Privacy Policy URL |
 |---------|-------------------|
 | Nakama | https://heroiclabs.com/privacy/ |
-| Firebase | https://firebase.google.com/terms/analytics-policy |
 | RevenueCat | https://www.revenuecat.com/privacy |
 | Apple | https://www.apple.com/legal/privacy/ |
 | Google | https://policies.google.com/privacy |

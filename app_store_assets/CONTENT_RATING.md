@@ -81,7 +81,7 @@ Pre-filled answers for the IARC (International Age Rating Coalition) questionnai
 | Question | Answer |
 |----------|--------|
 | Does the app collect personal information? | Yes — email for account creation |
-| Is data shared with third parties? | Only with service providers (Nakama, Firebase Crashlytics, RevenueCat) |
+| Is data shared with third parties? | Only with service providers (Nakama, RevenueCat) |
 | Is data sold? | No |
 | Does the app use advertising? | No |
 

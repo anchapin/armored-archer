@@ -300,17 +300,6 @@ export interface AnalyticsProviderConfig {
 }
 
 /**
- * Configuration for Firebase Cloud Messaging (Push Notifications)
- */
-export interface FirebaseConfig {
-  enabled: boolean;
-  projectId: string;
-  privateKey: string;
-  clientEmail: string;
-  databaseUrl?: string;
-}
-
-/**
  * Configuration for the Error to Insight Pipeline
  */
 export interface ErrorInsightPipelineConfig {
@@ -341,7 +330,6 @@ export interface AppConfig {
   server: ServerConfig;
   database: DatabaseConfig;
   revenuecat: RevenueCatConfig;
-  firebase: FirebaseConfig;
   session: SessionConfig;
   logger: LoggerConfig;
   match: MatchConfig;
@@ -456,13 +444,6 @@ const config: AppConfig = {
     webhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || '',
   },
 
-  firebase: {
-    enabled: process.env.FIREBASE_ENABLED === 'true',
-    projectId: process.env.FIREBASE_PROJECT_ID || '',
-    privateKey: process.env.FIREBASE_PRIVATE_KEY || '',
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
-    databaseUrl: process.env.FIREBASE_DATABASE_URL,
-  },
 
   session: {
     encryptionKey: process.env.SESSION_ENCRYPTION_KEY || 'default-token-key',

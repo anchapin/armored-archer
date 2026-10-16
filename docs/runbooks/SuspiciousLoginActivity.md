@@ -153,7 +153,7 @@ docker exec postgres psql -U postgres -c \
 # Add or tighten the entry for the auth RPC and roll out.
 docker-compose build nakama && docker-compose up -d nakama
 
-# 3. Push a CAPTCHA / device-fingerprint requirement via Firebase App Check
+# 3. Push a CAPTCHA / device-fingerprint requirement via an app-integrity provider
 # (See docs/AUTHENTICATION.md and docs/SECURITY.md)
 ```
 

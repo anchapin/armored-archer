@@ -57,7 +57,7 @@ func run_tests() -> void:
 	await test_session_summary()
 	await test_export_analytics_data()
 	await test_analytics_enabled_toggle()
-	await test_crashlytics_enabled_toggle()
+	await test_crash_reporting_enabled_toggle()
 	await test_debug_mode_toggle()
 	await test_event_constants_defined()
 
@@ -635,23 +635,23 @@ func test_analytics_enabled_toggle() -> void:
 	else:
 		_fail(test_name, "Analytics should be disabled")
 
-func test_crashlytics_enabled_toggle() -> void:
-	var test_name = "test_crashlytics_enabled_toggle"
-	"""Test enabling/disabling crashlytics"""
+func test_crash_reporting_enabled_toggle() -> void:
+	var test_name = "test_crash_reporting_enabled_toggle"
+	"""Test enabling/disabling crash reporting"""
 	var analytics = _get_analytics_manager()
 	if not analytics:
 		_fail(test_name, "AnalyticsManager not available")
 		return
 
-	analytics.set_crashlytics_collection_enabled(false)
-	if not analytics.is_crashlytics_enabled:
-		analytics.set_crashlytics_collection_enabled(true)
-		if analytics.is_crashlytics_enabled:
+	analytics.set_crash_reporting_enabled(false)
+	if not analytics.is_crash_reporting_enabled:
+		analytics.set_crash_reporting_enabled(true)
+		if analytics.is_crash_reporting_enabled:
 			_pass(test_name)
 		else:
-			_fail(test_name, "Crashlytics should be enabled")
+			_fail(test_name, "Crash reporting should be enabled")
 	else:
-		_fail(test_name, "Crashlytics should be disabled")
+		_fail(test_name, "Crash reporting should be disabled")
 
 func test_debug_mode_toggle() -> void:
 	var test_name = "test_debug_mode_toggle"
