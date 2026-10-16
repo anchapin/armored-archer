@@ -74,6 +74,9 @@ var boss_loot_tables: Dictionary = {
 # --- Encounter State ---
 var _current_boss_type: BossType = BossType.GUARDIAN
 var _current_phase: int = 0
+## 0 = uncapped (no encounter started or scaling unavailable); otherwise the
+## DifficultyScalingManager phase count for the player level's tier.
+var _active_phase_cap: int = 0
 var _current_health: int = 0
 var _max_health: int = 0
 var _encounter_active: bool = false
@@ -114,6 +117,7 @@ func start_boss_encounter(boss_type: BossType, player: Node2D) -> void:
 	_current_phase = 0
 	_encounter_active = true
 	_player_reference = player
+	_active_phase_cap = _resolve_phase_cap()
 
 	# Initialize special attack cooldowns
 	_special_attack_cooldowns = {}
@@ -124,6 +128,16 @@ func start_boss_encounter(boss_type: BossType, player: Node2D) -> void:
 	# Setup boss UI
 	_setup_boss_ui()
 
+## Phase cap for the current encounter from the player level's tier (#1620).
+## Returns 0 (uncapped) when the scaling autoload or player level is missing.
+func _resolve_phase_cap() -> int:
+	var scaling_manager = get_node_or_null("/root/DifficultyScalingManager")
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if scaling_manager == null or stats_manager == null or not stats_manager.has_method("get_level"):
+		return 0
+	var tier: int = scaling_manager.get_ai_tier_for_level(stats_manager.get_level())
+	return int(scaling_manager.get_boss_phase_progression(tier).get("phases", 0))
+
 ## End a boss encounter with rewards
 ##
 ## Parameters:
@@ -131,6 +145,7 @@ func start_boss_encounter(boss_type: BossType, player: Node2D) -> void:
 func end_boss_encounter(defeated: bool = true) -> void:
 	if not defeated:
 		_encounter_active = false
+		_active_phase_cap = 0
 		return
 
 	# Generate loot
@@ -142,6 +157,7 @@ func end_boss_encounter(defeated: bool = true) -> void:
 
 	# Clear encounter state
 	_encounter_active = false
+	_active_phase_cap = 0
 
 	# Clear boss UI
 	if _boss_health_bar:
@@ -172,6 +188,10 @@ func check_phase_transition(current_health: int, max_health: int) -> int:
 		if health_ratio >= float(phases[i + 1]) / 100.0:
 			new_phase = i
 			break
+
+	# Level-based cap (#1620): lower tiers run fewer boss phases.
+	if _active_phase_cap > 0:
+		new_phase = mini(new_phase, _active_phase_cap - 1)
 
 	# Trigger phase change if needed
 	if new_phase != _current_phase:

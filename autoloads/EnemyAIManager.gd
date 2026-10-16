@@ -55,11 +55,24 @@ var _boss_damage_multiplier: float = 1.0
 func setup_enemy(enemy_data: Dictionary, difficulty: int, ai_behavior: AIBehavior = AIBehavior.AGGRESSIVE) -> void:
 	_enemy_stats = enemy_data.duplicate()
 	_enemy_stats["max_health"] = enemy_data.get("health", 100)
-	_difficulty = difficulty
+	_difficulty = _resolve_difficulty_tier(difficulty)
 	_ai_behavior = ai_behavior
 	_turn_count = 0
 	_last_action = ""
 	_boss_damage_multiplier = 1.0
+
+## Resolves the difficulty tier for setup_enemy (#1620). Explicit tiers
+## (1-4) are honored unchanged; 0 or negative auto-derives the tier from the
+## player level via DifficultyScalingManager (falls back to Easy when the
+## autoload or player level is unavailable).
+func _resolve_difficulty_tier(requested: int) -> int:
+	if requested > 0:
+		return requested
+	var scaling_manager = get_node_or_null("/root/DifficultyScalingManager")
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if scaling_manager == null or stats_manager == null or not stats_manager.has_method("get_level"):
+		return 1
+	return scaling_manager.get_ai_tier_for_level(stats_manager.get_level())
 
 ## Get enemy stats
 ##

@@ -20,6 +20,7 @@ const TITAN_SCENE: PackedScene = preload("res://scenes/enemies/bosses/boss_wind.
 var boss_manager: Node
 var test_player: Node2D
 var test_boss: BaseEnemy
+var _saved_player_level: int = 1
 
 # --- Setup and Teardown ---
 
@@ -39,12 +40,26 @@ func before_each() -> void:
 	test_player.add_to_group("Player")
 	get_tree().root.add_child(test_player)
 
+	# Pin a high player level (#1620): BossManager consults
+	# DifficultyScalingManager for a level-based phase cap on encounter
+	# start, and these tests assert the full configured phase ladder,
+	# which requires tier 3 (player level 31+).
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if stats_manager:
+		_saved_player_level = stats_manager.player_stats.get("level", 1)
+		stats_manager.player_stats["level"] = 35
+
 func after_each() -> void:
 	# Clean up test player and boss
 	if test_player:
 		test_player.queue_free()
 	if test_boss:
 		test_boss.queue_free()
+
+	# Restore the shared autoload's player level (#1620).
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if stats_manager:
+		stats_manager.player_stats["level"] = _saved_player_level
 
 # --- BossManager Tests ---
 
@@ -254,6 +269,22 @@ func test_boss_to_ai_manager() -> void:
 		assert_eq(modifier, 2.0, "Boss should have 2x difficulty multiplier")
 
 	print("PASS: Boss to AI manager test")
+
+func test_low_level_caps_boss_phases() -> void:
+	# Test (#1620): at player level 1 (tier 1), the level-based cap keeps the
+	# boss in its first phase even below the configured 75% threshold.
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if boss_manager == null or stats_manager == null:
+		gut.p("SKIP: BossManager or PlayerStatsManager not available")
+		return
+
+	stats_manager.player_stats["level"] = 1
+	boss_manager.start_boss_encounter(0, test_player)
+	var phase = boss_manager.check_phase_transition(74, 100)
+	assert_eq(phase, 0, "Tier 1 boss should stay in phase 0 below 75% health")
+	boss_manager.end_boss_encounter(false)
+	stats_manager.player_stats["level"] = 35
+	print("PASS: Low-level boss phase cap test")
 
 func test_boss_to_combat_manager() -> void:
 	# Test: BossManager connects to CombatManager for damage

@@ -3,8 +3,8 @@ extends GutTest
 ## Tests for DifficultyScalingManager autoload.
 ## Tests enemy damage scaling, AI difficulty tiers, and boss progression.
 ##
-## NOTE: DifficultyScalingManager may not be implemented yet. Tests will verify expected API.
-## If autoload doesn't exist, tests will fail with informative messages.
+## DifficultyScalingManager is implemented in autoloads/ (#1620). The guards
+## below remain as graceful skips for bare environments without the autoload.
 
 var difficulty_scaling_manager: Node
 
