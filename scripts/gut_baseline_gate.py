@@ -137,7 +137,7 @@ def main() -> int:
         return 1
 
     log_counts = parse_gut_log(args.log)
-    required = ("tests", "failing")
+    required = ("tests", "passing")
     missing = [key for key in required if key not in log_counts]
     if missing:
         print(
@@ -145,6 +145,12 @@ def main() -> int:
             "complete. Inspect the run log before touching the baseline."
         )
         return 1
+
+    # GUT omits the "Failing Tests" summary line entirely when the count is
+    # zero, so a completed run can legitimately lack it. Tests + Passing
+    # above prove completion; a real nonzero count always prints the line.
+    if "failing" not in log_counts:
+        log_counts["failing"] = 0
 
     xml_counts = parse_junit_xml(args.xml)
     baseline = load_baseline(args.baseline)
