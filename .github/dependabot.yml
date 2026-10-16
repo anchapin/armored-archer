@@ -26,4 +26,4 @@ updates:
     # Ignore certain dependency types if needed
     ignore:
       - dependency-name: "typescript"
-        update-types: ["major"]
+        update-types: ["version-update:semver-major"]
