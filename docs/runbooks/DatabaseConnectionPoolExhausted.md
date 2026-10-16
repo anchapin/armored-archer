@@ -267,3 +267,32 @@ docker exec postgres psql -U postgres -c "SELECT 1;"
 - **On-Call**: Check PagerDuty rotation
 - **Backend Team**: #backend-team Slack channel
 - **DBA Team**: #dba Slack channel
+
+---
+
+## Pool Ceiling Configuration (issue #1350, PD-2026-04-12 A5)
+
+Current ceiling, set in `backend/nakama.yml` (and mirrored in
+`backend/nakama.ci.yml`):
+
+| Setting                      | Value        |
+| ---------------------------- | ------------ |
+| `database.max_open_conns`    | 25           |
+| `database.max_idle_conns`    | 10           |
+| `database.conn_max_lifetime` | 60 (minutes) |
+
+The 2026-04-12 incident showed this ceiling is sized for steady state, not
+observed peak. A data-driven replacement value depends on the A2 load test
+(#1347, currently blocked - the load-test workflow is disabled and its
+scenario files are absent from main); do not bump the ceiling on intuition.
+When the load data exists, size the ceiling for 2x observed peak with
+headroom under the Postgres `max_connections` budget, and mirror the change
+into `nakama.ci.yml`.
+
+Alert staging: `DatabaseConnectionPoolSaturation` (warning, >80% for 5m)
+pages attention before this critical alert (>90% for 2m) trips.
+
+Coordination with A3 (#1348, docs/backend/request-timeouts.md): the client
+RPC outer timeout (30s default) must fire before queries stack behind an
+exhausted pool. If the ceiling is raised, re-check that ordering - a larger
+pool deepens the queue clients wait on.
