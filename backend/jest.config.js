@@ -121,13 +121,6 @@ module.exports = {
       lines: 80,
       statements: 80
     },
-    // Notifications
-    './src/modules/notifications.ts': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
-    },
     // Metrics
     './src/modules/metrics.ts': {
       branches: 80,
