@@ -150,6 +150,20 @@ groups:
           summary: "High API latency detected"
           description: "95th percentile latency is above 2 seconds. Current: {{ $value | printf \"%.2f\" }}s"
 
+      # Database connection pool saturation (issue #1350, PD-2026-04-12 A5):
+      # early warning BEFORE the critical DatabaseConnectionPoolExhausted
+      # alert (90% for 2m) trips - 80% over 5 min gives operators time to act.
+      - alert: DatabaseConnectionPoolSaturation
+        expr: nakama_database_connections_active / nakama_database_connections_max > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          component: database
+        annotations:
+          summary: "Database connection pool above 80% for 5 minutes"
+          description: "Pool saturation is trending toward exhaustion (critical alert at 90%/2m). Runbook: docs/runbooks/DatabaseConnectionPoolExhausted.md. Current: {{ $value | printf \"%.2f\" }}"
+
       # High Memory Usage
       # Active: node_exporter standard metrics (see backend/docker-compose.yml).
       - alert: HighMemoryUsage
