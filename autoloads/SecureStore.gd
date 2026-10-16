@@ -24,7 +24,7 @@
 ##     recorded as future work in the commit body.
 ##
 ## Only the session/refresh-token path is migrated to this store. Other
-## credentials (Firebase custom tokens, RevenueCat receipts, etc.) remain
+## credentials (RevenueCat receipts, etc.) remain
 ## where they are — see the issue body for the explicit scope guard.
 extends Node
 

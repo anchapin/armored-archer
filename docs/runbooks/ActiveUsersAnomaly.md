@@ -123,7 +123,9 @@ gh issue list --repo anchapin/armored-archer \
   --label "live-ops" --state all --limit 10
 
 # Season / push notification batch
-grep -n "scheduleNextDailyReward\|notifyUsersAboutEvent\|startNotificationScheduler" backend/src/modules/notification_scheduler.ts | head -10
+# (notification_scheduler.ts was removed with Firebase; scheduled rows live in
+# the scheduled_notifications table — inspect them directly)
+grep -n "scheduleNextDailyReward\|notifyUsersAboutEvent" backend/src/modules/notifications_rpc.ts | head -10
 ```
 
 ### Step 4: Database / Telemetry Health

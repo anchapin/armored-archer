@@ -26,7 +26,7 @@ Reference for filling out the Data Safety form in Google Play Console.
 ### App Info and Performance
 | Data Type | Collected | Shared | Processed Ephemerally | Purpose |
 |-----------|-----------|--------|-----------------------|---------|
-| Crash logs | Yes | No | No | Bug fixing (Firebase Crashlytics) |
+| Crash logs | Yes | No | No | Bug fixing (self-hosted backend) |
 | Performance data | Yes | No | No | App optimization |
 
 ### Financial Info
@@ -36,7 +36,7 @@ Reference for filling out the Data Safety form in Google Play Console.
 
 ## Data Shared
 
-**None.** Data is not shared with third parties except service providers (Nakama, Firebase Crashlytics, RevenueCat) under data processing agreements.
+**None.** Data is not shared with third parties except service providers (Nakama, RevenueCat) under data processing agreements.
 
 ## Data Handling
 
@@ -54,7 +54,6 @@ Reference for filling out the Data Safety form in Google Play Console.
 | Library | Purpose | Data Accessed |
 |---------|---------|---------------|
 | Nakama | Backend services | Email, User ID, Game stats |
-| Firebase Crashlytics | Crash reporting | Device info, crash logs |
 | RevenueCat | IAP processing | Purchase history |
 
 ## Compliance

@@ -112,4 +112,4 @@ _(To be populated during RC verification)_
 
 - Use the in-app feedback system to report bugs
 - Refer to `docs/BETA_SUPPORT_PLAYBOOK.md` for common questions
-- Crash reports are automatically sent via Firebase Crashlytics
+- Non-fatal error reports are sent to our self-hosted backend

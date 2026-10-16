@@ -26,7 +26,7 @@ The beta launches only when ALL hard blockers are met. Soft blockers require doc
 | H4 | Zero critical/high bugs | 0 open P0/P1 bugs | QA Lead | Not Started — requires full regression pass |
 | H5 | Core gameplay loop complete | Combat, matchmaking, progression working | Client Lead | Done — CombatManager, ShootingManager, AutoAimManager, CampaignManager all functional |
 | H6 | User registration & login | New users can sign up and play | Backend Lead | Done — Nakama auth with authentication integration tests passing |
-| H7 | Crash-free rate | < 1% crash rate on supported devices | QA Lead | In Progress — Firebase Crashlytics integrated, monitoring active |
+| H7 | Crash-free rate | < 1% crash rate on supported devices | QA Lead | Pending — no live crash data source (policy threshold only, see `docs/CRASH_ALERT_THRESHOLDS.md`) |
 | H8 | Store builds export | iOS .ipa and Android .aab build without errors | Client Lead | In Progress — export presets exist, signing config needed |
 | H9 | Rollback procedure tested | Rollback script executes within 5 min | DevOps Lead | Not Started — script exists in deployment docs |
 | H10 | Monitoring dashboards live | Metrics, logs, alerts operational | DevOps Lead | Done — Prometheus + Grafana + Loki stack configured |

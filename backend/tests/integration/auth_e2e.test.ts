@@ -6,8 +6,8 @@
  * - Session token validation and refresh
  * - Error cases for invalid/expired tokens and unreachable servers
  *
- * Note: The Godot client uses Nakama device authentication (not Firebase ID tokens).
- * Firebase is used for push notifications (Firebase Cloud Messaging), not auth.
+ * Note: The Godot client uses Nakama device authentication; there are no
+ * third-party auth tokens (Firebase was removed).
  */
 
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';

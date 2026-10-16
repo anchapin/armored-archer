@@ -33,8 +33,8 @@ carries a match_id).
 
 - `match_replay.ts` (5 sites), `matchmaker.ts` (3 sites), `combat_system.ts`
   (1 site): all single-shot queries outside iteration - no N+1.
-- In-loop query sites in `notification_scheduler.ts`,
-  `notification_persistence.ts`, `notifications.ts`, `test_cleanup.ts`,
+- In-loop query sites in `notification_persistence.ts`, `test_cleanup.ts`,
+  and the since-removed `notification_scheduler.ts` / `notifications.ts`,
   `cleanup_test_user.ts`, `gear_db.ts` exist but are NOT on the match-results
   read path; they are out of scope for A4 and noted here for a future audit.
 

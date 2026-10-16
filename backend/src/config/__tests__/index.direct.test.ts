@@ -84,7 +84,6 @@ describe('config/index direct function tests', () => {
       expect(config).toHaveProperty('server');
       expect(config).toHaveProperty('database');
       expect(config).toHaveProperty('revenuecat');
-      expect(config).toHaveProperty('firebase');
       expect(config).toHaveProperty('session');
       expect(config).toHaveProperty('logger');
       expect(config).toHaveProperty('match');
@@ -128,11 +127,6 @@ describe('config/index direct function tests', () => {
       expect(typeof config.alerting.enabled).toBe('boolean');
       expect(config.alerting).toHaveProperty('routing');
       expect(config.alerting).toHaveProperty('healthAlerts');
-    });
-
-    it('should have valid firebase config structure', () => {
-      expect(typeof config.firebase.enabled).toBe('boolean');
-      expect(typeof config.firebase.projectId).toBe('string');
     });
 
     it('should have valid metrics config structure', () => {

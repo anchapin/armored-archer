@@ -45,7 +45,7 @@ which one to open first.
 | [`runbooks/`](runbooks/) | Stable | One file per alert (`HighErrorRate`, `DatabaseDown`, `MatchmakingQueueBuilding`, `SettlementDegraded`, …). Open `runbooks/README.md` for the full catalog. |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Stable | End-to-end deployment guide. |
 | [`DEPLOYMENT_OBSERVABILITY.md`](DEPLOYMENT_OBSERVABILITY.md) | Stable | Metrics, logs, traces, dashboards — what we ship vs hope for. |
-| [`CRASH_ALERT_THRESHOLDS.md`](CRASH_ALERT_THRESHOLDS.md) | Stable | Crashlytics alert thresholds. |
+| [`CRASH_ALERT_THRESHOLDS.md`](CRASH_ALERT_THRESHOLDS.md) | Stable | Crash alert thresholds. |
 | [`ci/ci-billing-recovery.md`](ci/ci-billing-recovery.md) | Stable | Recovery when hosted GitHub Actions is dark (issue #855). |
 
 ### Release, store submission & launch
@@ -102,7 +102,6 @@ which one to open first.
 |---|---|---|
 | [`db/MIGRATIONS.md`](db/MIGRATIONS.md) | Stable | Migration runbook — pre-flight, two-engineer review, verification queries (schema changes always need human review). |
 | [`AUTHENTICATION.md`](AUTHENTICATION.md) | Stable | User authentication via Nakama. |
-| [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) | Stable | Firebase Crashlytics + Analytics setup. |
 | [`REVENUECAT_SETUP.md`](REVENUECAT_SETUP.md), [`REVENUECAT_PLUGIN.md`](REVENUECAT_PLUGIN.md), [`STORE_README.md`](STORE_README.md) | Stable | RevenueCat IAP — setup, native-plugin guide, implementation summary. |
 | [`auth/AUTH_LOGIN_2026.md`](auth/AUTH_LOGIN_2026.md) | Stable | Root-cause report on the 75% login blocker (issue #908). |
 

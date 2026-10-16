@@ -2,12 +2,11 @@ extends Node
 
 ## Game Analytics & Monitoring System
 ##
-## This module provides comprehensive analytics and monitoring for the Godot client.
-## It integrates with Firebase Analytics and Crashlytics for mobile platforms.
+## This module provides local analytics and monitoring for the Godot client.
 ##
 ## Features:
-## - Firebase Analytics for event tracking
-## - Firebase Crashlytics for crash reporting
+## - Local event tracking
+## - Local crash reporting
 ## - Game-specific analytics (tutorial, PvE, PvP, store)
 ## - Session tracking and breadcrumb logging
 ## - Structured logging for debugging
@@ -23,12 +22,9 @@ signal event_logged(event_name: String, parameters: Dictionary)
 
 # Configuration
 var is_initialized: bool = false
-var is_crashlytics_enabled: bool = true
+var is_crash_reporting_enabled: bool = true
 var is_analytics_enabled: bool = true
 var is_debug_mode: bool = false
-var firebase_project_id: String = ""
-var measurement_id: String = ""
-var app_id: String = ""
 
 # User tracking
 var user_id: String = ""
@@ -168,9 +164,9 @@ func _capture_crash_dump() -> void:
 	# Log to console for debugging
 	print("AnalyticsManager: CRASH DETECTED - ", JSON.stringify(crash_data))
 
-	# Attempt to send to Firebase if available
-	if is_crashlytics_enabled:
-		_log_crashlytics_error("Application crash detected", "", crash_data)
+	# Record locally if crash reporting is enabled
+	if is_crash_reporting_enabled:
+		record_custom_error("Application crash detected", "", crash_data)
 
 func _initialize_analytics() -> void:
 	if OS.get_environment("E2E_TEST") == "1":
@@ -191,14 +187,7 @@ func _initialize_analytics() -> void:
 	app_version = _get_app_version()
 	engine_version = Engine.get_version_info()["string"]
 
-	# Initialize Firebase on mobile platforms
-	if platform in ["android", "ios"]:
-		_initialize_firebase()
-	else:
-		# For non-mobile platforms, just initialize with warning
-		push_warning("AnalyticsManager: Running on " + platform + " - limited analytics support")
-		# Still allow analytics for testing purposes
-		_initialize_local_analytics()
+	_initialize_local_analytics()
 
 	# Start first session
 	start_session()
@@ -209,152 +198,11 @@ func _get_app_version() -> String:
 		return ProjectSettings.get_setting("application/config/version")
 	return "1.0.0"
 
-func _initialize_firebase() -> void:
-	var config_path: String = ""
-	if OS.has_feature("android"):
-		config_path = "res://firebase_config/google-services.json"
-	elif OS.has_feature("ios"):
-		config_path = "res://firebase_config/GoogleService-Info.plist"
-
-	if not FileAccess.file_exists(config_path):
-		push_error("AnalyticsManager: Firebase config file not found at " + config_path)
-		analytics_error.emit("Firebase config file not found")
-		# Fall back to local analytics
-		_initialize_local_analytics()
-		return
-
-	_load_firebase_config(config_path)
-	_setup_crashlytics()
-	_setup_firebase_analytics()
-	_collect_initialization_params()
-	is_initialized = true
-	analytics_initialized.emit()
-
 func _initialize_local_analytics() -> void:
-	# Initialize without Firebase (for testing/non-mobile platforms)
 	is_initialized = true
 	analytics_initialized.emit()
 	if OS.get_environment("E2E_TEST") != "1":
 		print("AnalyticsManager: Initialized in local mode")
-
-func _load_firebase_config(config_path: String) -> void:
-	var config_file: FileAccess = FileAccess.open(config_path, FileAccess.READ)
-	if config_file:
-		var config_content: String = config_file.get_as_text()
-		config_file.close()
-
-		if OS.has_feature("android"):
-			_parse_android_config(config_content)
-		elif OS.has_feature("ios"):
-			_parse_ios_config(config_content)
-
-func _parse_android_config(config_content: String) -> void:
-	var json: JSON = JSON.new()
-	var error: Error = json.parse(config_content)
-	if error == OK:
-		var config_data: Dictionary = json.data
-		firebase_project_id = config_data.get("project_info", {}).get("project_number", "")
-		measurement_id = config_data.get("project_info", {}).get("firebase_url", "")
-		app_id = config_data.get("client", [{}])[0].get("client_info", {}).get("mobilesdk_app_id", "")
-	else:
-		push_error("AnalyticsManager: Failed to parse Firebase Android config")
-
-func _parse_ios_config(config_content: String) -> void:
-	var config_data: Dictionary = _parse_plist(config_content)
-	firebase_project_id = config_data.get("PROJECT_ID", "")
-	measurement_id = config_data.get("GCM_SENDER_ID", "")
-	app_id = config_data.get("GOOGLE_APP_ID", "")
-
-func _parse_plist(plist_content: String) -> Dictionary:
-	var result: Dictionary = {}
-	var lines: PackedStringArray = plist_content.split("\n")
-
-	for line: String in lines:
-		var key_regex: RegEx = RegEx.new()
-		key_regex.compile("<key>(.*?)</key>")
-		var string_regex: RegEx = RegEx.new()
-		string_regex.compile("<string>(.*?)</string>")
-
-		var key_match: RegExMatch = key_regex.search(line)
-		var string_match: RegExMatch = string_regex.search(line)
-
-		if key_match and string_match:
-			result[key_match.get_string(1)] = string_match.get_string(1)
-
-	return result
-
-func _setup_crashlytics() -> void:
-	if not is_crashlytics_enabled:
-		return
-
-	if OS.has_feature("android"):
-		_setup_android_crashlytics()
-	elif OS.has_feature("ios"):
-		_setup_ios_crashlytics()
-
-	# Set up crash signal handlers for automatic crash capture
-	_setup_crash_signal_handlers()
-
-func _setup_crash_signal_handlers() -> void:
-	# Set up automatic crash reporting by connecting to engine crash handlers
-	# This enables capturing crashes that would otherwise be missed
-
-	# Register with Godot's error handler for uncaught errors
-	# Note: Godot doesn't have a native crash signal handler API,
-	# but we can intercept common error patterns
-
-	# Add breadcrumb for crashlytics initialization
-	add_breadcrumb("crashlytics_initialized", {
-		"platform": platform,
-		"crashlytics_enabled": is_crashlytics_enabled,
-		"session_id": current_session_id
-	})
-
-	print("AnalyticsManager: Crash signal handlers configured")
-
-func _setup_android_crashlytics() -> void:
-	# Attempt to integrate with Firebase Crashlytics on Android
-	# This requires the Firebase SDK to be properly configured
-	if Engine.has_singleton("GodotFirebase"):
-		var firebase: Object = Engine.get_singleton("GodotFirebase")
-		if firebase and firebase.has_method("initializeCrashlytics"):
-			firebase.initializeCrashlytics()
-			print("AnalyticsManager: Firebase Crashlytics initialized on Android")
-	else:
-		print("AnalyticsManager: Firebase SDK not available - crashlytics disabled")
-
-func _setup_ios_crashlytics() -> void:
-	# Attempt to integrate with Firebase Crashlytics on iOS
-	if Engine.has_singleton("GodotFirebase"):
-		var firebase: Object = Engine.get_singleton("GodotFirebase")
-		if firebase and firebase.has_method("initializeCrashlytics"):
-			firebase.initializeCrashlytics()
-			print("AnalyticsManager: Firebase Crashlytics initialized on iOS")
-	else:
-		print("AnalyticsManager: Firebase SDK not available - crashlytics disabled")
-
-func _setup_firebase_analytics() -> void:
-	# Set up Firebase Analytics
-	if OS.has_feature("android") or OS.has_feature("ios"):
-		if Engine.has_singleton("GodotFirebase"):
-			var firebase: Object = Engine.get_singleton("GodotFirebase")
-			if firebase and firebase.has_method("initializeAnalytics"):
-				firebase.initializeAnalytics()
-				print("AnalyticsManager: Firebase Analytics initialized")
-
-func _collect_initialization_params() -> void:
-	# Log initialization event with app info
-	_log_event("app_initialized", {
-		"platform": platform,
-		"app_version": app_version,
-		"engine_version": engine_version,
-		"firebase_project_id": firebase_project_id,
-		"session_count": session_count
-	})
-
-# ============================================================================
-# Session Management
-# ============================================================================
 
 func start_session() -> void:
 	if current_session_id != "":
@@ -417,37 +265,19 @@ func _generate_session_id() -> String:
 func set_user_id(user_identifier: String) -> void:
 	user_id = user_identifier
 
-	if is_initialized and platform in ["android", "ios"]:
-		_set_firebase_user_id(user_identifier)
-
 	_log_event("user_id_set", {
 		"user_id": user_identifier,
 		"previous_user_id": user_id if user_id != user_identifier else ""
 	})
 
-func _set_firebase_user_id(user_id: String) -> void:
-	if Engine.has_singleton("GodotFirebase"):
-		var firebase: Object = Engine.get_singleton("GodotFirebase")
-		if firebase and firebase.has_method("setUserId"):
-			firebase.setUserId(user_id)
-
 func set_user_property(property_name: String, property_value: String) -> void:
 	user_properties[property_name] = property_value
 	user_properties_to_set[property_name] = property_value
-
-	if is_initialized and platform in ["android", "ios"]:
-		_set_firebase_user_property(property_name, property_value)
 
 	_log_event("user_property_set", {
 		"property_name": property_name,
 		"property_value": property_value
 	})
-
-func _set_firebase_user_property(name: String, value: String) -> void:
-	if Engine.has_singleton("GodotFirebase"):
-		var firebase: Object = Engine.get_singleton("GodotFirebase")
-		if firebase and firebase.has_method("setUserProperty"):
-			firebase.setUserProperty(name, value)
 
 func set_user_properties(properties: Dictionary) -> void:
 	for key: String in properties:
@@ -940,7 +770,7 @@ func add_breadcrumb(label: String, metadata: Dictionary = {}) -> void:
 	if breadcrumbs.size() > 100:
 		breadcrumbs = breadcrumbs.slice(-100)
 
-	# Log breadcrumb as event for Firebase
+	# Log breadcrumb as a local event
 	_log_event("breadcrumb_" + label, metadata)
 
 func get_breadcrumbs() -> Array:
@@ -1033,11 +863,7 @@ func _log_event(event_name: String, parameters: Dictionary) -> void:
 		_queue_event(event_name, event_params)
 		return
 
-	# Log to appropriate backend
-	if platform in ["android", "ios"]:
-		_log_to_firebase(event_name, event_params)
-	else:
-		_log_locally(event_name, event_params)
+	_log_locally(event_name, event_params)
 
 	# Emit event signal
 	event_logged.emit(event_name, event_params)
@@ -1064,29 +890,20 @@ func _flush_event_queue() -> void:
 		return
 
 	for event: Dictionary in event_queue:
-		if platform in ["android", "ios"]:
-			_log_to_firebase(event["event_name"], event["parameters"])
-		else:
-			_log_locally(event["event_name"], event["parameters"])
+		_log_locally(event["event_name"], event["parameters"])
 
 	event_queue.clear()
 
-func _log_to_firebase(event_name: String, parameters: Dictionary) -> void:
-	if Engine.has_singleton("GodotFirebase"):
-		var firebase: Object = Engine.get_singleton("GodotFirebase")
-		if firebase and firebase.has_method("logEvent"):
-			firebase.logEvent(event_name, parameters)
-
 func _log_locally(event_name: String, parameters: Dictionary) -> void:
-	# Local logging for non-mobile platforms or when Firebase unavailable
+	# Local logging
 	print("Analytics: ", event_name, " - ", JSON.stringify(parameters))
 
 # ============================================================================
-# Crashlytics / Error Reporting
+# Crash / Error Reporting
 # ============================================================================
 
 func record_custom_error(message: String, stack_trace: String = "", metadata: Dictionary = {}) -> void:
-	if not is_initialized or not is_crashlytics_enabled:
+	if not is_initialized or not is_crash_reporting_enabled:
 		return
 
 	var params := metadata.duplicate()
@@ -1105,7 +922,6 @@ func record_custom_error(message: String, stack_trace: String = "", metadata: Di
 	params["memory_mb"] = OS.get_static_memory_usage() / (1024.0 * 1024.0)
 	params["fps"] = Engine.get_frames_per_second()
 
-	_log_crashlytics_error(message, stack_trace, params)
 	print("Analytics: Recorded custom error: ", message)
 
 	crash_reported.emit(_generate_crash_id(), message)
@@ -1118,7 +934,7 @@ func _get_breadcrumb_summary() -> Array:
 	return breadcrumbs.slice(-summary_size)
 
 func record_exception(error: Error, context: String = "") -> void:
-	if not is_initialized or not is_crashlytics_enabled:
+	if not is_initialized or not is_crash_reporting_enabled:
 		return
 
 	var message := "Error " + str(error) + ": " + context
@@ -1126,25 +942,6 @@ func record_exception(error: Error, context: String = "") -> void:
 		"error_code": error,
 		"context": context
 	})
-
-func _log_crashlytics_error(message: String, stack_trace: String, metadata: Dictionary) -> void:
-	if OS.has_feature("android"):
-		_log_android_crashlytics_error(message, stack_trace, metadata)
-	elif OS.has_feature("ios"):
-		_log_ios_crashlytics_error(message, stack_trace, metadata)
-
-func _log_android_crashlytics_error(message: String, stack_trace: String, metadata: Dictionary) -> void:
-	if Engine.has_singleton("GodotFirebase"):
-		var firebase: Object = Engine.get_singleton("GodotFirebase")
-		if firebase and firebase.has_method("logError"):
-			var error_params := metadata.duplicate()
-			error_params["message"] = message
-			if stack_trace != "":
-				error_params["stack_trace"] = stack_trace
-			firebase.logError(error_params)
-
-func _log_ios_crashlytics_error(message: String, stack_trace: String, metadata: Dictionary) -> void:
-	_log_android_crashlytics_error(message, stack_trace, metadata)
 
 func _generate_crash_id() -> String:
 	return "crash_" + str(Time.get_unix_time_from_system()) + "_" + str(randi())
@@ -1163,9 +960,9 @@ func test_crash() -> void:
 # Configuration
 # ============================================================================
 
-func set_crashlytics_collection_enabled(enabled: bool) -> void:
-	is_crashlytics_enabled = enabled
-	print("AnalyticsManager: Crashlytics collection ", "enabled" if enabled else "disabled")
+func set_crash_reporting_enabled(enabled: bool) -> void:
+	is_crash_reporting_enabled = enabled
+	print("AnalyticsManager: Crash reporting collection ", "enabled" if enabled else "disabled")
 
 func set_analytics_enabled(enabled: bool) -> void:
 	is_analytics_enabled = enabled

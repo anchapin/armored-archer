@@ -186,12 +186,6 @@ describe('Environment Validation', () => {
       expect(secretKey === undefined || typeof secretKey === 'string').toBe(true);
     });
 
-    it('should handle missing optional Firebase variables', () => {
-      const projectId = process.env.FIREBASE_PROJECT_ID;
-
-      // These are optional, so they can be undefined
-      expect(projectId === undefined || typeof projectId === 'string').toBe(true);
-    });
   });
 });
 

@@ -35,7 +35,7 @@ Thresholds come from repo-documented values where they exist (cited); otherwise 
 
 | ID | Criterion | Threshold | Current Status | Data Source |
 |----|-----------|-----------|----------------|-------------|
-| LC-R1 | Day-1 retention | ≥ 35% *(proposed — ratify at data review)* | **Pending live data** | Firebase Analytics / Mixpanel retention-by-cohort (`docs/ANALYTICS_DASHBOARD.md`) |
+| LC-R1 | Day-1 retention | ≥ 35% *(proposed — ratify at data review)* | **Pending live data** | self-hosted analytics / Mixpanel retention-by-cohort (`docs/ANALYTICS_DASHBOARD.md`) |
 | LC-R2 | Day-7 retention | ≥ 12% *(proposed — ratify at data review)* | **Pending live data** | Same as LC-R1 |
 | LC-R3 | Stickiness (DAU/MAU) | ≥ 20% *(proposed)* | **Pending live data** | Mixpanel DAU/MAU chart |
 | LC-R4 | Avg sessions per user/day | ≥ 2 *(proposed)* | **Pending live data** | Session events (`session_start`/`session_end`) |
@@ -77,8 +77,8 @@ Thresholds below are repo-documented (RC checklist hard blockers and `docs/CRASH
 
 | ID | Criterion | Threshold (source) | Current Status | Data Source |
 |----|-----------|--------------------|----------------|-------------|
-| LC-S1 | Crash rate | < 1% of sessions (RC-H6; policy threshold enforced in the Firebase console per `docs/CRASH_ALERT_THRESHOLDS.md`) | **Pending live data** | Firebase Crashlytics console (crash-free sessions) — mobile builds with a Firebase config only |
-| LC-S2 | Fatal crashes | 0 fatal crashes (console triage per `docs/CRASH_ALERT_THRESHOLDS.md`) | **Pending live data** | Firebase Crashlytics console |
+| LC-S1 | Crash rate | < 1% of sessions (RC-H6; policy threshold per `docs/CRASH_ALERT_THRESHOLDS.md`) | **Pending live data** | No live data source — pending the client→backend crash pipeline |
+| LC-S2 | Fatal crashes | 0 fatal crashes (triage per `docs/CRASH_ALERT_THRESHOLDS.md`) | **Pending live data** | No live data source — platform crash logs only |
 | LC-S3 | RPC error rate under load | < 0.5% across all endpoints (RC-H3) | **Pending live data** | Prometheus/Grafana RPC metrics |
 | LC-S4 | P95 RPC latency | < 80 ms under normal load (RC-H4) | **Pending live data** | Prometheus/Grafana |
 | LC-S5 | Login success rate | ≥ 99% (addresses the historical login blocker in `MVP_GAP_ANALYSIS.md`) | **Pending live data** | `network_error` events vs. `session_start` |
@@ -90,11 +90,11 @@ Thresholds below are repo-documented (RC checklist hard blockers and `docs/CRASH
 
 **What to pull** (all available per `docs/ANALYTICS_DASHBOARD.md`):
 
-1. Retention cohorts (D1/D7, DAU/MAU, stickiness) — Firebase Analytics + Mixpanel.
+1. Retention cohorts (D1/D7, DAU/MAU, stickiness) — self-hosted analytics events + Mixpanel.
 2. The Sprint 8 funnel (install → first PvE completion → first PvP duel → first purchase) — built from `app_opened`, `campaign_started`, `pve_stage_completed`, `pvp_lobby_entered`, `pvp_match_started`, `store_viewed`, `purchase_completed`.
 3. Economy reports — revenue over time, ARPPU, purchase conversion funnel, Gem ledger balance.
 4. Pacing/drop-rate per stage — `pve_stage_started` vs. `pve_stage_completed`/`pve_stage_failed` by chapter/stage.
-5. Stability — Firebase Crashlytics console dashboards (crash rate, fatal count, top crashes). Client crashes do **not** flow to the self-hosted Prometheus stack (see `docs/CRASH_ALERT_THRESHOLDS.md`).
+5. Stability — no live crash dashboard: fatal crashes are local-only on-device, non-fatal errors arrive as backend `client_error` analytics events (see `docs/CRASH_ALERT_THRESHOLDS.md`).
 6. Trust signals — GitHub Issues filtered to `severity:critical`/`severity:high` trust labels; RevenueCat webhook failure log; support escalation log (Discord `#beta-escalations`).
 7. PvP health — win/loss distribution by Ladder Rating delta, punch-up win rate, match-abandon rate (`pvp_match_abandoned`).
 
@@ -210,7 +210,7 @@ RULE 5 (insufficient data):  Sample sizes too small to evaluate any category
 - Issue #740 (this decision), Issue #735 (Sprint 8 umbrella — funnel and trust mandate)
 - `docs/armored-archer_prd.md` — product goals, cosmetic-only monetization, server authority
 - `docs/RELEASE_CANDIDATE_CHECKLIST.md` — RC hard/soft blockers, GO/NO-GO format
-- `docs/ANALYTICS_DASHBOARD.md` — event taxonomy, funnels, Mixpanel/Amplitude/Firebase setup
+- `docs/ANALYTICS_DASHBOARD.md` — event taxonomy, funnels, Mixpanel/Amplitude setup
 - `docs/CRASH_ALERT_THRESHOLDS.md` — crash alert thresholds
 - `DEPLOYMENT.md` — progressive rollout phases and rollback criteria
 - `docs/BETA_SUPPORT_PLAYBOOK.md` — escalation levels and beta-known-issue context
