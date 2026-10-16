@@ -107,9 +107,14 @@ export function createCircuitBreaker(
   };
 
   const breaker = new CircuitBreaker(
-    async () => {
-      // Placeholder - actual function will be passed when calling fire()
-      throw new Error('Circuit breaker called without function');
+    async (fn?: () => Promise<unknown>) => {
+      // opossum passes fire() arguments through to this action, so the
+      // function supplied to withCircuitBreaker arrives here. Guard the
+      // no-argument case: calling fire() without a function is a bug.
+      if (typeof fn !== 'function') {
+        throw new Error('Circuit breaker called without function');
+      }
+      return fn();
     },
     {
       timeout: mergedOptions.timeout,
