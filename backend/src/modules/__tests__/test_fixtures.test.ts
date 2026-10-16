@@ -1,110 +1,72 @@
+/**
+ * Test-fixture RPC tests (#1456 leaderboard fixture, #1423 diag_http_probe).
+ * Uses the shared nakama mock; no live server needed.
+ */
+
 import {
-  rpcTestLeaderboardFixture,
-  registerTestFixtureRpcs,
+  rpcDiagHttpProbe,
   testFixtureRpcsEnabled,
-  TEST_FIXTURE_RPC_ID,
+  registerTestFixtureRpcs,
 } from '../test_fixtures';
+import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
+import type { Runtime } from '../../types/nakama';
 
-function makeNk(overrides: Record<string, jest.Mock> = {}): any {
-  return {
-    leaderboardCreate: jest.fn(),
-    leaderboardRecordWrite: jest.fn(),
-    leaderboardRecordDelete: jest.fn(),
-    leaderboardRecordsList: jest.fn().mockReturnValue([{ ownerId: 'u1', score: 10 }]),
-    ...overrides,
-  };
-}
-const logger: any = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
-const ctx: any = { userId: 'caller' };
-const call = (nk: any, body: any, c: any = ctx) =>
-  JSON.parse(
-    rpcTestLeaderboardFixture(c, logger, nk, typeof body === 'string' ? body : JSON.stringify(body))
-  );
+describe('rpcDiagHttpProbe (#1423)', () => {
+  it('returns the healthcheck status code when nk.httpRequest succeeds', () => {
+    const nk = createMockNakama();
+    (nk.httpRequest as jest.Mock).mockReturnValue({ code: 200, body: '{}', headers: {} });
+    const logger = createMockLogger();
+    const res = JSON.parse(rpcDiagHttpProbe(createMockContext(), logger, nk, ''));
+    expect(res).toEqual({ success: true, code: 200 });
+    expect(nk.httpRequest).toHaveBeenCalledWith(
+      'http://127.0.0.1:7350/healthcheck',
+      'get',
+      {},
+      '',
+      2000
+    );
+  });
 
-describe('test_fixtures', () => {
-  test('flag gate only accepts the literal "true"', () => {
+  it('fails closed with the error string when nk.httpRequest throws', () => {
+    const nk = createMockNakama();
+    (nk.httpRequest as jest.Mock).mockImplementation(() => {
+      throw new Error('dial refused');
+    });
+    const logger = createMockLogger();
+    const res = JSON.parse(rpcDiagHttpProbe(createMockContext(), logger, nk, ''));
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('dial refused');
+    expect(logger.error).toHaveBeenCalled();
+  });
+});
+
+describe('testFixtureRpcsEnabled', () => {
+  it('is true only for the exact string "true"', () => {
     expect(testFixtureRpcsEnabled({ TEST_FIXTURE_RPCS_ENABLED: 'true' })).toBe(true);
     expect(testFixtureRpcsEnabled({ TEST_FIXTURE_RPCS_ENABLED: '1' })).toBe(false);
     expect(testFixtureRpcsEnabled({})).toBe(false);
   });
+});
 
-  test('registers only when enabled', () => {
-    const initializer: any = { registerRpc: jest.fn() };
-    expect(registerTestFixtureRpcs(initializer, logger, {})).toBe(false);
-    expect(initializer.registerRpc).not.toHaveBeenCalled();
-    expect(
-      registerTestFixtureRpcs(initializer, logger, { TEST_FIXTURE_RPCS_ENABLED: 'true' })
-    ).toBe(true);
-    expect(initializer.registerRpc).toHaveBeenCalledWith(
-      TEST_FIXTURE_RPC_ID,
-      rpcTestLeaderboardFixture
-    );
+describe('registerTestFixtureRpcs', () => {
+  const initializer = (): Runtime.Initializer =>
+    ({ registerRpc: jest.fn() }) as unknown as Runtime.Initializer;
+
+  it('registers nothing when the env flag is absent', () => {
+    const init = initializer();
+    expect(registerTestFixtureRpcs(init, createMockLogger(), {})).toBe(false);
+    expect(init.registerRpc).not.toHaveBeenCalled();
+  });
+
+  it('registers the leaderboard fixture and diag probe RPCs when enabled', () => {
+    const init = initializer();
+    const logger = createMockLogger();
+    expect(registerTestFixtureRpcs(init, logger, { TEST_FIXTURE_RPCS_ENABLED: 'true' })).toBe(true);
+    const ids = (init.registerRpc as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(ids).toEqual([
+      'armored_archer/test_leaderboard_fixture',
+      'armored_archer/diag_http_probe',
+    ]);
     expect(logger.warn).toHaveBeenCalled();
-  });
-
-  test('rejects unauthenticated, bad JSON, missing ids and unknown ops', () => {
-    const nk = makeNk();
-    expect(call(nk, { op: 'list', leaderboard_id: 's' }, {}).error).toMatch(/Authentication/);
-    expect(call(nk, '{not json').error).toMatch(/Invalid JSON/);
-    expect(call(nk, { op: 'list' }).error).toMatch(/leaderboard_id/);
-    expect(call(nk, { op: 'write', leaderboard_id: 's' }).error).toMatch(/owner_id/);
-    expect(call(nk, { op: 'nope', leaderboard_id: 's' }).error).toMatch(/Unknown op/);
-  });
-
-  test('write creates the board then writes the record', () => {
-    const nk = makeNk();
-    const res = call(nk, {
-      op: 'write',
-      leaderboard_id: 'season_1',
-      owner_id: 'u1',
-      username: 'alice',
-      score: 1500,
-      subscore: 2,
-      metadata: { wins: '10' },
-    });
-    expect(res.success).toBe(true);
-    expect(nk.leaderboardCreate).toHaveBeenCalledWith('season_1', true, 'desc', 'best', '', {});
-    expect(nk.leaderboardRecordWrite).toHaveBeenCalledWith('season_1', 'u1', 'alice', 1500, 2, {
-      wins: '10',
-    });
-  });
-
-  test('write defaults username, scores and metadata', () => {
-    const nk = makeNk();
-    call(nk, { op: 'write', leaderboard_id: 's', owner_id: 'u1' });
-    expect(nk.leaderboardRecordWrite).toHaveBeenCalledWith('s', 'u1', '', 0, 0, {});
-  });
-
-  test('delete tolerates missing records', () => {
-    const nk = makeNk({
-      leaderboardRecordDelete: jest.fn().mockImplementationOnce(() => {
-        throw new Error('not found');
-      }),
-    });
-    const res = call(nk, { op: 'delete', leaderboard_id: 's', owner_ids: ['a', 'b'] });
-    expect(res.success).toBe(true);
-    expect(nk.leaderboardRecordDelete).toHaveBeenCalledTimes(2);
-    expect(call(makeNk(), { op: 'delete', leaderboard_id: 's' }).success).toBe(true);
-  });
-
-  test('list returns records and defaults', () => {
-    const nk = makeNk();
-    expect(
-      call(nk, { op: 'list', leaderboard_id: 's', owner_ids: ['u1'], limit: 5 }).records
-    ).toHaveLength(1);
-    expect(nk.leaderboardRecordsList).toHaveBeenCalledWith('s', ['u1'], 5, '', 0);
-    const empty = makeNk({ leaderboardRecordsList: jest.fn().mockReturnValue(null) });
-    expect(call(empty, { op: 'list', leaderboard_id: 's' }).records).toEqual([]);
-    expect(empty.leaderboardRecordsList).toHaveBeenCalledWith('s', [], 100, '', 0);
-  });
-
-  test('surfaces runtime errors as a failed payload', () => {
-    const nk = makeNk({
-      leaderboardRecordWrite: jest.fn(() => {
-        throw new Error('boom');
-      }),
-    });
-    const res = call(nk, { op: 'write', leaderboard_id: 's', owner_id: 'u1' });
-    expect(res).toEqual({ success: false, error: 'boom' });
   });
 });

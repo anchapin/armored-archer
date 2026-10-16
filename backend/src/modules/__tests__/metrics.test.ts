@@ -35,7 +35,6 @@ import {
   recordWebhookEvent,
   recordWebhookProcessingTime,
   setWebhookPendingAwards,
-  incrementWebhookRedisError,
   setWebhookConfigured,
   recordSettlementOutcome,
   rpcCallsTotal,
@@ -1400,15 +1399,6 @@ describe('metrics', () => {
       );
     });
 
-    it('registers armored_archer_webhook_redis_errors_total with an operation label', () => {
-      expect(counterConfigs()).toContainEqual(
-        expect.objectContaining({
-          name: 'armored_archer_webhook_redis_errors_total',
-          labelNames: ['operation'],
-        })
-      );
-    });
-
     it('registers armored_archer_webhook_processing_seconds with an event_type label', () => {
       expect(registeredHistogramConfigs).toContainEqual(
         expect.objectContaining({
@@ -1439,7 +1429,6 @@ describe('metrics', () => {
       expect(() => recordWebhookEvent('initial_purchase', 'processed')).not.toThrow();
       expect(() => recordWebhookProcessingTime('initial_purchase', 0.01)).not.toThrow();
       expect(() => setWebhookPendingAwards('user-1', 2)).not.toThrow();
-      expect(() => incrementWebhookRedisError('dedup_lookup')).not.toThrow();
       expect(() => setWebhookConfigured(true)).not.toThrow();
     });
   });

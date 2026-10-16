@@ -47,7 +47,6 @@ function sha256Hex(input: string): string {
   return out;
 }
 import { Runtime } from '../types/nakama';
-import { getRedisClient } from '../utils/redis';
 import { getCacheManager } from '../utils/cache';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
 import { safeParse, safeParsePayload } from '../utils/safeParse';
@@ -68,7 +67,6 @@ import {
   recordWebhookEvent,
   recordWebhookProcessingTime,
   setWebhookPendingAwards,
-  incrementWebhookRedisError,
   setWebhookConfigured,
   recordPurchase,
   recordRevenue,
@@ -136,8 +134,8 @@ export const validatedReceipts: Map<string, Set<string>> = new Map();
  * Removes entries older than 24 hours to prevent memory leaks.
  */
 function cleanupOldReceipts(): void {
-  // Simple cleanup strategy: clear all after a certain period if memory becomes an issue
-  // In production, you would use a more sophisticated TTL-based cache like Redis
+  // Simple cleanup strategy: clear all after a certain period if memory becomes an issue.
+  // Durable markers in Nakama storage are the authority; this map is only a cache.
   if (validatedReceipts.size > 10000) {
     validatedReceipts.clear();
   }
@@ -158,7 +156,7 @@ export function stopReceiptCleanup(): void {
 
 /**
  * Check if a receipt has already been used.
- * Uses Redis for persistence and distributed systems support.
+ * Backed by the durable Nakama storage ledger (an in-memory cache fronts it).
  *
  * @param nk - Nakama server interface
  * @param userId - The user who submitted the receipt
@@ -172,13 +170,7 @@ function isReceiptAlreadyUsed(
   receiptHash: string,
   logger: Runtime.Logger
 ): boolean {
-  // Redis fast-path is unreachable from the Nakama JS runtime (goja has no
-  // microtask queue to drive async I/O — ADR-0008). Skip the async Redis
-  // branch and fall through to the in-memory + storage path so the RPC
-  // handler stays synchronous.
-  void getRedisClient(logger);
-
-  // 2. Try in-memory cache
+  // 1. Try in-memory cache
   const userReceipts = validatedReceipts.get(userId);
   if (userReceipts && userReceipts.has(receiptHash)) {
     return true;
@@ -203,7 +195,7 @@ function isReceiptAlreadyUsed(
 
 /**
  * Mark a receipt as used.
- * Uses Redis for persistence and distributed systems support.
+ * Backed by the durable Nakama storage ledger (an in-memory cache fronts it).
  *
  * @param nk - Nakama server interface
  * @param userId - The user who submitted the receipt
@@ -216,12 +208,7 @@ function markReceiptAsUsed(
   receiptHash: string,
   logger: Runtime.Logger
 ): void {
-  // 1. Redis branch skipped — the Nakama JS runtime cannot await Redis I/O
-  // (goja has no microtask queue). The durable storage write below is the
-  // authoritative marker (issue #1067 parity).
-  void getRedisClient(logger);
-
-  // 2. Mark in-memory
+  // 1. Mark in-memory
   let userReceipts = validatedReceipts.get(userId);
   if (!userReceipts) {
     userReceipts = new Set();
@@ -265,13 +252,9 @@ function hashReceipt(receipt: string): string {
 
 /**
  * Storage collection holding durable refund dedup markers (issue #1067).
- * Redis markers are only a cache; these records are the authority that
- * keeps refunds at-most-once across Redis outages.
+ * These records are the authority that keeps refunds at-most-once.
  */
 const REFUND_MARKER_COLLECTION = 'refund_markers';
-
-/** Redis TTL for refund dedup cache markers (30 days — no unbounded keys). */
-const REFUND_MARKER_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * Outcome of a refund dedup check.
@@ -285,10 +268,9 @@ type RefundDedupStatus = 'processed' | 'unprocessed' | 'unavailable';
 /**
  * Check if a refund has already been processed.
  *
- * Redis is a fast-path cache only; the durable Nakama storage marker is
- * the authority. Redis errors fall through to storage instead of failing
- * open (issue #1067), and a storage error surfaces as 'unavailable' so
- * callers can reject rather than risk a double deduction.
+ * The durable Nakama storage marker is the authority (issue #1067); a
+ * storage error surfaces as 'unavailable' so callers can reject rather
+ * than risk a double deduction.
  *
  * @param nk - Nakama server interface
  * @param userId - The user who received the refund
@@ -302,12 +284,8 @@ function checkRefundProcessed(
   refundTransactionId: string,
   logger?: Runtime.Logger
 ): RefundDedupStatus {
-  // 1. Redis fast path is unreachable from the sync runtime (goja has no
-  // microtask queue). Fall through to the durable storage marker — that is
-  // the authority for at-most-once refund dedup (issue #1067).
-  void getRedisClient(logger);
-
-  // 2. Durable Nakama storage marker (authoritative)
+  // 1. Durable Nakama storage marker (authoritative for at-most-once
+  // refund dedup, issue #1067)
   try {
     const objects = nk.storageRead([
       {
@@ -326,9 +304,8 @@ function checkRefundProcessed(
 /**
  * Mark a refund as processed.
  *
- * Writes the durable Nakama storage marker first (a versioned,
- * optimistic-concurrency write), then the Redis cache marker with a TTL.
- * Redis is best-effort: losing the cache entry only costs a storage read.
+ * Writes the durable Nakama storage marker with a versioned,
+ * optimistic-concurrency write.
  *
  * @param nk - Nakama server interface
  * @param userId - The user who received the refund
@@ -376,11 +353,6 @@ function markRefundAsProcessed(
         },
       ]);
 
-      // Redis best-effort cache write skipped: the Nakama JS runtime cannot
-      // await it. The durable storage marker above is the authoritative
-      // signal — losing the cache entry only costs an extra storage read
-      // on the next dedup check.
-      void getRedisClient(logger);
       return true;
     } catch (e) {
       if (attempt < MAX_ATTEMPTS) {
@@ -470,9 +442,9 @@ export function processRefund(
   }
 
   // Check for duplicate refund. The durable storage marker is the
-  // authority; Redis is only a cache. When the authoritative check itself
-  // is unavailable we fail safe — reject so RevenueCat retries later
-  // instead of risking a double deduction (issue #1067).
+  // authority; when the check itself is unavailable we fail safe — reject
+  // so RevenueCat retries later instead of risking a double deduction
+  // (issue #1067).
   const dedupStatus = checkRefundProcessed(nk, userId, refundTransactionId, logger);
   if (dedupStatus === 'processed') {
     logger.warn(
@@ -512,7 +484,7 @@ export function processRefund(
     newBalance = updated.gems;
   }
 
-  // Durable dedup marker first, Redis cache second (best-effort).
+  // Write the durable dedup marker (authoritative).
   //
   // Issue #1131: a previous revision swallowed the marker's `false` return
   // and reported success:true. That left the webhook caller (RevenueCat)
@@ -3446,16 +3418,10 @@ function getGemAmountForProduct(productId: string, logger: Runtime.Logger): numb
 /**
  * Storage collection for the durable RevenueCat webhook event ledger
  * (issue #1067). Mirrors the validated_receipts receipt-hash ledger
- * pattern: Redis is a fast-path cache, Nakama storage is the durable
- * record that makes event handling idempotent.
+ * pattern: Nakama storage is the durable record that makes event
+ * handling idempotent.
  */
 const WEBHOOK_EVENT_COLLECTION = 'revenuecat_webhook_events';
-
-/** Redis key prefix for webhook event fast-path markers. */
-const WEBHOOK_EVENT_REDIS_PREFIX = 'rc_webhook_event';
-
-/** Redis TTL for webhook event fast-path markers (30 days). */
-const WEBHOOK_EVENT_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /**
  * Storage collection for paid awards queued at the MAX_GEM_BALANCE cap
@@ -3487,8 +3453,8 @@ export function clearWebhookEventLedgersForTests(): void {
 /**
  * Fetch the recorded outcome of a previously processed webhook event.
  *
- * Mirrors the receipt-hash ledger lookup order: Redis fast path, then the
- * in-memory cache, then the durable Nakama storage record (authoritative).
+ * Mirrors the receipt-hash ledger lookup order: in-memory cache first,
+ * then the durable Nakama storage record (authoritative).
  *
  * @param nk - Nakama server interface
  * @param eventId - RevenueCat event id (or transaction id fallback)
@@ -3501,18 +3467,13 @@ function getRecordedWebhookOutcome(
   eventId: string,
   logger: Runtime.Logger
 ): string | undefined {
-  // 1. Redis fast path — unreachable from the sync runtime (goja has no
-  // microtask queue). The in-memory + durable storage path below is the
-  // authoritative record for webhook event dedup (issue #1067).
-  void getRedisClient(logger);
-
-  // 2. In-memory cache
+  // 1. In-memory cache
   const memoryCached = processedWebhookEvents.get(eventId);
   if (memoryCached !== undefined) {
     return memoryCached;
   }
 
-  // 3. Durable storage record (authoritative)
+  // 2. Durable storage record (authoritative)
   try {
     const objects = nk.storageRead([
       {
@@ -3578,12 +3539,7 @@ function recordWebhookOutcome(
     logger.error('Storage write error recording webhook event outcome: %s', e);
   }
 
-  // 2. Redis fast path with TTL — unreachable from the sync runtime.
-  // Skipped here; the durable storage marker above is authoritative, and
-  // losing the cache entry only costs an extra storage read on dedup.
-  void getRedisClient(logger);
-
-  // 3. In-memory cache
+  // 2. In-memory cache
   processedWebhookEvents.set(eventId, outcomeJson);
 }
 
@@ -4269,10 +4225,9 @@ function handleProductChange(
  *   re-applying.
  *
  * Observability (issue #1140): every terminal path increments
- * `armored_archer_webhook_events_total{event_type,outcome}`, fully-applied
- * events observe `armored_archer_webhook_processing_seconds`, and Redis
- * failures on the dedup fast path increment
- * `armored_archer_webhook_redis_errors_total` (in the ledger helpers).
+ * `armored_archer_webhook_events_total{event_type,outcome}` and
+ * fully-applied events observe
+ * `armored_archer_webhook_processing_seconds`.
  */
 export function rpcRevenueCatWebhook(
   ctx: Runtime.Context,

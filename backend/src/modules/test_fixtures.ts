@@ -118,6 +118,33 @@ export function rpcTestLeaderboardFixture(
   }
 }
 
+/**
+ * Diagnostic spike RPC (#1423): proves `nk.httpRequest` works synchronously
+ * on the real goja runtime. It GETs a fixed loopback URL - Nakama's own
+ * healthcheck endpoint - and returns the HTTP status code. No parameters,
+ * no outbound surface beyond the server itself. Test-fixture only:
+ * registered solely when TEST_FIXTURE_RPCS_ENABLED=true (CI integration
+ * job), never in a real deployment.
+ */
+export function rpcDiagHttpProbe(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  void ctx;
+  void payload;
+  const url = 'http://127.0.0.1:7350/healthcheck';
+  try {
+    const response = nk.httpRequest(url, 'get', {}, '', 2000);
+    logger.info('diag_http_probe: GET %s -> %d', url, response.code);
+    return JSON.stringify({ success: true, code: response.code });
+  } catch (e) {
+    logger.error('diag_http_probe: GET %s failed: %s', url, String(e));
+    return JSON.stringify({ success: false, error: String(e) });
+  }
+}
+
 export function registerTestFixtureRpcs(
   initializer: Runtime.Initializer,
   logger: Runtime.Logger,
@@ -134,5 +161,7 @@ export function registerTestFixtureRpcs(
   // RPC ids by scanning for registerRpc('<id>'; a constant here is invisible
   // to it, so the RPC was never bridged and every call 404'd.
   initializer.registerRpc('armored_archer/test_leaderboard_fixture', rpcTestLeaderboardFixture);
+  // #1423 spike: sync nk.httpRequest proof on the real goja runtime.
+  initializer.registerRpc('armored_archer/diag_http_probe', rpcDiagHttpProbe);
   return true;
 }

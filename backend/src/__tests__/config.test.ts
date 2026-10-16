@@ -387,22 +387,6 @@ describe('config module', () => {
     });
   });
 
-  describe('config object - redis configuration', () => {
-    it('should parse redis configuration', () => {
-      process.env.REDIS_HOST = 'redis-host';
-      process.env.REDIS_PORT = '6380';
-      process.env.REDIS_PASSWORD = 'redis-pass';
-      process.env.REDIS_DB = '5';
-      process.env.REDIS_ENABLED = 'true';
-      const { config } = require('../config');
-      expect(config.redis.host).toBe('redis-host');
-      expect(config.redis.port).toBe(6380);
-      expect(config.redis.password).toBe('redis-pass');
-      expect(config.redis.db).toBe(5);
-      expect(config.redis.enabled).toBe(true);
-    });
-  });
-
   describe('config object - firebase configuration', () => {
     it('should parse firebase configuration', () => {
       process.env.FIREBASE_ENABLED = 'true';

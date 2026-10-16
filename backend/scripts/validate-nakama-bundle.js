@@ -46,11 +46,21 @@ const es6Patterns = [
   // ("Unexpected token ILLEGAL") — they must be rewritten to BigInt("…")
   // calls by scripts/transpile-bundle.js before validation runs. The
   // boundary guards keep identifier tails (i18n, …n) from matching.
+  // ES2020 BigInt literals (e.g. ioredis 6 RESP decoder). Babel cannot
+  // downlevel them and Nakama 3.21's goja parser rejects them at load time
+  // ("Unexpected token ILLEGAL") — they must be rewritten to BigInt("…")
+  // calls by scripts/transpile-bundle.js before validation runs. The
+  // boundary guards keep identifier tails (i18n, …n) from matching.
   {
     pattern: /(?:^|[^A-Za-z0-9_$])[0-9]+n(?:[^A-Za-z0-9_$]|$)/,
     name: 'BigInt literal',
     strict: true,
   },
+  // Retired infrastructure (#1423): promise-based Redis can never run on
+  // goja (no microtask queue). Durable Nakama storage OCC is the sync
+  // substitute; keep the retired client out of the bundle for good.
+  { pattern: /require\(['"]ioredis['"]\)/, name: 'ioredis require (retired, #1423)', strict: true },
+  { pattern: /new\s+Redis\s*\(/, name: 'Redis client construction (retired, #1423)', strict: true },
 ];
 
 /**

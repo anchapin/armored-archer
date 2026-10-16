@@ -168,8 +168,9 @@ describe('validate-nakama-bundle', () => {
       const harness = loadValidator(fixtureA);
 
       // Every registered pattern must be explicitly reported clean
-      // (BigInt literal pattern added in #1135; see scripts/validate-nakama-bundle.js).
-      expect(harness.es6Patterns.length).toBe(9);
+      // (BigInt literal pattern added in #1135; retired-ioredis patterns in
+      // #1423; see scripts/validate-nakama-bundle.js).
+      expect(harness.es6Patterns.length).toBe(11);
       for (const { name } of harness.es6Patterns) {
         expect(harness.stdout.some((l) => l.includes(`${name}: No occurrences`))).toBe(true);
       }
@@ -216,7 +217,7 @@ describe('validate-nakama-bundle', () => {
   });
 
   describe('es6Patterns registry', () => {
-    it('tracks exactly the eight documented ES6+ checks', () => {
+    it('tracks exactly the documented ES6+ and retired-pattern checks', () => {
       const harness = loadValidator('var ok = 1;\n');
 
       expect(harness.es6Patterns.map((p) => p.name)).toEqual([
@@ -229,6 +230,8 @@ describe('validate-nakama-bundle', () => {
         'arrow function (single param)',
         'template literal',
         'BigInt literal',
+        'ioredis require (retired, #1423)',
+        'Redis client construction (retired, #1423)',
       ]);
     });
   });

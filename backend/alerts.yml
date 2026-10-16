@@ -476,20 +476,6 @@ groups:
           description: "More than 1 webhook per minute rejected for an invalid HMAC signature over 5 minutes — the webhook secret rotated out of sync, or someone is forging RevenueCat callbacks."
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
 
-      # Webhook Redis Degraded
-      # Active: armored_archer_webhook_redis_errors_total is emitted.
-      - alert: WebhookRedisDegraded
-        expr: sum(rate(armored_archer_webhook_redis_errors_total[5m])) > 1 / 60
-        for: 5m
-        labels:
-          severity: warning
-          team: backend
-          component: payments
-        annotations:
-          summary: "Redis errors on the webhook dedup fast path"
-          description: "More than 1 Redis failure per minute for 5 minutes on the webhook event ledger (dedup lookup / outcome recording). Idempotency stays correct via durable storage, but every event pays extra storage round-trips — check Redis health."
-          runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/PaymentProcessingFailures.md"
-
   # ============================================
   # PVP SETTLEMENT (issue #1143)
   # PromQL view for the complete_match settlement audit channels

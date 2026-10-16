@@ -85,13 +85,10 @@ Concretely:
   `rpcValidatePurchaseWrapper` cluster-4 note at `backend/src/index.ts#rpcValidatePurchaseWrapper`).
 - **Wrapper functions stay sync even when the wrapped module function is sync.** The
   `async` keyword is inherited by the return value, not merely by the body.
-- **No outbound HTTP or promise-based Redis on an RPC path.** Unreachable branches are kept
-  behind an explicit short-circuit with a logged reason and a returned error/empty result of
-  the correct shape, so callers degrade predictably. The representative sites, each carrying
-  an `ADR-0008` comment: the Redis receipt fast-path (`store.ts#isReceiptAlreadyUsed`), the no-API-key
-  receipt short-circuit (`store.ts#validateWithRevenueCat`), refund listing (`store.ts#rpcCheckRefunds`), subscription
-  listing (`store.ts#rpcCheckSubscriptions`), restore-purchases history (`store.ts#rpcRestorePurchases`), and the webhook
-  `SETNX` lock (`store.ts#rpcRevenueCatWebhook`).
+- **No `fetch` or promise-based Redis on an RPC path.** Outbound HTTP uses the synchronous
+  `nk.httpRequest` host call (see the 2026-10-03 amendment). Redis is retired entirely
+  (2026-10-16 amendment): durable Nakama storage with optimistic-concurrency writes is the
+  substitute for every former Redis use.
 - **Hash receipts via `sha256Hex`**, never `crypto.createHash` directly.
 - **Write storage values through `backend/src/utils/storage-helpers.ts`**, passing objects,
   never raw JSON strings.
@@ -99,17 +96,15 @@ Concretely:
 ## Consequences
 
 **Positive.** A contributor who greps for `goja` or `ADR-0008` reaches the constraints
-directly, instead of a closed perf issue. The invariant is now discoverable from any one of
-the ~40 call sites, and its *consequences* (why Redis fast-paths, RevenueCat verification,
-refund listing and subscription listing are stubs) are explained rather than merely asserted.
+directly, instead of a closed perf issue, and its consequences are explained rather than
+merely asserted.
 
-**Negative / accepted.** Several production capabilities are knowingly degraded because the
-runtime cannot express them: live RevenueCat server-side receipt verification, external
-refund/subscription listing, and cross-instance Redis locks. Receipt uniqueness rests on
-the `sha256Hex` fallback rather than a hard HMAC, and webhook idempotency rests on durable
-storage dedup rather than `SETNX`. A **sync** HTTP and Redis layer is the only thing that
-restores them; that work is tracked as a follow-up issue and is not attempted here. Until it
-lands, do not treat those branches as live.
+**Negative / accepted.** Receipt uniqueness rests on the `sha256Hex` fallback rather than a
+hard HMAC, and webhook idempotency rests on durable storage dedup rather than `SETNX`.
+RevenueCat server-side verification, refund/subscription listing and purchase restore were
+restored by the 2026-10-03 amendment (sync `nk.httpRequest`); the cross-instance Redis lock
+requirement was formally retired on 2026-10-16 in favour of the durable-storage claim-ledger
+pattern (#1423).
 
 **Neutral.** PRs #1312 and #1317 stay closed — their approach is invalid under this
 invariant, not merely unfinished. Re-open only against a sync-I/O design.
@@ -137,3 +132,26 @@ subscription checks and purchase restore now use it (`revenueCatRequest` in
 `backend/src/modules/store.ts`). Receipt validation fails closed when no
 RevenueCat key is configured or the call errors. Promise-based Redis (`ioredis`)
 remains unreachable, as stated above.
+
+## Amendment (2026-10-16, #1423 Redis retirement)
+
+The sync-HTTP/Redis question is now settled: **Redis is retired from the
+backend runtime.** Promise-based `ioredis` can never run on goja, and every
+capability Redis was wanted for has an ADR-0008-native substitute in durable
+Nakama storage with optimistic-concurrency writes:
+
+- Webhook event cross-instance idempotency (the old `SETNX` lock idea from
+  #1299): the SEC-002 claim-ledger - a create-only-if-absent storage write
+  (`version: '*'`) before any side effect, with stale-claim takeover.
+- Rate limiting (#1301 / SEC-004): a shared durable counter in the
+  `rate_limits` collection with CAS writes.
+- Receipt/refund dedup (#1067): the durable `validated_receipts` /
+  `refund_markers` storage ledgers, already authoritative.
+
+Accordingly: `utils/redis.ts`, its mock and tests, the `ioredis` dependency,
+the `config.redis` block, and the dead `void getRedisClient(...)` branches in
+`store.ts` are removed, and `scripts/validate-nakama-bundle.js` rejects
+`require('ioredis')` / `new Redis(` so the retired pattern cannot be
+reintroduced. The webhook-Redis error metric (never incremented on
+the sync path) is removed with them. Removing the now-unused
+`redis` service from the compose files is tracked separately.

@@ -84,7 +84,6 @@ describe('config/index direct function tests', () => {
       expect(config).toHaveProperty('server');
       expect(config).toHaveProperty('database');
       expect(config).toHaveProperty('revenuecat');
-      expect(config).toHaveProperty('redis');
       expect(config).toHaveProperty('firebase');
       expect(config).toHaveProperty('session');
       expect(config).toHaveProperty('logger');
@@ -129,11 +128,6 @@ describe('config/index direct function tests', () => {
       expect(typeof config.alerting.enabled).toBe('boolean');
       expect(config.alerting).toHaveProperty('routing');
       expect(config.alerting).toHaveProperty('healthAlerts');
-    });
-
-    it('should have valid redis config structure', () => {
-      expect(typeof config.redis.host).toBe('string');
-      expect(typeof config.redis.port).toBe('number');
     });
 
     it('should have valid firebase config structure', () => {
