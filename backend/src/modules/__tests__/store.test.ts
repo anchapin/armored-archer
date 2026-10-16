@@ -2569,6 +2569,31 @@ describe('store', () => {
       expect(parsed.refunds_found).toBe(0);
     });
 
+    it('should pass the 5s timeout to nk.httpRequest for RevenueCat calls (#1348)', async () => {
+      // Pins REVENUECAT_HTTP_TIMEOUT_MS (store.ts) so the per-dependency
+      // timeout documented in docs/backend/request-timeouts.md cannot
+      // silently regress to an unbounded call.
+      mockFetch.mockReturnValue({
+        ok: true,
+        json: () => ({
+          subscriber: {
+            entitlement_details: {},
+          },
+        }),
+      });
+
+      const ctx = createMockContext({ userId: 'test-user' });
+      await rpcCheckRefunds(ctx, mockLogger, mockNk, '{}');
+
+      expect(mockNk.httpRequest).toHaveBeenCalledWith(
+        expect.stringContaining('/subscribers/'),
+        'get',
+        expect.objectContaining({ Authorization: 'Bearer test-api-key' }),
+        '',
+        5000
+      );
+    });
+
     it('should handle RevenueCat API error', async () => {
       mockFetch.mockReturnValue({
         ok: false,

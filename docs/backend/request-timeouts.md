@@ -18,6 +18,9 @@ documented pending review.
 Cancellation: each concern has a dedicated HTTPRequest node (issue #1108) and
 in-flight requests are cancelled via `cancel_request()` before replacement
 (auth probe, session isolation paths).
+`logout()` additionally cancels any in-flight async RPC dispatch and clears
+the fire-and-forget queue, so no request signed with the old session can
+dispatch after teardown (issue #1348).
 
 ## Nakama runtime -> RevenueCat REST
 
@@ -40,6 +43,8 @@ criterion asks to be verified.
 
 - Client RPC timeout behaviour: `test/suites/autoloads/test_network_manager.gd::test_send_rpc_timeout`.
 - Cancellation before replacement: `test/suites/autoloads/test_network_manager_rpc_session_isolation.gd`.
+- Cancellation at session teardown: `test/suites/autoloads/test_network_manager.gd::test_logout_cancels_pending_async_rpcs`.
+- RevenueCat timeout pin: `backend/src/modules/__tests__/store.test.ts` ("should pass the 5s timeout to nk.httpRequest for RevenueCat calls").
 - 401-storm and recovery deadlock behaviour: `test/suites/autoloads/test_network_manager_401_storm.gd`.
 - Hung-request behaviour under load: NOT covered - the load-test workflow is
   currently disabled and its scenario files are absent from main (#1347).

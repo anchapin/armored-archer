@@ -865,6 +865,19 @@ func logout() -> void:
 		if rm_err != OK:
 			push_warning("NetworkManager: legacy plaintext session could not be removed on logout (error %d)" % rm_err)
 
+	# Issue #1348: cancellation propagation at session teardown. A queued
+	# fire-and-forget RPC would otherwise dispatch AFTER logout with empty
+	# auth headers (guaranteed 401), and cancel_request() emits no
+	# request_completed, so an in-flight async dispatch would leave
+	# _async_rpc_in_flight stuck true and wedge the queue permanently.
+	# A tracked send_rpc cycle in flight is left alone: its own per-attempt
+	# timer (#1026 pattern) fails it closed and releases _rpc_busy via the
+	# single post-cycle exit (#1138) - callers must not clear it here.
+	if _rpc_http_request != null and _rpc_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		_rpc_http_request.cancel_request()
+	_async_rpc_in_flight = false
+	_async_rpc_queue.clear()
+
 	session_created.emit(false, "Logged out")
 
 func get_auth_headers() -> PackedStringArray:
