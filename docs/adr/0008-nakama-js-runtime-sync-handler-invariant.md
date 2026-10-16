@@ -152,6 +152,6 @@ Accordingly: `utils/redis.ts`, its mock and tests, the `ioredis` dependency,
 the `config.redis` block, and the dead `void getRedisClient(...)` branches in
 `store.ts` are removed, and `scripts/validate-nakama-bundle.js` rejects
 `require('ioredis')` / `new Redis(` so the retired pattern cannot be
-reintroduced. The `armored_archer_webhook_redis_errors_total` metric (never
-incremented on the sync path) is removed with them. Removing the now-unused
+reintroduced. The webhook-Redis error metric (never incremented on
+the sync path) is removed with them. Removing the now-unused
 `redis` service from the compose files is tracked separately.
