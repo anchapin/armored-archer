@@ -8,8 +8,17 @@ module.exports = {
   coverageDirectory: 'coverage/integration',
   testTimeout: 60000,
   verbose: true,
-  // Use detectOpenHandles to properly wait for async cleanup instead of forceExit
-  detectOpenHandles: true,
+  // Issue #1458: nakama-js 2.8.0 races every request against an internal
+  // setTimeout(reject, timeoutMs) that it never clears once the request
+  // settles, so each RPC leaves a pending timer behind. With
+  // detectOpenHandles on, Jest prints ~115 "Timeout" open handles at exit
+  // that read like hanging RPCs - they are leftover timers, not hangs.
+  // The timers are internal to nakama-js and cannot be cleared from test
+  // code, so open-handle detection is off and the runner force-exits once
+  // the suite is done (same pattern as jest.config.js in CI). Genuine test
+  // hangs still fail via testTimeout.
+  detectOpenHandles: false,
+  forceExit: true,
   detectLeaks: false,
   clearMocks: true,
   resetModules: false,
