@@ -5,9 +5,10 @@
 **Last Updated**: 2026-09-15
 
 > **Companion alerts (issue #1140)**: this runbook also serves the webhook-ledger
-> alerts `WebhookNotConfigured` (critical), `WebhookLagHigh` (warning),
-> `WebhookSignatureFailureSpike` (warning), and `WebhookRedisDegraded` (warning) —
-> see the `armored_archer_webhook_ledger` group in `backend/alerts.yml`.
+> alerts `WebhookNotConfigured` (critical), `WebhookLagHigh` (warning), and
+> `WebhookSignatureFailureSpike` (warning) — see the
+> `armored_archer_webhook_ledger` group in `backend/alerts.yml`.
+> (`WebhookRedisDegraded` was retired with Redis in #1423.)
 
 ---
 
@@ -58,11 +59,6 @@ curl -s 'http://prometheus:9090/api/v1/query' \
 # p95 webhook processing latency (WebhookLagHigh fires above 2s)
 curl -s 'http://prometheus:9090/api/v1/query' \
   -G --data-urlencode 'query=histogram_quantile(0.95, sum by (le) (rate(armored_archer_webhook_processing_seconds_bucket[5m])))' \
-  | jq '.data.result[]'
-
-# Redis degradation on the dedup fast path (WebhookRedisDegraded)
-curl -s 'http://prometheus:9090/api/v1/query' \
-  -G --data-urlencode 'query=sum by (operation) (rate(armored_archer_webhook_redis_errors_total[5m]))' \
   | jq '.data.result[]'
 
 # Queue depth of cap-overflow paid awards, per affected player
