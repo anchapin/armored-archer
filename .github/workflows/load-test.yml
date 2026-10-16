@@ -1,277 +1,241 @@
+# k6 load tests against the Nakama backend (issue #1347).
+#
+# Runs nightly and on PRs that touch the scenarios or this workflow (so a PR
+# editing the load suite proves itself green before merge). The Nakama +
+# Postgres environment is provisioned with the same recipe as the
+# backend-integration-test job in ci.yml: bundle built from the checked-out
+# code, docker-compose service stack, migrations, CI admin identity.
+#
+# Player stats live in Nakama STORAGE, so the seed step creates device-linked
+# users plus storage rows (see backend/tests/load/README.md).
+
 name: Load Tests
 
 on:
   schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 6 * * *'
   pull_request:
     paths:
-      - 'backend/**'
+      - 'backend/tests/load/**'
       - '.github/workflows/load-test.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
-  load-test:
+  k6-load-test:
+    name: k6 Load Tests (Nakama + Postgres)
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:15
-        env:
-          POSTGRES_DB: nakama
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: localdbpassword
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      nakama:
-        image: heroiclabs/nakama:3.19.0
-        # Pass --database.address as a CMD override because the env var
-        # form (NAKAMA_DATABASE_ADDRESS, DATABASE_ADDRESS, DB_HOST, ...)
-        # was not being read by the container — Nakama kept logging
-        # "Database connections: root@localhost:26257" (its cockroachdb
-        # default) and crashing on "dial tcp [::1]:26257: connection refused".
-        # The bare double-dash form is what Nakama's --help documents.
-        command: ["--database.address", "postgres://postgres:localdbpassword@postgres:5432/nakama"]
-        ports:
-          - 7350:7350
-        # curl -f returns non-zero on any HTTP error, which docker treats
-        # as unhealthy — no shell operator needed. The previous
-        # `curl -f http://localhost:7350/ || exit 1` tripped docker's arg
-        # parser (`||` is bash-only, not a docker flag). Wrapping in
-        # `sh -c` also failed because docker's per-token parser treats the
-        # second token as the value of --health-cmd and then misinterprets
-        # the embedded `-c` as --cpu-shares.
-        options: >-
-          --health-cmd "curl -f http://localhost:7350/"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+    timeout-minutes: 30
+    env:
+      HMAC_SECRET: ci-test-secret-do-not-use-in-production
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
         with:
-          go-version: '1.21'
-          cache: true
-          cache-dependency-path: backend/go.sum
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install k6
-        run: |
-          curl https://github.com/grafana/k6/releases/download/v0.49.0/k6-v0.49.0-linux-amd64.tar.gz -L | tar xvz
-          sudo mv k6-v0.49.0-linux-amd64/k6 /usr/local/bin/
-          k6 version
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
 
-      - name: Validate load test configuration
+      - name: Inject required env vars into .env for CI bundle build
+        working-directory: ./backend
         run: |
-          cd backend/tests/load
-          go test -v -timeout 30s
+          if [ ! -f .env ] || ! grep -q "^HMAC_SECRET=" .env; then
+            echo "HMAC_SECRET=ci-test-secret-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^NAKAMA_SERVER_KEY=" .env; then
+            echo "NAKAMA_SERVER_KEY=ci-test-server-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^TEST_FIXTURE_RPCS_ENABLED=" .env; then
+            echo "TEST_FIXTURE_RPCS_ENABLED=true" >> .env
+          fi
+          echo 'CI_RECEIPT_FIXTURE=true' >> .env
+          if [ ! -f .env ] || ! grep -q "^SESSION_ENCRYPTION_KEY=" .env; then
+            echo "SESSION_ENCRYPTION_KEY=ci-test-session-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^REFRESH_ENCRYPTION_KEY=" .env; then
+            echo "REFRESH_ENCRYPTION_KEY=ci-test-refresh-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^TOKEN_ENCRYPTION_KEY=" .env; then
+            echo "TOKEN_ENCRYPTION_KEY=ci-test-token-encryption-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^REVENUECAT_SECRET_KEY=" .env; then
+            echo "REVENUECAT_SECRET_KEY=ci-test-revenuecat-secret-key-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^REVENUECAT_WEBHOOK_SECRET=" .env; then
+            echo "REVENUECAT_WEBHOOK_SECRET=ci-test-revenuecat-webhook-secret-do-not-use-in-production" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^DATABASE_ADDRESS=" .env; then
+            echo "DATABASE_ADDRESS=postgres://postgres:changeme@postgres:5432/nakama" >> .env
+          fi
+          if [ ! -f .env ] || ! grep -q "^FIREBASE_ENABLED=" .env; then
+            echo "FIREBASE_ENABLED=false" >> .env
+          fi
 
-      - name: Build backend
-        run: |
-          cd backend
-          go build -o /tmp/nakama-greedy ./cmd/server
+      - name: Build Nakama bundle
+        working-directory: ./backend
+        run: npm run build:full
 
-      - name: Wait for Nakama to be ready
+      - name: Start Nakama and Postgres via docker-compose
         run: |
-          echo "Waiting for Nakama to start..."
+          docker compose --parallel 1 -f .github/docker-compose.yml pull
+          docker compose -f .github/docker-compose.yml up -d --pull never
+          echo "Waiting for services to be healthy..."
           for i in {1..60}; do
-            if curl -f http://localhost:7350/ > /dev/null 2>&1; then
-              echo "✓ Nakama is ready"
+            if docker compose -f .github/docker-compose.yml ps | grep -q "healthy"; then
+              echo "Services are healthy"
               break
             fi
-            if [ $i -eq 60 ]; then
-              echo "✗ Nakama failed to start"
-              exit 1
-            fi
-            echo "Waiting... ($i/60)"
+            echo "Waiting for services... ($i/60)"
             sleep 2
           done
 
-      - name: Create test users in database
+      - name: Wait for PostgreSQL to be ready
         run: |
-          # Create test users for load testing
-          PGPASSWORD=localdbpassword psql -h localhost -U postgres -d nakama << 'EOF'
-          -- Insert test users (these will be used by load tests)
-          INSERT INTO users (id, username, display_name, avatar_url, language, timezone, location, metadata, create_time, update_time)
+          for i in {1..30}; do
+            if PGPASSWORD=changeme pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Wait for Nakama to be ready
+        run: |
+          MAX_WAIT=360
+          INTERVAL=15
+          ELAPSED=0
+          CONSECUTIVE=0
+          NEEDED=3
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            if docker exec ci_nakama /nakama/nakama healthcheck 2>/dev/null; then
+              CONSECUTIVE=$((CONSECUTIVE + 1))
+              echo "  Nakama healthy (${CONSECUTIVE}/${NEEDED}, waited ${ELAPSED}s)..."
+              if [ $CONSECUTIVE -ge $NEEDED ]; then
+                echo "Nakama is ready!"
+                exit 0
+              fi
+            else
+              CONSECUTIVE=0
+              echo "  Nakama not ready (waited ${ELAPSED}s/${MAX_WAIT}s)..."
+            fi
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          echo "ERROR: Nakama did not become ready within ${MAX_WAIT}s."
+          docker logs ci_nakama --tail 100 2>&1 | tail -50
+          exit 1
+
+      - name: Run game schema migrations
+        working-directory: ./backend/data
+        run: |
+          for migration in $(ls -1 *.sql 2>/dev/null | sort -V); do
+            echo "Running migration: $migration"
+            PGPASSWORD=changeme psql -h localhost -p 5432 -U postgres -d nakama -f "$migration" || true
+          done
+
+      - name: Bootstrap CI admin identity and reload allowlisted bundle
+        env:
+          CI: 'true'
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: |
+          cd backend
+          node scripts/ci-admin-identity.js
+          npm run build:full
+          cd ..
+          docker compose -f .github/docker-compose.yml restart nakama
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:7350/healthcheck >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ci_nakama --tail 50
+          exit 1
+
+      - name: Seed load-test users, device links, and player stats
+        run: |
+          PGPASSWORD=changeme psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U postgres -d nakama <<'SQL'
+          INSERT INTO users (id, username, display_name, lang_tag, metadata)
           VALUES
-            ('user1-id', 'user1@test.com', 'Test User 1', NULL, 'en', 'UTC', NULL, '{}', NOW(), NOW()),
-            ('user2-id', 'user2@test.com', 'Test User 2', NULL, 'en', 'UTC', NULL, '{}', NOW(), NOW())
-          ON CONFLICT (id) DO NOTHING;
+            ('00000000-0000-4000-8000-000000000001', 'k6_loadtest_1', 'K6 Load Test 1', 'en', '{}'),
+            ('00000000-0000-4000-8000-000000000002', 'k6_loadtest_2', 'K6 Load Test 2', 'en', '{}'),
+            ('00000000-0000-4000-8000-000000000003', 'k6_loadtest_3', 'K6 Load Test 3', 'en', '{}')
+          ON CONFLICT DO NOTHING;
 
-          -- Insert user device auth credentials
-          INSERT INTO user_device (id, user_id, device_id, provider)
+          INSERT INTO user_device (id, user_id)
           VALUES
-            ('device1-id', 'user1-id', 'test-device-1', 'email'),
-            ('device2-id', 'user2-id', 'test-device-2', 'email')
-          ON CONFLICT (id) DO NOTHING;
+            ('k6-loadtest-device-1', '00000000-0000-4000-8000-000000000001'),
+            ('k6-loadtest-device-2', '00000000-0000-4000-8000-000000000002'),
+            ('k6-loadtest-device-3', '00000000-0000-4000-8000-000000000003')
+          ON CONFLICT DO NOTHING;
 
-          -- Insert player stats for test users
-          INSERT INTO player_stats (user_id, level, experience, ability_points, strength, dexterity, intelligence, vitality, luck, create_time, update_time)
-          VALUES
-            ('user1-id', 10, 5000, 5, 15, 12, 10, 14, 11, NOW(), NOW()),
-            ('user2-id', 8, 3500, 4, 13, 11, 9, 12, 10, NOW(), NOW())
-          ON CONFLICT (user_id) DO NOTHING;
+          INSERT INTO storage (collection, key, user_id, value, read, write)
+          SELECT 'player_stats', u.id::text, u.id,
+                 json_build_object(
+                   'user_id', u.id::text,
+                   'level', 1,
+                   'xp', 0,
+                   'ability_points', 0,
+                   'stats', json_build_object('attack', 10, 'defense', 10, 'dodge', 10, 'crit_rate', 5)
+                 )::jsonb,
+                 1, 1
+          FROM users u
+          WHERE u.username LIKE 'k6\_loadtest\_%'
+          ON CONFLICT (collection, key, user_id) DO NOTHING;
+          SQL
 
-          SELECT 'Test users created successfully' AS result;
-          EOF
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
 
-      - name: Run smoke test
-        run: |
-          cd backend/tests/load
-          k6 run scenarios/smoke.js
+      - name: Run smoke scenario
+        working-directory: ./backend
+        env:
+          NAKAMA_BASE_URL: http://127.0.0.1:7350
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: k6 run --summary-export=smoke-results.json tests/load/scenarios/smoke.js
 
-      - name: Run player stats load test
-        run: |
-          cd backend/tests/load
-          k6 run --summary-export=player-stats-results.json scenarios/player_stats.js
+      - name: Run player stats scenario
+        working-directory: ./backend
+        env:
+          NAKAMA_BASE_URL: http://127.0.0.1:7350
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: k6 run --summary-export=player-stats-results.json tests/load/scenarios/player_stats.js
 
-      - name: Run leaderboard load test
-        run: |
-          cd backend/tests/load
-          k6 run --summary-export=leaderboard-results.json scenarios/leaderboard.js
+      - name: Run leaderboard scenario
+        working-directory: ./backend
+        env:
+          NAKAMA_BASE_URL: http://127.0.0.1:7350
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: k6 run --summary-export=leaderboard-results.json tests/load/scenarios/leaderboard.js
 
-      - name: Run mixed workload load test
-        run: |
-          cd backend/tests/load
-          k6 run --summary-export=mixed-workload-results.json scenarios/mixed_workload.js
+      - name: Run mixed workload scenario
+        working-directory: ./backend
+        env:
+          NAKAMA_BASE_URL: http://127.0.0.1:7350
+          NAKAMA_SERVER_KEY: ci-test-server-key-do-not-use-in-production
+        run: k6 run --summary-export=mixed-workload-results.json tests/load/scenarios/mixed_workload.js
 
-      - name: Upload load test results
-        uses: actions/upload-artifact@v6
+      - name: Parse load test results
         if: always()
+        working-directory: ./backend
+        run: node tests/load/parse-load-test-results.js
+
+      - name: Upload k6 result artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: load-test-results
           path: |
-            backend/tests/load/*-results.json
+            backend/*-results.json
           retention-days: 30
-
-      - name: Parse and validate load test results
-        run: |
-          cd backend/tests/load
-
-          # Check if results files exist
-          if [ ! -f player-stats-results.json ]; then
-            echo "⚠️  player-stats-results.json not found"
-            exit 1
-          fi
-
-          # Validate P95 latency < 100ms
-          P95_LATENCY=$(node -e "
-            const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('player-stats-results.json', 'utf8'));
-            const metric = data.metrics['get_player_stats_latency'] || data.metrics['http_req_duration'];
-            console.log(metric ? metric.values['p(95)'] || 0 : 0);
-          ")
-
-          echo "Player Stats P95 Latency: ${P95_LATENCY}ms"
-
-          if (( $(echo "$P95_LATENCY > 100" | bc -l) )); then
-            echo "❌ P95 latency exceeds 100ms threshold: ${P95_LATENCY}ms"
-            exit 1
-          else
-            echo "✓ P95 latency within threshold"
-          fi
-
-          # Validate error rate < 1%
-          ERROR_RATE=$(node -e "
-            const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('player-stats-results.json', 'utf8'));
-            const metric = data.metrics['errors'];
-            console.log(metric ? metric.values['rate'] || 0 : 0);
-          ")
-
-          ERROR_PERCENT=$(echo "$ERROR_RATE * 100" | bc)
-          echo "Error Rate: ${ERROR_PERCENT}%"
-
-          if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
-            echo "❌ Error rate exceeds 1% threshold: ${ERROR_PERCENT}%"
-            exit 1
-          else
-            echo "✓ Error rate within threshold"
-          fi
-
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-
-            let comment = '## 🔥 Load Test Results\n\n';
-
-            // Try to read results files
-            const resultsDir = 'backend/tests/load';
-            const files = ['player-stats-results.json', 'leaderboard-results.json', 'mixed-workload-results.json'];
-
-            for (const file of files) {
-              try {
-                const filePath = path.join(resultsDir, file);
-                if (fs.existsSync(filePath)) {
-                  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                  const testName = file.replace('-results.json', '').replace('-', ' ').toUpperCase();
-
-                  comment += `### ${testName}\n`;
-
-                  // Extract P95 latency
-                  const latencyMetric = data.metrics['get_player_stats_latency'] ||
-                                        data.metrics['get_leaderboard_latency'] ||
-                                        data.metrics['http_req_duration'];
-                  if (latencyMetric) {
-                    const p95 = latencyMetric.values['p(95)'] || 0;
-                    const status = p95 < 100 ? '✅' : '❌';
-                    comment += `- **P95 Latency:** ${status} ${p95.toFixed(2)}ms (target: <100ms)\n`;
-                  }
-
-                  // Extract error rate
-                  const errorMetric = data.metrics['errors'];
-                  if (errorMetric) {
-                    const rate = errorMetric.values['rate'] || 0;
-                    const percent = (rate * 100).toFixed(2);
-                    const status = rate < 0.01 ? '✅' : '❌';
-                    comment += `- **Error Rate:** ${status} ${percent}% (target: <1%)\n`;
-                  }
-
-                  // Extract throughput
-                  const throughputMetric = data.metrics['http_reqs'];
-                  if (throughputMetric) {
-                    const throughput = throughputMetric.values['count'] || 0;
-                    const duration = data.test_run_duration_ms || 1000;
-                    const rps = (throughput / (duration / 1000)).toFixed(2);
-                    comment += `- **Throughput:** ${rps} req/s\n`;
-                  }
-
-                  comment += '\n';
-                }
-              } catch (error) {
-                console.log(`Could not read ${file}: ${error.message}`);
-              }
-            }
-
-            comment += '\n📊 Full results available in workflow artifacts.\n';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-      - name: Check load test thresholds
-        run: |
-          echo "Verifying load test results meet thresholds..."
-
-          # This is a simplified check - in production you'd parse the JSON properly
-          # The actual threshold validation happens in k6 via the thresholds config
-
-          echo "✓ Load test validation complete"
