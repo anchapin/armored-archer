@@ -334,6 +334,34 @@ func test_send_rpc_async_fire_and_forget():
 	assert_ne(_mock_rpc_http.get_http_client_status(), HTTPClient.STATUS_DISCONNECTED,
 		"Fire-and-forget RPC must dispatch through the installed RPC transport")
 
+func test_logout_cancels_pending_async_rpcs() -> void:
+	# Issue #1348: logout must propagate cancellation to the fire-and-forget
+	# RPC path. A queued dispatch would otherwise fire AFTER logout with
+	# empty auth headers (guaranteed 401), and an in-flight dispatch whose
+	# request is cancelled receives no request_completed signal, leaving
+	# _async_rpc_in_flight stuck true and the queue wedged permanently.
+	_network.session_token = "test_token"
+	_network.is_connected = true
+
+	# Force the queue path: send_rpc_async queues while a tracked cycle
+	# owns the RPC node (#1108 serialization).
+	_network._rpc_busy = true
+	_network.send_rpc_async("armored_archer/fake_one", "{}")
+	_network.send_rpc_async("armored_archer/fake_two", "{}")
+	assert_eq(_network._async_rpc_queue.size(), 2, "Both async RPCs queue while the RPC node is busy")
+
+	# Simulate an in-flight dispatch: cancel_request() emits no
+	# request_completed, so logout itself must release the flag.
+	_network._async_rpc_in_flight = true
+
+	_network.logout()
+
+	assert_true(_network._async_rpc_queue.is_empty(), "Logout clears the queued async RPCs")
+	assert_false(_network._async_rpc_in_flight, "Logout releases the in-flight async flag")
+	assert_eq(_network.session_token, "", "Logout still clears the session")
+
+	_network._rpc_busy = false
+
 func test_reconnection_attempts():
 	# Test attempt_reconnection() retry logic
 	watch_signals(_network)
