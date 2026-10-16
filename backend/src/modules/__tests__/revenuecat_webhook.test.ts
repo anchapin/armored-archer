@@ -6,7 +6,6 @@
  * - Fail-closed HMAC: forged/unsigned/unconfigured-secret webhooks grant nothing
  * - Event idempotency: replayed events credit exactly once
  * - Refund dedup: durable storage markers keep refunds at-most-once with
- *   Redis unavailable
  * - Max-balance queueing: paid awards cap and queue instead of failing
  */
 import { createHmac } from 'crypto';
@@ -19,7 +18,6 @@ import {
 import { getMetricsRegistry } from '../metrics';
 import { createMockLogger, createMockNakama } from '../../__mocks__/nakama';
 import { Runtime } from '../../types/nakama';
-import { getRedisClient } from '../../utils/redis';
 
 const WEBHOOK_SECRET = 'test_webhook_secret';
 
@@ -33,13 +31,6 @@ const mockCache = {
 jest.mock('../../utils/cache', () => ({
   getCacheManager: jest.fn(() => mockCache),
   resetCacheManager: jest.fn(),
-}));
-
-// Mock Redis so tests can simulate outages (issue #1067). Defaults to
-// "no Redis configured"; individual tests swap in a failing client.
-const mockGetRedisClient = getRedisClient as jest.Mock;
-jest.mock('../../utils/redis', () => ({
-  getRedisClient: jest.fn(),
 }));
 
 // Mock context representing an authenticated CLIENT session — the webhook
@@ -169,7 +160,6 @@ describe('rpcRevenueCatWebhook', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCache.get.mockReturnValue(undefined);
-    mockGetRedisClient.mockReturnValue(null);
     configModule.config.revenuecat.webhookSecret = WEBHOOK_SECRET;
     clearWebhookEventLedgersForTests();
   });
@@ -949,29 +939,18 @@ describe('rpcRevenueCatWebhook', () => {
     });
   });
 
-  describe('Refund dedup with Redis unavailable (issue #1067)', () => {
-    const failingRedis = {
-      exists: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-      get: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-      set: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-      setex: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-    };
-
-    beforeEach(() => {
-      mockGetRedisClient.mockReturnValue(failingRedis);
-    });
-
+  describe('Refund dedup via durable markers (issue #1067)', () => {
     it('deducts exactly once for a replayed refund webhook event', async () => {
       const { storageRead, storageWrite, seedCurrency, readCurrency } = createStatefulStorage();
       const nk = createTestNakama({ storageRead, storageWrite });
-      seedCurrency('redis-down-user', 550);
+      seedCurrency('dedup-user', 550);
 
       const payload = buildPayload({
-        event_id: 'evt-refund-redis',
+        event_id: 'evt-refund-replay',
         event_type: 'REFUND',
-        app_user_id: 'redis-down-user',
+        app_user_id: 'dedup-user',
         product_id: 'com.armoredarcher.gems.medium', // 550 gems
-        transaction_id: 'refund-tx-redis',
+        transaction_id: 'refund-tx-replay',
       });
       const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } };
 
@@ -980,11 +959,11 @@ describe('rpcRevenueCatWebhook', () => {
       expect(firstParsed.success).toBe(true);
       expect(firstParsed.new_balance).toBe(0);
 
-      // Replay (RevenueCat retry) during the Redis outage: the recorded
-      // outcome is returned and nothing is deducted again.
+      // Replay (RevenueCat retry): the recorded outcome is returned and
+      // nothing is deducted again.
       const second = await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload);
       expect(JSON.parse(second)).toEqual(firstParsed);
-      expect(readCurrency('redis-down-user')?.gems).toBe(0);
+      expect(readCurrency('dedup-user')?.gems).toBe(0);
     });
 
     it('processes a direct processRefund call at most once via durable markers', async () => {
@@ -1005,8 +984,8 @@ describe('rpcRevenueCatWebhook', () => {
       expect(first.success).toBe(true);
       expect(first.new_balance).toBe(0);
 
-      // Same transaction id again, Redis still down: the durable storage
-      // marker (not Redis) blocks the double deduction.
+      // Same transaction id again: the durable storage marker blocks the
+      // double deduction.
       const second = await processRefund(
         nk,
         'direct-refund-user',
@@ -1074,14 +1053,6 @@ describe('rpcRevenueCatWebhook', () => {
       const samples = await metricSamples('armored_archer_webhook_events_total');
       return samples
         .filter((s) => s.labels.event_type === eventType && s.labels.outcome === outcome)
-        .reduce((sum, s) => sum + s.value, 0);
-    }
-
-    /** Summed Redis-error counter for one operation. */
-    async function redisErrors(operation: string): Promise<number> {
-      const samples = await metricSamples('armored_archer_webhook_redis_errors_total');
-      return samples
-        .filter((s) => s.labels.operation === operation)
         .reduce((sum, s) => sum + s.value, 0);
     }
 
@@ -1238,31 +1209,21 @@ describe('rpcRevenueCatWebhook', () => {
       expect(await eventTotal('unknown_event', 'unhandled')).toBe(before + 1);
     });
 
-    // ADR-0008: ioredis is promise-based and the Nakama JS runtime cannot drive
-    // promises, so the webhook never consults Redis; durable storage is the
-    // dedup authority. A Redis outage must therefore neither fail the webhook
-    // nor touch the client, and the redis_errors counter stays flat.
-    it('processes the webhook without touching Redis when Redis is down (ADR-0008)', async () => {
+    // ADR-0008 + #1423: Redis is retired; durable Nakama storage is the
+    // dedup authority, so webhook processing runs entirely on storage.
+    it('processes the webhook entirely on durable storage (ADR-0008, Redis retired)', async () => {
       const { storageRead, storageWrite, seedCurrency } = createStatefulStorage();
       const nk = createTestNakama({ storageRead, storageWrite });
-      seedCurrency('metric-redis-user', 0);
-      const failingRedis = {
-        exists: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-        get: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-        set: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-        setex: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
-      };
-      mockGetRedisClient.mockReturnValue(failingRedis);
+      seedCurrency('metric-storage-user', 0);
 
-      const beforeLookup = await redisErrors('dedup_lookup');
-      const beforeRecord = await redisErrors('outcome_record');
+      const before = await eventTotal('initial_purchase', 'processed');
 
       const payload = buildPayload({
-        event_id: 'evt-metric-redis',
+        event_id: 'evt-metric-storage',
         event_type: 'INITIAL_PURCHASE',
-        app_user_id: 'metric-redis-user',
+        app_user_id: 'metric-storage-user',
         product_id: 'com.armoredarcher.gems.small',
-        transaction_id: 'tx-metric-redis',
+        transaction_id: 'tx-metric-storage',
       });
       const result = await rpcRevenueCatWebhook(
         { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } } as any,
@@ -1272,12 +1233,7 @@ describe('rpcRevenueCatWebhook', () => {
       );
 
       expect(JSON.parse(result).success).toBe(true);
-      expect(failingRedis.exists).not.toHaveBeenCalled();
-      expect(failingRedis.get).not.toHaveBeenCalled();
-      expect(failingRedis.set).not.toHaveBeenCalled();
-      expect(failingRedis.setex).not.toHaveBeenCalled();
-      expect(await redisErrors('dedup_lookup')).toBe(beforeLookup);
-      expect(await redisErrors('outcome_record')).toBe(beforeRecord);
+      expect(await eventTotal('initial_purchase', 'processed')).toBe(before + 1);
     });
 
     it('sets armored_archer_webhook_pending_awards when a purchase queues at the cap', async () => {

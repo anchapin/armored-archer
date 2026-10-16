@@ -919,16 +919,6 @@ const webhookPendingAwards = new Gauge({
   registers: [register],
 });
 
-const webhookRedisErrorsTotal = new Counter({
-  name: 'armored_archer_webhook_redis_errors_total',
-  help:
-    'Redis failures on the webhook ledger dedup fast path by operation ' +
-    '(dedup_lookup / outcome_record); each error degrades dedup to the ' +
-    'slower durable-storage path (correctness is preserved)',
-  labelNames: ['operation'] as const,
-  registers: [register],
-});
-
 const webhookConfigured = new Gauge({
   name: 'armored_archer_webhook_configured',
   help:
@@ -966,15 +956,6 @@ export function recordWebhookProcessingTime(eventType: string, seconds: number):
  */
 export function setWebhookPendingAwards(userId: string, count: number): void {
   webhookPendingAwards.set({ user_id: userId }, count);
-}
-
-/**
- * Increments the Redis-failure counter on the webhook dedup fast path.
- *
- * @param operation - 'dedup_lookup' | 'outcome_record'
- */
-export function incrementWebhookRedisError(operation: string): void {
-  webhookRedisErrorsTotal.inc({ operation });
 }
 
 /**

@@ -137,3 +137,26 @@ subscription checks and purchase restore now use it (`revenueCatRequest` in
 `backend/src/modules/store.ts`). Receipt validation fails closed when no
 RevenueCat key is configured or the call errors. Promise-based Redis (`ioredis`)
 remains unreachable, as stated above.
+
+## Amendment (2026-10-16, #1423 Redis retirement)
+
+The sync-HTTP/Redis question is now settled: **Redis is retired from the
+backend runtime.** Promise-based `ioredis` can never run on goja, and every
+capability Redis was wanted for has an ADR-0008-native substitute in durable
+Nakama storage with optimistic-concurrency writes:
+
+- Webhook event cross-instance idempotency (the old `SETNX` lock idea from
+  #1299): the SEC-002 claim-ledger - a create-only-if-absent storage write
+  (`version: '*'`) before any side effect, with stale-claim takeover.
+- Rate limiting (#1301 / SEC-004): a shared durable counter in the
+  `rate_limits` collection with CAS writes.
+- Receipt/refund dedup (#1067): the durable `validated_receipts` /
+  `refund_markers` storage ledgers, already authoritative.
+
+Accordingly: `utils/redis.ts`, its mock and tests, the `ioredis` dependency,
+the `config.redis` block, and the dead `void getRedisClient(...)` branches in
+`store.ts` are removed, and `scripts/validate-nakama-bundle.js` rejects
+`require('ioredis')` / `new Redis(` so the retired pattern cannot be
+reintroduced. The `armored_archer_webhook_redis_errors_total` metric (never
+incremented on the sync path) is removed with them. Removing the now-unused
+`redis` service from the compose files is tracked separately.

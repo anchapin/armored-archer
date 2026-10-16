@@ -596,7 +596,7 @@ describe('store', () => {
   // =====================================================================
 
   describe('processRefund', () => {
-    it('should reject duplicate refund via durable storage markers even without Redis (issue #1067)', async () => {
+    it('should reject duplicate refund via durable storage markers (issue #1067)', async () => {
       const nk = createMockNakama();
       const logger = createMockLogger();
       nk.storageWrite([
@@ -3732,48 +3732,6 @@ describe('store', () => {
       expect(parsed.success).toBe(true);
     });
 
-    it('should fall through to in-memory check when Redis errors', async () => {
-      const mockRedisModule = require('../../__mocks__/redis');
-
-      // Set up Redis to throw an error on exists
-      mockRedisModule.getRedisClient.mockReturnValueOnce({
-        ...mockRedisModule,
-        exists: jest.fn().mockRejectedValue(new Error('Redis connection failed')),
-      });
-
-      mockFetch.mockReturnValue({
-        ok: true,
-        json: () => ({
-          status: 'active',
-          subscriber: {
-            non_subscriptions: {
-              'com.armoredarcher.gems.small': [{ id: 'txn_redis_err' }],
-            },
-          },
-        }),
-      });
-
-      mockNk.storageRead = jest.fn(() => []);
-
-      const result = await rpcValidatePurchase(
-        mockCtx,
-        mockLogger,
-        mockNk,
-        JSON.stringify({
-          product_id: 'com.armoredarcher.gems.small',
-          platform: 'ios',
-          transaction_receipt: 'redis_error_fallback_receipt',
-        })
-      );
-
-      const parsed = JSON.parse(result);
-      // Should succeed since Redis error falls through and receipt is new
-      expect(parsed.success).toBe(true);
-
-      // Reset mock
-      mockRedisModule.getRedisClient.mockReturnValue(mockRedisModule);
-    });
-
     it('should handle storage read error in receipt check gracefully', async () => {
       // Make storageRead throw for validated_receipts collection
       const originalStorageRead = mockNk.storageRead;
@@ -4906,38 +4864,6 @@ describe('store', () => {
     });
   });
 
-  describe('processRefund with isRefundAlreadyProcessed Redis error', () => {
-    it('should handle refund when Redis throws on check', async () => {
-      const mockRedisModule = require('../../__mocks__/redis');
-      mockRedisModule.getRedisClient.mockReturnValueOnce({
-        ...mockRedisModule,
-        exists: jest.fn().mockRejectedValue(new Error('Redis down')),
-      });
-
-      const nk = createMockNakama();
-      nk.storageWrite([
-        {
-          collection: 'player_currency',
-          key: 'redis-err-user',
-          userId: 'redis-err-user',
-          value: JSON.stringify({ user_id: 'redis-err-user', gems: 200, coins: 0 }),
-        },
-      ]);
-
-      const result = await processRefund(
-        nk,
-        'redis-err-user',
-        50,
-        'tx-redis-err',
-        RefundReason.CUSTOMER_SUPPORT,
-        createMockLogger()
-      );
-      expect(result.success).toBe(true);
-
-      mockRedisModule.getRedisClient.mockReturnValue(mockRedisModule);
-    });
-  });
-
   describe('markReceiptAsUsed storage write error branch', () => {
     it('should handle storage write error when marking receipt', async () => {
       mockFetch.mockReturnValue({
@@ -5072,7 +4998,7 @@ describe('store', () => {
   });
 
   describe('isReceiptAlreadyUsed storage fallback branch', () => {
-    it('should check Nakama storage when Redis and memory miss', async () => {
+    it('should check Nakama storage when the memory cache misses', async () => {
       mockFetch.mockReturnValue({
         ok: true,
         json: () => ({
