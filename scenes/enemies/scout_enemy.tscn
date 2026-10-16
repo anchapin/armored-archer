@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cyk2qta2tooyh"]
 
-[ext_resource type="Script" uid="uid://ckpfxk82yoolo" path="res://scenes/enemies/scout_enemy.gd" id="1_scout_enemy_script"]
+[ext_resource type="Script" uid="uid://141g8t78cw6g" path="res://scenes/enemies/scout_enemy.gd" id="1_scout_enemy_script"]
 [ext_resource type="SpriteFrames" path="res://assets/sprite_frames/goblin_scout_frames.tres" id="2_scout_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_scout_enemy"]

@@ -1,16 +1,16 @@
 [gd_scene load_steps=2 format=3 uid="uid://bcx7y6k8v5nmr8p"]
 
-[ext_resource type="StyleBoxFlat" uid="uid://dfg3h9k8l2nmr7j" path="res://themes/pvp_panel_bg.tres" id="PanelBG_1"]
+[ext_resource type="StyleBoxFlat" path="res://themes/pvp_panel_bg.tres" id="PanelBG_1"]
 
-[ext_resource type="StyleBoxFlat" uid="uid://dfg3h9k8l2nmr7k" path="res://themes/pvp_panel_bg.tres" id="PanelBG_2"]
+[ext_resource type="StyleBoxFlat" path="res://themes/pvp_panel_bg.tres" id="PanelBG_2"]
 
-[ext_resource type="StyleBoxFlat" uid="uid://dfg3h9k8l2nmr7l" path="res://themes/pvp_button_normal.tres" id="ButtonStyleNormal"]
+[ext_resource type="StyleBoxFlat" path="res://themes/pvp_button_normal.tres" id="ButtonStyleNormal"]
 
-[ext_resource type="StyleBoxFlat" uid="uid://dfg3h9k8l2nmr7m" path="res://themes/pvp_button_pressed.tres" id="ButtonStylePressed"]
+[ext_resource type="StyleBoxFlat" path="res://themes/pvp_button_pressed.tres" id="ButtonStylePressed"]
 
-[ext_resource type="StyleBoxFlat" uid="uid://dfg3h9k8l2nmr7n" path="res://themes/pvp_button_hover.tres" id="ButtonStyleHover"]
+[ext_resource type="StyleBoxFlat" path="res://themes/pvp_button_hover.tres" id="ButtonStyleHover"]
 
-[ext_resource type="StyleBoxFlat" uid="uid://dfg3h9k8l2nmr7o" path="res://themes/pvp_button_disabled.tres" id="ButtonStyleDisabled"]
+[ext_resource type="StyleBoxFlat" path="res://themes/pvp_button_disabled.tres" id="ButtonStyleDisabled"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_1"]
 font = null

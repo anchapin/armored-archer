@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cctew8khj0gk8"]
 
-[ext_resource type="Script" uid="uid://jbas50xig4i8" path="res://scenes/enemies/guardian_enemy.gd" id="1_guardian_enemy_script"]
+[ext_resource type="Script" uid="uid://c0qo85gdff70g" path="res://scenes/enemies/guardian_enemy.gd" id="1_guardian_enemy_script"]
 [ext_resource type="SpriteFrames" path="res://assets/sprite_frames/forest_guardian_frames.tres" id="2_guardian_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_guardian_enemy"]

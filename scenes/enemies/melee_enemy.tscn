@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cxp2leukxvhbc"]
 
-[ext_resource type="Script" uid="uid://cboj1kgdhsoy6" path="res://scenes/enemies/melee_enemy.gd" id="1_melee_enemy_script"]
+[ext_resource type="Script" uid="uid://dovp8u03ldeku" path="res://scenes/enemies/melee_enemy.gd" id="1_melee_enemy_script"]
 [ext_resource type="Texture2D" uid="uid://nvqyggojltgd" path="res://assets/sprites/enemies/goblin_idle_down_0.png" id="2_ru65g"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_melee_enemy"]

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c8lcijrsa7e2h"]
 
-[ext_resource type="Script" uid="uid://up4clxg0p7el" path="res://scenes/enemies/brute_enemy.gd" id="1_brute_enemy_script"]
+[ext_resource type="Script" uid="uid://hes0iff1ajaj" path="res://scenes/enemies/brute_enemy.gd" id="1_brute_enemy_script"]
 [ext_resource type="Texture2D" uid="uid://dchs2cjfe8xyh" path="res://assets/sprites/enemies/brute_idle_down_0.png" id="2_6phdu"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_brute_enemy"]
