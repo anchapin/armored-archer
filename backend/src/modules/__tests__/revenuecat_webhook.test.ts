@@ -563,6 +563,32 @@ describe('rpcRevenueCatWebhook', () => {
       expect(readCurrency('flaky-user')?.gems).toBe(100);
     });
 
+    it('returns a safe-to-retry error and awards nothing when storage fails while claiming', async () => {
+      const { storageRead, storageWrite, storageDelete, readCurrency } = createStatefulStorage();
+      // Storage write fails with a NON-version error on the claim write.
+      storageWrite.mockImplementationOnce(() => {
+        throw new Error('connection reset by peer');
+      });
+      const nk = createTestNakama({ storageRead, storageWrite, storageDelete });
+
+      const payload = buildPayload({
+        event_id: 'evt-storage-down',
+        event_type: 'INITIAL_PURCHASE',
+        app_user_id: 'down-user',
+        product_id: 'com.armoredarcher.gems.small',
+        transaction_id: 'tx-storage-down',
+      });
+      const ctx = { ...mockCtx, variables: { 'x-revenuecat-signature': sign(payload) } };
+
+      const result = JSON.parse(
+        await rpcRevenueCatWebhook(ctx as any, createMockLogger(), nk, payload)
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Event dedup unavailable - safe to retry');
+      // Nothing was awarded before the failure.
+      expect(readCurrency('down-user')).toBeUndefined();
+    });
+
     it('takes over a stale claim (dead processor) and processes the event', async () => {
       const { records, storageRead, storageWrite, storageDelete, readCurrency } =
         createStatefulStorage();
