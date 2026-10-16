@@ -162,57 +162,59 @@ jobs:
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (staging)
         if: always() && env.ACT != 'true'
-        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "Deployment to *Staging* ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Deployment ${{ job.status == 'success' && 'Succeeded' || 'Failed' }} : Staging"
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Environment:*\nStaging"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Status:*\n${{ job.status }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Commit:*\n${{ github.sha }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    }
-                  ]
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Deployment"
-                      },
-                      "url": "${{ steps.deployment.outputs.deployment_url }}"
-                    }
-                  ]
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          # Discord's Slack-compatible endpoint accepts this Slack-format payload unchanged.
+          curl -sSf -X POST -H 'Content-Type: application/json' \
+            --data @- "${DISCORD_WEBHOOK_URL}/slack" <<'PAYLOAD'
+          {
+            "text": "Deployment to *Staging* ${{ job.status }}",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Deployment ${{ job.status == 'success' && 'Succeeded' || 'Failed' }} : Staging"
                 }
-              ]
-            }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Environment:*\nStaging"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Status:*\n${{ job.status }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n${{ github.sha }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Deployment"
+                    },
+                    "url": "${{ steps.deployment.outputs.deployment_url }}"
+                  }
+                ]
+              }
+            ]
+          }
+          PAYLOAD
 
   deploy-production:
     name: Deploy to Production
@@ -353,54 +355,56 @@ jobs:
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (production)
         if: always() && env.ACT != 'true'
-        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "Deployment to *Production* ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Deployment ${{ job.status == 'success' && 'Succeeded' || 'Failed' }} : Production"
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Environment:*\nProduction"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Status:*\n${{ job.status }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Commit:*\n${{ github.sha }}"
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    }
-                  ]
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Deployment"
-                      },
-                      "url": "${{ steps.deployment.outputs.deployment_url }}"
-                    }
-                  ]
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          # Discord's Slack-compatible endpoint accepts this Slack-format payload unchanged.
+          curl -sSf -X POST -H 'Content-Type: application/json' \
+            --data @- "${DISCORD_WEBHOOK_URL}/slack" <<'PAYLOAD'
+          {
+            "text": "Deployment to *Production* ${{ job.status }}",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Deployment ${{ job.status == 'success' && 'Succeeded' || 'Failed' }} : Production"
                 }
-              ]
-            }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Environment:*\nProduction"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Status:*\n${{ job.status }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n${{ github.sha }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Deployment"
+                    },
+                    "url": "${{ steps.deployment.outputs.deployment_url }}"
+                  }
+                ]
+              }
+            ]
+          }
+          PAYLOAD
