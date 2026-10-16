@@ -90,7 +90,6 @@ Required variables are documented in `.env.example`. Key variables include:
 **Optional:**
 - `REVENUECAT_PUBLIC_API_KEY` - RevenueCat public key
 - `REVENUECAT_SECRET_API_KEY` - RevenueCat secret key
-- `FIREBASE_API_KEY` - Firebase API key
 - `FIREBASE_PROJECT_ID` - Firebase project ID
 
 ### Environment-Specific Configurations

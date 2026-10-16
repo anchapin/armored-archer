@@ -187,11 +187,9 @@ describe('Environment Validation', () => {
     });
 
     it('should handle missing optional Firebase variables', () => {
-      const apiKey = process.env.FIREBASE_API_KEY;
       const projectId = process.env.FIREBASE_PROJECT_ID;
 
       // These are optional, so they can be undefined
-      expect(apiKey === undefined || typeof apiKey === 'string').toBe(true);
       expect(projectId === undefined || typeof projectId === 'string').toBe(true);
     });
   });

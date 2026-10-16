@@ -186,22 +186,20 @@ Before rotating any secret:
 
 2. Navigate to Project Settings
 
-3. Rotate credentials as needed:
-   - **API Key:** Generate new key in Project Settings > General
+3. Rotate credentials as needed (Firebase is used for push notifications/FCM only):
    - **Service Account Keys:** Generate new private key in Project Settings > Service Accounts
-   - **Database Rules:** Update Firebase Realtime Database or Firestore rules
+   - **Database Rules:** Update Firebase Realtime Database rules, if the database URL is configured
 
-4. Update `.env` file:
+4. Update `backend/.env` (server-side FCM service-account config):
    ```bash
-   FIREBASE_API_KEY=new_api_key_here
+   FIREBASE_ENABLED=true
    FIREBASE_PROJECT_ID=existing_project_id
-   FIREBASE_AUTH_DOMAIN=existing_project_id.firebaseapp.com
+   FIREBASE_CLIENT_EMAIL=new_service_account_email
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nNEW_KEY\n-----END PRIVATE KEY-----\n"
    FIREBASE_DATABASE_URL=https://existing_project_id-default-rtdb.firebaseio.com
-   FIREBASE_STORAGE_BUCKET=existing_project_id.appspot.com
-   FIREBASE_MESSAGING_SENDER_ID=existing_sender_id
    ```
 
-5. Rebuild and redeploy client if necessary
+5. Redeploy the backend
 
 ## Post-Rotation Verification
 
