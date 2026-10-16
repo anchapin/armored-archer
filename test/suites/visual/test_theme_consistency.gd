@@ -6,13 +6,14 @@ extends GutTest
 ## accessibility standards, and design tokens are properly used throughout the UI.
 
 var _theme_manager: Node
+var _ThemeManagerClass: GDScript
 const ArcherDesignTokens = preload("res://autoloads/ArcherDesignTokens.gd")
 
 
 func before_all():
 	# Initialize theme manager via load (no class_name defined in headless mode)
-	var ThemeManagerClass = load("res://autoloads/ThemeManager.gd")
-	_theme_manager = ThemeManagerClass.new()
+	_ThemeManagerClass = load("res://autoloads/ThemeManager.gd")
+	_theme_manager = _ThemeManagerClass.new()
 
 
 func after_all():
@@ -103,10 +104,11 @@ func _to_linear_colorspace(c: float) -> float:
 # ============================================================================
 
 func test_theme_switching_layout_invariance():
-	var main_menu_path := "res://scenes/main_menu.tscn"
+	var main_menu_path := "res://scenes/ui/main_menu.tscn"
 
 	if not ResourceLoader.exists(main_menu_path):
 		pending("Main menu scene not found")
+		return
 
 	var scene: Node = load(main_menu_path).instantiate()
 	add_child(scene)
@@ -114,30 +116,65 @@ func test_theme_switching_layout_invariance():
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	add_child(_theme_manager)
+	# Prefer the real autoload so the scene actually restyles; fall back to a
+	# local instance when autoloads are unavailable.
+	var manager: Node = get_node_or_null("/root/ThemeManager")
+	if manager == null:
+		manager = _theme_manager
+		add_child(manager)
 
-	# Capture light theme
-	_theme_manager.set_theme("light")
+	# Capture light theme layout (node rects, not pixels - headless has no
+	# GPU readback, so screenshot comparison cannot work here).
+	manager.set_theme_mode(_ThemeManagerClass.ThemeMode.LIGHT)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var light_screenshot: Image = await capture_screenshot("main_menu", "light", Vector2i(1920, 1080))
+	await get_tree().process_frame
+	var light_layout := _capture_layout(scene)
 
-	# Capture dark theme
-	_theme_manager.set_theme("dark")
+	# Capture dark theme layout
+	manager.set_theme_mode(_ThemeManagerClass.ThemeMode.DARK)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var dark_screenshot: Image = await capture_screenshot("main_menu", "dark", Vector2i(1920, 1080))
+	await get_tree().process_frame
+	var dark_layout := _capture_layout(scene)
 
 	# Verify layout positions are same (only colors changed)
-	var layout_diff := _compare_layout_structure(light_screenshot, dark_screenshot)
-	assert_lt(
-		layout_diff,
-		0.05,  # Allow 5% difference for anti-aliasing and rendering differences
-		"Theme switch should not change layout structure (diff: %.2f%%)" % [layout_diff * 100]
+	var layout_diffs := []
+	for key in light_layout:
+		if not dark_layout.has(key):
+			layout_diffs.append("missing in dark: " + key)
+		elif str(light_layout[key]) != str(dark_layout[key]):
+			layout_diffs.append("%s: %s -> %s" % [key, light_layout[key], dark_layout[key]])
+	for key in dark_layout:
+		if not light_layout.has(key):
+			layout_diffs.append("missing in light: " + key)
+	assert_eq(
+		layout_diffs.size(),
+		0,
+		"Theme switch should not change any Control position or size: " + "; ".join(layout_diffs.slice(0, 5))
 	)
 
-	_theme_manager.queue_free()
+	manager.set_theme_mode(_ThemeManagerClass.ThemeMode.LIGHT)
+	if manager == _theme_manager:
+		manager.queue_free()
 	scene.queue_free()
+
+
+## Walk the scene tree and record every Control's path, position and size.
+## Theme switching must never alter layout - only colors.
+func _capture_layout(root: Node) -> Dictionary:
+	var layout := {}
+	_collect_layout(root, layout)
+	return layout
+
+
+func _collect_layout(node: Node, layout: Dictionary) -> void:
+	if node is Control:
+		# Round to whole pixels: sub-pixel offsets from idle animations (e.g. the
+		# character preview bob) are time-based, not theme-caused.
+		layout[str(node.get_path())] = [node.position.round(), node.size.round()]
+	for child in node.get_children():
+		_collect_layout(child, layout)
 
 
 # ============================================================================
