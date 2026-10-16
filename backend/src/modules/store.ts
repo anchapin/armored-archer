@@ -3594,6 +3594,32 @@ function recordWebhookOutcome(
  */
 const WEBHOOK_CLAIM_STALE_MS = 10 * 60 * 1000;
 
+interface WebhookEventLedgerRecord {
+  outcome?: string;
+  claimed_at?: number;
+}
+
+/**
+ * Read the durable webhook event ledger record (claim or outcome) with its
+ * storage version for OCC writes (issue #1299 / SEC-002).
+ */
+function readWebhookEventLedgerRecord(
+  nk: Runtime.Nakama,
+  eventId: string,
+  logger: Runtime.Logger
+): { record: WebhookEventLedgerRecord | null; version: string } | null {
+  const objects = nk.storageRead([
+    { collection: WEBHOOK_EVENT_COLLECTION, key: `event_${eventId}`, userId: '' },
+  ]);
+  if (objects.length === 0) return null;
+  const record = safeParsePayload<WebhookEventLedgerRecord>(
+    getStorageRawValue(objects[0].value) ?? '',
+    logger,
+    'webhook_event_ledger'
+  );
+  return { record, version: objects[0].version };
+}
+
 /**
  * Atomically claim a webhook event BEFORE applying any side effects
  * (issue #1299 / SEC-002).
@@ -3657,15 +3683,9 @@ function tryClaimWebhookEvent(
     // Lost the create race: either a completed outcome or an in-flight
     // claim exists. Only a STALE claim (processor died) may be taken over,
     // via a CAS write at the version observed on read.
-    const objects = nk.storageRead([
-      { collection: WEBHOOK_EVENT_COLLECTION, key: `event_${eventId}`, userId: '' },
-    ]);
-    if (objects.length === 0) return { status: 'duplicate' }; // raced a release; next retry sorts it out
-    const record = safeParsePayload<{ outcome?: string; claimed_at?: number }>(
-      getStorageRawValue(objects[0].value) ?? '',
-      logger,
-      'webhook_event_ledger'
-    );
+    const existing = readWebhookEventLedgerRecord(nk, eventId, logger);
+    if (!existing) return { status: 'duplicate' }; // raced a release; next retry sorts it out
+    const { record, version } = existing;
     if (!record || record.outcome !== undefined) return { status: 'duplicate' }; // already processed
     const priorClaimedAt = typeof record.claimed_at === 'number' ? record.claimed_at : 0;
     if (Date.now() - priorClaimedAt < WEBHOOK_CLAIM_STALE_MS) return { status: 'duplicate' }; // live in-flight claim
@@ -3674,9 +3694,7 @@ function tryClaimWebhookEvent(
       eventId,
       priorClaimedAt
     );
-    return writeClaim(objects[0].version)
-      ? { status: 'claimed', claimedAt }
-      : { status: 'duplicate' };
+    return writeClaim(version) ? { status: 'claimed', claimedAt } : { status: 'duplicate' };
   } catch (e) {
     logger.error('Storage error claiming webhook event %s: %s', eventId, e);
     return { status: 'error' };
@@ -3700,16 +3718,10 @@ function releaseWebhookEventClaim(
   logger: Runtime.Logger
 ): void {
   try {
-    const objects = nk.storageRead([
-      { collection: WEBHOOK_EVENT_COLLECTION, key: `event_${eventId}`, userId: '' },
-    ]);
-    if (objects.length === 0) return;
-    const record = safeParsePayload<{ outcome?: string; claimed_at?: number }>(
-      getStorageRawValue(objects[0].value) ?? '',
-      logger,
-      'webhook_event_ledger'
-    );
-    if (!record || record.outcome !== undefined || record.claimed_at !== claimedAt) return;
+    const existing = readWebhookEventLedgerRecord(nk, eventId, logger);
+    if (!existing || !existing.record) return;
+    const { record } = existing;
+    if (record.outcome !== undefined || record.claimed_at !== claimedAt) return;
     nk.storageDelete([
       { collection: WEBHOOK_EVENT_COLLECTION, key: `event_${eventId}`, userId: '' },
     ]);
