@@ -179,7 +179,18 @@ func _on_hurt_area_body_entered(body: Node2D) -> void:
 			if _last_contact_damage_msec >= 0 and now_msec - _last_contact_damage_msec < int(CONTACT_DAMAGE_COOLDOWN * 1000.0):
 				return
 			_last_contact_damage_msec = now_msec
-			body.take_damage(damage)
+			body.take_damage(_get_contact_damage())
+
+## Contact damage after level-based difficulty scaling (#1620).
+## Falls back to the exported base damage when the scaling autoload or the
+## player level is unavailable (unit tests, bare scene usage).
+func _get_contact_damage() -> int:
+	var scaling_manager = get_node_or_null("/root/DifficultyScalingManager")
+	var stats_manager = get_node_or_null("/root/PlayerStatsManager")
+	if scaling_manager == null or stats_manager == null or not stats_manager.has_method("get_level"):
+		return damage
+	var mult: float = scaling_manager.get_enemy_damage_mult(stats_manager.get_level())
+	return maxi(1, int(round(damage * mult)))
 
 ## Reset state when returning to pool - called by ObjectPool
 func reset_pooled_state() -> void:
