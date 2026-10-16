@@ -294,6 +294,40 @@ describe('player_rpc', () => {
       expect(parsed.reports).toEqual([]);
     });
 
+    it('fetches match details for multiple reports in a single batched query (#1349)', () => {
+      const reports = [
+        { reportId: 'r1', match_id: 'match1', reason: 'cheating' },
+        { reportId: 'r2', match_id: 'match2', reason: 'griefing' },
+        { reportId: 'r3', match_id: 'match3', reason: 'harassment' },
+        { reportId: 'r4', reason: 'no-match-id' },
+      ];
+      getReportsForUser.mockReturnValue(reports);
+      const matches = [
+        { match_id: 'match1', creator_id: 'c1', opponent_id: 'o1' },
+        { match_id: 'match2', creator_id: 'c2', opponent_id: 'o2' },
+        { match_id: 'match3', creator_id: 'c3', opponent_id: 'o3' },
+      ];
+      mockNk.sqlQuery = jest.fn(() => matches);
+      mockNk.metricsCounterAdd = jest.fn();
+
+      const result = JSON.parse(rpcGetPlayerReports(mockCtx, mockLogger, mockNk, '{}'));
+
+      // One batched query for all three match IDs - never one query per report.
+      expect(mockNk.sqlQuery).toHaveBeenCalledTimes(1);
+      const [sql, params] = (mockNk.sqlQuery as jest.Mock).mock.calls[0];
+      expect(sql).toContain('FROM match_results');
+      expect(sql).toContain('IN ($1, $2, $3)');
+      expect(params).toEqual(['match1', 'match2', 'match3']);
+
+      // Every report with a known match keeps its details; the report
+      // without a match_id is untouched.
+      expect(result.reports[0].match_details.match_id).toBe('match1');
+      expect(result.reports[1].match_details.match_id).toBe('match2');
+      expect(result.reports[2].match_details.match_id).toBe('match3');
+      expect(result.reports[3]).toEqual(reports[3]);
+      expect(result.total).toBe(4);
+    });
+
     // Regression test for issue #1150: rpcGetPlayerReports previously accepted
     // an arbitrary `user_id` in the payload and returned that user's moderation
     // reports to any authenticated session, leaking reporter identities,
