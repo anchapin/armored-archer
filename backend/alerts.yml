@@ -537,3 +537,88 @@ groups:
           summary: "Stage-completion replays are spiking (possible replay attack or stuck client)"
           description: "More than 1 stage_complete request/min is being rejected as DUPLICATE_COMPLETION for 5 minutes (claim-first dedup marker, issue #1069). A stuck retry loop or a scripted replay attack both present this way — distinguish via the audit trail per the runbook. Correlate armored_archer_stage_complete_total{outcome=\"clamped\"} for out-of-range claim storms."
           runbook_url: "https://github.com/anchapin/armored-archer/blob/main/docs/runbooks/StageCompletionDuplicates.md"
+  # ============================================
+  # SLO BURN RATE (issue #1346, PD-2026-04-12 A1)
+  # Multi-window, multi-burn-rate alerts per Google SRE Workbook ch. 5.
+  # Budget: 99.9% availability SLO -> 0.001 allowed error ratio.
+  # Each alert pairs a long window (detect the burn) with a short window
+  # (confirm it is still firing) to cut false pages. Policy and measurement
+  # queries: docs/runbooks/SLO.md.
+  # ============================================
+  - name: armored_archer_slo_burn_rate
+    interval: 60s
+    rules:
+      - record: slo:rpc_error_ratio:rate5m
+        expr: rate(armored_archer_rpc_errors_total[5m]) / rate(armored_archer_rpc_calls_total[5m])
+      - record: slo:rpc_error_ratio:rate30m
+        expr: rate(armored_archer_rpc_errors_total[30m]) / rate(armored_archer_rpc_calls_total[30m])
+      - record: slo:rpc_error_ratio:rate1h
+        expr: rate(armored_archer_rpc_errors_total[1h]) / rate(armored_archer_rpc_calls_total[1h])
+      - record: slo:rpc_error_ratio:rate2h
+        expr: rate(armored_archer_rpc_errors_total[2h]) / rate(armored_archer_rpc_calls_total[2h])
+      - record: slo:rpc_error_ratio:rate6h
+        expr: rate(armored_archer_rpc_errors_total[6h]) / rate(armored_archer_rpc_calls_total[6h])
+      - record: slo:rpc_error_ratio:rate24h
+        expr: rate(armored_archer_rpc_errors_total[24h]) / rate(armored_archer_rpc_calls_total[24h])
+      - record: slo:rpc_error_ratio:rate72h
+        expr: rate(armored_archer_rpc_errors_total[72h]) / rate(armored_archer_rpc_calls_total[72h])
+
+      # Fast burn: 14.4x budget over 1h (confirmed over 5m) - page.
+      - alert: SLOBurnRateFast
+        expr: (slo:rpc_error_ratio:rate1h > 14.4 * 0.001) and (slo:rpc_error_ratio:rate5m > 14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          component: api
+        annotations:
+          summary: "Fast error-budget burn: 14.4x SLO budget over 1h"
+          description: "The RPC error ratio is consuming the 30-day error budget in ~2 days. Runbook: docs/runbooks/SLO.md"
+
+      # Medium burn: 6x budget over 6h (confirmed over 30m).
+      - alert: SLOBurnRateMedium
+        expr: (slo:rpc_error_ratio:rate6h > 6 * 0.001) and (slo:rpc_error_ratio:rate30m > 6 * 0.001)
+        for: 15m
+        labels:
+          severity: warning
+          team: backend
+          component: api
+        annotations:
+          summary: "Medium error-budget burn: 6x SLO budget over 6h"
+          description: "The RPC error ratio is consuming the 30-day error budget in ~5 days. Runbook: docs/runbooks/SLO.md"
+
+      # Slow burn: 3x budget over 24h (confirmed over 2h).
+      - alert: SLOBurnRateSlow
+        expr: (slo:rpc_error_ratio:rate24h > 3 * 0.001) and (slo:rpc_error_ratio:rate2h > 3 * 0.001)
+        for: 1h
+        labels:
+          severity: warning
+          team: backend
+          component: api
+        annotations:
+          summary: "Slow error-budget burn: 3x SLO budget over 24h"
+          description: "The RPC error ratio is consuming the 30-day error budget in ~10 days. Runbook: docs/runbooks/SLO.md"
+
+      # Ticket burn: 1x budget over 72h (confirmed over 6h) - chronic leak.
+      - alert: SLOBurnRateTicket
+        expr: (slo:rpc_error_ratio:rate72h > 0.001) and (slo:rpc_error_ratio:rate6h > 0.001)
+        for: 3h
+        labels:
+          severity: info
+          team: backend
+          component: api
+        annotations:
+          summary: "Chronic error-budget burn at the SLO line over 72h"
+          description: "The RPC error ratio has sat at or above the 99.9% SLO budget line for days. Runbook: docs/runbooks/SLO.md"
+
+      # Latency SLO watch: p95 above the proposed 500ms target.
+      - alert: SOLatencyP95High
+        expr: histogram_quantile(0.95, rate(armored_archer_rpc_duration_seconds_bucket[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          component: api
+        annotations:
+          summary: "p95 RPC latency above the 500ms SLO target for 10m"
+          description: "Proposed latency SLO (pending review) is p95 <= 500ms; the static HighLatency tripwire remains at 2s. Runbook: docs/runbooks/SLO.md"
