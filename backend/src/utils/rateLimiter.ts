@@ -89,6 +89,109 @@ function mirrorStats(key: string, state: RateLimitState): void {
   updateActiveUsersCount(rateLimitStatsMirror.size);
 }
 
+function allowOnStorageOutage(config: RateLimitConfig, now: number): RateLimitResult {
+  return { allowed: true, remaining: config.maxRequests - 1, resetTime: now + config.windowMs };
+}
+
+type CounterRead = { ok: true; record?: StoredRateLimitRecord; version?: string } | { ok: false };
+
+function readStoredCounter(nk: Runtime.Nakama, key: string): CounterRead {
+  try {
+    const objects = nk.storageRead([{ collection: RATE_LIMIT_COLLECTION, key, userId: '' }]);
+    if (objects.length === 0) {
+      return { ok: true };
+    }
+    const parsed = JSON.parse(
+      getStorageRawValue(objects[0].value) ?? '{}'
+    ) as StoredRateLimitRecord;
+    const record = typeof parsed === 'object' && parsed !== null ? parsed : undefined;
+    return { ok: true, record, version: objects[0].version };
+  } catch (e) {
+    // Storage outage: the caller fails OPEN for availability (every other
+    // RPC dependency on storage fails in that state anyway); log loudly so
+    // the gap is observable.
+    logger.error('Rate limit storage read failed for %s - allowing request: %s', key, e);
+    return { ok: false };
+  }
+}
+
+function writeCounter(
+  nk: Runtime.Nakama,
+  key: string,
+  next: RateLimitState,
+  version: string | undefined
+): 'ok' | 'retry' | 'error' {
+  try {
+    nk.storageWrite([
+      {
+        collection: RATE_LIMIT_COLLECTION,
+        key,
+        userId: '',
+        value: toStorageValue({ count: next.count, reset_time: next.resetTime }),
+        version: version ?? '*',
+        permissionRead: 0,
+        permissionWrite: 0,
+      },
+    ]);
+    return 'ok';
+  } catch (e) {
+    const msg = String(e).toLowerCase();
+    if (msg.includes('version check failed') || msg.includes('storage write rejected')) {
+      return 'retry'; // lost the CAS race - re-read and try again
+    }
+    logger.error('Rate limit storage write failed for %s - allowing request: %s', key, e);
+    return 'error';
+  }
+}
+
+/**
+ * One read + CAS-write attempt against the durable counter. Returns the
+ * terminal RateLimitResult, or 'retry' when the write lost the OCC race.
+ */
+function attemptCasIncrement(
+  nk: Runtime.Nakama,
+  key: string,
+  config: RateLimitConfig,
+  now: number
+): RateLimitResult | 'retry' {
+  const read = readStoredCounter(nk, key);
+  if (!read.ok) {
+    return allowOnStorageOutage(config, now);
+  }
+
+  const { record, version } = read;
+  const windowExpired =
+    !record || typeof record.reset_time !== 'number' || now >= record.reset_time;
+  const count = windowExpired || !record ? 0 : (record.count ?? 0);
+  const resetTime =
+    windowExpired || !record ? now + config.windowMs : (record.reset_time as number);
+
+  if (count >= config.maxRequests) {
+    mirrorStats(key, { count, resetTime });
+    return {
+      allowed: false,
+      remaining: 0,
+      resetTime,
+      retryAfter: Math.ceil((resetTime - now) / 1000),
+    };
+  }
+
+  const next: RateLimitState = { count: count + 1, resetTime };
+  const outcome = writeCounter(nk, key, next, version);
+  if (outcome === 'retry') {
+    return 'retry';
+  }
+  if (outcome === 'error') {
+    return allowOnStorageOutage(config, now);
+  }
+  mirrorStats(key, next);
+  return {
+    allowed: true,
+    remaining: Math.max(0, config.maxRequests - next.count),
+    resetTime,
+  };
+}
+
 export function checkRateLimit(
   nk: Runtime.Nakama,
   userId: string,
@@ -99,67 +202,9 @@ export function checkRateLimit(
   const now = Date.now();
 
   for (let attempt = 0; attempt < RATE_LIMIT_CAS_ATTEMPTS; attempt++) {
-    let record: StoredRateLimitRecord | undefined;
-    let version: string | undefined;
-    try {
-      const objects = nk.storageRead([{ collection: RATE_LIMIT_COLLECTION, key, userId: '' }]);
-      if (objects.length > 0) {
-        version = objects[0].version;
-        const parsed = JSON.parse(
-          getStorageRawValue(objects[0].value) ?? '{}'
-        ) as StoredRateLimitRecord;
-        record = typeof parsed === 'object' && parsed !== null ? parsed : undefined;
-      }
-    } catch (e) {
-      // Storage outage: fail OPEN for availability (every other RPC
-      // dependency on storage fails during such an outage anyway), and
-      // log loudly so the gap is observable.
-      logger.error('Rate limit storage read failed for %s - allowing request: %s', key, e);
-      return { allowed: true, remaining: config.maxRequests - 1, resetTime: now + config.windowMs };
-    }
-
-    const windowExpired =
-      !record || typeof record.reset_time !== 'number' || now >= record.reset_time;
-    const count = windowExpired || !record ? 0 : (record.count ?? 0);
-    const resetTime =
-      windowExpired || !record ? now + config.windowMs : (record.reset_time as number);
-
-    if (count >= config.maxRequests) {
-      mirrorStats(key, { count, resetTime });
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime,
-        retryAfter: Math.ceil((resetTime - now) / 1000),
-      };
-    }
-
-    const next: RateLimitState = { count: count + 1, resetTime };
-    try {
-      nk.storageWrite([
-        {
-          collection: RATE_LIMIT_COLLECTION,
-          key,
-          userId: '',
-          value: toStorageValue({ count: next.count, reset_time: next.resetTime }),
-          version: version ?? '*',
-          permissionRead: 0,
-          permissionWrite: 0,
-        },
-      ]);
-      mirrorStats(key, next);
-      return {
-        allowed: true,
-        remaining: Math.max(0, config.maxRequests - next.count),
-        resetTime,
-      };
-    } catch (e) {
-      const msg = String(e).toLowerCase();
-      if (msg.includes('version check failed') || msg.includes('storage write rejected')) {
-        continue; // lost the CAS race - re-read and try again
-      }
-      logger.error('Rate limit storage write failed for %s - allowing request: %s', key, e);
-      return { allowed: true, remaining: config.maxRequests - 1, resetTime: now + config.windowMs };
+    const result = attemptCasIncrement(nk, key, config, now);
+    if (result !== 'retry') {
+      return result;
     }
   }
 
