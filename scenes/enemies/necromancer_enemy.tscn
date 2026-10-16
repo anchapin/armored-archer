@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ol071ytmpj22"]
 
-[ext_resource type="Script" uid="uid://ccyxn6nxn4x5q" path="res://scenes/enemies/necromancer_enemy.gd" id="1_necromancer_enemy_script"]
+[ext_resource type="Script" uid="uid://h4sri5viufjw" path="res://scenes/enemies/necromancer_enemy.gd" id="1_necromancer_enemy_script"]
 [ext_resource type="Texture2D" uid="uid://wdxsmhe1d63j" path="res://assets/sprites/enemies/shadow_runner_idle_down_0.png" id="2_sbkpl"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_necromancer_enemy"]

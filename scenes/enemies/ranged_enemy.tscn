@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bcfpd2vmhm15"]
 
-[ext_resource type="Script" uid="uid://b8jq4iyvj1bdw" path="res://scenes/enemies/ranged_enemy.gd" id="1_ranged_enemy_script"]
+[ext_resource type="Script" uid="uid://cmaapuojt30h4" path="res://scenes/enemies/ranged_enemy.gd" id="1_ranged_enemy_script"]
 [ext_resource type="Texture2D" uid="uid://c0l5h3t58a3cd" path="res://assets/sprites/enemies/skeleton_idle_down_0.png" id="2_k7uv6"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ranged_enemy"]

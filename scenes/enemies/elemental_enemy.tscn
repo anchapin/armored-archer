@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://bw7xv9k3m4lpq"]
 
-[ext_resource type="Script" uid="uid://bw7xv9k3m4lpr" path="res://scenes/enemies/elemental_enemy.gd" id="1_elemental_script"]
+[ext_resource type="Script" uid="uid://dy5dllinyasc4" path="res://scenes/enemies/elemental_enemy.gd" id="1_elemental_script"]
 [ext_resource type="SpriteFrames" path="res://assets/sprite_frames/wind_elemental_frames.tres" id="2_wind_frames"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"]
