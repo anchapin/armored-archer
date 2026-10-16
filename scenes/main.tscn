@@ -63,6 +63,7 @@ grow_vertical = 2
 script = ExtResource("12_jbj1t")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1093523127]
+zoom = Vector2(1.25, 1.25)
 
 [node name="EnemiesCounter" type="Label" parent="HUD" unique_id=146457940]
 anchors_preset = -1
