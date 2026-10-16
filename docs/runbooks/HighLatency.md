@@ -171,6 +171,14 @@ docker stats nakama
 
 ### Scenario 3: High Traffic
 
+> **Auto-scale signal (issue #1351, PD-2026-04-12 A6)**: when this scenario is
+> capacity-driven, the first action is the auto-scale policy in
+> `docs/AUTOSCALING.md`: per-instance CPU >70% for 5 minutes (ahead of the
+> 80% `HighCPUUsage` alert) triggers scale-out of one stateless Nakama
+> replica. Do not raise the Postgres pool ceiling during the event - pool
+> sizing is governed by #1350 and changes only on observed-peak data.
+
+
 ```bash
 # 1. Check request rate
 curl -s 'http://prometheus:9090/api/v1/query' \
