@@ -282,9 +282,10 @@ Current ceiling, set in `backend/nakama.yml` (and mirrored in
 | `database.conn_max_lifetime` | 60 (minutes) |
 
 The 2026-04-12 incident showed this ceiling is sized for steady state, not
-observed peak. A data-driven replacement value depends on the A2 load test
-(#1347, currently blocked - the load-test workflow is disabled and its
-scenario files are absent from main); do not bump the ceiling on intuition.
+observed peak. A data-driven replacement value depends on observed-peak connection
+data. The A2 load harness is live (#1603, nightly k6) but does not capture
+database-connection telemetry, so the ceiling stays at 25 until staging or
+production observation supplies a peak; do not bump the ceiling on intuition.
 When the load data exists, size the ceiling for 2x observed peak with
 headroom under the Postgres `max_connections` budget, and mirror the change
 into `nakama.ci.yml`.
