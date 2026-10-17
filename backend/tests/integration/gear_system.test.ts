@@ -632,6 +632,28 @@ describe('Gear System Integration Tests', () => {
       expect(unchanged.value.xp).toBe(120);
     });
 
+    test('records a settled settlement journal for the completion (#1558 Stage 2)', async () => {
+      const payload = { stage_id: 'settlement_journal_stage', boss_defeated: false, difficulty: 'easy' };
+      const result = await rpcCall(player, 'armored_archer/stage_complete', payload);
+      expect(result).toMatchObject({ success: true, xp_gained: 30 });
+      const settlement = await testHelper.getStorageObject(
+        'stage_settlements',
+        `${player.userId}:${payload.stage_id}`,
+        player.userId
+      );
+      expect(settlement.value).toMatchObject({
+        stage_id: payload.stage_id,
+        state: 'settled',
+        effects: {
+          best_of: 'settled',
+          boss_defeat: 'settled',
+          modifier_pool: 'settled',
+          loot: 'settled',
+          xp: 'settled',
+        },
+      });
+    });
+
     test('simultaneous duplicate requests grant XP at most once', async () => {
       const payload = { stage_id: 'xp_concurrent_stage', boss_defeated: false, difficulty: 'easy' };
       const results = await Promise.all([

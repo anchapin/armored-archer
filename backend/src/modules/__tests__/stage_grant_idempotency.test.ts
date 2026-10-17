@@ -16,6 +16,13 @@ import {
   STAGE_COMPLETION_CLAIM_COLLECTION,
 } from '../stage_progression';
 import { makeStageGrantId, readStageOutcome, STAGE_OUTCOME_COLLECTION } from '../stage_grants';
+import {
+  buildStageSettlement,
+  readStageSettlement,
+  recordIntendedLoot,
+  tryTransitionEffect,
+  writeClaimAndSettlement,
+} from '../stage_settlement';
 import { grantStageXP } from '../stage_xp';
 
 jest.mock('../audit', () => ({ logAudit: jest.fn() }));
@@ -195,6 +202,89 @@ describe('stage grant idempotency', () => {
     const stats = JSON.parse(testStorage.get('player_stats:test-user') as string);
     expect(stats.xp).toBe(100);
     expect(stats.applied_stage_grants).toHaveLength(1);
+  });
+
+  it('grants XP exactly once across a resume when the settlement already settled it', () => {
+    // Crashed attempt: claim + settlement written, XP effect already settled
+    // (the grant landed), outcome absent. The resume must not pay XP again.
+    writeClaimAndSettlement(
+      nk,
+      'test-user',
+      'stage_1',
+      undefined,
+      'att-xp1',
+      buildStageSettlement('stage_1', 'att-xp1', { stars_earned: 3, score: 0 })
+    );
+    expect(tryTransitionEffect(nk, 'test-user', 'stage_1', 'xp', 'settled', logger)).toBe(true);
+    testStorage.set(
+      'player_stats:test-user',
+      JSON.stringify({
+        user_id: 'test-user',
+        level: 2,
+        xp: 100,
+        ability_points: 0,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+      })
+    );
+
+    const resumed = JSON.parse(rpcStageComplete(ctx, logger, nk, payload('att-xp1')));
+    expect(resumed.success).toBe(true);
+    expect(resumed.resumed).toBe(true);
+    expect(resumed.xp_gained).toBe(0);
+    const stats = JSON.parse(testStorage.get('player_stats:test-user') as string);
+    expect(stats.xp).toBe(100);
+  });
+
+  it('re-drives the recorded intended loot on resume without rerolling', () => {
+    // Crashed attempt rolled (journal recorded it) but never committed the
+    // insert: no grant row. Recovery inserts the SAME gear under the SAME
+    // grant ID instead of rolling again.
+    writeClaimAndSettlement(
+      nk,
+      'test-user',
+      'stage_1',
+      undefined,
+      'att-loot1',
+      buildStageSettlement('stage_1', 'att-loot1', { stars_earned: 3, score: 0 })
+    );
+    const intendedGear = {
+      id: '',
+      type: 'bow',
+      name: 'Intended Bow',
+      rarity: 'epic',
+      level: 1,
+      stats: [],
+      modifiers: [],
+      timestamp: 1,
+    };
+    recordIntendedLoot(
+      nk,
+      'test-user',
+      'stage_1',
+      { gear: intendedGear, grant_id: 'test-user:stage_1:att-loot1:gear:0', drop_rate: 1, roll: 0 },
+      logger
+    );
+    getGearItemByGrantIdMock.mockReturnValue(null);
+
+    const resumed = JSON.parse(rpcStageComplete(ctx, logger, nk, payload('att-loot1')));
+    expect(resumed.success).toBe(true);
+    expect(insertGearItemMock).toHaveBeenCalledTimes(1);
+    const insertedGear = insertGearItemMock.mock.calls[0][2];
+    expect(insertedGear.name).toBe('Intended Bow');
+    expect(insertedGear.rarity).toBe('epic');
+    expect(insertGearItemMock.mock.calls[0][4]).toBe('test-user:stage_1:att-loot1:gear:0');
+    expect(resumed.gear_dropped.name).toBe('Intended Bow');
+    expect(readStageSettlement(nk, 'test-user', 'stage_1')?.effects.loot).toBe('settled');
+  });
+
+  it('marks loot and xp failed in the settlement when the insert exhausts', () => {
+    insertGearItemMock.mockReturnValue({ success: false });
+    const result = JSON.parse(rpcStageComplete(ctx, logger, nk, payload('att-fail1')));
+    expect(result.success).toBe(false);
+    const settlement = readStageSettlement(nk, 'test-user', 'stage_1');
+    expect(settlement?.effects.loot).toBe('failed');
+    expect(settlement?.effects.xp).toBe('failed');
+    expect(settlement?.state).toBe('failed');
   });
 
   it('keeps legacy duplicate rejection when no attempt_id is supplied', () => {
