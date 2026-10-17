@@ -6,6 +6,7 @@ import {
   GameStateContext,
 } from './errorTracking';
 import { LogScrubber } from './logScrubber';
+import type { LogContext } from './structuredLogger';
 
 /**
  * Initialize log scrubber with configuration from config.
@@ -73,19 +74,9 @@ winston.addColors(logColors);
 /**
  * Structured log metadata interface.
  * All structured logs should include this metadata for consistent formatting.
+ * Alias of structuredLogger's LogContext — the two were identical duplicates.
  */
-export interface StructuredLogMetadata {
-  /** Unique identifier for the request/operation */
-  requestId?: string;
-  /** User ID if applicable */
-  userId?: string;
-  /** RPC name for RPC operations */
-  rpcName?: string;
-  /** Operation name (e.g., 'cache_get', 'db_write') */
-  operation?: string;
-  /** Additional context-specific data */
-  [key: string]: unknown;
-}
+export type StructuredLogMetadata = LogContext;
 
 /**
  * Creates a structured metadata object for RPC operations.
