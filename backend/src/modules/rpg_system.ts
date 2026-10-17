@@ -5,7 +5,7 @@
 
 import { Runtime } from '../types/nakama';
 
-import { invalidatePlayerStatsCache } from '../utils/db_optimizer';
+import { createDefaultPlayerStats, invalidatePlayerStatsCache } from '../utils/db_optimizer';
 import { safeParse, createErrorResponse } from '../utils/safeParse';
 import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
@@ -293,18 +293,7 @@ export function rpcGainXP(
   let playerStats: PlayerStats;
 
   if (objects.length === 0) {
-    playerStats = {
-      user_id: ctx.userId,
-      level: 1,
-      xp: 0,
-      ability_points: 0,
-      stats: {
-        attack: 10,
-        defense: 10,
-        dodge: 10,
-        crit_rate: 5,
-      },
-    };
+    playerStats = createDefaultPlayerStats(ctx.userId);
   } else {
     const value = objects[0].value;
     if (value) {
@@ -330,18 +319,7 @@ export function rpcGainXP(
       }
       playerStats = parseResult.data;
     } else {
-      playerStats = {
-        user_id: ctx.userId,
-        level: 1,
-        xp: 0,
-        ability_points: 0,
-        stats: {
-          attack: 10,
-          defense: 10,
-          dodge: 10,
-          crit_rate: 5,
-        },
-      };
+      playerStats = createDefaultPlayerStats(ctx.userId);
     }
   }
 

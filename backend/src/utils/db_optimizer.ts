@@ -22,6 +22,22 @@ interface StorageReadRequest {
   userId: string;
 }
 
+/** Default stats record for a brand-new player. */
+export function createDefaultPlayerStats(userId: string): PlayerStats {
+  return {
+    user_id: userId,
+    level: 1,
+    xp: 0,
+    ability_points: 0,
+    stats: {
+      attack: 10,
+      defense: 10,
+      dodge: 10,
+      crit_rate: 5,
+    },
+  };
+}
+
 export function batchGetPlayerStats(
   nk: Runtime.Nakama,
   userIds: string[],
@@ -67,18 +83,7 @@ export function batchGetPlayerStats(
 
     for (const userId of uncachedUserIds) {
       if (!result.has(userId)) {
-        const defaultStats: PlayerStats = {
-          user_id: userId,
-          level: 1,
-          xp: 0,
-          ability_points: 0,
-          stats: {
-            attack: 10,
-            defense: 10,
-            dodge: 10,
-            crit_rate: 5,
-          },
-        };
+        const defaultStats = createDefaultPlayerStats(userId);
         result.set(userId, defaultStats);
       }
     }

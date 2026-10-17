@@ -127,25 +127,24 @@ const COLLECTION_BALANCE_ISSUES = 'matchmaking_balance_issues';
  * @param nk - Nakama runtime module
  * @returns Match quality metrics
  */
+/** System user ID owning shared analytics storage records. */
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+/** Read all records of a system-owned collection (wildcard key). */
+async function readAllSystemRecords(
+  nk: Runtime.Nakama,
+  collection: string
+): Promise<Runtime.StorageObject[]> {
+  return nk.storageRead([{ collection, key: '*', userId: SYSTEM_USER_ID }]);
+}
+
 export async function aggregateMatchMetrics(nk: Runtime.Nakama): Promise<MatchQualityMetrics> {
   try {
     // Read all match data
-    const matchObjects = await nk.storageRead([
-      {
-        collection: COLLECTION_MATCH_DATA,
-        key: '*',
-        userId: '00000000-0000-0000-0000-000000000000', // System user
-      },
-    ]);
+    const matchObjects = await readAllSystemRecords(nk, COLLECTION_MATCH_DATA);
 
     // Read queue times
-    const queueObjects = await nk.storageRead([
-      {
-        collection: COLLECTION_QUEUE_TIMES,
-        key: '*',
-        userId: '00000000-0000-0000-0000-000000000000',
-      },
-    ]);
+    const queueObjects = await readAllSystemRecords(nk, COLLECTION_QUEUE_TIMES);
 
     // Calculate metrics
     let totalMatches = matchObjects.length;
@@ -362,13 +361,7 @@ async function calculateRatingDiffDistribution(
   nk: Runtime.Nakama
 ): Promise<RatingDiffDistribution> {
   try {
-    const matchObjects = await nk.storageRead([
-      {
-        collection: COLLECTION_MATCH_DATA,
-        key: '*',
-        userId: '00000000-0000-0000-0000-000000000000',
-      },
-    ]);
+    const matchObjects = await readAllSystemRecords(nk, COLLECTION_MATCH_DATA);
 
     const distribution: RatingDiffDistribution = {
       '0-50': 0,

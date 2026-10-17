@@ -986,6 +986,39 @@ export async function rpcRecordStageAttempt(
  *   "statistics": { ... }
  * }
  */
+/** Shared body for the date-ranged balance statistics RPCs. */
+function runDateRangeStatisticsRpc(
+  logger: Runtime.Logger,
+  payload: string,
+  rpcLabel: string,
+  errorLabel: string,
+  responseKey: 'statistics' | 'insights',
+  compute: (startTime?: number, endTime?: number) => unknown
+): string {
+  const validation = validatePayload(ZodSchemas.get_balance_statistics, payload, rpcLabel);
+  if (!validation.success) {
+    return createValidationErrorResponse(
+      rpcLabel,
+      (validation as { success: false; error: string }).error
+    );
+  }
+
+  const data = validation.data as { start_date?: string; end_date?: string };
+
+  try {
+    const startTime = data.start_date ? new Date(data.start_date).getTime() : undefined;
+    const endTime = data.end_date ? new Date(data.end_date).getTime() : undefined;
+    return JSON.stringify({ success: true, [responseKey]: compute(startTime, endTime) });
+  } catch (error) {
+    logger.error(`Failed to get ${errorLabel}: %s`, String(error));
+    return JSON.stringify({
+      success: false,
+      error: `Failed to get ${errorLabel}`,
+      error_code: 'INTERNAL_ERROR',
+    });
+  }
+}
+
 export function rpcGetDropStatistics(
   _ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -994,41 +1027,14 @@ export function rpcGetDropStatistics(
 ): string {
   logger.info('Get drop statistics called');
 
-  const validation = validatePayload(
-    ZodSchemas.get_balance_statistics,
+  return runDateRangeStatisticsRpc(
+    logger,
     payload,
-    'get_drop_statistics'
+    'get_drop_statistics',
+    'drop statistics',
+    'statistics',
+    calculateDropStatistics
   );
-  if (!validation.success) {
-    return createValidationErrorResponse(
-      'get_drop_statistics',
-      (validation as { success: false; error: string }).error
-    );
-  }
-
-  const data = validation.data as {
-    start_date?: string;
-    end_date?: string;
-  };
-
-  try {
-    const startTime = data.start_date ? new Date(data.start_date).getTime() : undefined;
-    const endTime = data.end_date ? new Date(data.end_date).getTime() : undefined;
-
-    const stats = calculateDropStatistics(startTime, endTime);
-
-    return JSON.stringify({
-      success: true,
-      statistics: stats,
-    });
-  } catch (error) {
-    logger.error('Failed to get drop statistics: %s', String(error));
-    return JSON.stringify({
-      success: false,
-      error: 'Failed to get drop statistics',
-      error_code: 'INTERNAL_ERROR',
-    });
-  }
 }
 
 /**
@@ -1055,41 +1061,14 @@ export function rpcGetStageCompletionStatistics(
 ): string {
   logger.info('Get stage completion statistics called');
 
-  const validation = validatePayload(
-    ZodSchemas.get_balance_statistics,
+  return runDateRangeStatisticsRpc(
+    logger,
     payload,
-    'get_stage_completion_statistics'
+    'get_stage_completion_statistics',
+    'stage completion statistics',
+    'statistics',
+    calculateStageCompletionStatistics
   );
-  if (!validation.success) {
-    return createValidationErrorResponse(
-      'get_stage_completion_statistics',
-      (validation as { success: false; error: string }).error
-    );
-  }
-
-  const data = validation.data as {
-    start_date?: string;
-    end_date?: string;
-  };
-
-  try {
-    const startTime = data.start_date ? new Date(data.start_date).getTime() : undefined;
-    const endTime = data.end_date ? new Date(data.end_date).getTime() : undefined;
-
-    const stats = calculateStageCompletionStatistics(startTime, endTime);
-
-    return JSON.stringify({
-      success: true,
-      statistics: stats,
-    });
-  } catch (error) {
-    logger.error('Failed to get stage completion statistics: %s', String(error));
-    return JSON.stringify({
-      success: false,
-      error: 'Failed to get stage completion statistics',
-      error_code: 'INTERNAL_ERROR',
-    });
-  }
 }
 
 /**
@@ -1116,41 +1095,14 @@ export function rpcGetBalanceInsights(
 ): string {
   logger.info('Get balance insights called');
 
-  const validation = validatePayload(
-    ZodSchemas.get_balance_statistics,
+  return runDateRangeStatisticsRpc(
+    logger,
     payload,
-    'get_balance_insights'
+    'get_balance_insights',
+    'balance insights',
+    'insights',
+    generateBalanceInsights
   );
-  if (!validation.success) {
-    return createValidationErrorResponse(
-      'get_balance_insights',
-      (validation as { success: false; error: string }).error
-    );
-  }
-
-  const data = validation.data as {
-    start_date?: string;
-    end_date?: string;
-  };
-
-  try {
-    const startTime = data.start_date ? new Date(data.start_date).getTime() : undefined;
-    const endTime = data.end_date ? new Date(data.end_date).getTime() : undefined;
-
-    const insights = generateBalanceInsights(startTime, endTime);
-
-    return JSON.stringify({
-      success: true,
-      insights,
-    });
-  } catch (error) {
-    logger.error('Failed to get balance insights: %s', String(error));
-    return JSON.stringify({
-      success: false,
-      error: 'Failed to get balance insights',
-      error_code: 'INTERNAL_ERROR',
-    });
-  }
 }
 
 // ==========================================
