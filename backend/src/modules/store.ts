@@ -3932,6 +3932,137 @@ function handleInitialPurchase(
 /**
  * Handle non-renewal/cancellation event.
  */
+interface SubscriptionWebhookContext {
+  nk: Runtime.Nakama;
+  userId: string;
+  productId: string;
+  logger: Runtime.Logger;
+  auditAction: string;
+  invalidValueAuditMetadata: Record<string, unknown>;
+  notFoundMessage: string;
+  eventType: string;
+}
+
+type SubscriptionWebhookRead =
+  | { outcome: 'ok'; subscription: Record<string, unknown> }
+  | { outcome: 'no_record' }
+  | {
+      outcome: 'early';
+      response: { success: boolean; message?: string; event_type?: string; error?: string };
+    };
+
+/**
+ * Reads and parses the player's subscription record for a subscription webhook
+ * handler. Missing record -> 'no_record' (handler still writes its success
+ * audit); missing/invalid stored value or unparseable JSON -> writes the
+ * failure audit entry and returns the handler's early response.
+ */
+/**
+ * Persists the mutated subscription record for a subscription webhook handler.
+ */
+function writeSubscriptionRecord(
+  nk: Runtime.Nakama,
+  subscriptionKey: string,
+  userId: string,
+  subscription: Record<string, unknown>
+): void {
+  nk.storageWrite([
+    {
+      collection: 'player_subscription',
+      key: subscriptionKey,
+      value: toStorageValue(subscription),
+      userId: userId,
+    },
+  ]);
+}
+
+
+/**
+ * Runs the shared subscription-webhook flow: read the record, return the
+ * early response on invalid data, otherwise apply the handler's mutation and
+ * persist. Returns null when the caller should continue to its success audit.
+ */
+function processSubscriptionWebhook(
+  ctx: SubscriptionWebhookContext,
+  mutate: (subscription: Record<string, unknown>) => void
+): { success: boolean; message?: string; event_type?: string; error?: string } | null {
+  const read = readSubscriptionForWebhook(ctx);
+  if (read.outcome === 'early') {
+    return read.response;
+  }
+  if (read.outcome === 'ok') {
+    const subscription = read.subscription;
+    mutate(subscription);
+    writeSubscriptionRecord(ctx.nk, ctx.userId, ctx.userId, subscription);
+  }
+  return null;
+}
+
+function readSubscriptionForWebhook(ctx: SubscriptionWebhookContext): SubscriptionWebhookRead {
+  const {
+    nk,
+    userId,
+    productId,
+    logger,
+    auditAction,
+    invalidValueAuditMetadata,
+    notFoundMessage,
+    eventType,
+  } = ctx;
+  const existingData = nk.storageRead([
+    {
+      collection: 'player_subscription',
+      key: userId,
+      userId: userId,
+    },
+  ]);
+
+  if (!existingData || existingData.length === 0) {
+    return { outcome: 'no_record' };
+  }
+
+  const value = existingData[0].value;
+  // Handle empty or non-JSON values
+  if (!value || typeof value !== 'string') {
+    logger.warn('No valid subscription data found for user %s', userId);
+    logAudit(
+      nk,
+      userId,
+      null,
+      auditAction,
+      'player_subscription',
+      { product_id: productId, ...invalidValueAuditMetadata, event_type: eventType },
+      'failure',
+      'No valid subscription data found'
+    );
+    return {
+      outcome: 'early',
+      response: {
+        success: true,
+        message: notFoundMessage,
+        event_type: eventType,
+      },
+    };
+  }
+
+  try {
+    return { outcome: 'ok', subscription: JSON.parse(value) as Record<string, unknown> };
+  } catch (e) {
+    logger.error('Failed to parse subscription data for user %s: %s', userId, e);
+    logAudit(
+      nk,
+      userId,
+      null,
+      auditAction,
+      'player_subscription',
+      { product_id: productId, event_type: eventType },
+      'failure',
+      'Invalid subscription data'
+    );
+    return { outcome: 'early', response: { success: false, error: 'Invalid subscription data' } };
+  }
+}
+
 function handleSubscriptionCancelled(
   nk: Runtime.Nakama,
   userId: string,
@@ -3948,66 +4079,26 @@ function handleSubscriptionCancelled(
   );
 
   // Mark subscription as cancelled in storage
-  const subscriptionKey = userId;
-  const existingData = nk.storageRead([
+  const early = processSubscriptionWebhook(
     {
-      collection: 'player_subscription',
-      key: subscriptionKey,
-      userId: userId,
+      nk,
+      userId,
+      productId,
+      logger,
+      auditAction: 'subscription_cancelled',
+      invalidValueAuditMetadata: { reason: reason || 'not specified' },
+      notFoundMessage: 'Cancellation noted (no subscription found)',
+      eventType,
     },
-  ]);
-
-  if (existingData && existingData.length > 0) {
-    const value = existingData[0].value;
-    // Handle empty or non-JSON values
-    if (!value || typeof value !== 'string') {
-      logger.warn('No valid subscription data found for user %s', userId);
-      logAudit(
-        nk,
-        userId,
-        null,
-        'subscription_cancelled',
-        'player_subscription',
-        { product_id: productId, reason: reason || 'not specified', event_type: eventType },
-        'failure',
-        'No valid subscription data found'
-      );
-      return {
-        success: true,
-        message: 'Cancellation noted (no subscription found)',
-        event_type: eventType,
-      };
+    (subscription) => {
+      subscription.active = false;
+      subscription.cancelled = true;
+      subscription.cancelled_at = new Date().toISOString();
+      subscription.cancel_reason = reason || 'user_cancelled';
     }
-    let subscription: Record<string, unknown>;
-    try {
-      subscription = JSON.parse(value);
-    } catch (e) {
-      logger.error('Failed to parse subscription data for user %s: %s', userId, e);
-      logAudit(
-        nk,
-        userId,
-        null,
-        'subscription_cancelled',
-        'player_subscription',
-        { product_id: productId, event_type: eventType },
-        'failure',
-        'Invalid subscription data'
-      );
-      return { success: false, error: 'Invalid subscription data' };
-    }
-    subscription.active = false;
-    subscription.cancelled = true;
-    subscription.cancelled_at = new Date().toISOString();
-    subscription.cancel_reason = reason || 'user_cancelled';
-
-    nk.storageWrite([
-      {
-        collection: 'player_subscription',
-        key: subscriptionKey,
-        value: toStorageValue(subscription),
-        userId: userId,
-      },
-    ]);
+  );
+  if (early) {
+    return early;
   }
 
   logAudit(
@@ -4035,64 +4126,24 @@ function handleBillingIssue(
   logger.info('Webhook: Billing issue for user %s, product %s', userId, productId);
 
   // Mark subscription as having billing issues
-  const subscriptionKey = userId;
-  const existingData = nk.storageRead([
+  const early = processSubscriptionWebhook(
     {
-      collection: 'player_subscription',
-      key: subscriptionKey,
-      userId: userId,
+      nk,
+      userId,
+      productId,
+      logger,
+      auditAction: 'billing_issue',
+      invalidValueAuditMetadata: {},
+      notFoundMessage: 'Billing issue recorded (no subscription found)',
+      eventType,
     },
-  ]);
-
-  if (existingData && existingData.length > 0) {
-    const value = existingData[0].value;
-    // Handle empty or non-JSON values
-    if (!value || typeof value !== 'string') {
-      logger.warn('No valid subscription data found for user %s', userId);
-      logAudit(
-        nk,
-        userId,
-        null,
-        'billing_issue',
-        'player_subscription',
-        { product_id: productId, event_type: eventType },
-        'failure',
-        'No valid subscription data found'
-      );
-      return {
-        success: true,
-        message: 'Billing issue recorded (no subscription found)',
-        event_type: eventType,
-      };
+    (subscription) => {
+      subscription.billing_issue = true;
+      subscription.billing_issue_at = new Date().toISOString();
     }
-    let subscription: Record<string, unknown>;
-    try {
-      subscription = JSON.parse(value);
-    } catch (e) {
-      logger.error('Failed to parse subscription data for user %s: %s', userId, e);
-      logAudit(
-        nk,
-        userId,
-        null,
-        'billing_issue',
-        'player_subscription',
-        { product_id: productId, event_type: eventType },
-        'failure',
-        'Invalid subscription data'
-      );
-      return { success: false, error: 'Invalid subscription data' };
-    }
-    subscription.billing_issue = true;
-    subscription.billing_issue_at = new Date().toISOString();
-
-    nk.storageWrite([
-      {
-        collection: 'player_subscription',
-        key: subscriptionKey,
-        value: toStorageValue(subscription),
-        userId: userId,
-      },
-    ]);
+  );
+  if (early) {
+    return early;
   }
 
   logAudit(
