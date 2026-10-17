@@ -326,6 +326,40 @@ export function calculateSoftResetElo(rank: number): number {
 }
 
 /**
+ * Creates the leaderboard for a new season and seeds every player from the
+ * ending season with their soft-reset ELO. Shared by the player-facing season
+ * rollover and the admin end-season trigger.
+ *
+ * @param nk - Nakama runtime
+ * @param seasonId - New season's leaderboard/season id
+ * @param seasonNumber - New season number (stored in leaderboard metadata)
+ * @param allRecords - Final leaderboard records of the ending season
+ */
+export function createAndSeedSeasonLeaderboard(
+  nk: Runtime.Nakama,
+  seasonId: string,
+  seasonNumber: number,
+  allRecords: LeaderboardRecord[]
+): void {
+  nk.leaderboardCreate(seasonId, true, 'desc', 'best', '', {
+    season_number: String(seasonNumber),
+  });
+  for (const record of allRecords) {
+    const softResetElo = calculateSoftResetElo(record.rank);
+    const metadata = parseRecordMetadata(record.metadata);
+    nk.leaderboardRecordWrite(seasonId, record.ownerId, record.username, softResetElo, 0, {
+      wins: '0',
+      losses: '0',
+      win_rate: '0',
+      punch_up_wins: '0',
+      previous_season_rank: String(record.rank),
+      soft_reset_elo: String(softResetElo),
+      ...{ mode: metadata.mode || '1v1' },
+    });
+  }
+}
+
+/**
  * Evaluates which prestige tiers a player qualifies for based on season finishes.
  *
  * @param seasonFinishes - Array of qualifying season finishes (rank <= 100)
@@ -1271,32 +1305,8 @@ export function rpcEndSeason(
   // Store new season info
   saveSeasonInfo(nk, ctx.userId, nextSeason);
 
-  // Create new leaderboard for next season
-  nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
-    season_number: String(nextSeasonNumber),
-  });
-
-  // Seed all players into new season with soft-reset ELO
-  for (const record of allRecords) {
-    const softResetElo = calculateSoftResetElo(record.rank);
-    const metadata = parseRecordMetadata(record.metadata);
-    nk.leaderboardRecordWrite(
-      nextSeason.season_id,
-      record.ownerId,
-      record.username,
-      softResetElo,
-      0,
-      {
-        wins: '0',
-        losses: '0',
-        win_rate: '0',
-        punch_up_wins: '0',
-        previous_season_rank: String(record.rank),
-        soft_reset_elo: String(softResetElo),
-        ...{ mode: metadata.mode || '1v1' },
-      }
-    );
-  }
+  // Create new leaderboard for next season and seed players with soft-reset ELO
+  createAndSeedSeasonLeaderboard(nk, nextSeason.season_id, nextSeasonNumber, allRecords);
 
   // Update current season status to ended. The sentinel's end_distribution
   // is cleared here so the next rpcEndSeason call (next season rollover)

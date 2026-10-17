@@ -31,6 +31,7 @@ jest.mock('../season_system', () => ({
   getPlayerPrestigeRecord: jest.fn(),
   getPlayerCosmetics: jest.fn(),
   calculateSoftResetElo: jest.fn(),
+  createAndSeedSeasonLeaderboard: jest.fn(),
   getRankDecayInfo: jest.fn(),
   calculateRewards: jest.fn(),
   updatePlayerPrestigeRecord: jest.fn(),

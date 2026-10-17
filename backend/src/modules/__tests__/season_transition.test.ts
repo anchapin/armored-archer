@@ -1,5 +1,10 @@
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
-import { calculateSoftResetElo, evaluatePrestigeTiers, PRESTIGE_TIERS } from '../season_system';
+import {
+  calculateSoftResetElo,
+  createAndSeedSeasonLeaderboard,
+  evaluatePrestigeTiers,
+  PRESTIGE_TIERS,
+} from '../season_system';
 import { Runtime } from '../../types/nakama';
 
 describe('Season transition', () => {
@@ -99,6 +104,49 @@ describe('Season transition', () => {
       for (let i = 1; i < eloValues.length; i++) {
         expect(eloValues[i]).toBeLessThan(eloValues[i - 1]);
       }
+    });
+  });
+});
+
+describe('createAndSeedSeasonLeaderboard', () => {
+  it('creates the leaderboard with desc/best ordering and season number metadata', () => {
+    const mockNk = createMockNakama();
+
+    createAndSeedSeasonLeaderboard(mockNk, 'season_2', 2, []);
+
+    expect(mockNk.leaderboardCreate).toHaveBeenCalledWith('season_2', true, 'desc', 'best', '', {
+      season_number: '2',
+    });
+    expect(mockNk.leaderboardRecordWrite).not.toHaveBeenCalled();
+  });
+
+  it('seeds each ending-season record with soft-reset ELO and zeroed stats', () => {
+    const mockNk = createMockNakama();
+    const records = [
+      { rank: 5, ownerId: 'p1', username: 'alice', metadata: JSON.stringify({ mode: '2v2' }) },
+      { rank: 600, ownerId: 'p2', username: 'bob', metadata: '{}' },
+    ] as unknown as import('../types/shared').LeaderboardRecord[];
+
+    createAndSeedSeasonLeaderboard(mockNk, 'season_2', 2, records);
+
+    expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledTimes(2);
+    expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledWith('season_2', 'p1', 'alice', 1300, 0, {
+      wins: '0',
+      losses: '0',
+      win_rate: '0',
+      punch_up_wins: '0',
+      previous_season_rank: '5',
+      soft_reset_elo: '1300',
+      mode: '2v2',
+    });
+    expect(mockNk.leaderboardRecordWrite).toHaveBeenCalledWith('season_2', 'p2', 'bob', 1000, 0, {
+      wins: '0',
+      losses: '0',
+      win_rate: '0',
+      punch_up_wins: '0',
+      previous_season_rank: '600',
+      soft_reset_elo: '1000',
+      mode: '1v1',
     });
   });
 });

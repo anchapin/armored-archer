@@ -57,6 +57,7 @@ import {
   getPlayerPrestigeRecord,
   getPlayerCosmetics,
   calculateSoftResetElo,
+  createAndSeedSeasonLeaderboard,
   getRankDecayInfo,
   calculateRewards,
   updatePlayerPrestigeRecord,
@@ -482,30 +483,8 @@ export function triggerEndSeason(
   const oldSeason = { ...currentSeason, status: 'ended' };
   saveSeasonInfo(nk, ctx.userId, oldSeason);
 
-  // Create new leaderboard and seed players
-  nk.leaderboardCreate(nextSeason.season_id, true, 'desc', 'best', '', {
-    season_number: String(nextNum),
-  });
-  for (const record of allRecords) {
-    const softResetElo = calculateSoftResetElo(record.rank);
-    const metadata = parseRecordMetadata(record.metadata);
-    nk.leaderboardRecordWrite(
-      nextSeason.season_id,
-      record.ownerId,
-      record.username,
-      softResetElo,
-      0,
-      {
-        wins: '0',
-        losses: '0',
-        win_rate: '0',
-        punch_up_wins: '0',
-        previous_season_rank: String(record.rank),
-        soft_reset_elo: String(softResetElo),
-        ...{ mode: metadata.mode || '1v1' },
-      }
-    );
-  }
+  // Create new leaderboard and seed players with soft-reset ELO
+  createAndSeedSeasonLeaderboard(nk, nextSeason.season_id, nextNum, allRecords);
 
   publishCurrentSeason(nk, nextSeason);
 
