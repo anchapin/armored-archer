@@ -191,6 +191,21 @@ export function checkStageCompletionClaim(
  * @param stageId - ID of the completed stage
  * @param claimVersion - Version read by `checkStageCompletionClaim`, if any
  */
+export function buildStageCompletionClaimWrite(
+  userId: string,
+  stageId: string,
+  claimVersion?: string,
+  attemptId?: string
+): Runtime.StorageWrite {
+  return {
+    collection: STAGE_COMPLETION_CLAIM_COLLECTION,
+    key: `${userId}:${stageId}`,
+    userId,
+    value: toStorageValue({ claimed_at: Date.now(), stage_id: stageId, attempt_id: attemptId }),
+    version: claimVersion ?? '*',
+  };
+}
+
 export function writeStageCompletionClaim(
   nk: Runtime.Nakama,
   userId: string,
@@ -198,15 +213,7 @@ export function writeStageCompletionClaim(
   claimVersion?: string,
   attemptId?: string
 ): void {
-  nk.storageWrite([
-    {
-      collection: STAGE_COMPLETION_CLAIM_COLLECTION,
-      key: `${userId}:${stageId}`,
-      userId,
-      value: toStorageValue({ claimed_at: Date.now(), stage_id: stageId, attempt_id: attemptId }),
-      version: claimVersion ?? '*',
-    },
-  ]);
+  nk.storageWrite([buildStageCompletionClaimWrite(userId, stageId, claimVersion, attemptId)]);
 }
 
 /**
