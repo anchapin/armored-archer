@@ -45,8 +45,13 @@ import {
   applyStageCompletion,
   checkStageCompletionClaim,
   clampCompletionClaims,
-  writeStageCompletionClaim,
 } from './stage_progression';
+import {
+  buildStageSettlement,
+  markSettlementEffect,
+  recordIntendedLoot,
+  writeClaimAndSettlement,
+} from './stage_settlement';
 import { grantStageXP } from './stage_xp';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
@@ -2005,12 +2010,25 @@ export function rpcStageComplete(
     // persists and a retry is rejected as a duplicate for the cooldown
     // window, so rewards can never be double-granted.
     try {
-      writeStageCompletionClaim(
+      // Issue #1558 Stage 1: the claim and its settlement journal are written
+      // in ONE storage batch - no window where a claim exists without the
+      // settlement that records what the attempt owes.
+      // Journal the clamped values, never the raw client claim (#1068).
+      const settlementClaims = clampCompletionClaims(request.stars_earned ?? 3, request.score ?? 0);
+      writeClaimAndSettlement(
         nk,
         ctx.userId,
         request.stage_id,
         gate.claimVersion,
-        request.attempt_id
+        request.attempt_id,
+        buildStageSettlement(request.stage_id, request.attempt_id, {
+          difficulty: request.difficulty,
+          stars_earned: settlementClaims.safeStars,
+          score: settlementClaims.safeScore,
+          boss_defeated: request.boss_defeated,
+          enemy_type: request.enemy_type,
+          challenge_id: request.challenge_id,
+        })
       );
     } catch (claimWriteError) {
       logger.warn(
@@ -2256,6 +2274,7 @@ function applyCompletionAndRespond(
     safeScore,
     logger
   );
+  markSettlementEffect(nk, ctx.userId, request.stage_id, 'best_of', 'settled', logger);
 
   // Handle case where replay didn't improve: no loot re-roll, no XP.
   // Skipped on resume: the crashed attempt may have written the best-of
@@ -2308,6 +2327,7 @@ function applyCompletionAndRespond(
 
   const xpGained = plan ? plan.xp.total : baseXP;
   grantCompletionRewards(nk, ctx, logger, request, xpGained, plan);
+  markSettlementEffect(nk, ctx.userId, request.stage_id, 'xp', 'settled', logger);
 
   // Audit the stage completion
   logAudit(
@@ -2461,11 +2481,33 @@ function resolveLootResult(
       gearGrantId,
       stageCompletionDbContext(logger)
     );
-    if (priorGrant) return { dropped: true, gear: priorGrant };
+    if (priorGrant) {
+      markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
+      return { dropped: true, gear: priorGrant };
+    }
   }
-  return roll < dropRate
-    ? generateLootResult(nk, ctx.userId, request.stage_id, inventory, logger, gearGrantId)
-    : { dropped: false, gear: null };
+  if (roll < dropRate) {
+    try {
+      const lootResult = generateLootResult(
+        nk,
+        ctx.userId,
+        request.stage_id,
+        inventory,
+        logger,
+        gearGrantId,
+        dropRate,
+        roll
+      );
+      markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
+      return lootResult;
+    } catch (lootError) {
+      markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'failed', logger);
+      throw lootError;
+    }
+  }
+  // Roll missed: no loot owed this attempt - the effect is complete.
+  markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
+  return { dropped: false, gear: null };
 }
 
 /**
@@ -2559,6 +2601,8 @@ function processStageCompletion(
     rpc: 'armored_archer/stage_complete',
     logger,
   });
+  markSettlementEffect(nk, ctx.userId, request.stage_id, 'boss_defeat', 'settled', logger);
+  markSettlementEffect(nk, ctx.userId, request.stage_id, 'modifier_pool', 'settled', logger);
 
   // Get player inventory (after unlocking modifier pools to get updated pools)
   const inventory = getPlayerInventory(nk, ctx.userId, logger, {
@@ -2676,9 +2720,20 @@ function generateLootResult(
   stageId: string,
   inventory: PlayerInventory,
   logger: Runtime.Logger,
-  grantId?: string
+  grantId?: string,
+  dropRate?: number,
+  roll?: number
 ): LootResult {
   const gear = generateGearItem(stageId, inventory.unlocked_modifier_pools, logger);
+  // #1558 Stage 1 journal: the intended loot is recorded at roll time so a
+  // later recovery never rerolls. Best-effort; never affects the outcome.
+  recordIntendedLoot(
+    nk,
+    userId,
+    stageId,
+    { gear, grant_id: grantId, drop_rate: dropRate ?? 0, roll: roll ?? 0 },
+    logger
+  );
 
   // Persist gear to database with retry
   let insertResult: ReturnType<typeof insertGearItem>;
