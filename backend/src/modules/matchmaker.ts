@@ -53,6 +53,9 @@ import {
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 import { getLevelForXp } from './xp_manager';
 
+/** Acceptance window for pending matches — open pool and direct challenges alike. */
+const PENDING_MATCH_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
 /**
  * PvP match data structure.
  *
@@ -377,16 +380,15 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
  * consecutive_timeouts when the duel starts (issue #903 — legacy
  * correspondence constants removed).
  *
- * NOTE: callers pass different expiry windows today (5 minutes for direct
- * challenges, PENDING_MATCH_EXPIRY_MS for open matchmaking). Preserved as a
- * parameter; the discrepancy may be worth a product decision later.
+ * Both open-pool and direct-challenge pending matches share the same
+ * 5-minute acceptance window (PENDING_MATCH_EXPIRY_MS).
  */
-function pendingMatchDefaults(now: number, creatorId: string, expiryMs: number) {
+function pendingMatchDefaults(now: number, creatorId: string) {
   return {
     status: 'pending' as const,
     created_at: now,
     updated_at: now,
-    expires_at: now + expiryMs,
+    expires_at: now + PENDING_MATCH_EXPIRY_MS,
     last_turn_timestamp: now,
     current_turn: 1,
     current_player: creatorId,
@@ -597,7 +599,7 @@ export function rpcCreateMatch(
       opponent_rank: targetRank,
       match_type: request.match_type,
       is_punch_up: isPunchUp,
-      ...pendingMatchDefaults(Date.now(), ctx.userId, 300000), // 5 minute expiry
+      ...pendingMatchDefaults(Date.now(), ctx.userId),
     };
 
     persistPendingMatch(nk, ctx.userId, match);
@@ -623,8 +625,6 @@ export function rpcCreateMatch(
     return JSON.stringify(response);
   } else {
     const now = Date.now();
-    // Pending matches expire after 24 hours
-    const PENDING_MATCH_EXPIRY_MS = 24 * 60 * 60 * 1000;
     const match: PvPMatch = {
       match_id: generateMatchId(),
       creator_id: ctx.userId,
@@ -633,7 +633,7 @@ export function rpcCreateMatch(
       opponent_rank: 0,
       match_type: request.match_type,
       is_punch_up: false,
-      ...pendingMatchDefaults(now, ctx.userId, PENDING_MATCH_EXPIRY_MS),
+      ...pendingMatchDefaults(now, ctx.userId),
     };
 
     persistPendingMatch(nk, ctx.userId, match);
