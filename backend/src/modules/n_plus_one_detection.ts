@@ -32,6 +32,9 @@
 import { Counter, Histogram, Gauge, Registry } from 'prom-client';
 import { logger as appLogger } from '../config/logger';
 import { Runtime } from '../types/nakama';
+import type { RpcHandler } from '../types/rpc-handler';
+
+export type { RpcHandler };
 import { normalizeStorageList } from '../utils/storage-helpers';
 
 // --- Configuration ---
@@ -628,13 +631,6 @@ export function resetNPlusOneDetection(): void {
 }
 
 // --- RPC Integration ---
-
-export type RpcHandler = (
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-) => string | Promise<string>;
 
 /**
  * Wrap an RPC handler with N+1 query tracking

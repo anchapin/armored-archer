@@ -354,3 +354,22 @@ export function readPvpMatch(
   }
   return nk.storageRead([{ collection: 'pvp_matches', key: matchId, userId: ownerId }]);
 }
+
+/**
+ * Read a single user-keyed storage record and parse it.
+ * Returns success:false when the record is missing, empty, or unparseable.
+ */
+export function readSingleUserRecord<T>(
+  nk: Runtime.Nakama,
+  logger: Runtime.Logger,
+  userId: string,
+  collection: string
+): { success: boolean; data?: T } {
+  const read = nk.storageRead?.([{ collection, key: userId, userId }]);
+  const raw = read && read.length > 0 && read[0].value ? getStorageRawValue(read[0].value) : null;
+  if (!raw) {
+    return { success: false };
+  }
+  const parsed = safeParse<T>(raw, null, logger, collection);
+  return parsed.success && parsed.data ? { success: true, data: parsed.data } : { success: false };
+}

@@ -5,8 +5,7 @@
 
 import { number, string, pipe, minValue, maxValue } from 'valibot';
 import { Runtime } from '../types/nakama';
-import { safeParse } from '../utils/safeParse';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { readSingleUserRecord, toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, createValidationErrorResponse } from './validation';
@@ -436,35 +435,7 @@ function loadPacingState(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: PacingState } {
-  const objects =
-    nk.storageRead?.([
-      {
-        collection: 'pacing_state',
-        key: userId,
-        userId: userId,
-      },
-    ]) ?? [];
-
-  if (!objects || objects.length === 0) {
-    return { success: false };
-  }
-
-  const value = objects[0].value;
-  if (!value) {
-    return { success: false };
-  }
-
-  const parseResult = safeParse<PacingState>(
-    getStorageRawValue(value) ?? '',
-    null,
-    logger,
-    'pacing_state'
-  );
-  if (!parseResult.success || !parseResult.data) {
-    return { success: false };
-  }
-
-  return { success: true, data: parseResult.data };
+  return readSingleUserRecord<PacingState>(nk, logger, userId, 'pacing_state');
 }
 
 // Dummy logger for compatibility

@@ -155,6 +155,32 @@ export async function applyDailyDecay(
  * @param limit - Maximum number of entries
  * @returns Array of season rankings
  */
+/** Build the standard SeasonRanking entry from a record, its metadata, and decay data. */
+function buildSeasonRanking(
+  seasonId: string,
+  record: { ownerId: string; score: number; rank: number },
+  metadata: Record<string, any>,
+  lastActiveData: number,
+  decayedRating: number,
+  daysInactive: number
+): SeasonRanking {
+  return {
+    season_id: seasonId,
+    player_id: record.ownerId,
+    rating: record.score,
+    mode: metadata.mode || '1v1',
+    matches: parseInt(metadata.matches || '0', 10),
+    wins: parseInt(metadata.wins || '0', 10),
+    losses: parseInt(metadata.losses || '0', 10),
+    win_rate: parseFloat(metadata.win_rate || '0'),
+    punch_up_wins: parseInt(metadata.punch_up_wins || '0', 10),
+    last_active: lastActiveData,
+    decayed_rating: decayedRating,
+    days_inactive: daysInactive,
+    rank: record.rank,
+  };
+}
+
 export async function getTopPlayers(
   nk: Runtime.Nakama,
   seasonId: string,
@@ -188,21 +214,9 @@ export async function getTopPlayers(
       continue;
     }
 
-    rankings.push({
-      season_id: seasonId,
-      player_id: record.ownerId,
-      rating: record.score,
-      mode: metadata.mode || '1v1',
-      matches: parseInt(metadata.matches || '0', 10),
-      wins: parseInt(metadata.wins || '0', 10),
-      losses: parseInt(metadata.losses || '0', 10),
-      win_rate: parseFloat(metadata.win_rate || '0'),
-      punch_up_wins: parseInt(metadata.punch_up_wins || '0', 10),
-      last_active: lastActiveData,
-      decayed_rating: decayedRating,
-      days_inactive: daysInactive,
-      rank: record.rank,
-    });
+    rankings.push(
+      buildSeasonRanking(seasonId, record, metadata, lastActiveData, decayedRating, daysInactive)
+    );
   }
 
   // Sort by decayed rating for display
@@ -256,21 +270,14 @@ export function getPlayerRank(
   const decayAmount = calculateDecayAmount(record.score, daysInactive, decayConfig);
   const decayedRating = Math.max(record.score - decayAmount, decayConfig.minimum_rating);
 
-  const ranking: SeasonRanking = {
-    season_id: seasonId,
-    player_id: record.ownerId,
-    rating: record.score,
-    mode: metadata.mode || '1v1',
-    matches: parseInt(metadata.matches || '0', 10),
-    wins: parseInt(metadata.wins || '0', 10),
-    losses: parseInt(metadata.losses || '0', 10),
-    win_rate: parseFloat(metadata.win_rate || '0'),
-    punch_up_wins: parseInt(metadata.punch_up_wins || '0', 10),
-    last_active: lastActiveData,
-    decayed_rating: decayedRating,
-    days_inactive: daysInactive,
-    rank: record.rank,
-  };
+  const ranking: SeasonRanking = buildSeasonRanking(
+    seasonId,
+    record,
+    metadata,
+    lastActiveData,
+    decayedRating,
+    daysInactive
+  );
 
   let playersAbove = 0;
 

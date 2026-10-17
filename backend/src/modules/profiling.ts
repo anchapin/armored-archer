@@ -37,6 +37,9 @@ function finishProfiling(name: string, startTime: number, error: Error | null): 
  */
 
 import { Runtime } from '../types/nakama';
+import type { RpcHandler } from '../types/rpc-handler';
+
+export type { RpcHandler };
 import { logger } from '../config/logger';
 
 // --- Profiling Configuration ---
@@ -355,25 +358,15 @@ export function resetProfiling(newConfig?: Partial<ProfilingConfig>): void {
 // --- RPC Handler Registration ---
 
 /**
- * Type for RPC handlers
- */
-export type RpcHandler = (
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-) => string | Promise<string>;
-
-/**
  * Wrap an RPC handler with profiling
  */
 export function wrapRpcWithProfiling(rpcName: string, handler: RpcHandler): RpcHandler {
-  return async function (
+  return async (
     ctx: Runtime.Context,
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): Promise<string> {
+  ): Promise<string> => {
     // Create profile block for the RPC
     const profileBlock = createProfileBlock(`rpc.${rpcName}`);
 
