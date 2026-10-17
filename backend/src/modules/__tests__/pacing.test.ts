@@ -477,4 +477,47 @@ describe('Pacing', () => {
       expect(metrics.current_fatigue).toBeGreaterThan(54);
     });
   });
+
+  describe('coverage: high fatigue and ratio branches', () => {
+    it('suggestBreak recommends a short break at high (non-critical) fatigue', () => {
+      resetPacingState(mockCtx, testUserId);
+      // 5 x 100s combat = 75 fatigue (HIGH band 70-85), streak 5 (not over max)
+      for (let i = 0; i < 5; i++) {
+        trackPacingState(mockCtx, testUserId, ContentType.COMBAT, 100.0);
+      }
+      const recommendation = suggestBreak(mockCtx, testUserId);
+      expect(recommendation.should_break).toBe(true);
+      expect(recommendation.break_duration).toBe(120);
+      expect(recommendation.reason).toBe('High fatigue detected');
+    });
+
+    it('getRecommendedEncounterType returns narrative at high fatigue', () => {
+      resetPacingState(mockCtx, testUserId);
+      for (let i = 0; i < 5; i++) {
+        trackPacingState(mockCtx, testUserId, ContentType.COMBAT, 100.0);
+      }
+      expect(getRecommendedEncounterType(mockCtx, testUserId)).toBe(ContentType.NARRATIVE);
+    });
+
+    it('getRecommendedEncounterType returns exploration on high combat ratio without long streak', () => {
+      resetPacingState(mockCtx, testUserId);
+      // 8 combat / 10 total = 0.8 ratio, but final streak only 4 (<= max 5)
+      const seq = [
+        ContentType.COMBAT,
+        ContentType.COMBAT,
+        ContentType.COMBAT,
+        ContentType.COMBAT,
+        ContentType.NARRATIVE,
+        ContentType.COMBAT,
+        ContentType.COMBAT,
+        ContentType.COMBAT,
+        ContentType.COMBAT,
+        ContentType.NARRATIVE,
+      ];
+      for (const t of seq) {
+        trackPacingState(mockCtx, testUserId, t, 30.0);
+      }
+      expect(getRecommendedEncounterType(mockCtx, testUserId)).toBe(ContentType.EXPLORATION);
+    });
+  });
 });

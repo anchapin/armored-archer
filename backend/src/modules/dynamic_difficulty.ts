@@ -7,7 +7,7 @@ import { enum as enumType } from 'valibot';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
-import { getStorageRawValue, toStorageValue } from '../utils/storage-helpers';
+import { getStorageRawValue, readSingleUserRecord, toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import {
@@ -736,35 +736,7 @@ function loadDifficultyState(
   nk: Runtime.Nakama,
   userId: string
 ): { success: boolean; data?: DifficultyState } {
-  const objects =
-    nk.storageRead?.([
-      {
-        collection: 'difficulty_state',
-        key: userId,
-        userId: userId,
-      },
-    ]) ?? [];
-
-  if (!objects || objects.length === 0) {
-    return { success: false };
-  }
-
-  const value = objects[0].value;
-  if (!value) {
-    return { success: false };
-  }
-
-  const parseResult = safeParse<DifficultyState>(
-    getStorageRawValue(value) ?? '',
-    null,
-    logger,
-    'difficulty_state'
-  );
-  if (!parseResult.success || !parseResult.data) {
-    return { success: false };
-  }
-
-  return { success: true, data: parseResult.data };
+  return readSingleUserRecord<DifficultyState>(nk, logger, userId, 'difficulty_state');
 }
 
 /**

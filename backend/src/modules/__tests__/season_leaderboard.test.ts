@@ -5,6 +5,8 @@
 import {
   calculateDecayAmount,
   getDaysInactive,
+  getPlayerLastActive,
+  updatePlayerLastActive,
   RatingDecayConfig,
   SeasonRanking,
   SeasonArchive,
@@ -189,6 +191,45 @@ describe('season_leaderboard', () => {
 
       expect(archive.winner_id).toBe('');
       expect(archive.winner_name).toBe('');
+    });
+  });
+
+  describe('getPlayerLastActive / updatePlayerLastActive', () => {
+    const makeNk = (impl: () => unknown[]) =>
+      ({ storageRead: jest.fn(impl), storageWrite: jest.fn() }) as any;
+
+    it('returns last_active when present (string value)', async () => {
+      const nk = makeNk(() => [{ value: JSON.stringify({ last_active: 1234 }) }]);
+      await expect(getPlayerLastActive(nk, 'p1')).resolves.toBe(1234);
+    });
+
+    it('returns last_active from an object value', async () => {
+      const nk = makeNk(() => [{ value: { last_active: 42 } }]);
+      await expect(getPlayerLastActive(nk, 'p2')).resolves.toBe(42);
+    });
+
+    it('falls back to last_match_time, then 0', async () => {
+      const nk = makeNk(() => [{ value: JSON.stringify({ last_match_time: 777 }) }]);
+      await expect(getPlayerLastActive(nk, 'p3')).resolves.toBe(777);
+      const nkEmpty = makeNk(() => [{ value: JSON.stringify({}) }]);
+      await expect(getPlayerLastActive(nkEmpty, 'p4')).resolves.toBe(0);
+    });
+
+    it('returns 0 when no record exists or the read fails', async () => {
+      const nk = makeNk(() => []);
+      await expect(getPlayerLastActive(nk, 'p5')).resolves.toBe(0);
+      const nkErr = makeNk(() => {
+        throw new Error('storage down');
+      });
+      await expect(getPlayerLastActive(nkErr, 'p6')).resolves.toBe(0);
+    });
+
+    it('updatePlayerLastActive writes the player record', () => {
+      const nk = makeNk(() => []);
+      updatePlayerLastActive(nk, 'p7');
+      expect(nk.storageWrite).toHaveBeenCalledWith([
+        expect.objectContaining({ key: 'p7', userId: 'p7' }),
+      ]);
     });
   });
 });
