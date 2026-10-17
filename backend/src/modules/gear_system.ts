@@ -53,6 +53,7 @@ import {
   readStageSettlement,
   recordIntendedLoot,
   recordIntendedXp,
+  rollbackEffectToFailed,
   tryTransitionEffect,
   type StageSettlement,
   writeClaimAndSettlement,
@@ -1974,7 +1975,7 @@ function recoverFailedLoot(
     );
     return true;
   } catch (lootError) {
-    tryTransitionEffect(nk, userId, stageId, 'loot', 'failed', logger);
+    rollbackEffectToFailed(nk, userId, stageId, 'loot', logger);
     throw lootError;
   }
 }
@@ -2005,7 +2006,7 @@ function recoverFailedXp(
     );
     return settlement.intended_xp as number;
   } catch (xpError) {
-    tryTransitionEffect(nk, userId, stageId, 'xp', 'failed', logger);
+    rollbackEffectToFailed(nk, userId, stageId, 'xp', logger);
     throw xpError;
   }
 }
@@ -2094,6 +2095,47 @@ function settlePriorFailedSettlement(
     loot_recovered: outcome.loot_recovered,
     xp_recovered: outcome.xp_recovered,
   };
+}
+
+/** A challenge-scoped completion reuses the challenge id as its attempt key. */
+function normalizeCompletionAttemptId(request: StageCompleteRequest): void {
+  if (request.challenge_id && !request.attempt_id) {
+    request.attempt_id = request.challenge_id;
+  }
+}
+
+/**
+ * Runs the prior-settlement recovery, converting a recovery throw into a
+ * visible failure response. The recovery legs roll their effect markers back
+ * to failed before rethrowing, and the new claim batch has not run yet - a
+ * retry re-attempts the recovery safely. Fail visibly, never uncaught.
+ */
+function recoverPriorFailedSettlement(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest
+): RecoveredRewards & { errorResponse?: string } {
+  try {
+    return settlePriorFailedSettlement(nk, ctx, logger, request);
+  } catch (recoveryError) {
+    logger.error(
+      'Stage settlement recovery failed for user %s stage %s: %s',
+      ctx.userId,
+      request.stage_id,
+      String(recoveryError)
+    );
+    return {
+      recovered: false,
+      loot_recovered: false,
+      xp_recovered: 0,
+      errorResponse: JSON.stringify({
+        success: false,
+        error: 'Failed to recover a prior failed settlement - retry is safe',
+        error_code: 'SETTLEMENT_RECOVERY_FAILED',
+      }),
+    };
+  }
 }
 
 /**
@@ -2214,9 +2256,7 @@ export function rpcStageComplete(
 
   // The challenge ID doubles as the attempt key so the pair shares one
   // idempotency record.
-  if (request.challenge_id && !request.attempt_id) {
-    request.attempt_id = request.challenge_id;
-  }
+  normalizeCompletionAttemptId(request);
 
   const claimStartedAtMs = Date.now();
   const gate = gateStageCompletion(nk, ctx, logger, request, claimStartedAtMs);
@@ -2226,7 +2266,10 @@ export function rpcStageComplete(
 
   // #1558 Stage 3: a failed settlement from an earlier attempt is settled
   // BEFORE this completion's claim+settlement batch overwrites the journal.
-  const recovery = settlePriorFailedSettlement(nk, ctx, logger, request);
+  const recovery = recoverPriorFailedSettlement(nk, ctx, logger, request);
+  if (recovery.errorResponse) {
+    return recovery.errorResponse;
+  }
 
   try {
     // Issue #1069 claim-first atomicity: write the versioned dedup marker
