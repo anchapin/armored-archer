@@ -1,3 +1,4 @@
+import type { HealthAlertThresholds, MetricAlertThresholds } from './alert-thresholds';
 // Dynamic import for Node.js-specific modules
 // These modules don't exist in Nakama's runtime (Duktape/QuickJS)
 import type * as fsType from 'fs';
@@ -206,34 +207,8 @@ export interface AlertingConfig {
     method: 'POST' | 'PUT' | 'PATCH';
     headers?: Record<string, string>;
   };
-  healthAlerts: {
-    cpuWarningPercent: number;
-    cpuCriticalPercent: number;
-    memoryWarningPercent: number;
-    memoryCriticalPercent: number;
-    dbConnectionsWarningPercent: number;
-    dbConnectionsCriticalPercent: number;
-    diskWarningPercent: number;
-    diskCriticalPercent: number;
-    responseTimeWarningMs: number;
-    responseTimeCriticalMs: number;
-    errorRateWarningPercent: number;
-    errorRateCriticalPercent: number;
-  };
-  metricAlerts: {
-    activeConnectionsWarning: number;
-    activeConnectionsCritical: number;
-    matchQueueWarning: number;
-    matchQueueCritical: number;
-    matchWaitTimeWarningSec: number;
-    matchWaitTimeCriticalSec: number;
-    dbQueryTimeWarningMs: number;
-    dbQueryTimeCriticalMs: number;
-    failedLoginsWarning: number;
-    failedLoginsCritical: number;
-    purchaseFailuresWarning: number;
-    purchaseFailuresCritical: number;
-  };
+  healthAlerts: HealthAlertThresholds;
+  metricAlerts: MetricAlertThresholds;
   cooldowns: {
     critical: number;
     error: number;

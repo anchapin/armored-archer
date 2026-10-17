@@ -13,7 +13,6 @@ import {
   rpcGetBuilds,
   registerRpcAllocateStats,
   registerRpcGainXP,
-  registerRpcGetPlayerStats,
   registerRpcRespecStats,
   registerRpcSaveBuild,
   registerRpcLoadBuild,
@@ -501,21 +500,6 @@ describe('rpg_system', () => {
 
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/gain_xp',
-        expect.any(Function)
-      );
-    });
-  });
-
-  describe('registerRpcGetPlayerStats', () => {
-    it('should register the get_player_stats RPC endpoint', () => {
-      const mockInitializer = {
-        registerRpc: jest.fn(),
-      } as unknown as Runtime.Initializer;
-
-      registerRpcGetPlayerStats(mockInitializer);
-
-      expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
-        'armored_archer/get_player_stats',
         expect.any(Function)
       );
     });
