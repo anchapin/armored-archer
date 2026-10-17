@@ -405,8 +405,9 @@ export interface RolloutMetricsClientDelta {
  * `rollout_record_metrics` RPC only ever threads bounded deltas through
  * here.
  */
-export function recordRolloutMetrics(featureName: string, metrics: Partial<RolloutMetrics>): void {
-  const existing = rolloutMetrics.get(featureName) || {
+/** Default metrics for a feature with no recorded rollout state. */
+function defaultRolloutMetrics(featureName: string): RolloutMetrics {
+  return {
     featureName,
     phase: 'disabled' as RolloutPhase,
     totalUsers: 0,
@@ -419,6 +420,10 @@ export function recordRolloutMetrics(featureName: string, metrics: Partial<Rollo
     healthCheckFails: 0,
     lastUpdated: Date.now(),
   };
+}
+
+export function recordRolloutMetrics(featureName: string, metrics: Partial<RolloutMetrics>): void {
+  const existing = rolloutMetrics.get(featureName) || defaultRolloutMetrics(featureName);
 
   const flag = featureFlags.get(featureName);
 
@@ -445,19 +450,7 @@ export function recordRolloutClientDelta(
   featureName: string,
   delta: RolloutMetricsClientDelta
 ): RolloutMetrics {
-  const existing = rolloutMetrics.get(featureName) || {
-    featureName,
-    phase: 'disabled' as RolloutPhase,
-    totalUsers: 0,
-    activeUsers: 0,
-    errorCount: 0,
-    errorRate: 0,
-    avgLatencyMs: 0,
-    p99LatencyMs: 0,
-    healthCheckPasses: 0,
-    healthCheckFails: 0,
-    lastUpdated: Date.now(),
-  };
+  const existing = rolloutMetrics.get(featureName) || defaultRolloutMetrics(featureName);
 
   const flag = featureFlags.get(featureName);
 
