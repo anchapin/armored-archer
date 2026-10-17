@@ -116,6 +116,32 @@ if [ "$fail" = "1" ]; then
     exit 1
 fi
 
+# Template-contract check (issue #1659): envsubst silently renders an
+# unset/typo'd variable as an EMPTY string, and the sentinel fail-fast
+# above only inspects variables that ARE set. A template reference to a
+# variable that is not in scope (e.g. a renamed or misspelled
+# ALERTMANAGER_* name) would therefore produce a rendered config with
+# empty receiver URLs that only fails at alert-send time. Extract every
+# \${VAR} the template references and require each one to be set and
+# non-empty in the current environment.
+fail=0
+while IFS= read -r var; do
+    [ -z "$var" ] && continue
+    val="${!var:-}"
+    if [ -z "$val" ]; then
+        err "template references \${$var} but $var is unset or empty."
+        fail=1
+    fi
+done < <(grep -oE '\$\{[A-Z_][A-Z0-9_]*\}' "$TEMPLATE" | sort -u | sed 's/^\${//; s/}$//')
+if [ "$fail" = "1" ]; then
+    err "Template references variables outside the current env contract."
+    echo "    Every \${VAR} in $TEMPLATE must be set in backend/.env (and"
+    echo "    documented in backend/.env.example + the docker-compose"
+    echo "    alertmanager environment: block)."
+    exit 1
+fi
+ok "All template-referenced variables are set (contract check)"
+
 hdr "Rendering $RENDERED from $TEMPLATE (envsubst)"
 # envsubst expands ONLY $VAR and ${VAR} references; anything else is left
 # alone, so the YAML structure (anchors, multiline, etc.) is preserved.
