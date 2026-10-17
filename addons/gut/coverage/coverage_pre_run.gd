@@ -12,8 +12,16 @@ func run():
 	# Load classes
 	_tracker_ref = load("res://addons/gut/coverage/coverage_tracker.gd")
 	ScriptLineParser = preload("res://addons/gut/coverage/script_line_parser.gd")
-	# Clear previous data
+	# Issue #1660: GutCoverageTracker is no longer a production autoload
+	# (test tooling must not ship in release builds). Self-register the
+	# tracker node for this test run so the static dispatch
+	# (get_instance() -> Engine singleton -> root node) still resolves.
 	var tracker = _tracker_ref.get_instance()
+	if tracker == null:
+		tracker = _tracker_ref.new()
+		tracker.name = "GutCoverageTracker"
+		Engine.get_main_loop().root.add_child(tracker)
+	# Clear previous data
 	if tracker:
 		tracker.before_all()
 
