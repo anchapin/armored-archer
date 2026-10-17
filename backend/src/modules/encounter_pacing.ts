@@ -76,25 +76,9 @@ export interface PacingState {
 }
 
 /**
- * Log encounter pacing request.
+ * Log encounter pacing request. Fields mirror PacingMetrics.
  */
-export interface LogEncounterPacingRequest {
-  total_encounters: number;
-  recent_encounters: number;
-  combat_count: number;
-  exploration_count: number;
-  narrative_count: number;
-  puzzle_count: number;
-  combat_ratio: number;
-  exploration_ratio: number;
-  narrative_ratio: number;
-  puzzle_ratio: number;
-  combat_streak: number;
-  exploration_streak: number;
-  current_fatigue: number;
-  fatigue_level: string;
-  combat_time_total: number;
-}
+export type LogEncounterPacingRequest = PacingMetrics;
 
 /**
  * Pacing report response.
