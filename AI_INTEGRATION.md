@@ -243,6 +243,76 @@ Generate {feature} with mobile optimization requirements:
 - Batch operations where possible
 ```
 
+## Quick Start
+
+Get running with AI-assisted development in about 5 minutes.
+
+1. **Choose a tool.** Local Ollama (recommended, offline): `curl -fsSL https://ollama.com/install.sh | sh`, then `ollama pull codellama:13b` (7.5GB, best quality) or `ollama pull mistral:7b` (4GB, faster), then `ollama serve`. Or configure AI Assistant Hub in Godot with a cloud model (Gemini, OpenAI, etc.) using a provider API key. Or use godogen for full feature generation (see `GODOGEN_SETUP.md`).
+2. **Test code generation.** In the Godot editor, open a script, use the AI Assistant Hub sidebar, and prompt: "Generate a function that returns random int between min and max". Check output for Godot 4.6 syntax.
+3. **Test refactoring.** `./scripts/ai-refactor.sh autoloads/GameManager.gd naming`
+4. **Generate audio assets.** `python3 scripts/generate-foley-batch.py`, select a category ("ui" is a quick start), then reimport `res://audio/foley_ai/` in the FileSystem dock.
+5. **Commit with attribution.** Use the `[AI-assisted]` prefix per the Commit Attribution section above.
+
+### Common First Tasks
+
+- **New UI component:** copy a template from `AI_PROMPT_LIBRARY.md` (UI Components), submit via AI Assistant Hub, review with `AI_CODE_REVIEW.md`, test in editor, commit.
+- **Refactor existing code:** `./scripts/ai-refactor.sh <file> mobile|types|naming` (e.g. `scenes/player/Player.gd mobile`).
+- **Generate combat sounds:** `python3 scripts/generate-foley-batch.py` and pick "combat".
+- **Add a new enemy:** `/godogen Create a goblin enemy that chases the player in range, attacks with a dagger swing, has 50 HP, drops loot on death, and uses the existing combat system`.
+
+## Tool Details
+
+### Ollama (local code generation)
+
+- Models: `codellama:13b` (best for code, 7.5GB) or `mistral:7b` (fast iterations, 4GB).
+- Godot integration: AI Assistant Hub plugin, API URL `http://localhost:11434/api/chat`; system prompt in `ai-setup/README.md`.
+- Scripted use: `./scripts/ai-refactor.sh <file> [type]`.
+
+### Godogen (feature generation)
+
+- Generates complete Godot 4 scenes and scripts, creates 2D/3D assets (requires API keys), performs visual QA via screenshots, and respects project autoloads and conventions.
+- Example: `/godogen Create a new enemy type: flying gargoyle`
+
+### Foley AI (audio)
+
+- Setup: install the Foley AI plugin from the Godot Asset Library, configure an ElevenLabs API key, use the batch script (see `FOLEY_AI_SETUP.md`).
+- Categories: combat (bows, swords, impacts), ui (buttons, feedback), movement (footsteps, jumps), ambient, magic, vfx.
+
+### Performance Benchmarks
+
+Measured on Ryzen 7 5800X, 32GB RAM (indicative only):
+
+| Task | AI Tool | Time | Quality |
+|------|---------|------|---------|
+| Simple function | Ollama (Mistral 7B) | ~0.5s | Good |
+| Complex class | Ollama (Codellama 13B) | ~2-3s | High |
+| Feature generation | Godogen | ~30-60s | Production-ready |
+| Audio batch (10 sounds) | Foley AI | ~15-20s | Excellent |
+
+## Troubleshooting
+
+**Ollama not responding:** check `curl http://localhost:11434/api/tags`; restart with `pkill ollama && ollama serve`. For memory pressure, switch to `mistral:7b` and reduce prompt context.
+
+**AI output uses Godot 3 syntax** (e.g. `call_deferred("method", args)`): update the system prompt in AI Assistant Hub, state "Use Godot 4.6 syntax (NOT Godot 3)" in prompts, and see `AI_CODE_REVIEW.md` → Common Issues.
+
+**Naming violations:** see `AI_PROMPT_LIBRARY.md` → Naming Conventions, or run `./scripts/ai-refactor.sh <file> naming`.
+
+**Generated audio not appearing in Godot:** confirm `res://audio/foley_ai/` exists, right-click the folder → Reimport, and check the path in AudioManager.gd.
+
+**Audio rate limits or poor quality:** use the batch script (fewer API calls), and write more specific prompts with duration and material descriptors (metallic, organic, etc.).
+
+## Documentation Map
+
+| Document | Purpose |
+|----------|---------|
+| `AI_CODE_REVIEW.md` | Code review checklist for AI-generated code |
+| `AI_PROMPT_LIBRARY.md` | Reusable prompt templates |
+| `ai-setup/README.md` | Local Ollama setup |
+| `FOLEY_AI_SETUP.md` | Audio generation guide |
+| `GODOGEN_SETUP.md` | Godogen feature generation |
+| `AGENTS.md` | Project conventions including AI references |
+
+
 ## Resources
 
 - **Godogen Setup**: `GODOGEN_SETUP.md`
