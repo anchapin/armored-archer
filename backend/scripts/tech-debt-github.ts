@@ -21,36 +21,16 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
+import {
+  TechDebtIssue,
+  TechDebtReport,
+  BACKEND_DIR,
+  REPORT_PATH,
+  loadReport,
+} from './tech-debt-shared';
 
-interface TechDebtIssue {
-  file: string;
-  line: number;
-  type: string;
-  severity: string;
-  description: string;
-  code: string;
-  details?: string;
-  dateAdded?: string;
-  age?: number;
-}
 
-interface TechDebtReport {
-  timestamp: string;
-  summary: {
-    total: number;
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
-    byCategory: Record<string, number>;
-  };
-  issues: TechDebtIssue[];
-}
 
-// Configuration
-const BACKEND_DIR = path.join(__dirname, '..');
-const PROJECT_ROOT = path.join(BACKEND_DIR, '..');
-const REPORT_PATH = path.join(BACKEND_DIR, 'tech-debt-report.json');
 const GITHUB_REPO = process.env.GITHUB_REPO || 'owner/armored-archer';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
@@ -105,19 +85,7 @@ const categoryLabels: Record<string, string> = {
   marker: 'category:code-quality',
 };
 
-function loadReport(): TechDebtReport | null {
-  try {
-    if (!fs.existsSync(REPORT_PATH)) {
-      console.log('⚠️  No tech-debt-report.json found. Run detect-tech-debt.ts first.');
-      return null;
-    }
-    const content = fs.readFileSync(REPORT_PATH, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    console.error('❌ Error loading report:', error);
-    return null;
-  }
-}
+
 
 function generateIssueTitle(issue: TechDebtIssue): string {
   const severity = issue.severity.toUpperCase();
