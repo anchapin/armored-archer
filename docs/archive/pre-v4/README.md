@@ -12,6 +12,17 @@ files are not maintained; see their in-tree successors for current state.
 | `docs/v2.6.0-VERIFICATION.md` | `docs/archive/pre-v4/v2.6.0-VERIFICATION.md` | Milestone v2.6.0 (Integration & Handler Coverage) verification — wrap-up doc, status COMPLETE, dated 2026-03-22 |
 | `docs/MVP_BURNDOWN_DASHBOARD_README.md` | `docs/archive/pre-v4/MVP_BURNDOWN_DASHBOARD_README.md` | Lightweight MVP burndown dashboard for Sprint 0–8; pre-dates the v4.0.0 work and the project has since shipped all four MVP pillars |
 | `docs/PERFORMANCE_REPORT.md` | `docs/archive/pre-v4/PERFORMANCE_REPORT.md` | "Performance Report: Milestone v3.0.0 Alpha Readiness" — 2026-03-23 load-test report for the v3.0.0 ship; superseded by [`docs/PERFORMANCE.md`](../PERFORMANCE.md) |
+| `backend/ALPHA_READINESS.md` | `docs/archive/pre-v4/ALPHA_READINESS.md` | Alpha readiness report for the abandoned Go backend (2026-03-15, "READY FOR ALPHA"); superseded by the TypeScript backend |
+| `backend/BETA_BUG_TRACKING.md` | `docs/archive/pre-v4/BETA_BUG_TRACKING.md` | Beta bug triage record for the closed beta that ended April 2026 |
+| `backend/BETA_DEPLOYMENT_CHECKLIST.md` | `docs/archive/pre-v4/BETA_DEPLOYMENT_CHECKLIST.md` | Closed-beta deployment checklist; milestone concluded pre-v4.0.0 |
+| `backend/BETA_ENVIRONMENT.md` | `docs/archive/pre-v4/BETA_ENVIRONMENT.md` | Beta environment configuration (Go backend era) |
+| `backend/BETA_ERROR_MONITORING.md` | `docs/archive/pre-v4/BETA_ERROR_MONITORING.md` | Beta error-rate monitoring dashboard configuration |
+| `backend/BETA_FEEDBACK_SYSTEM.md` | `docs/archive/pre-v4/BETA_FEEDBACK_SYSTEM.md` | Beta feedback collection infrastructure |
+| `backend/BETA_PERFORMANCE_RESULTS.md` | `docs/archive/pre-v4/BETA_PERFORMANCE_RESULTS.md` | Beta performance test results |
+| `backend/BETA_STAKEHOLDER_APPROVAL.md` | `docs/archive/pre-v4/BETA_STAKEHOLDER_APPROVAL.md` | Beta stakeholder sign-off record |
+| `backend/BETA_TEST_PLAN.md` | `docs/archive/pre-v4/BETA_TEST_PLAN.md` | Beta test plan (Beta Readiness Phase 06-01) |
+| `backend/BETA_USER_ONBOARDING.md` | `docs/archive/pre-v4/BETA_USER_ONBOARDING.md` | Beta user registration and onboarding flow |
+| `backend/MIGRATION_SUMMARY.md` | `docs/archive/pre-v4/MIGRATION_SUMMARY.md` | Summary of the abandoned Go-backend migration; current backend is TypeScript (see `backend/nakama.yml`) |
 
 ## What is NOT here
 

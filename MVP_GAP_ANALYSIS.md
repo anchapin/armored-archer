@@ -32,7 +32,7 @@
 - **UX/UI/Onboarding:** Design system + base components + verification report claim completeness. Real flows (main_menu nav → campaign → combat → results → equip) and first-time tutorial effectiveness for the unique "aim while auto-shoots" fantasy are unproven at MVP quality bar. Mobile touch targets, feedback, empty/error states likely still rough.
 - **Integration & Testing Reality:** Backend ~94.5% coverage + strong. Godot client coverage partial (STATE: only 4/30 autoloads instrumented). Smoke/e2e exist but brittle when services absent. High volume of "summary/report/plan" artifacts vs. demonstrated runtime stability.
 - **Content:** campaigns.json substantial (419 lines, chapter unlock chains). Enemy/gear visual + AI variety thinner due to placeholders and reuse.
-- **Launch/Infra:** App store assets folder is complete. Beta checklists, alerts, privacy docs exist. Active backend is TypeScript/Nakama (RPC-MAP 2026-04-13); past Go migration celebrated in ALPHA_READINESS but not current. Services startup friction is a real adoption barrier.
+- **Launch/Infra:** App store assets folder is complete. Beta checklists, alerts, privacy docs exist. Active backend is TypeScript/Nakama (RPC-MAP 2026-04-13); past Go migration celebrated in `docs/archive/pre-v4/ALPHA_READINESS.md` but not current. Services startup friction is a real adoption barrier.
 
 **Recommendation:** Treat current state as "advanced vertical slice + excellent infrastructure" rather than "MVP ready." Fix the 5 P0 blockers + run the verification checklist below before claiming any milestone or beta. A focused 2-4 week "MVP Lock" sprint on reliability + one polished PvE chapter + basic async matchmaking + live duel happy path + cosmetic purchase is likely required.
 
