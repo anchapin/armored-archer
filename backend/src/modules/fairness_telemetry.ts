@@ -637,155 +637,86 @@ export async function getFairnessSummary(
  * @param ctx - Nakama runtime context
  * @param logger - Nakama logger instance
  * @param nk - Nakama server interface
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
+ * Table-driven RPC handlers for the four fairness event-log endpoints.
+ * Each endpoint validates its payload, backfills event_id, logs the event,
+ * and returns { success, event_id } - only the schema, label, and log call differ.
  */
-export async function rpcLogHitResolution(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogHitResolution RPC called');
-
-  const validation = validatePayload<HitResolutionEvent>(
-    ZodSchemas.hit_resolution,
-    payload,
-    'hit_resolution'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('hit_resolution', validation.error);
-  }
-
-  // Ensure event ID is set
-  if (!validation.data.event_id) {
-    validation.data.event_id = generateEventId();
-  }
-
-  await logHitResolution(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-    event_id: validation.data.event_id,
-  });
+interface FairnessEventLogSpec<E extends { event_id: string }> {
+  /** Schema/rpc name used for validation and error responses. */
+  rpcName: 'hit_resolution' | 'disconnect_event' | 'timeout_event' | 'ranking_delta_event';
+  /** Label for the entry debug log line. */
+  debugLabel: string;
+  schema: Parameters<typeof validatePayload>[0];
+  logEvent: (nk: Runtime.Nakama, event: E) => Promise<void>;
 }
+
+function makeFairnessEventLogRpc<E extends { event_id: string }>(spec: FairnessEventLogSpec<E>) {
+  return async function fairnessEventLogRpc(
+    ctx: Runtime.Context,
+    logger: Runtime.Logger,
+    nk: Runtime.Nakama,
+    payload: string
+  ): Promise<string> {
+    logger.debug(`${spec.debugLabel} RPC called`);
+
+    const validation = validatePayload<E>(spec.schema, payload, spec.rpcName);
+    if (!validation.success) {
+      return createValidationErrorResponse(spec.rpcName, validation.error);
+    }
+
+    // Ensure event ID is set
+    if (!validation.data.event_id) {
+      validation.data.event_id = generateEventId();
+    }
+
+    await spec.logEvent(nk, validation.data);
+
+    return JSON.stringify({
+      success: true,
+      event_id: validation.data.event_id,
+    });
+  };
+}
+
+/**
+ * RPC handler for logging hit resolution events.
+ */
+export const rpcLogHitResolution = makeFairnessEventLogRpc<HitResolutionEvent>({
+  rpcName: 'hit_resolution',
+  debugLabel: 'LogHitResolution',
+  schema: ZodSchemas.hit_resolution,
+  logEvent: logHitResolution,
+});
 
 /**
  * RPC handler for logging disconnect events.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
  */
-export async function rpcLogDisconnect(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogDisconnect RPC called');
-
-  const validation = validatePayload<DisconnectEvent>(
-    ZodSchemas.disconnect_event,
-    payload,
-    'disconnect_event'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('disconnect_event', validation.error);
-  }
-
-  // Ensure event ID is set
-  if (!validation.data.event_id) {
-    validation.data.event_id = generateEventId();
-  }
-
-  await logDisconnect(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-    event_id: validation.data.event_id,
-  });
-}
+export const rpcLogDisconnect = makeFairnessEventLogRpc<DisconnectEvent>({
+  rpcName: 'disconnect_event',
+  debugLabel: 'LogDisconnect',
+  schema: ZodSchemas.disconnect_event,
+  logEvent: logDisconnect,
+});
 
 /**
  * RPC handler for logging timeout events.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
  */
-export async function rpcLogTimeout(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogTimeout RPC called');
-
-  const validation = validatePayload<TimeoutEvent>(
-    ZodSchemas.timeout_event,
-    payload,
-    'timeout_event'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('timeout_event', validation.error);
-  }
-
-  // Ensure event ID is set
-  if (!validation.data.event_id) {
-    validation.data.event_id = generateEventId();
-  }
-
-  await logTimeout(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-    event_id: validation.data.event_id,
-  });
-}
+export const rpcLogTimeout = makeFairnessEventLogRpc<TimeoutEvent>({
+  rpcName: 'timeout_event',
+  debugLabel: 'LogTimeout',
+  schema: ZodSchemas.timeout_event,
+  logEvent: logTimeout,
+});
 
 /**
  * RPC handler for logging ranking delta events.
- *
- * @param ctx - Nakama runtime context
- * @param logger - Nakama logger instance
- * @param nk - Nakama server interface
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
  */
-export async function rpcLogRankingDelta(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogRankingDelta RPC called');
-
-  const validation = validatePayload<RankingDeltaEvent>(
-    ZodSchemas.ranking_delta_event,
-    payload,
-    'ranking_delta_event'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('ranking_delta_event', validation.error);
-  }
-
-  // Ensure event ID is set
-  if (!validation.data.event_id) {
-    validation.data.event_id = generateEventId();
-  }
-
-  await logRankingDelta(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-    event_id: validation.data.event_id,
-  });
-}
+export const rpcLogRankingDelta = makeFairnessEventLogRpc<RankingDeltaEvent>({
+  rpcName: 'ranking_delta_event',
+  debugLabel: 'LogRankingDelta',
+  schema: ZodSchemas.ranking_delta_event,
+  logEvent: logRankingDelta,
+});
 
 /**
  * RPC handler for querying fairness telemetry summary.
