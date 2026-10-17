@@ -118,12 +118,11 @@ jobs:
     name: Coverage Gate (Tracked Autoload Coverage, issue #1097)
     runs-on: ubuntu-latest
     needs: godot-tests
-    # Skip-gated pending issue #894 baseline drift follow-up: the
-    # gut-baseline.json baseline is {tests: 538, failing: 49} but the
-    # current GUT suite runs ~582 tests with ~54 failing (44 new
-    # tests added since the baseline was captured, 5 of which fail).
-    # The gut_baseline_gate.py ratchet-down rule fails on every PR.
-    # Set vars.GUT_BASELINE_FIXED=true once the baseline is reconciled.
+    # The vars.GUT_BASELINE_FIXED skip-gate was REMOVED on 2026-09-25
+    # (issue #894). The baseline was reconciled on 2026-10-15 (issue #1341):
+    # data/gut-baseline.json is now {tests: 808, failing: 0, tolerance: 5}.
+    # The failure-baseline ratchet gate (issue #1082) runs inside
+    # scripts/local-godot-tests.sh and is live on every run.
     steps:
       - uses: actions/checkout@v5
 
