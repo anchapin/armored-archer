@@ -24,6 +24,29 @@ files are not maintained; see their in-tree successors for current state.
 | `backend/BETA_USER_ONBOARDING.md` | `docs/archive/pre-v4/BETA_USER_ONBOARDING.md` | Beta user registration and onboarding flow |
 | `backend/MIGRATION_SUMMARY.md` | `docs/archive/pre-v4/MIGRATION_SUMMARY.md` | Summary of the abandoned Go-backend migration; current backend is TypeScript (see `backend/nakama.yml`) |
 
+
+## Planning documents (archived 2026-10, cleanup sweep)
+
+| Original path | Archived path | One-line context |
+| --- | --- | --- |
+| `.planning/MILESTONE-v2.1.0-PROPOSAL.md` | `docs/archive/pre-v4/planning/MILESTONE-v2.1.0-PROPOSAL.md` | Shipped v2.1.0 milestone proposal |
+| `.planning/MILESTONE-v2.6.0-PROPOSAL.md` | `docs/archive/pre-v4/planning/MILESTONE-v2.6.0-PROPOSAL.md` | Shipped v2.6.0 milestone proposal |
+| `.planning/MILESTONE-v3.0.0-PROPOSAL.md` | `docs/archive/pre-v4/planning/MILESTONE-v3.0.0-PROPOSAL.md` | Shipped v3.0.0 milestone proposal |
+| `.planning/v2.3-MILESTONE-AUDIT.md` | `docs/archive/pre-v4/planning/v2.3-MILESTONE-AUDIT.md` | v2.3 milestone audit (concluded) |
+| `.planning/v2.5-MILESTONE-AUDIT.md` | `docs/archive/pre-v4/planning/v2.5-MILESTONE-AUDIT.md` | v2.5 milestone audit (concluded) |
+| `.planning/v3.2.0-COMPLETION-REPORT.md` | `docs/archive/pre-v4/planning/v3.2.0-COMPLETION-REPORT.md` | v3.2.0 completion report |
+| `.planning/PIXEL_ART_COMPLETION_SUMMARY.md` | `docs/archive/pre-v4/planning/PIXEL_ART_COMPLETION_SUMMARY.md` | Pixel-art generation wrap-up |
+| `.planning/SPRITE_ASSET_VERIFICATION_REPORT.md` | `docs/archive/pre-v4/planning/SPRITE_ASSET_VERIFICATION_REPORT.md` | Sprite asset verification report |
+| `.planning/PROJECT_GODOT_FIXES.md` | `docs/archive/pre-v4/planning/PROJECT_GODOT_FIXES.md` | Godot error cleanup plan (2026-03, complete) |
+| `.planning/todos/GODOT-FIXES-TODOS.md` | `docs/archive/pre-v4/planning/GODOT-FIXES-TODOS.md` | Godot fixes TODO list (status: COMPLETE) |
+| `.planning/ci-fixes-plan.md` | `docs/archive/pre-v4/planning/ci-fixes-plan.md` | One-off `act` CLI CI analysis (completed) |
+| `.planning/quick/1-implement-missing-hot-path-rpc-handlers-/` | `docs/archive/pre-v4/planning/quick-1-rpc-handlers-PLAN.md`, `quick-1-rpc-handlers-SUMMARY.md` | Completed quick-task plan and summary |
+| `.planning/research/PHASE-18-RESEARCH.md` | `docs/archive/pre-v4/planning/PHASE-18-RESEARCH.md` | Phase-specific research |
+| `.planning/research/PHASE-26-RESEARCH.md` | `docs/archive/pre-v4/planning/PHASE-26-RESEARCH.md` | Phase-specific research |
+
+Two stray scratch files were deleted outright instead: `.planning/death_animations_append.gd`
+and `.planning/hit_reactions_append.gd` (unreferenced code snippets with zero repo references).
+
 ## What is NOT here
 
 - `docs/PERFORMANCE.md` — current performance targets & budget-device spec; references issue #1073 and the canonical `backend/tests/fixtures/performance/performance-targets.json`. **Not archived.**
