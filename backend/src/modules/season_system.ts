@@ -17,6 +17,9 @@ import { logRewardClaim, recordSeasonEndSnapshot } from './season_telemetry';
 import { toStorageValue, getStorageRawValue, parseRecordMetadata } from '../utils/storage-helpers';
 import { withAdminGuard } from './admin_auth';
 import { listLeaderboardRecords, listAllLeaderboardRecords } from '../utils/leaderboard-list';
+import type { LeaderboardRecord } from '../types/shared';
+
+export type { LeaderboardRecord };
 
 /**
  * Season rewards data structure.
@@ -36,28 +39,6 @@ export interface SeasonRewards {
   };
 }
 
-/**
- * Leaderboard record data structure.
- *
- * @property ownerId - ID of the player
- * @property username - Display name of the player
- * @property rank - Current rank
- * @property score - Current score
- * @property metadata - Optional metadata
- * @property expiry - Optional expiry time
- * @property maxNumScore - Maximum number of scores
- * @property numScore - Number of scores
- */
-export interface LeaderboardRecord {
-  ownerId: string;
-  username: string;
-  rank: number;
-  score: number;
-  metadata?: string;
-  expiry?: number;
-  maxNumScore?: number;
-  numScore?: number;
-}
 
 /**
  * Season information data structure.

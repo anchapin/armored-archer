@@ -8,6 +8,7 @@ import { Runtime } from '../types/nakama';
 import { safeParse } from '../utils/safeParse';
 import { observedSqlQuery } from '../utils/sql-observability';
 import { withAdminGuard } from './admin_auth';
+import type { CombatLogEntry } from './combat_system';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 /**
@@ -90,18 +91,7 @@ export interface MatchReplayData {
   qa_flagged_reason: string | null;
 }
 
-/**
- * Combat log entry from the database.
- */
-export interface CombatLogEntry {
-  turn: number;
-  attacker_id: string;
-  action: string;
-  hit: boolean;
-  damage: number;
-  is_crit: boolean;
-  timestamp: number;
-}
+export type { CombatLogEntry };
 
 /**
  * Request to get match replay data.
