@@ -220,16 +220,14 @@ export function setRequestContext(request: RequestContext): void {
 }
 
 /**
- * Captures an exception with extended context information.
- *
- * @param error - The error to capture
- * @param context - Extended context with user, game state, and request info
+ * Builds the Sentry tags/extra/user scope shared by captureException and
+ * captureMessage from an extended error context.
  */
-export function captureException(error: Error, context: ExtendedErrorContext = {}): void {
-  if (!errorTrackingConfig.enabled) {
-    return;
-  }
-
+function buildSentryScope(context: ExtendedErrorContext): {
+  tags: Record<string, string>;
+  extra: Record<string, unknown>;
+  user: { id: string; username?: string } | undefined;
+} {
   const tags: Record<string, string> = {};
   if (context.userId) {
     tags.userId = context.userId;
@@ -257,17 +255,63 @@ export function captureException(error: Error, context: ExtendedErrorContext = {
     };
   }
 
-  Sentry.captureException(error, {
-    tags,
-    extra,
-    // Ensure user context is set
-    user: context.user?.userId
-      ? {
-          id: context.user.userId,
-          username: context.user.username,
-        }
-      : undefined,
-  });
+  const user = context.user?.userId
+    ? {
+        id: context.user.userId,
+        username: context.user.username,
+      }
+    : undefined;
+
+  return { tags, extra, user };
+}
+
+/**
+ * Returns the Sentry scope for a context, or null when error tracking is disabled.
+ */
+function sentryScopeIfEnabled(context: ExtendedErrorContext): {
+  tags: Record<string, string>;
+  extra: Record<string, unknown>;
+  user: { id: string; username?: string } | undefined;
+} | null {
+  if (!errorTrackingConfig.enabled) {
+    return null;
+  }
+  return buildSentryScope(context);
+}
+
+/**
+ * Runs a Sentry capture with the shared scope, skipping when disabled.
+ */
+function captureWithScope(
+  context: ExtendedErrorContext,
+  capture: (scope: {
+    tags: Record<string, string>;
+    extra: Record<string, unknown>;
+    user: { id: string; username?: string } | undefined;
+  }) => void
+): void {
+  const scope = sentryScopeIfEnabled(context);
+  if (!scope) {
+    return;
+  }
+  capture(scope);
+}
+
+/**
+ * Captures an exception with extended context information.
+ *
+ * @param error - The error to capture
+ * @param context - Extended context with user, game state, and request info
+ */
+export function captureException(error: Error, context: ExtendedErrorContext = {}): void {
+  captureWithScope(context, (scope) =>
+    Sentry.captureException(error, {
+      tags: scope.tags,
+      extra: scope.extra,
+      // Ensure user context is set
+      user: scope.user,
+    })
+  );
 }
 
 /**
@@ -282,48 +326,14 @@ export function captureMessage(
   level: 'info' | 'warning' | 'error' = 'info',
   context: ExtendedErrorContext = {}
 ): void {
-  if (!errorTrackingConfig.enabled) {
-    return;
-  }
-
-  const tags: Record<string, string> = {};
-  if (context.userId) {
-    tags.userId = context.userId;
-  }
-  if (context.rpc) {
-    tags.rpc = context.rpc;
-  }
-
-  const extra: Record<string, unknown> = {
-    ...context.extra,
-    timestamp: new Date().toISOString(),
-  };
-
-  // Add game state if provided
-  if (context.gameState && errorTrackingConfig.includeGameState) {
-    extra.gameState = context.gameState;
-  }
-
-  // Add request info if provided
-  if (context.request) {
-    extra.request = {
-      rpcName: context.request.rpcName,
-      requestId: context.request.requestId,
-      payload: context.request.payload,
-    };
-  }
-
-  Sentry.captureMessage(message, {
-    level,
-    tags,
-    extra,
-    user: context.user?.userId
-      ? {
-          id: context.user.userId,
-          username: context.user.username,
-        }
-      : undefined,
-  });
+  captureWithScope(context, (scope) =>
+    Sentry.captureMessage(message, {
+      level,
+      tags: scope.tags,
+      extra: scope.extra,
+      user: scope.user,
+    })
+  );
 }
 
 /**

@@ -395,20 +395,22 @@ export async function getRewardConcentration(
   };
 }
 
-export async function getProgressionVelocity(
-  nk: Runtime.Nakama,
-  seasonId: string,
-  seasonStartTime: number,
-  startTime: number,
-  endTime: number
-): Promise<SeasonTelemetrySummary['progression_velocity']> {
-  const rankChanges = await readStorageCollection<RankChangeEvent>(
-    nk,
-    COLLECTION_RANK_CHANGES,
-    startTime,
-    endTime
-  );
+export interface RankChangeAggregation {
+  seasonChanges: RankChangeEvent[];
+  totalDelta: number;
+  punchUpCount: number;
+  weekData: { totalDelta: number; matches: number }[];
+}
 
+/**
+ * Aggregates rank-change events for one season: totals, punch-up count and
+ * per-week buckets. Shared by the progression-velocity report and the season
+ * progression snapshot writer.
+ */
+function aggregateSeasonRankChanges(
+  rankChanges: RankChangeEvent[],
+  seasonId: string
+): RankChangeAggregation {
   const seasonChanges = rankChanges.filter((rc) => rc.season_id === seasonId);
 
   let totalDelta = 0;
@@ -430,6 +432,44 @@ export async function getProgressionVelocity(
     weekData[weekIndex].matches++;
   }
 
+  return { seasonChanges, totalDelta, punchUpCount, weekData };
+}
+
+/**
+ * Maps weekly buckets to the rank_velocity_by_week response shape.
+ */
+function rankVelocityByWeek(
+  weekData: { totalDelta: number; matches: number }[]
+): SeasonProgressionSnapshot['rank_velocity_by_week'] {
+  const week = (i: number) => ({
+    avg_elo_change:
+      weekData[i].matches > 0
+        ? Math.round((weekData[i].totalDelta / (weekData[i].matches * 2)) * 100) / 100
+        : 0,
+    matches: weekData[i].matches,
+  });
+  return { week_1: week(0), week_2: week(1), week_3: week(2), week_4: week(3) };
+}
+
+export async function getProgressionVelocity(
+  nk: Runtime.Nakama,
+  seasonId: string,
+  seasonStartTime: number,
+  startTime: number,
+  endTime: number
+): Promise<SeasonTelemetrySummary['progression_velocity']> {
+  const rankChanges = await readStorageCollection<RankChangeEvent>(
+    nk,
+    COLLECTION_RANK_CHANGES,
+    startTime,
+    endTime
+  );
+
+  const { seasonChanges, totalDelta, punchUpCount, weekData } = aggregateSeasonRankChanges(
+    rankChanges,
+    seasonId
+  );
+
   const totalMatches = seasonChanges.length;
   const avgChangePerMatch = totalMatches > 0 ? totalDelta / (totalMatches * 2) : 0;
 
@@ -437,36 +477,7 @@ export async function getProgressionVelocity(
     total_matches_tracked: totalMatches,
     avg_rank_change_per_match: Math.round(avgChangePerMatch * 100) / 100,
     punch_up_rate: totalMatches > 0 ? punchUpCount / totalMatches : 0,
-    rank_velocity_by_week: {
-      week_1: {
-        avg_elo_change:
-          weekData[0].matches > 0
-            ? Math.round((weekData[0].totalDelta / (weekData[0].matches * 2)) * 100) / 100
-            : 0,
-        matches: weekData[0].matches,
-      },
-      week_2: {
-        avg_elo_change:
-          weekData[1].matches > 0
-            ? Math.round((weekData[1].totalDelta / (weekData[1].matches * 2)) * 100) / 100
-            : 0,
-        matches: weekData[1].matches,
-      },
-      week_3: {
-        avg_elo_change:
-          weekData[2].matches > 0
-            ? Math.round((weekData[2].totalDelta / (weekData[2].matches * 2)) * 100) / 100
-            : 0,
-        matches: weekData[2].matches,
-      },
-      week_4: {
-        avg_elo_change:
-          weekData[3].matches > 0
-            ? Math.round((weekData[3].totalDelta / (weekData[3].matches * 2)) * 100) / 100
-            : 0,
-        matches: weekData[3].matches,
-      },
-    },
+    rank_velocity_by_week: rankVelocityByWeek(weekData),
   };
 }
 
@@ -474,11 +485,7 @@ export async function getSeasonTelemetrySummary(
   nk: Runtime.Nakama,
   query: SeasonTelemetryQuery
 ): Promise<SeasonTelemetrySummary> {
-  const startTime = query.start_date
-    ? new Date(query.start_date).getTime()
-    : Date.now() - 28 * 24 * 60 * 60 * 1000;
-  const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
-  const seasonId = query.season_id || 'current';
+  const { startTime, endTime, seasonId } = resolveQueryWindow(query);
 
   // Derive season start time from season ID if it follows the pattern season_N
   const seasonStartTime = startTime;
@@ -517,26 +524,10 @@ export async function recordSeasonEndSnapshot(
       seasonStart,
       seasonEnd
     );
-    const seasonChanges = rankChanges.filter((rc) => rc.season_id === seasonId);
-
-    let totalDelta = 0;
-    let punchUpCount = 0;
-    const weekData = [
-      { totalDelta: 0, matches: 0 },
-      { totalDelta: 0, matches: 0 },
-      { totalDelta: 0, matches: 0 },
-      { totalDelta: 0, matches: 0 },
-    ];
-
-    for (const rc of seasonChanges) {
-      totalDelta += Math.abs(rc.winner_rank_delta) + Math.abs(rc.loser_rank_delta);
-      if (rc.is_punch_up) punchUpCount++;
-
-      const weekIndex = Math.min(Math.floor(rc.days_into_season / 7), 3);
-      weekData[weekIndex].totalDelta +=
-        Math.abs(rc.winner_rank_delta) + Math.abs(rc.loser_rank_delta);
-      weekData[weekIndex].matches++;
-    }
+    const { seasonChanges, totalDelta, punchUpCount, weekData } = aggregateSeasonRankChanges(
+      rankChanges,
+      seasonId
+    );
 
     const totalMatches = seasonChanges.length;
 
@@ -553,36 +544,7 @@ export async function recordSeasonEndSnapshot(
         totalMatches > 0 ? Math.round((totalDelta / (totalMatches * 2)) * 100) / 100 : 0,
       punch_up_rate: totalMatches > 0 ? punchUpCount / totalMatches : 0,
       punch_up_win_rate: 0,
-      rank_velocity_by_week: {
-        week_1: {
-          avg_elo_change:
-            weekData[0].matches > 0
-              ? Math.round((weekData[0].totalDelta / (weekData[0].matches * 2)) * 100) / 100
-              : 0,
-          matches: weekData[0].matches,
-        },
-        week_2: {
-          avg_elo_change:
-            weekData[1].matches > 0
-              ? Math.round((weekData[1].totalDelta / (weekData[1].matches * 2)) * 100) / 100
-              : 0,
-          matches: weekData[1].matches,
-        },
-        week_3: {
-          avg_elo_change:
-            weekData[2].matches > 0
-              ? Math.round((weekData[2].totalDelta / (weekData[2].matches * 2)) * 100) / 100
-              : 0,
-          matches: weekData[2].matches,
-        },
-        week_4: {
-          avg_elo_change:
-            weekData[3].matches > 0
-              ? Math.round((weekData[3].totalDelta / (weekData[3].matches * 2)) * 100) / 100
-              : 0,
-          matches: weekData[3].matches,
-        },
-      },
+      rank_velocity_by_week: rankVelocityByWeek(weekData),
     };
 
     await nk.storageWrite([
@@ -648,6 +610,48 @@ function calculateTopPercentShare(claims: RewardClaimEvent[], percentile: number
 
 // --- RPC Handlers ---
 
+/**
+ * Resolves the query window (start/end/season) from a telemetry query payload.
+ */
+function resolveQueryWindow(query: SeasonTelemetryQuery): {
+  startTime: number;
+  endTime: number;
+  seasonId: string;
+} {
+  const startTime = query.start_date
+    ? new Date(query.start_date).getTime()
+    : Date.now() - 28 * 24 * 60 * 60 * 1000;
+  const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
+  const seasonId = query.season_id || 'current';
+  return { startTime, endTime, seasonId };
+}
+
+/**
+ * Validates and normalizes the shared season-telemetry RPC query payload.
+ * Returns either the resolved query window or a ready-to-return error response.
+ */
+function parseTelemetryQuery(
+  payload: string
+):
+  | { ok: true; startTime: number; endTime: number; seasonId: string }
+  | { ok: false; response: string } {
+  const validation = validatePayload<SeasonTelemetryQuery>(
+    ZodSchemas.season_telemetry_query,
+    payload,
+    'season_telemetry_query'
+  );
+  if (!validation.success) {
+    return {
+      ok: false,
+      response: createValidationErrorResponse('season_telemetry_query', validation.error),
+    };
+  }
+
+  const query = validation.data;
+  const { startTime, endTime, seasonId } = resolveQueryWindow(query);
+  return { ok: true, startTime, endTime, seasonId };
+}
+
 async function rpcGetSeasonTelemetry(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -674,114 +678,77 @@ async function rpcGetSeasonTelemetry(
   }
 }
 
-async function rpcGetRankInflation(
-  ctx: Runtime.Context,
+type TelemetryQueryRpcSpec = [
+  rpcId: string,
+  metricName: string,
+  debugName: string,
+  errorLabel: string,
+  resultKey: string,
+  fetcher: TelemetryQueryFetcher,
+];
+
+const TELEMETRY_QUERY_RPCS: TelemetryQueryRpcSpec[] = [
+  [
+    'armored_archer/get_rank_inflation',
+    'get_rank_inflation',
+    'GetRankInflation',
+    'rank inflation',
+    'rank_inflation',
+    getRankInflation,
+  ],
+  [
+    'armored_archer/get_reward_concentration',
+    'get_reward_concentration',
+    'GetRewardConcentration',
+    'reward concentration',
+    'reward_concentration',
+    getRewardConcentration,
+  ],
+  [
+    'armored_archer/get_progression_velocity',
+    'get_progression_velocity',
+    'GetProgressionVelocity',
+    'progression velocity',
+    'progression_velocity',
+    (nk2, seasonId2, startTime2, endTime2) =>
+      getProgressionVelocity(nk2, seasonId2, startTime2, startTime2, endTime2),
+  ],
+];
+
+type TelemetryQueryFetcher = (
+  nk: Runtime.Nakama,
+  seasonId: string,
+  startTime: number,
+  endTime: number
+) => Promise<unknown>;
+
+/**
+ * Shared body of the season-telemetry query RPCs: validate the payload,
+ * resolve the window, run the fetcher, and shape success/error responses.
+ */
+async function runTelemetryQueryRpc(
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
-  payload: string
+  payload: string,
+  debugName: string,
+  errorLabel: string,
+  resultKey: string,
+  fetcher: TelemetryQueryFetcher
 ): Promise<string> {
-  logger.debug('GetRankInflation RPC called');
+  logger.debug(debugName + ' RPC called');
 
-  const validation = validatePayload<SeasonTelemetryQuery>(
-    ZodSchemas.season_telemetry_query,
-    payload,
-    'season_telemetry_query'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('season_telemetry_query', validation.error);
+  const parsed = parseTelemetryQuery(payload);
+  if (!parsed.ok) {
+    return parsed.response;
   }
-
-  const query = validation.data;
-  const startTime = query.start_date
-    ? new Date(query.start_date).getTime()
-    : Date.now() - 28 * 24 * 60 * 60 * 1000;
-  const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
-  const seasonId = query.season_id || 'current';
+  const { startTime, endTime, seasonId } = parsed;
 
   try {
-    const rankInflation = await getRankInflation(nk, seasonId, startTime, endTime);
-    return JSON.stringify({ success: true, rank_inflation: rankInflation });
+    const result = await fetcher(nk, seasonId, startTime, endTime);
+    return JSON.stringify({ success: true, [resultKey]: result });
   } catch (error) {
-    logger.error('Failed to get rank inflation', { error });
-    return JSON.stringify({ success: false, error: 'Failed to retrieve rank inflation data' });
-  }
-}
-
-async function rpcGetRewardConcentration(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('GetRewardConcentration RPC called');
-
-  const validation = validatePayload<SeasonTelemetryQuery>(
-    ZodSchemas.season_telemetry_query,
-    payload,
-    'season_telemetry_query'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('season_telemetry_query', validation.error);
-  }
-
-  const query = validation.data;
-  const startTime = query.start_date
-    ? new Date(query.start_date).getTime()
-    : Date.now() - 28 * 24 * 60 * 60 * 1000;
-  const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
-  const seasonId = query.season_id || 'current';
-
-  try {
-    const rewardConcentration = await getRewardConcentration(nk, seasonId, startTime, endTime);
-    return JSON.stringify({ success: true, reward_concentration: rewardConcentration });
-  } catch (error) {
-    logger.error('Failed to get reward concentration', { error });
-    return JSON.stringify({
-      success: false,
-      error: 'Failed to retrieve reward concentration data',
-    });
-  }
-}
-
-async function rpcGetProgressionVelocity(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('GetProgressionVelocity RPC called');
-
-  const validation = validatePayload<SeasonTelemetryQuery>(
-    ZodSchemas.season_telemetry_query,
-    payload,
-    'season_telemetry_query'
-  );
-  if (!validation.success) {
-    return createValidationErrorResponse('season_telemetry_query', validation.error);
-  }
-
-  const query = validation.data;
-  const startTime = query.start_date
-    ? new Date(query.start_date).getTime()
-    : Date.now() - 28 * 24 * 60 * 60 * 1000;
-  const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
-  const seasonId = query.season_id || 'current';
-
-  try {
-    const progressionVelocity = await getProgressionVelocity(
-      nk,
-      seasonId,
-      startTime,
-      startTime,
-      endTime
-    );
-    return JSON.stringify({ success: true, progression_velocity: progressionVelocity });
-  } catch (error) {
-    logger.error('Failed to get progression velocity', { error });
-    return JSON.stringify({
-      success: false,
-      error: 'Failed to retrieve progression velocity data',
-    });
+    logger.error('Failed to get ' + errorLabel, { error });
+    return JSON.stringify({ success: false, error: 'Failed to retrieve ' + errorLabel + ' data' });
   }
 }
 
@@ -825,24 +792,18 @@ export function registerSeasonTelemetryEndpoints(initializer: Runtime.Initialize
     'get_season_telemetry',
     rpcGetSeasonTelemetry
   );
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/get_rank_inflation',
-    'get_rank_inflation',
-    rpcGetRankInflation
-  );
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/get_reward_concentration',
-    'get_reward_concentration',
-    rpcGetRewardConcentration
-  );
-  registerRpcWithMetrics(
-    initializer,
-    'armored_archer/get_progression_velocity',
-    'get_progression_velocity',
-    rpcGetProgressionVelocity
-  );
+  for (const [
+    rpcId,
+    metricName,
+    debugName,
+    errorLabel,
+    resultKey,
+    fetcher,
+  ] of TELEMETRY_QUERY_RPCS) {
+    registerRpcWithMetrics(initializer, rpcId, metricName, (ctx, logger, nk, payload) =>
+      runTelemetryQueryRpc(logger, nk, payload, debugName, errorLabel, resultKey, fetcher)
+    );
+  }
   registerRpcWithMetrics(
     initializer,
     'armored_archer/capture_rating_snapshot',

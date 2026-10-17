@@ -372,6 +372,51 @@ export function registerRpcCreateMatch(initializer: Runtime.Initializer): void {
 }
 
 /**
+ * Default live-duel fields for a freshly created pending match.
+ * combat_system.ts re-initializes turn_timeout_ms, max_health, and
+ * consecutive_timeouts when the duel starts (issue #903 — legacy
+ * correspondence constants removed).
+ *
+ * NOTE: callers pass different expiry windows today (5 minutes for direct
+ * challenges, PENDING_MATCH_EXPIRY_MS for open matchmaking). Preserved as a
+ * parameter; the discrepancy may be worth a product decision later.
+ */
+function pendingMatchDefaults(now: number, creatorId: string, expiryMs: number) {
+  return {
+    status: 'pending' as const,
+    created_at: now,
+    updated_at: now,
+    expires_at: now + expiryMs,
+    last_turn_timestamp: now,
+    current_turn: 1,
+    current_player: creatorId,
+    turn_time_limit_ms: 5 * 60 * 1000, // 5 minutes — matches combat_system.ts
+    creator_health: 100,
+    opponent_health: 100,
+    max_turns: 10,
+    creator_consecutive_timeouts: 0,
+    opponent_consecutive_timeouts: 0,
+  };
+}
+
+/**
+ * Persists a pending PvP match and records the anti-abuse creation action.
+ */
+function persistPendingMatch(nk: Runtime.Nakama, creatorId: string, match: PvPMatch): void {
+  nk.storageWrite([
+    {
+      collection: 'pvp_matches',
+      key: match.match_id,
+      userId: creatorId,
+      value: toStorageValue(match),
+    },
+  ]);
+
+  // Anti-abuse: Record match creation
+  recordMatchAction(creatorId, 'create', match.match_id);
+}
+
+/**
  * Creates a new PvP match with optional direct challenge.
  *
  * @param ctx - Nakama runtime context
@@ -552,35 +597,10 @@ export function rpcCreateMatch(
       opponent_rank: targetRank,
       match_type: request.match_type,
       is_punch_up: isPunchUp,
-      status: 'pending',
-      created_at: Date.now(),
-      updated_at: Date.now(),
-      expires_at: Date.now() + 300000, // 5 minutes
-      last_turn_timestamp: Date.now(),
-      // Live-duel default fields for pending match. combat_system.ts
-      // re-initializes turn_timeout_ms, max_health, and consecutive_timeouts
-      // when the duel starts (issue #903 — legacy correspondence constants removed).
-      current_turn: 1,
-      current_player: ctx.userId,
-      turn_time_limit_ms: 5 * 60 * 1000, // 5 minutes — matches combat_system.ts
-      creator_health: 100,
-      opponent_health: 100,
-      max_turns: 10,
-      creator_consecutive_timeouts: 0,
-      opponent_consecutive_timeouts: 0,
+      ...pendingMatchDefaults(Date.now(), ctx.userId, 300000), // 5 minute expiry
     };
 
-    nk.storageWrite([
-      {
-        collection: 'pvp_matches',
-        key: match.match_id,
-        userId: ctx.userId,
-        value: toStorageValue(match),
-      },
-    ]);
-
-    // Anti-abuse: Record match creation
-    recordMatchAction(ctx.userId, 'create', match.match_id);
+    persistPendingMatch(nk, ctx.userId, match);
 
     // punch_up_info is ranked-only: casual matches must not advertise punch-up
     // metadata on the wire (punch-up shaping does not apply post-#872).
@@ -613,35 +633,10 @@ export function rpcCreateMatch(
       opponent_rank: 0,
       match_type: request.match_type,
       is_punch_up: false,
-      status: 'pending',
-      created_at: now,
-      updated_at: now,
-      expires_at: now + PENDING_MATCH_EXPIRY_MS,
-      last_turn_timestamp: now,
-      // Live-duel default fields for pending match. combat_system.ts
-      // re-initializes turn_timeout_ms, max_health, and consecutive_timeouts
-      // when the duel starts (issue #903 — legacy correspondence constants removed).
-      current_turn: 1,
-      current_player: ctx.userId,
-      turn_time_limit_ms: 5 * 60 * 1000, // 5 minutes — matches combat_system.ts
-      creator_health: 100,
-      opponent_health: 100,
-      max_turns: 10,
-      creator_consecutive_timeouts: 0,
-      opponent_consecutive_timeouts: 0,
+      ...pendingMatchDefaults(now, ctx.userId, PENDING_MATCH_EXPIRY_MS),
     };
 
-    nk.storageWrite([
-      {
-        collection: 'pvp_matches',
-        key: match.match_id,
-        userId: ctx.userId,
-        value: toStorageValue(match),
-      },
-    ]);
-
-    // Anti-abuse: Record match creation
-    recordMatchAction(ctx.userId, 'create', match.match_id);
+    persistPendingMatch(nk, ctx.userId, match);
 
     return JSON.stringify({
       success: true,
