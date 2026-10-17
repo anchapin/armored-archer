@@ -39,7 +39,7 @@
     "detect-dead-flags": "ts-node --transpile-only ./scripts/detect-dead-flags.ts",
     "detect-dead-flags:ci": "ts-node --transpile-only ./scripts/detect-dead-flags.ts --ci-mode",
     "detect-duplicate": "jscpd --config .jscpd.backend.json",
-    "detect-duplicate:ci": "jscpd --config .jscpd.backend.json --baseline .jscpd-baseline.json --fail-on-new-clones 0",
+    "detect-duplicate:ci": "ts-node --transpile-only ./scripts/jscpd-gate.ts",
     "tech-debt:report": "ts-node scripts/detect-tech-debt.ts",
     "tech-debt:report:ci": "ts-node scripts/detect-tech-debt.ts --ci-mode",
     "tech-debt:report:json": "ts-node scripts/detect-tech-debt.ts --json-output",
@@ -65,7 +65,8 @@
     "test:smoke:coverage": "./scripts/run-smoke-tests.sh --all --coverage",
     "test:coverage:report": "ts-node scripts/test-coverage-report.ts",
     "mutation:test": "stryker run",
-    "mutation:test:ci": "stryker run --reporters json,clear-text"
+    "mutation:test:ci": "stryker run --reporters json,clear-text",
+    "detect-duplicate:update-baseline": "ts-node --transpile-only ./scripts/jscpd-gate.ts --update-baseline"
   },
   "keywords": [
     "nakama",

@@ -68,15 +68,18 @@ jobs:
             run: npm test -- --testPathPatterns=log_scrubbing
 
           - name: Run duplicate code detection
-            # Baseline mode: fails only on clones not already recorded in
-            # backend/.jscpd-baseline.json, so the gate keeps its strictness across
-            # the jscpd 4 -> 5 detector change. The absolute `threshold` in
-            # .jscpd.backend.json remains as a coarse backstop. Regenerate with:
-            #   cd backend && npx jscpd --config .jscpd.backend.json \\
-            #     --baseline .jscpd-baseline.json --update-baseline
+            # Content baseline (scripts/jscpd-gate.ts): fails when the clone
+            # count exceeds the budget in backend/.jscpd-baseline.json or a
+            # clone contains 4+ duplicated lines absent from the baseline.
+            # Unlike jscpd's pair fingerprints, content hashes survive the
+            # line shifts and re-pairing that large refactors cause. Same
+            # detector settings (.jscpd.backend.json); the absolute threshold
+            # remains as a coarse backstop. Ratchet down after merging clone
+            # removals with:
+            #   cd backend && npm run detect-duplicate:update-baseline
             # The GDScript/Python pass stays informational (|| true).
             run: |
-              npx jscpd --config .jscpd.backend.json --baseline .jscpd-baseline.json --fail-on-new-clones 0
+              npm run detect-duplicate:ci
               npx jscpd --config ../.jscpd.client.json --threshold 3 ../autoloads/ ../scripts/ ../scenes/ || true
 
           - name: Tech debt report and critical check
