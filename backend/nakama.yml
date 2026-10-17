@@ -10,7 +10,7 @@ runtime:
   env: []
   path: /nakama/data
   # TypeScript is the authoritative backend runtime
-  # Go backend migration was abandoned (see MIGRATION_SUMMARY.md)
+  # Go backend migration was abandoned (see docs/archive/pre-v4/MIGRATION_SUMMARY.md)
   # To use Go: Uncomment go_entrypoint and comment js_entrypoint after fixing compatibility issues
   # go_entrypoint: "modules/server.so"
   js_entrypoint: "modules/index.js"

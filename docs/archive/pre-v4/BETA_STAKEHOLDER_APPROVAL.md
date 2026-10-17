@@ -33,15 +33,15 @@ Beta deployment for Armored Archer backend migration from TypeScript to Go is co
 |----------|----------|--------|
 | Beta Deployment Script | `backend/deploy-beta.sh` | ✅ Created |
 | Beta Nakama Config | `backend/nakama.beta.yml` | ✅ Created |
-| Deployment Checklist | `backend/BETA_DEPLOYMENT_CHECKLIST.md` | ✅ Created |
-| User Onboarding | `backend/BETA_USER_ONBOARDING.md` | ✅ Created |
+| Deployment Checklist | `BETA_DEPLOYMENT_CHECKLIST.md` | ✅ Created |
+| User Onboarding | `BETA_USER_ONBOARDING.md` | ✅ Created |
 | Beta Access Keys | `backend/generate-beta-access-keys.sh` | ✅ Created |
-| Error Monitoring | `backend/BETA_ERROR_MONITORING.md` | ✅ Created |
+| Error Monitoring | `BETA_ERROR_MONITORING.md` | ✅ Created |
 | Alerting Config | `backend/alerts.beta.yml` | ✅ Created |
 | Performance Tests | `backend/beta-performance-test.sh` | ✅ Created |
-| Bug Tracking | `backend/BETA_BUG_TRACKING.md` | ✅ Created |
-| Test Plan | `backend/BETA_TEST_PLAN.md` | ✅ Created |
-| Feedback System | `backend/BETA_FEEDBACK_SYSTEM.md` | ✅ Created |
+| Bug Tracking | `BETA_BUG_TRACKING.md` | ✅ Created |
+| Test Plan | `BETA_TEST_PLAN.md` | ✅ Created |
+| Feedback System | `BETA_FEEDBACK_SYSTEM.md` | ✅ Created |
 
 ### Technical Verification
 

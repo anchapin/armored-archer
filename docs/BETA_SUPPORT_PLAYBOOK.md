@@ -313,9 +313,9 @@ When a widespread issue is detected:
 | Connection Troubleshooting | `docs/CONNECTION_TROUBLESHOOTING.md` | Detailed connection debugging |
 | Feedback Guide | `backend/docs/FEEDBACK_GUIDE.md` | Feedback system reference |
 | Communication SLA | `backend/docs/COMMUNICATION_SLA.md` | Full SLA definitions |
-| Beta User Onboarding | `backend/BETA_USER_ONBOARDING.md` | Registration and onboarding flow |
-| Beta Bug Tracking | `backend/BETA_BUG_TRACKING.md` | Bug tracking workflow |
-| Beta Feedback System | `backend/BETA_FEEDBACK_SYSTEM.md` | Feedback collection system |
+| Beta User Onboarding | `docs/archive/pre-v4/BETA_USER_ONBOARDING.md` | Registration and onboarding flow |
+| Beta Bug Tracking | `docs/archive/pre-v4/BETA_BUG_TRACKING.md` | Bug tracking workflow |
+| Beta Feedback System | `docs/archive/pre-v4/BETA_FEEDBACK_SYSTEM.md` | Feedback collection system |
 | Issue Reporting QuickRef | `backend/docs/ISSUE_REPORTING_QUICKREF.md` | Issue pipeline reference |
 | Runbooks | `docs/runbooks/` | Operational incident procedures |
 | Alpha User Guide | `backend/docs/ALPHA_USER_GUIDE.md` | Alpha testing reference |

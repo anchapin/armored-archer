@@ -58,7 +58,7 @@ After attempting a migration to Go, TypeScript has been confirmed as the authori
 ### 🗑️ Removed - Go Backend Artifacts
 
 - Moved `README_GO.md` to `.deprecated/` (Go backend documentation)
-- Updated `MIGRATION_SUMMARY.md` with deprecation notice
+- Updated `docs/archive/pre-v4/MIGRATION_SUMMARY.md` with deprecation notice
 
 ### 📝 Documentation
 
@@ -73,7 +73,7 @@ The Go migration (started 2026-03-15) was abandoned due to:
 - Incomplete migration (Phases 14-15 pending)
 - TypeScript backend remains fully functional and actively developed
 
-See `MIGRATION_SUMMARY.md` for full details on the abandoned migration.
+See `docs/archive/pre-v4/MIGRATION_SUMMARY.md` for full details on the abandoned migration.
 
 ---
 
