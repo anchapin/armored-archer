@@ -1,3 +1,9 @@
+/** Record one completed profiling measurement. */
+function finishProfiling(name: string, startTime: number, error: Error | null): void {
+  const duration = hrtimeMs() - startTime;
+  recordProfileData(name, duration, error);
+}
+
 /**
  * Profiling Instrumentation Module
  *
@@ -101,8 +107,7 @@ export function profileSync<T>(name: string, fn: () => T): T {
     error = e as Error;
     throw e;
   } finally {
-    const duration = hrtimeMs() - startTime;
-    recordProfileData(name, duration, error);
+    finishProfiling(name, startTime, error);
   }
 
   return result;
@@ -126,8 +131,7 @@ export async function profileAsync<T>(name: string, fn: () => Promise<T>): Promi
     error = e as Error;
     throw e;
   } finally {
-    const duration = hrtimeMs() - startTime;
-    recordProfileData(name, duration, error);
+    finishProfiling(name, startTime, error);
   }
 
   return result;
