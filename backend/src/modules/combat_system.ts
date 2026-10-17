@@ -246,6 +246,24 @@ function validateMatchForCombat(
   return { valid: true, match };
 }
 
+/** Append the forfeit entry to the match log and save the updated state. */
+function appendForfeitAndSave(nk: Runtime.Nakama, matchState: MatchState, loserId: string): void {
+  // Add forfeit entry to log
+  const forfeitLogEntry: CombatLogEntry = {
+    turn: matchState.turn,
+    attacker_id: loserId,
+    action: 'forfeit',
+    hit: false,
+    damage: 0,
+    is_crit: false,
+    timestamp: Date.now(),
+  };
+  matchState.log.push(forfeitLogEntry);
+
+  // Save match state
+  saveMatchState(nk, matchState);
+}
+
 /**
  * Handles turn timeout by switching to opponent's turn
  * Returns true if match was forfeited due to consecutive timeouts
@@ -285,20 +303,7 @@ function handleTurnTimeout(
     matchState.winner = winnerId;
     matchState.forfeit_reason = 'timeout';
 
-    // Add forfeit entry to log
-    const forfeitLogEntry: CombatLogEntry = {
-      turn: matchState.turn,
-      attacker_id: loserId,
-      action: 'forfeit',
-      hit: false,
-      damage: 0,
-      is_crit: false,
-      timestamp: Date.now(),
-    };
-    matchState.log.push(forfeitLogEntry);
-
-    // Save match state
-    saveMatchState(nk, matchState);
+    appendForfeitAndSave(nk, matchState, loserId);
 
     // Get the match and update its status
     const matchObjects = nk.storageRead([
@@ -1431,20 +1436,7 @@ export function rpcPlayerDisconnect(
       matchState.winner = winnerId;
       matchState.forfeit_reason = reason || 'disconnect';
 
-      // Add forfeit entry to log
-      const forfeitLogEntry: CombatLogEntry = {
-        turn: matchState.turn,
-        attacker_id: loserId,
-        action: 'forfeit',
-        hit: false,
-        damage: 0,
-        is_crit: false,
-        timestamp: Date.now(),
-      };
-      matchState.log.push(forfeitLogEntry);
-
-      // Save match state
-      saveMatchState(nk, matchState);
+      appendForfeitAndSave(nk, matchState, loserId);
 
       // Update match status (end reason mirrors persistMatchResult's mapping)
       updateMatchStatus(nk, match, winnerId, reason === 'timeout' ? 'timeout' : 'disconnect');
