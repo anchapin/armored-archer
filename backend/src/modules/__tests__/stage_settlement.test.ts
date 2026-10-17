@@ -73,6 +73,9 @@ describe('writeClaimAndSettlement', () => {
     expect(batch[0].version).toBe('*');
     expect(batch[1].collection).toBe(STAGE_SETTLEMENT_COLLECTION);
     expect(batch[1].key).toBe(`${USER}:${STAGE}`);
+    // Unconditional overwrite: '*' would be create-only-if-absent and
+    // reject the settlement write on every post-cooldown replay.
+    expect(batch[1].version).toBeUndefined();
 
     // Both rows are actually readable afterwards.
     const stored = readStageSettlement(nk, USER, STAGE);
@@ -133,6 +136,17 @@ describe('markSettlementEffect / recordIntendedLoot', () => {
     const s = readStageSettlement(nk, USER, STAGE);
     expect(s?.state).toBe('failed');
     expect(s?.effects.loot).toBe('failed');
+  });
+
+  it('writes effect updates back with the read OCC version', () => {
+    const nk = createMockNakama();
+    seed(nk);
+    markSettlementEffect(nk, USER, STAGE, 'best_of', 'settled', logger);
+    const calls = (nk.storageWrite as jest.Mock).mock.calls;
+    const update = calls[calls.length - 1][0][0];
+    expect(update.collection).toBe(STAGE_SETTLEMENT_COLLECTION);
+    expect(update.version).toBe('1'); // mock storageRead returns version '1'
+    expect(readStageSettlement(nk, USER, STAGE)?.effects.best_of).toBe('settled');
   });
 
   it('records intended loot without rerolling fields', () => {

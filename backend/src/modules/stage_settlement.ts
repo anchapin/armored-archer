@@ -115,9 +115,9 @@ export function writeClaimAndSettlement(
       key: settlementKey(userId, stageId),
       userId,
       value: toStorageValue(settlement),
-      // Same lifecycle as the claim: unconditional write mirrors the
-      // claim's post-cooldown overwrite.
-      version: '*',
+      // Unconditional (version omitted): mirrors the claim's post-cooldown
+      // overwrite. Nakama '*' means create-only-if-absent, which would
+      // reject this write on every post-cooldown replay.
     },
   ]);
 }
@@ -159,8 +159,19 @@ function updateSettlement(
   mutate: (s: StageSettlement) => void
 ): void {
   try {
-    const current = readStageSettlement(nk, userId, stageId);
-    if (!current) return;
+    // OCC with the just-read version: a conflicting update is dropped
+    // (warned below) rather than clobbering a concurrent effect journal.
+    const objects = nk.storageRead([
+      { collection: STAGE_SETTLEMENT_COLLECTION, key: settlementKey(userId, stageId), userId },
+    ]);
+    if (objects.length === 0 || !objects[0].value) return;
+    let current: StageSettlement;
+    try {
+      current = JSON.parse(getStorageRawValue(objects[0].value) ?? '') as StageSettlement;
+    } catch {
+      return;
+    }
+    if (!current || typeof current !== 'object' || !current.effects) return;
     mutate(current);
     current.state = computeSettlementState(current.effects);
     current.updated_at = Date.now();
@@ -170,7 +181,7 @@ function updateSettlement(
         key: settlementKey(userId, stageId),
         userId,
         value: toStorageValue(current),
-        version: '*',
+        version: objects[0].version,
       },
     ]);
   } catch (e) {
