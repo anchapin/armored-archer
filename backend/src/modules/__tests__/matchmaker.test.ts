@@ -317,6 +317,25 @@ describe('matchmaker', () => {
       expect(parsed.match.status).toBe('pending');
     });
 
+    it('should give open matches a 5-minute acceptance window (same as direct challenges)', () => {
+      const playerStats = createPlayerStats();
+      mockNk.storageRead = jest.fn(() => [
+        {
+          collection: 'player_stats',
+          key: 'test-user-123',
+          userId: 'test-user-123',
+          value: JSON.stringify(playerStats),
+        },
+      ]);
+
+      const payload = JSON.stringify({ match_type: 'casual' });
+      const result = rpcCreateMatch(mockCtx, mockLogger, mockNk, payload);
+      const parsed = JSON.parse(result);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.match.expires_at - parsed.match.created_at).toBe(5 * 60 * 1000);
+    });
+
     // Issue #899: casual match creation must not advertise punch_up_info on
     // the wire. Punch-up shaping is ranked-only post-#872.
     it('should omit punch_up_info from casual open match response', () => {

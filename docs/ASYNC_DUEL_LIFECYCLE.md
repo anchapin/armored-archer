@@ -92,8 +92,7 @@ Every gameplay timer in the shipped hybrid model, with its code symbol:
 |-------|-------|--------------------|
 | Turn timeout | **5 minutes** | `TURN_TIMEOUT_MS = 5 * 60 * 1000` → `MatchState.turn_timeout_ms` (`combat_system.ts`, `getOrCreateMatchState`) |
 | Reconnect grace / auto-forfeit | **2 consecutive timeouts (~10 minutes)** | `MAX_CONSECUTIVE_TIMEOUTS = 2` (`combat_system.ts`) |
-| Open-match acceptance window | **24 hours** | `PENDING_MATCH_EXPIRY_MS = 24 * 60 * 60 * 1000` (`matchmaker.ts`, `create_match` open-pool branch) |
-| Direct-challenge acceptance window | **5 minutes** | `expires_at: Date.now() + 300000` (`matchmaker.ts`, `create_match` targeted branch) |
+| Pending-match acceptance window (open pool and direct challenges) | **5 minutes** | `PENDING_MATCH_EXPIRY_MS = 5 * 60 * 1000` (`matchmaker.ts`, both `create_match` branches) |
 | Active-match abandonment guard | **7 days** (cleanup only) | `ACTIVE_MATCH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000` (`matchmaker.ts`, set in `rpcAcceptMatch`) |
 | Expiry check | lazy | `isMatchExpired` (`combat_system.ts`) |
 | Separate inactivity forfeit | **none** | the 2-minute `MATCH_INACTIVE_TIMEOUT_MS` was removed in #868; turn timers are the single timeout authority |
