@@ -1515,6 +1515,33 @@ export function rpcSpendGems(
 // ============================================================
 
 /**
+ * Reads the player's owned cosmetic item ids from storage.
+ * Shared by cosmetic purchase, equip, and bundle validation paths.
+ */
+function readOwnedCosmeticItems(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): string[] {
+  const ownedResult = nk.storageRead([
+    { collection: 'player_cosmetics_owned', key: userId, userId },
+  ]);
+  let ownedItems: string[] = [];
+  if (ownedResult.length > 0 && ownedResult[0].value) {
+    const parsed = safeParse<{ items: string[] }>(
+      getStorageRawValue(ownedResult[0].value) ?? '',
+      null,
+      logger,
+      'player_cosmetics_owned'
+    );
+    if (parsed.success && parsed.data) {
+      ownedItems = parsed.data.items ?? [];
+    }
+  }
+  return ownedItems;
+}
+
+/**
  * Server-authoritative cosmetic purchase.
  * Gems can ONLY buy items from COSMETIC_CATALOG — all of which are
  * purely visual skins with zero combat stats. This is the sole gem
@@ -1573,21 +1600,7 @@ export function rpcPurchaseCosmetic(
   }
 
   // Check if player already owns this cosmetic
-  const ownedResult = nk.storageRead([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
-  ]);
-  let ownedItems: string[] = [];
-  if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(
-      getStorageRawValue(ownedResult[0].value) ?? '',
-      null,
-      logger,
-      'player_cosmetics_owned'
-    );
-    if (parsed.success && parsed.data) {
-      ownedItems = parsed.data.items ?? [];
-    }
-  }
+  const ownedItems = readOwnedCosmeticItems(nk, ctx.userId, logger);
 
   if (ownedItems.includes(item_id)) {
     logger.warn('Cosmetic purchase rejected — already owned: %s', item_id);
@@ -1736,22 +1749,7 @@ export function rpcGetOwnedCosmetics(
     return createValidationErrorResponse('get_owned_cosmetics', validation.error);
   }
 
-  const ownedResult = nk.storageRead([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
-  ]);
-
-  let items: string[] = [];
-  if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(
-      getStorageRawValue(ownedResult[0].value) ?? '',
-      null,
-      logger,
-      'player_cosmetics_owned'
-    );
-    if (parsed.success && parsed.data) {
-      items = parsed.data.items ?? [];
-    }
-  }
+  const items = readOwnedCosmeticItems(nk, ctx.userId, logger);
 
   return JSON.stringify({ success: true, items });
 }
@@ -1854,21 +1852,7 @@ export function rpcEquipCosmetic(
   }
 
   // Validate ownership
-  const ownedResult = nk.storageRead([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
-  ]);
-  let ownedItems: string[] = [];
-  if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(
-      getStorageRawValue(ownedResult[0].value) ?? '',
-      null,
-      logger,
-      'player_cosmetics_owned'
-    );
-    if (parsed.success && parsed.data) {
-      ownedItems = parsed.data.items ?? [];
-    }
-  }
+  const ownedItems = readOwnedCosmeticItems(nk, ctx.userId, logger);
 
   if (!ownedItems.includes(skin_id)) {
     logAudit(
@@ -1982,21 +1966,7 @@ export function rpcSaveCosmeticLoadout(
   const { equipped } = validation.data;
 
   // Read current ownership for validation
-  const ownedResult = nk.storageRead([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
-  ]);
-  let ownedItems: string[] = [];
-  if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(
-      getStorageRawValue(ownedResult[0].value) ?? '',
-      null,
-      logger,
-      'player_cosmetics_owned'
-    );
-    if (parsed.success && parsed.data) {
-      ownedItems = parsed.data.items ?? [];
-    }
-  }
+  const ownedItems = readOwnedCosmeticItems(nk, ctx.userId, logger);
 
   // Validate each non-empty slot
   for (const [slot, skinId] of Object.entries(equipped)) {
@@ -2186,21 +2156,7 @@ export function rpcPurchaseBundle(
   }
 
   // Check if player already owns any item in the bundle
-  const ownedResult = nk.storageRead([
-    { collection: 'player_cosmetics_owned', key: ctx.userId, userId: ctx.userId },
-  ]);
-  let ownedItems: string[] = [];
-  if (ownedResult.length > 0 && ownedResult[0].value) {
-    const parsed = safeParse<{ items: string[] }>(
-      getStorageRawValue(ownedResult[0].value) ?? '',
-      null,
-      logger,
-      'player_cosmetics_owned'
-    );
-    if (parsed.success && parsed.data) {
-      ownedItems = parsed.data.items ?? [];
-    }
-  }
+  const ownedItems = readOwnedCosmeticItems(nk, ctx.userId, logger);
 
   for (const itemId of bundle.item_ids) {
     if (ownedItems.includes(itemId)) {
