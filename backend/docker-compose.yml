@@ -139,15 +139,14 @@ services:
   #   contract from the host side (faster fail than container churn):
   #     bash scripts/alertmanager-validate.sh
   #
-  # KNOWN LIMITATION (follow-up issue, NOT in scope for #1094):
-  #   The placeholder URLs in backend/alertmanager.yml itself remain hardcoded
-  #   (http://localhost/slack, dummy-key, smtp.example.com:587, etc.). Wiring
-  #   them to the ALERTMANAGER_RECEIVER_* env vars requires templating
-  #   alertmanager.yml with ${VAR} syntax + an envsubst step in the entrypoint
-  #   — that is a follow-up issue. The docker-compose contract layer is the
-  #   loudest fail-fast available until then (an operator who sets the env
-  #   vars to anything other than __SET_VIA_DOTENV__ is now a click away from
-  #   wired receivers).
+  # RESOLVED (issue #1659): backend/alertmanager.yml is now fully templated
+  #   with ${VAR} placeholders and rendered host-side by
+  #   scripts/render-alertmanager-config.sh (invoked from cold-start.sh
+  #   before `docker compose up`; output alertmanager.yml.rendered is
+  #   gitignored). The render script fails fast on sentinel values AND on
+  #   any template-referenced variable missing from the environment, so a
+  #   renamed/typo'd variable can no longer render as a silently empty
+  #   receiver URL.
   # ====================================================================
   alertmanager:
     image: prom/alertmanager:v0.26.0

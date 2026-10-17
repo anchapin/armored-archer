@@ -46,7 +46,7 @@ global:
   
   # SMTP configuration for email notifications (optional)
   smtp_from: "${ALERTMANAGER_SMTP_FROM}"
-  smtp_smarthost: "${ALERTMANAGER_SMTP_SMART_HOST}"
+  smtp_smarthost: "${ALERTMANAGER_SMTP_SMARTHOST}"
   smtp_auth_username: "${ALERTMANAGER_SMTP_USERNAME}"
   smtp_auth_password: "${ALERTMANAGER_SMTP_PASSWORD}"
   
@@ -128,7 +128,7 @@ receivers:
           <p>{{ .Annotations.description }}</p>
     
     slack_configs:
-      - api_url: ${ALERTMANAGER_SLACK_CRITICAL_URL}
+      - api_url: '${ALERTMANAGER_WARNING_SLACK_API_URL}'
         channel: '#armored-archer-warnings'
         username: 'Armored Archer Alerts'
         icon_emoji: ':warning:'
@@ -149,7 +149,7 @@ receivers:
   
   - name: 'info-alerts'
     slack_configs:
-      - api_url: '${ALERTMANAGER_WARNING_SLACK_API_URL}'
+      - api_url: '${ALERTMANAGER_INFO_SLACK_API_URL}'
         channel: '#armored-archer-info'
         username: 'Armored Archer Info'
         icon_emoji: ':information_source:'
