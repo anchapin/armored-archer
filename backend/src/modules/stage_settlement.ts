@@ -17,7 +17,7 @@
  * after cooldown). Per-attempt history lives in the audit log.
  */
 import { Runtime } from '../types/nakama';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, normalizeStorageList } from '../utils/storage-helpers';
 import { buildStageCompletionClaimWrite } from './stage_progression';
 
 export const STAGE_SETTLEMENT_COLLECTION = 'stage_settlements';
@@ -49,6 +49,8 @@ export interface StageSettlement {
   claimed_at: number;
   request: StageSettlementRequest;
   intended_loot?: IntendedLoot;
+  /** XP amount owed to the attempt; recorded before the gated grant (#1558 Stage 3). */
+  intended_xp?: number;
   effects: Record<SettlementEffect, SettlementEffectStatus>;
   state: SettlementState;
   updated_at: number;
@@ -220,19 +222,19 @@ const TRANSITION_MAX_ATTEMPTS = 3;
  * effect never transitions again. Retries version conflicts a bounded
  * number of times, then fails closed (false) with a warning.
  */
-export function tryTransitionEffect(
+function transitionEffect(
   nk: Runtime.Nakama,
   userId: string,
   stageId: string,
   effect: SettlementEffect,
   to: 'settled' | 'failed',
-  logger: Runtime.Logger
+  logger: Runtime.Logger,
+  allowFrom: (from: SettlementEffectStatus) => boolean
 ): boolean {
   for (let attempt = 1; attempt <= TRANSITION_MAX_ATTEMPTS; attempt++) {
     const row = readSettlementRow(nk, userId, stageId);
     if (!row) return false;
-    const from = row.settlement.effects[effect];
-    if (from === to || from === 'settled') return false;
+    if (!allowFrom(row.settlement.effects[effect])) return false;
     row.settlement.effects[effect] = to;
     row.settlement.state = computeSettlementState(row.settlement.effects);
     row.settlement.updated_at = Date.now();
@@ -255,6 +257,42 @@ export function tryTransitionEffect(
   return false;
 }
 
+type EffectTransitionFn = (
+  runtime: Runtime.Nakama,
+  playerId: string,
+  stage: string,
+  which: SettlementEffect,
+  target: 'settled' | 'failed',
+  log: Runtime.Logger
+) => boolean;
+
+export const tryTransitionEffect: EffectTransitionFn = (nk, userId, stageId, effect, to, logger) =>
+  transitionEffect(
+    nk,
+    userId,
+    stageId,
+    effect,
+    to,
+    logger,
+    (from) => from !== to && from !== 'settled'
+  );
+
+/**
+ * Rolls a settled effect marker back to failed when the grant that followed
+ * the winning transition did not land (#1558 Stage 3). The grant itself is
+ * idempotent under its original grant ID, so a later retry grants exactly
+ * once; the rollback only re-opens the journal. Returns false when the
+ * effect is no longer settled (already rolled back or re-settled).
+ */
+export const rollbackEffectToFailed: (
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  effect: SettlementEffect,
+  logger: Runtime.Logger
+) => boolean = (nk, userId, stageId, effect, logger) =>
+  transitionEffect(nk, userId, stageId, effect, 'failed', logger, (from) => from === 'settled');
+
 /** Journals a reward effect's outcome (settled/failed). Best-effort. */
 export function markSettlementEffect(
   nk: Runtime.Nakama,
@@ -269,6 +307,19 @@ export function markSettlementEffect(
   });
 }
 
+/** Journals the XP amount owed to the attempt, recorded before the grant. Best-effort. */
+export function recordIntendedXp(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  intendedXp: number,
+  logger: Runtime.Logger
+): void {
+  updateSettlement(nk, userId, stageId, logger, (s) => {
+    s.intended_xp = intendedXp;
+  });
+}
+
 /** Journals the rolled loot (gear, grant id, drop rate, roll). Best-effort. */
 export function recordIntendedLoot(
   nk: Runtime.Nakama,
@@ -280,4 +331,52 @@ export function recordIntendedLoot(
   updateSettlement(nk, userId, stageId, logger, (s) => {
     s.intended_loot = intended;
   });
+}
+
+/** Sanitized settlement entry returned by get_stage_settlements (#1558 Stage 3). */
+export interface StageSettlementSummary {
+  stage_id: string;
+  attempt_id?: string;
+  state: SettlementState;
+  effects: Record<SettlementEffect, SettlementEffectStatus>;
+  intended_loot?: { name?: string; rarity?: string; type?: string };
+  intended_xp?: number;
+  claimed_at: number;
+  updated_at: number;
+}
+
+/**
+ * Lists the player's settlement journal rows (newest first), sanitized for
+ * the client: no request snapshot, no full gear payload - just the item
+ * summary a "reward recovered" surface needs.
+ */
+export function listStageSettlements(
+  nk: Runtime.Nakama,
+  userId: string,
+  limit: number
+): { settlements: StageSettlementSummary[] } {
+  const rows = normalizeStorageList(nk.storageList(userId, STAGE_SETTLEMENT_COLLECTION, limit, ''));
+  const settlements: StageSettlementSummary[] = [];
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(getStorageRawValue(row.value) ?? '') as StageSettlement;
+      if (!parsed || typeof parsed !== 'object' || !parsed.effects) continue;
+      const gear = parsed.intended_loot?.gear as
+        { name?: string; rarity?: string; type?: string } | undefined;
+      settlements.push({
+        stage_id: parsed.stage_id,
+        attempt_id: parsed.attempt_id,
+        state: parsed.state,
+        effects: parsed.effects,
+        intended_loot: gear ? { name: gear.name, rarity: gear.rarity, type: gear.type } : undefined,
+        intended_xp: parsed.intended_xp,
+        claimed_at: parsed.claimed_at,
+        updated_at: parsed.updated_at,
+      });
+    } catch {
+      continue;
+    }
+  }
+  settlements.sort((a, b) => b.updated_at - a.updated_at);
+  return { settlements };
 }

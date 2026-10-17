@@ -154,6 +154,7 @@ export const ValibotSchemas = {
   }),
 
   get_unlocked_modifiers: object({}),
+  get_stage_settlements: object({}),
 
   list_matches: optional(
     object({
@@ -842,6 +843,24 @@ export const ValibotSchemas = {
     player_ids: optional(array(pipe(string(), minLength(1), maxLength(100)))),
     confirmation_token: optional(pipe(string(), minLength(1), maxLength(128))),
   }),
+
+  admin_list_failed_stage_settlements: optional(
+    object({
+      limit: optional(pipe(number(), integer(), minValue(1), maxValue(100))),
+      cursor: optional(pipe(string(), maxLength(500))),
+    })
+  ),
+
+  admin_settle_stage_settlement: object({
+    user_id: pipe(string(), minLength(1), maxLength(100)),
+    stage_id: pipe(string(), minLength(1), maxLength(100)),
+  }),
+
+  admin_cleanup_stage_settlements: optional(
+    object({
+      older_than_ms: optional(pipe(number(), integer(), minValue(60000))),
+    })
+  ),
 
   submit_survey: object({
     survey_type: createEnum(['post_match', 'post_purchase']),
