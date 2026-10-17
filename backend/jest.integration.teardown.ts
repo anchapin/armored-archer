@@ -5,45 +5,13 @@
 
 import { execSync } from 'child_process';
 import { join } from 'path';
-
-const isLocalTest = process.env.LOCAL_TEST === 'true' || process.env.CI !== 'true';
-const composeProject = 'armored_archer_test';
-
-/**
- * Check if Docker Compose is available
- */
-function hasDockerCompose(): boolean {
-  try {
-    execSync('docker compose version || docker-compose version', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if services are running
- */
-function areServicesRunning(): boolean {
-  try {
-    execSync('curl -s http://localhost:7350/healthcheck', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Get the compose command
- */
-function getComposeCommand(): string {
-  try {
-    execSync('docker compose version', { stdio: 'ignore' });
-    return 'docker compose';
-  } catch {
-    return 'docker-compose';
-  }
-}
+import {
+  isLocalTest,
+  composeProject,
+  hasDockerCompose,
+  areServicesRunning,
+  getComposeCommand,
+} from './jest.integration.docker';
 
 /**
  * Stop Docker Compose services

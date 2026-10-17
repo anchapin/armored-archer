@@ -3,77 +3,37 @@
  * Optimized for ES5 compatibility with Nakama's Duktape/QuickJS runtime
  */
 const path = require('path');
+const webpackShared = require('./webpack.shared');
 
 module.exports = {
-  mode: 'production',
-  entry: './build/index.js',
+  mode: webpackShared.BASE_MODE,
+  entry: webpackShared.BASE_ENTRY,
   output: {
-    path: path.resolve(__dirname, 'data/modules'),
-    filename: 'index.js',
-    libraryTarget: 'commonjs2',
+    ...webpackShared.BASE_OUTPUT,
     // Disable chunking and code splitting
     chunkLoading: false,
     chunkLoadingGlobal: undefined,
   },
   // Don't minimize to avoid introducing ES6 syntax
   optimization: {
-    minimize: false,
-    splitChunks: false,
+    ...webpackShared.BASE_OPTIMIZATION,
     runtimeChunk: false,
     moduleIds: 'natural',
     chunkIds: 'natural',
   },
   // Target node for Nakama
-  target: 'node',
-  // Add fallbacks for node.js core modules
-  resolve: {
-    extensions: ['.js', '.json'],
-    fallback: {
-      'fs': false,
-      'path': false,
-      'crypto': false,
-      'os': false,
-      'util': false,
-      'stream': false,
-      'buffer': false,
-      'http': false,
-      'https': false,
-      'zlib': false,
-      'url': false,
-      'net': false,
-      'tls': false,
-    },
-  },
-  externals: {
-    // Exclude Node.js built-ins - Nakama provides them
-    'console': 'commonjs console',
-    'process': 'commonjs process',
-    'util': 'commonjs util',
-    'path': 'commonjs path',
-    'url': 'commonjs url',
-    'stream': 'commonjs stream',
-    'events': 'commonjs events',
-    'buffer': 'commonjs buffer',
-    'http': 'commonjs http',
-    'https': 'commonjs https',
-    'zlib': 'commonjs zlib',
-    'fs': 'commonjs fs',
-    'os': 'commonjs os',
-    'crypto': 'commonjs crypto',
-    'net': 'commonjs net',
-    'tls': 'commonjs tls',
-    'child_process': 'commonjs child_process',
-  },
-  // Use babel-loader to transpile to ES5 during bundling
+  target: webpackShared.BASE_TARGET,
+  resolve: webpackShared.NAKAMA_RESOLVE,
+  externals: webpackShared.NAKAMA_EXTERNALS,
   module: {
     rules: [
+      // Use babel-loader to transpile to ES5 during bundling
       {
-        test: /\.js$/,
-        exclude: /node_modules/,
+        ...webpackShared.BASE_BABEL_RULE,
         use: {
-          loader: 'babel-loader',
+          ...webpackShared.BASE_BABEL_RULE.use,
           options: {
-            cacheDirectory: true,
+            ...webpackShared.BASE_BABEL_RULE.use.options,
             configFile: path.resolve(__dirname, 'babel.config.js'),
           },
         },
@@ -94,24 +54,10 @@ module.exports = {
                 modules: 'commonjs',
               }],
             ],
-            // Babel 8 removed the preset-level `loose` option — mirror the
-            // granular `assumptions` block from babel.config.js instead
-            // (loose-mode output keeps the bundle small; see issue #996 notes).
-            assumptions: {
-              noDocumentAll: true,
-              setPublicClassFields: true,
-              privateFieldsAsProperties: true,
-              objectRestNoSymbols: true,
-              constantReexports: true,
-              enumerableModuleMeta: true,
-              ignoreFunctionLength: true,
-              ignoreToPrimitiveHint: true,
-              mutableTemplateObject: true,
-              noClassCalls: true,
-              noNewArrows: true,
-              skipForOfIteratorClosing: true,
-              superIsCallableConstructor: true,
-            },
+            // Loose-mode assumptions shared with babel.config.js (imported
+            // from it directly; loose-mode output keeps the bundle small —
+            // see issue #996 notes).
+            assumptions: require('./babel.config.js').assumptions,
           },
         },
       },
