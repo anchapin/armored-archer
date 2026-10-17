@@ -1,4 +1,43 @@
 /**
+ * Reads and parses the calling player's stats record.
+ * Returns a ready-to-return JSON error response when missing or unparseable.
+ */
+function readCallerPlayerStats(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  callerLabel: string
+): { ok: true; stats: PlayerStats } | { ok: false; response: string } {
+  const objects = nk.storageRead([
+    {
+      collection: 'player_stats',
+      key: ctx.userId,
+      userId: ctx.userId,
+    },
+  ]);
+
+  if (objects.length === 0) {
+    return {
+      ok: false,
+      response: JSON.stringify({
+        error: 'Player stats not found',
+      }),
+    };
+  }
+
+  const playerStatsResult = safeParse<PlayerStats>(
+    getStorageRawValue(objects[0].value) ?? '',
+    null,
+    logger,
+    callerLabel
+  );
+  if (!playerStatsResult.success || !playerStatsResult.data) {
+    return { ok: false, response: JSON.stringify({ error: 'Failed to parse player stats' }) };
+  }
+  return { ok: true, stats: playerStatsResult.data };
+}
+
+/**
  * Matchmaker module.
  * @fileoverview Implements matchmaking and ranking for PvP matches.
  */
@@ -301,30 +340,9 @@ export function rpcListMatches(
   const request = validation.data || {};
   const limit = request.limit || 20;
 
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: 'Player stats not found',
-    });
-  }
-
-  const playerStatsResult = safeParse<PlayerStats>(
-    getStorageRawValue(objects[0].value) ?? '',
-    null,
-    logger,
-    'rpcListMatches:playerStats'
-  );
-  if (!playerStatsResult.success || !playerStatsResult.data) {
-    return JSON.stringify({ error: 'Failed to parse player stats' });
-  }
-  const playerStats = playerStatsResult.data;
+  const callerStats = readCallerPlayerStats(nk, ctx, logger, 'rpcListMatches:playerStats');
+  if (!callerStats.ok) return callerStats.response;
+  const playerStats = callerStats.stats;
   const playerRank = calculateRank(playerStats);
 
   const filteredMatches: PvPMatch[] = [];
@@ -508,30 +526,9 @@ export function rpcCreateMatch(
 
   const request = validation.data;
 
-  const objects = nk.storageRead([
-    {
-      collection: 'player_stats',
-      key: ctx.userId,
-      userId: ctx.userId,
-    },
-  ]);
-
-  if (objects.length === 0) {
-    return JSON.stringify({
-      error: 'Player stats not found',
-    });
-  }
-
-  const playerStatsResult = safeParse<PlayerStats>(
-    getStorageRawValue(objects[0].value) ?? '',
-    null,
-    logger,
-    'rpcCreateMatch:playerStats'
-  );
-  if (!playerStatsResult.success || !playerStatsResult.data) {
-    return JSON.stringify({ error: 'Failed to parse player stats' });
-  }
-  const playerStats = playerStatsResult.data;
+  const callerStats = readCallerPlayerStats(nk, ctx, logger, 'rpcCreateMatch:playerStats');
+  if (!callerStats.ok) return callerStats.response;
+  const playerStats = callerStats.stats;
   const playerRank = calculateRank(playerStats);
 
   if (request.target_opponent_id) {
@@ -3151,7 +3148,10 @@ export function registerRpcAdminQueryMatches(initializer: Runtime.Initializer): 
  *   "limit": 50
  * }
  */
-// eslint-disable-next-line complexity
+
+/**
+ *
+ */
 export function rpcAdminQueryMatches(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
