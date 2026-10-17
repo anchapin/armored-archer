@@ -20,8 +20,10 @@ import {
   buildStageSettlement,
   readStageSettlement,
   recordIntendedLoot,
+  recordIntendedXp,
   tryTransitionEffect,
   writeClaimAndSettlement,
+  STAGE_SETTLEMENT_COLLECTION,
 } from '../stage_settlement';
 import { grantStageXP } from '../stage_xp';
 
@@ -52,7 +54,7 @@ jest.mock('../gear_db', () => ({
   unequipItemInDB: jest.fn(),
 }));
 
-import { rpcStageComplete } from '../gear_system';
+import { rpcGetStageSettlements, rpcStageComplete } from '../gear_system';
 
 describe('stage grant idempotency', () => {
   let nk: Runtime.Nakama;
@@ -285,6 +287,109 @@ describe('stage grant idempotency', () => {
     expect(settlement?.effects.loot).toBe('failed');
     expect(settlement?.effects.xp).toBe('failed');
     expect(settlement?.state).toBe('failed');
+  });
+
+  it('settles a prior failed settlement before processing the re-completion (#1558 Stage 3)', () => {
+    // Earlier attempt crashed with the loot insert exhausted: claim expired,
+    // settlement failed, intended loot + XP recorded.
+    writeClaimAndSettlement(
+      nk,
+      'test-user',
+      'stage_1',
+      undefined,
+      'att-old',
+      buildStageSettlement('stage_1', 'att-old', { stars_earned: 3, score: 0 })
+    );
+    const failedGear = {
+      id: '',
+      type: 'bow',
+      name: 'Recovered Bow',
+      rarity: 'rare',
+      level: 1,
+      stats: [],
+      modifiers: [],
+      timestamp: 1,
+    };
+    recordIntendedLoot(
+      nk,
+      'test-user',
+      'stage_1',
+      { gear: failedGear, grant_id: 'test-user:stage_1:att-old:gear:0', drop_rate: 1, roll: 0 },
+      logger
+    );
+    recordIntendedXp(nk, 'test-user', 'stage_1', 77, logger);
+    expect(tryTransitionEffect(nk, 'test-user', 'stage_1', 'loot', 'failed', logger)).toBe(true);
+    expect(tryTransitionEffect(nk, 'test-user', 'stage_1', 'xp', 'failed', logger)).toBe(true);
+    // Expire the claim so the re-completion proceeds.
+    testStorage.set(
+      `${STAGE_COMPLETION_CLAIM_COLLECTION}:test-user:stage_1`,
+      JSON.stringify({ claimed_at: Date.now() - 400000, stage_id: 'stage_1', attempt_id: 'att-old' })
+    );
+    testStorage.set(
+      'player_stats:test-user',
+      JSON.stringify({
+        user_id: 'test-user',
+        level: 1,
+        xp: 10,
+        ability_points: 0,
+        stats: { attack: 10, defense: 10, dodge: 10, crit_rate: 5 },
+      })
+    );
+
+    const result = JSON.parse(rpcStageComplete(ctx, logger, nk, payload()));
+    expect(result.success).toBe(true);
+    // The old settlement settled first: original gear, original grant ID.
+    expect(result.recovered_rewards).toEqual({ loot_recovered: true, xp_recovered: 77 });
+    const recoveredInsert = insertGearItemMock.mock.calls.find(
+      (call) => call[4] === 'test-user:stage_1:att-old:gear:0'
+    );
+    expect(recoveredInsert).toBeDefined();
+    expect(recoveredInsert![2].name).toBe('Recovered Bow');
+    // XP: 10 initial + 77 recovered + 30 for the new (easy) completion.
+    const stats = JSON.parse(testStorage.get('player_stats:test-user') as string);
+    expect(stats.xp).toBe(117);
+    // The new completion proceeded under normal rules with its own journal.
+    const settlement = readStageSettlement(nk, 'test-user', 'stage_1');
+    expect(settlement?.attempt_id).not.toBe('att-old');
+    expect(settlement?.state).toBe('settled');
+  });
+
+  it('leaves a fresh completion untouched when no failed settlement exists (#1558 Stage 3)', () => {
+    const result = JSON.parse(rpcStageComplete(ctx, logger, nk, payload()));
+    expect(result.success).toBe(true);
+    expect(result.recovered_rewards).toBeUndefined();
+  });
+
+  it('get_stage_settlements returns sanitized journal entries (#1558 Stage 3)', () => {
+    writeClaimAndSettlement(
+      nk,
+      'test-user',
+      'stage_9',
+      undefined,
+      'att-s',
+      buildStageSettlement('stage_9', 'att-s', { stars_earned: 3, score: 0 })
+    );
+    recordIntendedXp(nk, 'test-user', 'stage_9', 42, logger);
+    (nk.storageList as jest.Mock).mockReturnValue([
+      {
+        collection: STAGE_SETTLEMENT_COLLECTION,
+        key: 'test-user:stage_9',
+        userId: 'test-user',
+        value: testStorage.get(`${STAGE_SETTLEMENT_COLLECTION}:test-user:stage_9`),
+        version: '1',
+      },
+    ]);
+    const res = JSON.parse(rpcGetStageSettlements(ctx, logger, nk, '{}'));
+    expect(res.success).toBe(true);
+    const row = res.settlements.find((s: { stage_id: string }) => s.stage_id === 'stage_9');
+    expect(row).toMatchObject({
+      stage_id: 'stage_9',
+      attempt_id: 'att-s',
+      state: 'pending',
+      intended_xp: 42,
+    });
+    expect(row.effects.xp).toBe('pending');
+    expect(row.request).toBeUndefined();
   });
 
   it('keeps legacy duplicate rejection when no attempt_id is supplied', () => {

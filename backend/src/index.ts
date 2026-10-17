@@ -43,6 +43,7 @@ import {
   registerRpcUnlockModifierPool,
   registerRpcStageComplete,
   registerRpcGetUnlockedModifiers,
+  registerRpcGetStageSettlements,
 } from './modules/gear_system';
 import { initializeHealthMonitoring } from './modules/health_monitor';
 import {
@@ -656,6 +657,7 @@ const InitModule: InitModule = function (
   registerRpcPurchaseCosmetic(initializer);
   registerRpcGetCosmeticCatalog(initializer);
   registerRpcGetUnlockedModifiers(initializer);
+  registerRpcGetStageSettlements(initializer);
   registerRpcJoinPool(initializer);
   registerRpcLeavePool(initializer);
   registerRpcGetQueueStatus(initializer);

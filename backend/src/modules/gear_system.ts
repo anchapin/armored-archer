@@ -48,10 +48,13 @@ import {
 } from './stage_progression';
 import {
   buildStageSettlement,
+  listStageSettlements,
   markSettlementEffect,
   readStageSettlement,
   recordIntendedLoot,
+  recordIntendedXp,
   tryTransitionEffect,
+  type StageSettlement,
   writeClaimAndSettlement,
 } from './stage_settlement';
 import { grantStageXP } from './stage_xp';
@@ -1375,6 +1378,43 @@ export function registerRpcGetUnlockedModifiers(initializer: Runtime.Initializer
 }
 
 /**
+ * Registers the get stage settlements RPC endpoint (#1558 Stage 3).
+ *
+ * @param initializer - Nakama runtime initializer
+ */
+export function registerRpcGetStageSettlements(initializer: Runtime.Initializer): void {
+  initializer.registerRpc('armored_archer/get_stage_settlements', rpcGetStageSettlements);
+}
+
+/**
+ * Returns the player's stage settlement journal (#1558 Stage 3), sanitized:
+ * stage id, attempt id, state, per-effect statuses, the recovered item
+ * summary (name/rarity/type only), the owed XP amount, and timestamps.
+ */
+export function rpcGetStageSettlements(
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  nk: Runtime.Nakama,
+  payload: string
+): string {
+  const validation = validatePayload(
+    ZodSchemas.get_stage_settlements,
+    payload,
+    'get_stage_settlements'
+  );
+  if (!validation.success) {
+    return createValidationErrorResponse('get_stage_settlements', validation.error);
+  }
+
+  try {
+    const { settlements } = listStageSettlements(nk, ctx.userId, 100);
+    return JSON.stringify({ success: true, settlements });
+  } catch {
+    return createErrorResponse('DATABASE_ERROR', 'Failed to retrieve stage settlements');
+  }
+}
+
+/**
  * Retrieves all unlocked modifiers for a player.
  * This includes modifiers unlocked by defeating bosses and enemies.
  *
@@ -1881,6 +1921,137 @@ function verifyBossDefeat(
  * @returns terminalResponse when the request is fully answered or rejected;
  *          otherwise the claim version for the caller's claim write
  */
+/** Adds recovered_rewards to a successful completion response (client "reward recovered" surface). */
+function mergeRecoveredRewards(responseBody: string, recovery: RecoveredRewards): string {
+  if (!recovery.recovered) return responseBody;
+  const parsed = JSON.parse(responseBody) as Record<string, unknown>;
+  if (parsed.success !== true) return responseBody;
+  parsed.recovered_rewards = {
+    loot_recovered: recovery.loot_recovered,
+    xp_recovered: recovery.xp_recovered,
+  };
+  return JSON.stringify(parsed);
+}
+
+interface RecoveredRewards {
+  recovered: boolean;
+  loot_recovered: boolean;
+  xp_recovered: number;
+}
+
+/**
+ * Issue #1558 Stage 3 - post-cooldown re-completion recovery (design
+ * section 3). A failed settlement from an earlier attempt is settled FIRST:
+ * its recorded intended loot and XP are granted exactly once under the
+ * original grant IDs (single-winner OCC transitions arbitrate concurrency),
+ * then the caller's new completion proceeds under the normal rules - no
+ * best-of improvement is required to recover the lost reward.
+ */
+/** Re-drives the failed settlement's recorded intended loot under its original grant ID. */
+function recoverFailedLoot(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  settlement: StageSettlement
+): boolean {
+  if (
+    settlement.effects.loot !== 'failed' ||
+    !settlement.intended_loot?.gear ||
+    !tryTransitionEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger)
+  ) {
+    return false;
+  }
+  try {
+    insertGearWithRetry(
+      nk,
+      ctx.userId,
+      request.stage_id,
+      settlement.intended_loot.gear as GearItem,
+      { user_id: ctx.userId, gear: [], equipped_gear: {}, unlocked_modifier_pools: [] },
+      logger,
+      makeStageGrantId(ctx.userId, request.stage_id, settlement.attempt_id as string, 'gear:0')
+    );
+    return true;
+  } catch (lootError) {
+    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'loot', 'failed', logger);
+    throw lootError;
+  }
+}
+
+/** Grants the failed settlement's recorded intended XP under its original grant ID. */
+function recoverFailedXp(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  settlement: StageSettlement
+): number {
+  if (
+    settlement.effects.xp !== 'failed' ||
+    (settlement.intended_xp ?? 0) <= 0 ||
+    !tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'settled', logger)
+  ) {
+    return 0;
+  }
+  try {
+    grantStageXP(
+      nk,
+      ctx,
+      logger,
+      settlement.intended_xp as number,
+      makeStageGrantId(ctx.userId, request.stage_id, settlement.attempt_id as string, 'xp')
+    );
+    return settlement.intended_xp as number;
+  } catch (xpError) {
+    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'failed', logger);
+    throw xpError;
+  }
+}
+
+/**
+ *
+ */
+function settlePriorFailedSettlement(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest
+): RecoveredRewards {
+  const none: RecoveredRewards = { recovered: false, loot_recovered: false, xp_recovered: 0 };
+  const settlement = readStageSettlement(nk, ctx.userId, request.stage_id);
+  if (!settlement || settlement.state !== 'failed' || !settlement.attempt_id) return none;
+  const lootRecovered = recoverFailedLoot(nk, ctx, logger, request, settlement);
+  const xpRecovered = recoverFailedXp(nk, ctx, logger, request, settlement);
+  if (!lootRecovered && xpRecovered === 0) return none;
+  // Journal hygiene: the record effects (best_of/boss_defeat/modifier_pool)
+  // committed before the loot step in the failed attempt; align the row.
+  for (const effect of ['best_of', 'boss_defeat', 'modifier_pool'] as const) {
+    if (settlement.effects[effect] !== 'settled') {
+      tryTransitionEffect(nk, ctx.userId, request.stage_id, effect, 'settled', logger);
+    }
+  }
+  logAudit(
+    nk,
+    ctx.userId,
+    ctx.ipAddress ?? null,
+    'stage_complete',
+    'stage_settlement_recovery',
+    {
+      stage_id: request.stage_id,
+      attempt_id: settlement.attempt_id,
+      loot_recovered: lootRecovered,
+      xp_recovered: xpRecovered,
+    },
+    'success',
+    'Recovered failed settlement rewards on re-completion'
+  );
+  return { recovered: true, loot_recovered: lootRecovered, xp_recovered: xpRecovered };
+}
+
+/**
+ *
+ */
 function gateStageCompletion(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
@@ -2006,6 +2177,10 @@ export function rpcStageComplete(
     return gate.terminalResponse;
   }
 
+  // #1558 Stage 3: a failed settlement from an earlier attempt is settled
+  // BEFORE this completion's claim+settlement batch overwrites the journal.
+  const recovery = settlePriorFailedSettlement(nk, ctx, logger, request);
+
   try {
     // Issue #1069 claim-first atomicity: write the versioned dedup marker
     // BEFORE granting loot/XP/stars. If any later write fails, the claim
@@ -2052,15 +2227,16 @@ export function rpcStageComplete(
     recordStageClaim(gate.claimVersion ? 'cooldown_active' : 'fresh');
 
     const responseBody = applyCompletionAndRespond(nk, ctx, logger, request);
+    const finalBody = mergeRecoveredRewards(responseBody, recovery);
     // Terminal outcome record: a replayed request for this attempt is
     // answered from the record without re-applying any effect.
     if (request.attempt_id) {
-      const parsed = JSON.parse(responseBody) as Record<string, unknown>;
+      const parsed = JSON.parse(finalBody) as Record<string, unknown>;
       if (parsed.success === true) {
         writeStageOutcome(nk, ctx.userId, request.stage_id, request.attempt_id, parsed);
       }
     }
-    return responseBody;
+    return finalBody;
   } catch {
     // The claim marker written above persists, so a retry of this request is
     // rejected as DUPLICATE_COMPLETION for the cooldown window — no
@@ -2379,6 +2555,9 @@ function applyCompletionAndRespond(
     : result.lootResult;
 
   const xpGained = plan ? plan.xp.total : baseXP;
+  // #1558 Stage 3: journal the owed amount before the gated grant so a
+  // later recovery never recomputes it.
+  recordIntendedXp(nk, ctx.userId, request.stage_id, xpGained, logger);
   const reportedXp = grantSettlementGatedRewards(nk, ctx, logger, {
     request,
     xpGained,

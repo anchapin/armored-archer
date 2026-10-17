@@ -17,7 +17,7 @@
  * after cooldown). Per-attempt history lives in the audit log.
  */
 import { Runtime } from '../types/nakama';
-import { toStorageValue, getStorageRawValue } from '../utils/storage-helpers';
+import { toStorageValue, getStorageRawValue, normalizeStorageList } from '../utils/storage-helpers';
 import { buildStageCompletionClaimWrite } from './stage_progression';
 
 export const STAGE_SETTLEMENT_COLLECTION = 'stage_settlements';
@@ -49,6 +49,8 @@ export interface StageSettlement {
   claimed_at: number;
   request: StageSettlementRequest;
   intended_loot?: IntendedLoot;
+  /** XP amount owed to the attempt; recorded before the gated grant (#1558 Stage 3). */
+  intended_xp?: number;
   effects: Record<SettlementEffect, SettlementEffectStatus>;
   state: SettlementState;
   updated_at: number;
@@ -269,6 +271,19 @@ export function markSettlementEffect(
   });
 }
 
+/** Journals the XP amount owed to the attempt, recorded before the grant. Best-effort. */
+export function recordIntendedXp(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  intendedXp: number,
+  logger: Runtime.Logger
+): void {
+  updateSettlement(nk, userId, stageId, logger, (s) => {
+    s.intended_xp = intendedXp;
+  });
+}
+
 /** Journals the rolled loot (gear, grant id, drop rate, roll). Best-effort. */
 export function recordIntendedLoot(
   nk: Runtime.Nakama,
@@ -280,4 +295,52 @@ export function recordIntendedLoot(
   updateSettlement(nk, userId, stageId, logger, (s) => {
     s.intended_loot = intended;
   });
+}
+
+/** Sanitized settlement entry returned by get_stage_settlements (#1558 Stage 3). */
+export interface StageSettlementSummary {
+  stage_id: string;
+  attempt_id?: string;
+  state: SettlementState;
+  effects: Record<SettlementEffect, SettlementEffectStatus>;
+  intended_loot?: { name?: string; rarity?: string; type?: string };
+  intended_xp?: number;
+  claimed_at: number;
+  updated_at: number;
+}
+
+/**
+ * Lists the player's settlement journal rows (newest first), sanitized for
+ * the client: no request snapshot, no full gear payload - just the item
+ * summary a "reward recovered" surface needs.
+ */
+export function listStageSettlements(
+  nk: Runtime.Nakama,
+  userId: string,
+  limit: number
+): { settlements: StageSettlementSummary[] } {
+  const rows = normalizeStorageList(nk.storageList(userId, STAGE_SETTLEMENT_COLLECTION, limit, ''));
+  const settlements: StageSettlementSummary[] = [];
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(getStorageRawValue(row.value) ?? '') as StageSettlement;
+      if (!parsed || typeof parsed !== 'object' || !parsed.effects) continue;
+      const gear = parsed.intended_loot?.gear as
+        { name?: string; rarity?: string; type?: string } | undefined;
+      settlements.push({
+        stage_id: parsed.stage_id,
+        attempt_id: parsed.attempt_id,
+        state: parsed.state,
+        effects: parsed.effects,
+        intended_loot: gear ? { name: gear.name, rarity: gear.rarity, type: gear.type } : undefined,
+        intended_xp: parsed.intended_xp,
+        claimed_at: parsed.claimed_at,
+        updated_at: parsed.updated_at,
+      });
+    } catch {
+      continue;
+    }
+  }
+  settlements.sort((a, b) => b.updated_at - a.updated_at);
+  return { settlements };
 }

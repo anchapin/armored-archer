@@ -154,6 +154,7 @@ export const ValibotSchemas = {
   }),
 
   get_unlocked_modifiers: object({}),
+  get_stage_settlements: object({}),
 
   list_matches: optional(
     object({
