@@ -2049,6 +2049,29 @@ export function registerRpcSaveCosmeticLoadout(initializer: Runtime.Initializer)
  * Validates bundle existence, one-time purchase restrictions, ownership,
  * and gem balance before granting items.
  */
+/** Read the player's owned one-time bundle IDs. */
+function readOwnedOneTimeBundles(
+  nk: Runtime.Nakama,
+  userId: string,
+  logger: Runtime.Logger
+): string[] {
+  const bundleOwnedResult = nk.storageRead([
+    { collection: 'player_bundles_owned', key: userId, userId },
+  ]);
+  const raw =
+    bundleOwnedResult.length > 0 && bundleOwnedResult[0].value
+      ? getStorageRawValue(bundleOwnedResult[0].value)
+      : undefined;
+  if (!raw) {
+    return [];
+  }
+  const parsed = safeParse<{ bundles: string[] }>(raw, null, logger, 'player_bundles_owned');
+  if (parsed.success && parsed.data) {
+    return parsed.data.bundles ?? [];
+  }
+  return [];
+}
+
 export function rpcPurchaseBundle(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
@@ -2097,21 +2120,7 @@ export function rpcPurchaseBundle(
 
   // Check one-time purchase restriction
   if (bundle.is_one_time) {
-    const bundleOwnedResult = nk.storageRead([
-      { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId },
-    ]);
-    let ownedBundles: string[] = [];
-    if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
-      const parsed = safeParse<{ bundles: string[] }>(
-        getStorageRawValue(bundleOwnedResult[0].value) ?? '',
-        null,
-        logger,
-        'player_bundles_owned'
-      );
-      if (parsed.success && parsed.data) {
-        ownedBundles = parsed.data.bundles ?? [];
-      }
-    }
+    const ownedBundles = readOwnedOneTimeBundles(nk, ctx.userId, logger);
 
     if (ownedBundles.includes(bundle_id)) {
       logger.warn('Bundle purchase rejected — already purchased: %s', bundle_id);
@@ -2231,21 +2240,7 @@ export function rpcPurchaseBundle(
 
   // Record bundle ownership (for one-time enforcement)
   if (bundle.is_one_time) {
-    const bundleOwnedResult = nk.storageRead([
-      { collection: 'player_bundles_owned', key: ctx.userId, userId: ctx.userId },
-    ]);
-    let ownedBundles: string[] = [];
-    if (bundleOwnedResult.length > 0 && bundleOwnedResult[0].value) {
-      const parsed = safeParse<{ bundles: string[] }>(
-        getStorageRawValue(bundleOwnedResult[0].value) ?? '',
-        null,
-        logger,
-        'player_bundles_owned'
-      );
-      if (parsed.success && parsed.data) {
-        ownedBundles = parsed.data.bundles ?? [];
-      }
-    }
+    const ownedBundles = readOwnedOneTimeBundles(nk, ctx.userId, logger);
     ownedBundles.push(bundle_id);
     nk.storageWrite([
       {
@@ -3975,7 +3970,6 @@ function writeSubscriptionRecord(
     },
   ]);
 }
-
 
 /**
  * Runs the shared subscription-webhook flow: read the record, return the

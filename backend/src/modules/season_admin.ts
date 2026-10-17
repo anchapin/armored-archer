@@ -364,30 +364,15 @@ export function validateRewardDistribution(
       if (storage.length === 0 || !storage[0].value) {
         result.issues_found++;
         if (autoFix) {
-          const rewards = calculateRewards(record.rank, seasonNumber);
           // Repair path writes to the unified currency ledger (issue #860)
-          const rewardDelta: CurrencyDelta = {};
-          if (rewards.coins) rewardDelta.coins = rewards.coins;
-          if (rewards.gems) rewardDelta.gems = rewards.gems;
-          applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_reward_fix');
-          if (rewards.cosmetics) {
-            addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
-          }
-          nk.storageWrite([
-            {
-              collection: 'season_rewards_claimed',
-              key: `${seasonId}_${record.ownerId}`,
-              userId: record.ownerId,
-              value: toStorageValue({
-                season_id: seasonId,
-                user_id: record.ownerId,
-                claimed_at: Date.now(),
-                rank: record.rank,
-                rewards,
-                auto_distributed: true,
-              }),
-            },
-          ]);
+          grantMissingSeasonRewards(
+            nk,
+            seasonId,
+            record.ownerId,
+            record.rank,
+            seasonNumber,
+            'season_admin_reward_fix'
+          );
         }
         result.details.push({
           player_id: record.ownerId,
@@ -552,6 +537,44 @@ export function triggerRecalculateDecay(
   return { affected, total_loss: totalLoss };
 }
 
+/**
+ * Grant missing season rewards to a player and record the claim.
+ * Shared by the repair paths (issue #860); the audit reason stays caller-specific.
+ */
+function grantMissingSeasonRewards(
+  nk: Runtime.Nakama,
+  seasonId: string,
+  ownerId: string,
+  rank: number,
+  seasonNumber: number,
+  reason: string
+): void {
+  const rewards = calculateRewards(rank, seasonNumber);
+  const rewardDelta: CurrencyDelta = {
+    ...(rewards.coins ? { coins: rewards.coins } : {}),
+    ...(rewards.gems ? { gems: rewards.gems } : {}),
+  };
+  applyCurrencyDelta(nk, ownerId, rewardDelta, reason);
+  if (rewards.cosmetics) {
+    addPlayerCosmetic(nk, ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
+  }
+  nk.storageWrite([
+    {
+      collection: 'season_rewards_claimed',
+      key: `${seasonId}_${ownerId}`,
+      userId: ownerId,
+      value: toStorageValue({
+        season_id: seasonId,
+        user_id: ownerId,
+        claimed_at: Date.now(),
+        rank,
+        rewards,
+        auto_distributed: true,
+      }),
+    },
+  ]);
+}
+
 export function triggerFixMissingRewards(
   nk: Runtime.Nakama,
   seasonId: string,
@@ -574,30 +597,15 @@ export function triggerFixMissingRewards(
       if (storage.length === 0 || !storage[0].value) {
         fixed.push(record.ownerId);
         if (!dryRun) {
-          const rewards = calculateRewards(record.rank, seasonNumber);
           // Missing-reward repair credits the unified ledger (issue #860)
-          const rewardDelta: CurrencyDelta = {};
-          if (rewards.coins) rewardDelta.coins = rewards.coins;
-          if (rewards.gems) rewardDelta.gems = rewards.gems;
-          applyCurrencyDelta(nk, record.ownerId, rewardDelta, 'season_admin_fix_missing_rewards');
-          if (rewards.cosmetics) {
-            addPlayerCosmetic(nk, record.ownerId, rewards.cosmetics.title, rewards.cosmetics.aura);
-          }
-          nk.storageWrite([
-            {
-              collection: 'season_rewards_claimed',
-              key: `${seasonId}_${record.ownerId}`,
-              userId: record.ownerId,
-              value: toStorageValue({
-                season_id: seasonId,
-                user_id: record.ownerId,
-                claimed_at: Date.now(),
-                rank: record.rank,
-                rewards,
-                auto_distributed: true,
-              }),
-            },
-          ]);
+          grantMissingSeasonRewards(
+            nk,
+            seasonId,
+            record.ownerId,
+            record.rank,
+            seasonNumber,
+            'season_admin_fix_missing_rewards'
+          );
         }
       }
     } catch {
