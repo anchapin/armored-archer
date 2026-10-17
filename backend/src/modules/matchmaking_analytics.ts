@@ -641,144 +641,79 @@ export async function logQueueTime(
 }
 
 /**
- * RPC handler for logging match data.
- *
- * @param ctx - Runtime context
- * @param logger - Runtime logger
- * @param nk - Nakama runtime module
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
+ * Table-driven RPC handlers for the matchmaking event-log endpoints.
+ * Each validates its payload, logs the event, and returns a small result -
+ * only the schema, label, log call, and result shape differ.
  */
-export async function rpcLogMatchData(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogMatchData RPC called');
-
-  const validation = validatePayload<LogMatchDataRequest>(
-    ZodSchemas.log_match_data,
-    payload,
-    'LogMatchData'
-  );
-  if (!validation.success) {
-    return JSON.stringify(validation.error);
-  }
-
-  await logMatchData(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-    match_id: validation.data.match_id,
-  });
+interface MatchmakingLogRpcSpec<E> {
+  /** Label for the entry debug log line (also the rpc name for validation). */
+  debugLabel: string;
+  schema: Parameters<typeof validatePayload>[0];
+  run: (nk: Runtime.Nakama, data: E) => Promise<void>;
+  result: (data: E) => Record<string, unknown>;
 }
+
+function makeMatchmakingLogRpc<E>(spec: MatchmakingLogRpcSpec<E>) {
+  return async function matchmakingLogRpc(
+    ctx: Runtime.Context,
+    logger: Runtime.Logger,
+    nk: Runtime.Nakama,
+    payload: string
+  ): Promise<string> {
+    logger.debug(`${spec.debugLabel} RPC called`);
+
+    const validation = validatePayload<E>(spec.schema, payload, spec.debugLabel);
+    if (!validation.success) {
+      return JSON.stringify(validation.error);
+    }
+
+    await spec.run(nk, validation.data);
+
+    return JSON.stringify(spec.result(validation.data));
+  };
+}
+
+/**
+ * RPC handler for logging match data.
+ */
+export const rpcLogMatchData = makeMatchmakingLogRpc<LogMatchDataRequest>({
+  debugLabel: 'LogMatchData',
+  schema: ZodSchemas.log_match_data,
+  run: (nk, data) => logMatchData(nk, data),
+  result: (data) => ({ success: true, match_id: data.match_id }),
+});
 
 /**
  * RPC handler for logging abandonment.
- *
- * @param ctx - Runtime context
- * @param logger - Runtime logger
- * @param nk - Nakama runtime module
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
  */
-export async function rpcLogAbandonment(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogAbandonment RPC called');
-
-  const validation = validatePayload<LogAbandonmentRequest>(
-    ZodSchemas.log_abandonment,
-    payload,
-    'LogAbandonment'
-  );
-  if (!validation.success) {
-    return JSON.stringify(validation.error);
-  }
-
-  await logAbandonment(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-    match_id: validation.data.match_id,
-  });
-}
+export const rpcLogAbandonment = makeMatchmakingLogRpc<LogAbandonmentRequest>({
+  debugLabel: 'LogAbandonment',
+  schema: ZodSchemas.log_abandonment,
+  run: (nk, data) => logAbandonment(nk, data),
+  result: (data) => ({ success: true, match_id: data.match_id }),
+});
 
 /**
  * RPC handler for logging weapon result.
- *
- * @param ctx - Runtime context
- * @param logger - Runtime logger
- * @param nk - Nakama runtime module
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
  */
-export async function rpcLogWeaponResult(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogWeaponResult RPC called');
-
-  const validation = validatePayload<LogWeaponResultRequest & { rating_diff?: number }>(
-    ZodSchemas.log_weapon_result,
-    payload,
-    'LogWeaponResult'
-  );
-  if (!validation.success) {
-    return JSON.stringify(validation.error);
-  }
-
-  await logWeaponResult(
-    nk,
-    validation.data.weapon_id,
-    validation.data.is_win,
-    validation.data.rating_diff || 0
-  );
-
-  return JSON.stringify({
-    success: true,
-    weapon_id: validation.data.weapon_id,
-  });
-}
+export const rpcLogWeaponResult = makeMatchmakingLogRpc<
+  LogWeaponResultRequest & { rating_diff?: number }
+>({
+  debugLabel: 'LogWeaponResult',
+  schema: ZodSchemas.log_weapon_result,
+  run: (nk, data) => logWeaponResult(nk, data.weapon_id, data.is_win, data.rating_diff || 0),
+  result: (data) => ({ success: true, weapon_id: data.weapon_id }),
+});
 
 /**
  * RPC handler for logging queue time.
- *
- * @param ctx - Runtime context
- * @param logger - Runtime logger
- * @param nk - Nakama runtime module
- * @param payload - Request payload (JSON string)
- * @returns Response (JSON string)
  */
-export async function rpcLogQueueTime(
-  ctx: Runtime.Context,
-  logger: Runtime.Logger,
-  nk: Runtime.Nakama,
-  payload: string
-): Promise<string> {
-  logger.debug('LogQueueTime RPC called');
-
-  const validation = validatePayload<LogQueueTimeRequest>(
-    ZodSchemas.log_queue_time,
-    payload,
-    'LogQueueTime'
-  );
-  if (!validation.success) {
-    return JSON.stringify(validation.error);
-  }
-
-  await logQueueTime(nk, validation.data);
-
-  return JSON.stringify({
-    success: true,
-  });
-}
+export const rpcLogQueueTime = makeMatchmakingLogRpc<LogQueueTimeRequest>({
+  debugLabel: 'LogQueueTime',
+  schema: ZodSchemas.log_queue_time,
+  run: (nk, data) => logQueueTime(nk, data),
+  result: () => ({ success: true }),
+});
 
 /**
  * RPC handler for getting match quality metrics.
