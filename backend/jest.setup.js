@@ -53,42 +53,37 @@ process.env.REVENUECAT_API_KEY = 'test_api_key';
 const originalFetch = global.fetch;
 global.fetch = jest.fn((url, options) => {
   const urlString = typeof url === 'string' ? url : url.url;
+
+const mockRevenueCatSubscriberBody = {
+        status: 'active',
+        valid: true,
+        subscriber: {
+          subscriptions: {
+            'com.armoredarcher.gems.small': {
+              expires_date: '2099-01-01T00:00:00Z',
+            },
+          },
+          entitlements: {
+            gems: {
+              product_id: 'com.armoredarcher.gems.small',
+            },
+          },
+        },
+      };
+
   
-  if (urlString.includes('revenuecat.com')) {
+  let isRevenueCatHost = false;
+  try {
+    const rcHost = new URL(urlString).hostname;
+    isRevenueCatHost = rcHost === 'revenuecat.com' || rcHost.endsWith('.revenuecat.com');
+  } catch {
+    isRevenueCatHost = false;
+  }
+  if (isRevenueCatHost) {
     return Promise.resolve({
       ok: true,
-      text: () => Promise.resolve(JSON.stringify({
-        status: 'active',
-        valid: true,
-        subscriber: {
-          subscriptions: {
-            'com.armoredarcher.gems.small': {
-              expires_date: '2099-01-01T00:00:00Z',
-            },
-          },
-          entitlements: {
-            gems: {
-              product_id: 'com.armoredarcher.gems.small',
-            },
-          },
-        },
-      })),
-      json: () => Promise.resolve({
-        status: 'active',
-        valid: true,
-        subscriber: {
-          subscriptions: {
-            'com.armoredarcher.gems.small': {
-              expires_date: '2099-01-01T00:00:00Z',
-            },
-          },
-          entitlements: {
-            gems: {
-              product_id: 'com.armoredarcher.gems.small',
-            },
-          },
-        },
-      }),
+      text: () => Promise.resolve(JSON.stringify(mockRevenueCatSubscriberBody)),
+      json: () => Promise.resolve(mockRevenueCatSubscriberBody),
     });
   }
   
