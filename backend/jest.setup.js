@@ -72,7 +72,14 @@ const mockRevenueCatSubscriberBody = {
       };
 
   
-  if (urlString.includes('revenuecat.com')) {
+  let isRevenueCatHost = false;
+  try {
+    const rcHost = new URL(urlString).hostname;
+    isRevenueCatHost = rcHost === 'revenuecat.com' || rcHost.endsWith('.revenuecat.com');
+  } catch {
+    isRevenueCatHost = false;
+  }
+  if (isRevenueCatHost) {
     return Promise.resolve({
       ok: true,
       text: () => Promise.resolve(JSON.stringify(mockRevenueCatSubscriberBody)),
