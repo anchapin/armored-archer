@@ -48,6 +48,12 @@ same time and add a row below.
 | [LowRevenue.md](./LowRevenue.md) | `LowRevenue` | Info | 24h revenue <100 cents/hour |
 | [ClientVersionMismatch.md](./ClientVersionMismatch.md) | `ClientVersionMismatch` | Info | A non-current client version has >10 active users |
 
+### Support Procedures
+
+| Runbook | Scope |
+|---------|-------|
+| [StageSettlements.md](./StageSettlements.md) | Failed stage-completion settlements: support queue, manual settle, 30-day retention sweep (issue #1558) |
+
 ## 🚨 Alert Response Process
 
 ### 1. Receive Alert

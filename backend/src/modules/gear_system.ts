@@ -1950,31 +1950,31 @@ interface RecoveredRewards {
 /** Re-drives the failed settlement's recorded intended loot under its original grant ID. */
 function recoverFailedLoot(
   nk: Runtime.Nakama,
-  ctx: Runtime.Context,
   logger: Runtime.Logger,
-  request: StageCompleteRequest,
+  userId: string,
+  stageId: string,
   settlement: StageSettlement
 ): boolean {
   if (
     settlement.effects.loot !== 'failed' ||
     !settlement.intended_loot?.gear ||
-    !tryTransitionEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger)
+    !tryTransitionEffect(nk, userId, stageId, 'loot', 'settled', logger)
   ) {
     return false;
   }
   try {
     insertGearWithRetry(
       nk,
-      ctx.userId,
-      request.stage_id,
+      userId,
+      stageId,
       settlement.intended_loot.gear as GearItem,
-      { user_id: ctx.userId, gear: [], equipped_gear: {}, unlocked_modifier_pools: [] },
+      { user_id: userId, gear: [], equipped_gear: {}, unlocked_modifier_pools: [] },
       logger,
-      makeStageGrantId(ctx.userId, request.stage_id, settlement.attempt_id as string, 'gear:0')
+      makeStageGrantId(userId, stageId, settlement.attempt_id as string, 'gear:0')
     );
     return true;
   } catch (lootError) {
-    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'loot', 'failed', logger);
+    tryTransitionEffect(nk, userId, stageId, 'loot', 'failed', logger);
     throw lootError;
   }
 }
@@ -1984,13 +1984,14 @@ function recoverFailedXp(
   nk: Runtime.Nakama,
   ctx: Runtime.Context,
   logger: Runtime.Logger,
-  request: StageCompleteRequest,
+  userId: string,
+  stageId: string,
   settlement: StageSettlement
 ): number {
   if (
     settlement.effects.xp !== 'failed' ||
     (settlement.intended_xp ?? 0) <= 0 ||
-    !tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'settled', logger)
+    !tryTransitionEffect(nk, userId, stageId, 'xp', 'settled', logger)
   ) {
     return 0;
   }
@@ -2000,13 +2001,74 @@ function recoverFailedXp(
       ctx,
       logger,
       settlement.intended_xp as number,
-      makeStageGrantId(ctx.userId, request.stage_id, settlement.attempt_id as string, 'xp')
+      makeStageGrantId(userId, stageId, settlement.attempt_id as string, 'xp')
     );
     return settlement.intended_xp as number;
   } catch (xpError) {
-    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'failed', logger);
+    tryTransitionEffect(nk, userId, stageId, 'xp', 'failed', logger);
     throw xpError;
   }
+}
+
+/**
+ *
+ */
+/** Outcome of re-driving one failed settlement's recorded rewards (#1558 Stage 4). */
+export interface StageSettlementRecoveryOutcome {
+  found: boolean;
+  recovered: boolean;
+  loot_recovered: boolean;
+  xp_recovered: number;
+}
+
+/**
+ * Issue #1558 Stage 4 - re-drive one failed settlement's recorded intended
+ * loot and XP for an explicit user. Shared by the post-cooldown recovery path
+ * (settlePriorFailedSettlement) and the admin manual-settle endpoint. The
+ * exact-once guarantees are identical in both paths: single-winner OCC
+ * transitions arbitrate concurrency and grants reuse the original grant IDs.
+ */
+export function recoverFailedStageSettlementForUser(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  userId: string,
+  stageId: string
+): StageSettlementRecoveryOutcome {
+  const none: StageSettlementRecoveryOutcome = {
+    found: false,
+    recovered: false,
+    loot_recovered: false,
+    xp_recovered: 0,
+  };
+  const settlement = readStageSettlement(nk, userId, stageId);
+  if (!settlement || settlement.state !== 'failed' || !settlement.attempt_id) return none;
+  const lootRecovered = recoverFailedLoot(nk, logger, userId, stageId, settlement);
+  const xpRecovered = recoverFailedXp(nk, ctx, logger, userId, stageId, settlement);
+  if (!lootRecovered && xpRecovered === 0) return { ...none, found: true };
+  // Journal hygiene: the record effects (best_of/boss_defeat/modifier_pool)
+  // committed before the loot step in the failed attempt; align the row.
+  for (const effect of ['best_of', 'boss_defeat', 'modifier_pool'] as const) {
+    if (settlement.effects[effect] !== 'settled') {
+      tryTransitionEffect(nk, userId, stageId, effect, 'settled', logger);
+    }
+  }
+  logAudit(
+    nk,
+    userId,
+    ctx.ipAddress ?? null,
+    'stage_complete',
+    'stage_settlement_recovery',
+    {
+      stage_id: stageId,
+      attempt_id: settlement.attempt_id,
+      loot_recovered: lootRecovered,
+      xp_recovered: xpRecovered,
+    },
+    'success',
+    'Recovered failed settlement rewards on re-completion'
+  );
+  return { found: true, recovered: true, loot_recovered: lootRecovered, xp_recovered: xpRecovered };
 }
 
 /**
@@ -2019,34 +2081,19 @@ function settlePriorFailedSettlement(
   request: StageCompleteRequest
 ): RecoveredRewards {
   const none: RecoveredRewards = { recovered: false, loot_recovered: false, xp_recovered: 0 };
-  const settlement = readStageSettlement(nk, ctx.userId, request.stage_id);
-  if (!settlement || settlement.state !== 'failed' || !settlement.attempt_id) return none;
-  const lootRecovered = recoverFailedLoot(nk, ctx, logger, request, settlement);
-  const xpRecovered = recoverFailedXp(nk, ctx, logger, request, settlement);
-  if (!lootRecovered && xpRecovered === 0) return none;
-  // Journal hygiene: the record effects (best_of/boss_defeat/modifier_pool)
-  // committed before the loot step in the failed attempt; align the row.
-  for (const effect of ['best_of', 'boss_defeat', 'modifier_pool'] as const) {
-    if (settlement.effects[effect] !== 'settled') {
-      tryTransitionEffect(nk, ctx.userId, request.stage_id, effect, 'settled', logger);
-    }
-  }
-  logAudit(
+  const outcome = recoverFailedStageSettlementForUser(
     nk,
+    ctx,
+    logger,
     ctx.userId,
-    ctx.ipAddress ?? null,
-    'stage_complete',
-    'stage_settlement_recovery',
-    {
-      stage_id: request.stage_id,
-      attempt_id: settlement.attempt_id,
-      loot_recovered: lootRecovered,
-      xp_recovered: xpRecovered,
-    },
-    'success',
-    'Recovered failed settlement rewards on re-completion'
+    request.stage_id
   );
-  return { recovered: true, loot_recovered: lootRecovered, xp_recovered: xpRecovered };
+  if (!outcome.recovered) return none;
+  return {
+    recovered: true,
+    loot_recovered: outcome.loot_recovered,
+    xp_recovered: outcome.xp_recovered,
+  };
 }
 
 /**
