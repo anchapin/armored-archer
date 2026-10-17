@@ -115,6 +115,7 @@ import {
 } from './modules/season_system';
 import { registerSeasonTelemetryEndpoints } from './modules/season_telemetry';
 import { registerRpcStageStart } from './modules/stage_challenge';
+import { registerStageSettlementAdminEndpoints } from './modules/stage_settlement_admin';
 import {
   registerRpcGetCompletedStages,
   registerRpcGetCampaignProgress,
@@ -658,6 +659,7 @@ const InitModule: InitModule = function (
   registerRpcGetCosmeticCatalog(initializer);
   registerRpcGetUnlockedModifiers(initializer);
   registerRpcGetStageSettlements(initializer);
+  registerStageSettlementAdminEndpoints(initializer);
   registerRpcJoinPool(initializer);
   registerRpcLeavePool(initializer);
   registerRpcGetQueueStatus(initializer);
