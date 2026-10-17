@@ -349,21 +349,18 @@ func test_trigger_combat_juice_damage_number_routes_to_pooled_popup() -> void:
 # The EffectType match table must dispatch SCREEN_SHAKE to the registered
 # impact handler (regression for the String→EffectType fix, issue #1056).
 func test_trigger_combat_juice_routes_typed_enums_to_handlers() -> void:
-	var juice: Node = _juice_script.new()
+	# Issue #1660: ImpactManager was consolidated INTO CombatJuiceManager,
+	# so the SCREEN_SHAKE route now calls shake_screen() on the manager
+	# itself. Partial double so the real trigger_combat_juice dispatch
+	# runs while shake_screen is stubbed/spied.
+	var juice: Node = partial_double(_juice_script).new()
 	add_child_autofree(juice)
-	# Double the real ImpactManager script so shake_screen exists on the
-	# double and can be stubbed/spied (GUT rejects spies on methods the
-	# doubled class does not define).
-	var impact_script: GDScript = load("res://autoloads/ImpactManager.gd")
-	var impact_stub: Node = double(impact_script).new()
-	add_child_autofree(impact_stub)
-	stub(impact_stub, "shake_screen").to_return({"success": true})
-	juice._impact_manager = impact_stub
+	stub(juice, "shake_screen").to_return({"success": true})
 
 	juice.trigger_combat_juice(
 		_juice_script.EffectType.SCREEN_SHAKE,
 		{"attack_strength": "light", "duration": 0.2, "decay": true}
 	)
 	assert_called(
-		impact_stub, "shake_screen", ["light", 0.2, true]
+		juice, "shake_screen", ["light", 0.2, true]
 	)

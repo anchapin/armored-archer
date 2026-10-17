@@ -1,6 +1,8 @@
 ## Combat Juice Manager autoload for coordinating all combat juice effects.
-## Coordinates ImpactManager (screen shake, VFX), VFXManager (damage popups via
-## ObjectPool — issue #1090), and hit reactions (flinch, stutter) and death animations.
+## Owns screen shake and screen flash directly (ImpactManager was consolidated
+## into this autoload in issue #1660 phase 2) and coordinates VFXManager
+## (damage popups via ObjectPool — issue #1090; elemental impact VFX),
+## plus hit reactions (flinch, stutter) and death animations.
 ##
 ## Signals:
 ## - juice_effect_queued(effect_type: String, data: Dictionary): Emitted when juice effect is queued
@@ -13,6 +15,8 @@ extends Node
 signal juice_effect_queued(effect_type: String, data: Dictionary)
 signal juice_effect_started(effect_type: String)
 signal juice_effect_completed(effect_type: String, data: Dictionary)
+signal shake_started()
+signal shake_completed()
 
 # --- Effect Types ---
 enum EffectType {
@@ -33,8 +37,19 @@ var _current_time_scale: float = 1.0
 var _is_slow_motion: bool = false
 
 # --- Manager References ---
-var _impact_manager: Node
 var _vfx_manager: Node
+
+# --- Screen shake state (consolidated from ImpactManager, issue #1660) ---
+var shake_config: Dictionary = {
+	"light": {"intensity": 2, "duration": 0.2, "decay": true},
+	"medium": {"intensity": 5, "duration": 0.4, "decay": true},
+	"heavy": {"intensity": 10, "duration": 0.6, "decay": true}
+}
+var _camera: Camera2D
+var _current_shake: Dictionary = {}
+var _is_shaking: bool = false
+var _active_shake_duration: float = 0.0
+var _shake_timer: float = 0.0
 
 # --- Configuration ---
 var _max_concurrent_effects: int = 5
@@ -52,8 +67,8 @@ func _ready() -> void:
 	_is_slow_motion = false
 
 	# Get manager references
-	_impact_manager = get_node_or_null("/root/ImpactManager")
 	_vfx_manager = get_node_or_null("/root/VFXManager")
+	_camera = get_viewport().get_camera_2d()
 
 # --- Public API ---
 
@@ -136,12 +151,9 @@ func _trigger_haptic(effect_type: EffectType, data: Dictionary) -> void:
 ##   duration: Shake duration in seconds
 ##   decay: Whether to decay smoothly or not
 func _trigger_screen_shake(data: Dictionary) -> Dictionary:
-	if not _impact_manager:
-		return {"success": false, "error": "ImpactManager not found"}
-
 	juice_effect_started.emit("screen_shake", data)
 
-	var result = _impact_manager.shake_screen(data.attack_strength, data.duration, data.decay)
+	var result = shake_screen(data.attack_strength, data.duration, data.decay)
 
 	juice_effect_completed.emit("screen_shake", result)
 	return result
@@ -155,12 +167,27 @@ func _trigger_screen_shake(data: Dictionary) -> Dictionary:
 ##   type: Particle type from impact_effects dictionary
 ##   count: Number of particles to spawn
 func _trigger_impact_vfx(data: Dictionary) -> Dictionary:
-	if not _impact_manager:
-		return {"success": false, "error": "ImpactManager not found"}
+	# Issue #1660: the pre-consolidation code called
+	# _impact_manager.spawn_impact_vfx(...) — a method that never existed on
+	# ImpactManager (or anywhere else), so this effect hard-errored whenever
+	# it fired. Elemental impact particles live on VFXManager; route there.
+	if not _vfx_manager:
+		return {"success": false, "error": "VFXManager not found"}
 
 	juice_effect_started.emit("impact_vfx", data)
 
-	var result = _impact_manager.spawn_impact_vfx(data.position, data.type, data.count)
+	var method_by_type := {
+		"fire": "play_fire_effect",
+		"ice": "play_ice_effect",
+		"lightning": "play_lightning_effect",
+		"crit": "play_crit_effect",
+		"miss": "play_miss_effect",
+	}
+	var method: String = method_by_type.get(str(data.get("type", "")), "play_hit_effect")
+	if not _vfx_manager.has_method(method):
+		return {"success": false, "error": "VFXManager missing %s" % method}
+	_vfx_manager.call(method, data.position)
+	var result := {"success": true, "method": method}
 
 	juice_effect_completed.emit("impact_vfx", result)
 	return result
@@ -280,8 +307,7 @@ func _trigger_power_up_start(data: Dictionary) -> Dictionary:
 		audio.play_event("loot_pickup")
 
 	# Screen flash for power-up acquisition
-	if _impact_manager:
-		_impact_manager.flash_screen(_get_power_up_color(power_up_type), 0.2)
+	flash_screen(_get_power_up_color(power_up_type), 0.2)
 
 	var result = {
 		"success": true,
@@ -332,8 +358,7 @@ func _trigger_power_up_end(data: Dictionary) -> Dictionary:
 		_vfx_manager.detach_power_up_vfx(target_node, power_up_type)
 
 	# Screen flash for power-up expiration
-	if _impact_manager:
-		_impact_manager.flash_screen(Color(1, 1, 1, 0.1), 0.1)
+	flash_screen(Color(1, 1, 1, 0.1), 0.1)
 
 	var result = {
 		"success": true,
@@ -390,3 +415,135 @@ func set_time_scale(scale: float, smooth: bool = true) -> void:
 		tween.set_ease(Tween.EASE_IN_OUT)
 	else:
 		_current_time_scale = scale
+
+# --- Screen shake / flash API (consolidated from ImpactManager, issue #1660) ---
+
+## Get the viewport camera
+func get_viewport_camera() -> Camera2D:
+	var viewport = get_viewport()
+	if not viewport:
+		return null
+	return viewport.get_camera_2d()
+
+## Shake screen with configurable intensity and duration
+##
+## Parameters:
+##   intensity: Shake strength ("light", "medium", "heavy")
+##   duration: Shake duration in seconds
+##   decay: Whether to decay smoothly
+##
+## Returns:
+##   Dictionary: Result dictionary
+func shake_screen(intensity: String, duration: float, decay: bool) -> Dictionary:
+	if not shake_config.has(intensity):
+		return {"success": false, "error": "Invalid shake intensity: %s" % intensity}
+
+	# Issue #1660: synchronous starter + deferred coroutine worker. The
+	# pre-consolidation ImpactManager.shake_screen was itself a coroutine,
+	# but callers reached it through a dynamically-typed Node reference, so
+	# it ran fire-and-forget and returned null. As a direct self-call a
+	# coroutine must be awaited (parse error), so the timed portion lives
+	# in _run_shake_async and this method returns its result immediately.
+	_is_shaking = true
+	_current_shake = shake_config[intensity]
+	_active_shake_duration = duration
+
+	shake_started.emit()
+
+	_run_shake_async.call_deferred(duration, decay)
+	return {"success": true}
+
+## Coroutine worker for the timed shake + decay (see shake_screen).
+func _run_shake_async(duration: float, decay: bool) -> void:
+	# Wait for shake duration
+	await get_tree().create_timer(duration).timeout
+
+	# Decay shake smoothly
+	if decay:
+		for i in range(10):
+			var progress = float(i) / 10.0
+			_apply_shake_progress(progress)
+			await get_tree().process_frame
+			_current_shake.intensity = _current_shake.intensity * (1.0 - progress)
+		_is_shaking = true
+		_shake_timer += get_process_delta_time() * _current_shake.duration
+		_is_shaking = false
+		_current_shake = {}
+		_active_shake_duration = 0.0
+		shake_completed.emit({"success": true})
+
+## Apply shake progress
+##
+## Parameters:
+##   progress: Progress value (0.0 to 1.0)
+func _apply_shake_progress(progress: float) -> void:
+	# Apply camera offset based on shake intensity
+	if _camera and _current_shake:
+		var intensity = _current_shake.intensity * progress
+		var offset_range = _current_shake.intensity * 5.0
+		var offset_x = (randf() - 0.5) * offset_range
+		var offset_y = (randf() - 0.5) * offset_range
+
+		_camera.offset = Vector2(offset_x, offset_y)
+
+## Get current shake state
+##
+## Returns:
+##   Dictionary: {"is_shaking": bool, "active_shake_duration": float}
+func get_shake_state() -> Dictionary:
+	return {
+		"is_shaking": _is_shaking,
+		"active_shake_duration": _active_shake_duration
+	}
+
+## Check if shake is currently active
+##
+## Returns:
+##   bool: True if shaking
+func is_shake_active() -> bool:
+	return _is_shaking
+
+func _process(delta: float) -> void:
+	if _is_shaking:
+		_shake_timer -= delta
+		if _shake_timer <= 0:
+			_complete_shake()
+
+## Complete current shake
+func _complete_shake() -> void:
+	_is_shaking = false
+	_current_shake = {}
+	_active_shake_duration = 0.0
+	shake_completed.emit({"success": true})
+
+## Flash the screen with a color for power-up effects
+##
+## Parameters:
+##   color: Color to flash
+##   duration: Duration in seconds
+func flash_screen(color: Color, duration: float) -> void:
+	# Create a full-screen overlay for the flash
+	var viewport = get_viewport()
+	if not viewport:
+		return
+
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100  # Top layer
+
+	var flash = ColorRect.new()
+	flash.color = color
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+	canvas_layer.add_child(flash)
+	viewport.add_child(canvas_layer)
+
+	# Fade out and remove
+	var tween = _make_tween()
+	tween.tween_property(flash, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_SINE)
+	tween.tween_callback(canvas_layer.queue_free)
+
+## Helper for creating tweens (Godot 4.x compatible)
+func _make_tween() -> Tween:
+	return get_tree().create_tween()
