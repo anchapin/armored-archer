@@ -7,6 +7,7 @@ import {
   readStageSettlement,
   recordIntendedLoot,
   settlementKey,
+  tryTransitionEffect,
   writeClaimAndSettlement,
   STAGE_SETTLEMENT_COLLECTION,
 } from '../stage_settlement';
@@ -176,5 +177,60 @@ describe('markSettlementEffect / recordIntendedLoot', () => {
     });
     expect(() => markSettlementEffect(nk, USER, STAGE, 'loot', 'settled', logger)).not.toThrow();
     expect(logger.warn).toHaveBeenCalled();
+  });
+});
+
+describe('tryTransitionEffect (#1558 Stage 2)', () => {
+  function seed(nk: ReturnType<typeof createMockNakama>): void {
+    writeClaimAndSettlement(nk, USER, STAGE, undefined, 'att-1', buildStageSettlement(STAGE, 'att-1', { stars_earned: 3, score: 10 }));
+  }
+
+  it('is single-winner: only the first pending -> settled transition returns true', () => {
+    const nk = createMockNakama();
+    seed(nk);
+    expect(tryTransitionEffect(nk, USER, STAGE, 'xp', 'settled', logger)).toBe(true);
+    expect(tryTransitionEffect(nk, USER, STAGE, 'xp', 'settled', logger)).toBe(false);
+    expect(readStageSettlement(nk, USER, STAGE)?.effects.xp).toBe('settled');
+  });
+
+  it('settled is terminal: never transitions to failed', () => {
+    const nk = createMockNakama();
+    seed(nk);
+    expect(tryTransitionEffect(nk, USER, STAGE, 'loot', 'settled', logger)).toBe(true);
+    expect(tryTransitionEffect(nk, USER, STAGE, 'loot', 'failed', logger)).toBe(false);
+    expect(readStageSettlement(nk, USER, STAGE)?.effects.loot).toBe('settled');
+  });
+
+  it('allows failed -> settled so recovery can re-drive a failed effect', () => {
+    const nk = createMockNakama();
+    seed(nk);
+    expect(tryTransitionEffect(nk, USER, STAGE, 'loot', 'failed', logger)).toBe(true);
+    expect(tryTransitionEffect(nk, USER, STAGE, 'loot', 'settled', logger)).toBe(true);
+    expect(readStageSettlement(nk, USER, STAGE)?.effects.loot).toBe('settled');
+  });
+
+  it('returns false when no settlement row exists', () => {
+    const nk = createMockNakama();
+    expect(tryTransitionEffect(nk, USER, STAGE, 'xp', 'settled', logger)).toBe(false);
+  });
+
+  it('retries a version conflict and wins on a later attempt', () => {
+    const nk = createMockNakama();
+    seed(nk);
+    (nk.storageWrite as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('Storage write rejected - version check failed');
+    });
+    expect(tryTransitionEffect(nk, USER, STAGE, 'xp', 'settled', logger)).toBe(true);
+    expect(readStageSettlement(nk, USER, STAGE)?.effects.xp).toBe('settled');
+  });
+
+  it('fails closed after bounded conflicts', () => {
+    const nk = createMockNakama();
+    seed(nk);
+    (nk.storageWrite as jest.Mock).mockImplementation(() => {
+      throw new Error('Storage write rejected - version check failed');
+    });
+    expect(tryTransitionEffect(nk, USER, STAGE, 'xp', 'settled', logger)).toBe(false);
+    expect(readStageSettlement(nk, USER, STAGE)?.effects.xp).toBe('pending');
   });
 });

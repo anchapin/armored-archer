@@ -49,7 +49,9 @@ import {
 import {
   buildStageSettlement,
   markSettlementEffect,
+  readStageSettlement,
   recordIntendedLoot,
+  tryTransitionEffect,
   writeClaimAndSettlement,
 } from './stage_settlement';
 import { grantStageXP } from './stage_xp';
@@ -2203,6 +2205,18 @@ function grantCompletionRewards(
   xpGained: number,
   plan: DifficultyRewardPlan | undefined
 ): void {
+  grantAttemptStageXP(nk, ctx, logger, request, xpGained);
+  grantPlanCoins(nk, ctx, logger, request, plan);
+}
+
+/** Grants the attempt's XP under its deterministic grant ID (insert-once). */
+function grantAttemptStageXP(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  xpGained: number
+): void {
   grantStageXP(
     nk,
     ctx,
@@ -2212,7 +2226,46 @@ function grantCompletionRewards(
       ? makeStageGrantId(ctx.userId, request.stage_id, request.attempt_id, 'xp')
       : undefined
   );
-  grantPlanCoins(nk, ctx, logger, request, plan);
+}
+
+/**
+ * Issue #1558 Stage 2: the settlement gates the XP write - exactly one
+ * caller wins the xp pending|failed -> settled transition and only that
+ * caller grants XP, so a resumed or recovered attempt can never pay XP
+ * twice. A grant that throws rolls the marker back to failed so a later
+ * recovery re-drives it. Coins keep their own grant-ID idempotency and are
+ * not a settlement effect. Returns the XP the response may report as newly
+ * granted (0 when an earlier caller already settled it).
+ */
+function grantSettlementGatedRewards(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  reward: {
+    request: StageCompleteRequest;
+    xpGained: number;
+    plan: DifficultyRewardPlan | undefined;
+  }
+): number {
+  const { request, xpGained, plan } = reward;
+  const settlement = readStageSettlement(nk, ctx.userId, request.stage_id);
+  // A legacy attempt predating the settlement journal has no row to gate
+  // on: grant as before (claim-first dedup still prevents replays).
+  const mayGrantXp =
+    !settlement || tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'settled', logger);
+  if (!mayGrantXp) {
+    grantPlanCoins(nk, ctx, logger, request, plan);
+    return 0;
+  }
+  try {
+    grantCompletionRewards(nk, ctx, logger, request, xpGained, plan);
+  } catch (grantError) {
+    if (settlement) {
+      tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'failed', logger);
+    }
+    throw grantError;
+  }
+  return xpGained;
 }
 
 /**
@@ -2326,8 +2379,11 @@ function applyCompletionAndRespond(
     : result.lootResult;
 
   const xpGained = plan ? plan.xp.total : baseXP;
-  grantCompletionRewards(nk, ctx, logger, request, xpGained, plan);
-  markSettlementEffect(nk, ctx.userId, request.stage_id, 'xp', 'settled', logger);
+  const reportedXp = grantSettlementGatedRewards(nk, ctx, logger, {
+    request,
+    xpGained,
+    plan,
+  });
 
   // Audit the stage completion
   logAudit(
@@ -2349,7 +2405,7 @@ function applyCompletionAndRespond(
       completionResult,
       safeStars,
       safeScore,
-      xpGained,
+      reportedXp,
       plan
     )
   );
@@ -2456,6 +2512,29 @@ function recordBossDefeatIfNeeded(
 }
 
 /**
+ * Journals the loot insert's terminal state (#1558 Stage 2): settled on
+ * success; loot AND xp failed on exhaustion - the withheld XP depends on the
+ * loot write, and the failed markers let a later recovery re-drive both.
+ */
+function insertLootAndJournal(
+  nk: Runtime.Nakama,
+  ctx: Runtime.Context,
+  logger: Runtime.Logger,
+  request: StageCompleteRequest,
+  insert: () => LootResult
+): LootResult {
+  try {
+    const lootResult = insert();
+    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
+    return lootResult;
+  } catch (lootError) {
+    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'loot', 'failed', logger);
+    tryTransitionEffect(nk, ctx.userId, request.stage_id, 'xp', 'failed', logger);
+    throw lootError;
+  }
+}
+
+/**
  * Resolves the loot effect for a completion. Grant-keyed when the client
  * supplied an attempt_id: a resumed attempt first recovers the gear row the
  * crashed attempt granted (no re-roll), and a fresh attempt's insert is
@@ -2485,10 +2564,27 @@ function resolveLootResult(
       markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
       return { dropped: true, gear: priorGrant };
     }
+    // Issue #1558 Stage 2: the crashed attempt may have rolled but never
+    // committed the insert - re-drive the recorded intended loot, never
+    // reroll. The original grant ID makes the retried insert insert-once.
+    const intended = readStageSettlement(nk, ctx.userId, request.stage_id)?.intended_loot;
+    if (intended?.gear && intended.grant_id === gearGrantId) {
+      return insertLootAndJournal(nk, ctx, logger, request, () =>
+        insertGearWithRetry(
+          nk,
+          ctx.userId,
+          request.stage_id,
+          intended.gear as GearItem,
+          inventory,
+          logger,
+          gearGrantId
+        )
+      );
+    }
   }
   if (roll < dropRate) {
-    try {
-      const lootResult = generateLootResult(
+    return insertLootAndJournal(nk, ctx, logger, request, () =>
+      generateLootResult(
         nk,
         ctx.userId,
         request.stage_id,
@@ -2497,13 +2593,8 @@ function resolveLootResult(
         gearGrantId,
         dropRate,
         roll
-      );
-      markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
-      return lootResult;
-    } catch (lootError) {
-      markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'failed', logger);
-      throw lootError;
-    }
+      )
+    );
   }
   // Roll missed: no loot owed this attempt - the effect is complete.
   markSettlementEffect(nk, ctx.userId, request.stage_id, 'loot', 'settled', logger);
@@ -2734,7 +2825,23 @@ function generateLootResult(
     { gear, grant_id: grantId, drop_rate: dropRate ?? 0, roll: roll ?? 0 },
     logger
   );
+  return insertGearWithRetry(nk, userId, stageId, gear, inventory, logger, grantId);
+}
 
+/**
+ * Persists a rolled (or recovered) gear item with the bounded retry.
+ * Throws after MAX_INSERT_ATTEMPTS; the audit + failure journaling here is
+ * what lets a later recovery re-drive the SAME gear (#1558 Stage 2).
+ */
+function insertGearWithRetry(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  gear: GearItem,
+  inventory: PlayerInventory,
+  logger: Runtime.Logger,
+  grantId?: string
+): LootResult {
   // Persist gear to database with retry
   let insertResult: ReturnType<typeof insertGearItem>;
   for (let attempt = 1; attempt <= MAX_INSERT_ATTEMPTS; attempt++) {

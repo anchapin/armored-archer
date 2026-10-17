@@ -122,12 +122,17 @@ export function writeClaimAndSettlement(
   ]);
 }
 
-/** Reads the settlement for a user+stage, or undefined when absent/corrupt. */
-export function readStageSettlement(
+interface SettlementRow {
+  settlement: StageSettlement;
+  version?: string;
+}
+
+/** Reads the settlement with its OCC version, or undefined when absent/corrupt. */
+function readSettlementRow(
   nk: Runtime.Nakama,
   userId: string,
   stageId: string
-): StageSettlement | undefined {
+): SettlementRow | undefined {
   let objects: Runtime.StorageObject[] = [];
   try {
     objects = nk.storageRead([
@@ -140,10 +145,38 @@ export function readStageSettlement(
   try {
     const parsed = JSON.parse(getStorageRawValue(objects[0].value) ?? '') as StageSettlement;
     if (!parsed || typeof parsed !== 'object' || !parsed.effects) return undefined;
-    return parsed;
+    return { settlement: parsed, version: objects[0].version };
   } catch {
     return undefined;
   }
+}
+
+/** Writes the settlement at the given OCC version (undefined = unconditional). */
+function writeSettlementRow(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  settlement: StageSettlement,
+  version?: string
+): void {
+  nk.storageWrite([
+    {
+      collection: STAGE_SETTLEMENT_COLLECTION,
+      key: settlementKey(userId, stageId),
+      userId,
+      value: toStorageValue(settlement),
+      version,
+    },
+  ]);
+}
+
+/** Reads the settlement for a user+stage, or undefined when absent/corrupt. */
+export function readStageSettlement(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string
+): StageSettlement | undefined {
+  return readSettlementRow(nk, userId, stageId)?.settlement;
 }
 
 /**
@@ -161,29 +194,12 @@ function updateSettlement(
   try {
     // OCC with the just-read version: a conflicting update is dropped
     // (warned below) rather than clobbering a concurrent effect journal.
-    const objects = nk.storageRead([
-      { collection: STAGE_SETTLEMENT_COLLECTION, key: settlementKey(userId, stageId), userId },
-    ]);
-    if (objects.length === 0 || !objects[0].value) return;
-    let current: StageSettlement;
-    try {
-      current = JSON.parse(getStorageRawValue(objects[0].value) ?? '') as StageSettlement;
-    } catch {
-      return;
-    }
-    if (!current || typeof current !== 'object' || !current.effects) return;
-    mutate(current);
-    current.state = computeSettlementState(current.effects);
-    current.updated_at = Date.now();
-    nk.storageWrite([
-      {
-        collection: STAGE_SETTLEMENT_COLLECTION,
-        key: settlementKey(userId, stageId),
-        userId,
-        value: toStorageValue(current),
-        version: objects[0].version,
-      },
-    ]);
+    const row = readSettlementRow(nk, userId, stageId);
+    if (!row) return;
+    mutate(row.settlement);
+    row.settlement.state = computeSettlementState(row.settlement.effects);
+    row.settlement.updated_at = Date.now();
+    writeSettlementRow(nk, userId, stageId, row.settlement, row.version);
   } catch (e) {
     logger.warn(
       'Settlement journal update failed for user %s stage %s: %s',
@@ -192,6 +208,51 @@ function updateSettlement(
       String(e)
     );
   }
+}
+
+const TRANSITION_MAX_ATTEMPTS = 3;
+
+/**
+ * #1558 Stage 2 - single-winner effect transition, OCC-checked. Only the
+ * caller that moves the effect from pending|failed to `to` gets true; a row
+ * already at `to`, missing, or corrupt yields false, so an effect gated on
+ * this transition is applied exactly once. settled is terminal: a settled
+ * effect never transitions again. Retries version conflicts a bounded
+ * number of times, then fails closed (false) with a warning.
+ */
+export function tryTransitionEffect(
+  nk: Runtime.Nakama,
+  userId: string,
+  stageId: string,
+  effect: SettlementEffect,
+  to: 'settled' | 'failed',
+  logger: Runtime.Logger
+): boolean {
+  for (let attempt = 1; attempt <= TRANSITION_MAX_ATTEMPTS; attempt++) {
+    const row = readSettlementRow(nk, userId, stageId);
+    if (!row) return false;
+    const from = row.settlement.effects[effect];
+    if (from === to || from === 'settled') return false;
+    row.settlement.effects[effect] = to;
+    row.settlement.state = computeSettlementState(row.settlement.effects);
+    row.settlement.updated_at = Date.now();
+    try {
+      writeSettlementRow(nk, userId, stageId, row.settlement, row.version);
+      return true;
+    } catch (e) {
+      if (attempt === TRANSITION_MAX_ATTEMPTS) {
+        logger.warn(
+          'Settlement transition failed for user %s stage %s effect %s: %s',
+          userId,
+          stageId,
+          effect,
+          String(e)
+        );
+        return false;
+      }
+    }
+  }
+  return false;
 }
 
 /** Journals a reward effect's outcome (settled/failed). Best-effort. */
