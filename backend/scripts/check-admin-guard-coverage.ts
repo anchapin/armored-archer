@@ -71,6 +71,9 @@ const PRIVILEGED_EXACT_IDS: ReadonlySet<string> = new Set([
   'armored_archer/reconstruct_match_state',
   'armored_archer/end_season', // issue #1119 — admin-gated; was player-callable
   'armored_archer/get_balance_metrics', // admin-only weapon balance report (aggregate win/loss telemetry)
+  'armored_archer/get_weapon_stats', // issue #1691 — RPC_MAP admin-only, was unguarded
+  'armored_archer/detect_balance_issues', // issue #1691 — RPC_MAP admin-only, was unguarded
+  'armored_archer/export_analytics_report', // issue #1691 — RPC_MAP admin-only, was unguarded
 ]);
 
 /**

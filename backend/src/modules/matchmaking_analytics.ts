@@ -6,6 +6,7 @@
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { toStorageValue } from '../utils/storage-helpers';
+import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas } from './validation';
@@ -886,7 +887,9 @@ export function registerMatchmakingAnalyticsEndpoints(initializer: Runtime.Initi
     rpcLogQueueTime
   );
 
-  // Analytics query endpoints
+  // Analytics query endpoints. The three admin-dashboard surfaces are
+  // wrapped in the shared admin gate (issue #1691): RPC_MAP.md has always
+  // labeled them admin-only, but they were registered unguarded.
   registerRpcWithMetrics(
     initializer,
     'armored_archer/get_match_quality_metrics',
@@ -897,18 +900,18 @@ export function registerMatchmakingAnalyticsEndpoints(initializer: Runtime.Initi
     initializer,
     'armored_archer/get_weapon_stats',
     'get_weapon_stats',
-    rpcGetWeaponStats
+    withAdminGuard('armored_archer/get_weapon_stats', rpcGetWeaponStats)
   );
   registerRpcWithMetrics(
     initializer,
     'armored_archer/detect_balance_issues',
     'detect_balance_issues',
-    rpcDetectBalanceIssues
+    withAdminGuard('armored_archer/detect_balance_issues', rpcDetectBalanceIssues)
   );
   registerRpcWithMetrics(
     initializer,
     'armored_archer/export_analytics_report',
     'export_analytics_report',
-    rpcExportAnalyticsReport
+    withAdminGuard('armored_archer/export_analytics_report', rpcExportAnalyticsReport)
   );
 }
