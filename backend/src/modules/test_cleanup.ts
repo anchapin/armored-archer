@@ -1,5 +1,6 @@
 import { Runtime } from '../types/nakama';
 import { observedSqlQuery } from '../utils/sql-observability';
+import { registerRpcWithMetrics } from './metrics';
 
 const PLAYER_INVENTORY_COLLECTION = 'player_inventory';
 const UNLOCKED_MODIFIER_POOLS_COLLECTION = 'unlocked_modifier_pools';
@@ -24,12 +25,12 @@ const UNLOCKED_MODIFIER_POOLS_COLLECTION = 'unlocked_modifier_pools';
  * - loadout
  * - player_stats
  */
-export async function rpcCleanupUserStorage(
+export function rpcCleanupUserStorage(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   let userId: string;
 
   try {
@@ -45,9 +46,9 @@ export async function rpcCleanupUserStorage(
 
   logger.info(`Cleaning user data for: ${userId}`);
 
-  // Clean Nakama storage collections (async, must await)
+  // Clean Nakama storage collections (storageDelete is synchronous in goja)
   try {
-    await nk.storageDelete([
+    nk.storageDelete([
       {
         collection: PLAYER_INVENTORY_COLLECTION,
         key: userId,
@@ -59,7 +60,7 @@ export async function rpcCleanupUserStorage(
   }
 
   try {
-    await nk.storageDelete([
+    nk.storageDelete([
       {
         collection: UNLOCKED_MODIFIER_POOLS_COLLECTION,
         key: userId,
@@ -82,7 +83,7 @@ export async function rpcCleanupUserStorage(
 
   for (const table of pgTables) {
     try {
-      await observedSqlQuery(
+      observedSqlQuery(
         nk,
         'test_cleanup.delete',
         `DELETE FROM ${table} WHERE user_id = $1`,
@@ -104,5 +105,10 @@ export async function rpcCleanupUserStorage(
  * This RPC is test-only and should only be registered in test environments.
  */
 export function registerTestCleanupRpc(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('test.cleanup_user_storage', rpcCleanupUserStorage);
+  registerRpcWithMetrics(
+    initializer,
+    'test.cleanup_user_storage',
+    'cleanup_user_storage',
+    rpcCleanupUserStorage
+  );
 }

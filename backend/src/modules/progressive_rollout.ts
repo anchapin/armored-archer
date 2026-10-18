@@ -15,6 +15,7 @@ import { config } from '../config';
 import { Runtime } from '../types/nakama';
 import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
+import { registerRpcWithMetrics } from './metrics';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Create a dedicated registry for rollout metrics
@@ -563,7 +564,12 @@ export function registerProgressiveRollout(initializer: Runtime.Initializer): vo
     'armored_archer/rollout_list_flags',
     withAdminGuard('armored_archer/rollout_list_flags', rpcListFeatureFlags)
   );
-  initializer.registerRpc('armored_archer/rollout_check', rpcCheckFeatureFlag);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/rollout_check',
+    'rollout_check',
+    rpcCheckFeatureFlag
+  );
   initializer.registerRpc(
     'armored_archer/rollout_advance',
     withAdminGuard('armored_archer/rollout_advance', rpcAdvancePhase)
@@ -576,7 +582,12 @@ export function registerProgressiveRollout(initializer: Runtime.Initializer): vo
     'armored_archer/rollout_metrics',
     withAdminGuard('armored_archer/rollout_metrics', rpcGetRolloutMetrics)
   );
-  initializer.registerRpc('armored_archer/rollout_record_metrics', rpcRecordMetrics);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/rollout_record_metrics',
+    'rollout_record_metrics',
+    rpcRecordMetrics
+  );
   initializer.registerRpc(
     'armored_archer/rollout_health',
     withAdminGuard('armored_archer/rollout_health', rpcRolloutHealth)
@@ -701,12 +712,12 @@ async function rpcListFeatureFlags(
  * response and written to the audit trail against the caller so
  * impersonation attempts surface for security monitoring.
  */
-async function rpcCheckFeatureFlag(
+function rpcCheckFeatureFlag(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   const validation = validatePayload(ZodSchemas.rollout_check, payload, 'rollout_check');
   if (!validation.success) {
     return createValidationErrorResponse('rollout_check', validation.error);
@@ -966,12 +977,12 @@ function deltaFieldsOverCap(delta: {
  * the volume needed to trip `checkRollbackCriteria`, and any anomaly is
  * audit-logged as `metric_poisoning_attempt`.
  */
-async function rpcRecordMetrics(
+function rpcRecordMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   const validation = validatePayload(
     ZodSchemas.rollout_record_metrics,
     payload,

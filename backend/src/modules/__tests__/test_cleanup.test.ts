@@ -82,18 +82,26 @@ it('preserves successful deletes without error metrics', async () => {
   expect(nk.metricsCounterAdd).not.toHaveBeenCalled();
 });
 
-it('preserves async rejected-provider fallback', async () => {
+it('preserves failing-provider fallback (sync providers, issue #1674)', async () => {
   const logger = nativeLogger();
   const nk = {
-    storageDelete: jest.fn().mockRejectedValue(new Error('private storage token')),
-    sqlQuery: jest.fn().mockRejectedValue(new Error('private SQL token')),
+    storageDelete: jest.fn().mockImplementation(() => { throw new Error('private storage token'); }),
+    sqlQuery: jest.fn().mockImplementation(() => { throw new Error('private SQL token'); }),
     metricsCounterAdd: jest.fn(),
   } as any;
   expect(
     JSON.parse(await rpcCleanupUserStorage({} as any, logger, nk, '{"userId":"fixture-user"}'))
   ).toEqual({ success: true });
   expect(nk.sqlQuery).toHaveBeenCalledTimes(6);
-  expect(nk.metricsCounterAdd).not.toHaveBeenCalled();
+  // Sync throws are observed by observedSqlQuery, which records one
+  // db_errors_total metric per failed table delete (issue #1674: the RPC
+  // handler is now synchronous, so failures surface through the sync path).
+  expect(nk.metricsCounterAdd).toHaveBeenCalledTimes(6);
+  expect(nk.metricsCounterAdd).toHaveBeenCalledWith(
+    'db_errors_total',
+    { op: 'test_cleanup.delete', rpc: 'test.cleanup_user_storage' },
+    1
+  );
   expect(JSON.stringify(logger.info.mock.calls)).not.toContain('private');
 });
 
