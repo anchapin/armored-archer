@@ -974,12 +974,12 @@ export function registerRpcRunBalanceSession(initializer: Runtime.Initializer): 
   );
 }
 
-async function rpcRunBalanceSession(
+function rpcRunBalanceSession(
   _ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Run balance session called');
 
   const validation = validatePayload(
