@@ -70,6 +70,7 @@ const PRIVILEGED_EXACT_IDS: ReadonlySet<string> = new Set([
   'armored_archer/add_debug_notes',
   'armored_archer/reconstruct_match_state',
   'armored_archer/end_season', // issue #1119 — admin-gated; was player-callable
+  'armored_archer/get_balance_metrics', // admin-only weapon balance report (aggregate win/loss telemetry)
 ]);
 
 /**
@@ -127,10 +128,7 @@ export interface RpcCallSite {
 
 /** A failing rule violation. */
 export interface CoverageViolation {
-  rule:
-    | 'UNWRAPPED_PRIVILEGED_RPC'
-    | 'GUARD_RPC_ID_MISMATCH'
-    | 'GUARDED_NON_PRIVILEGED_RPC';
+  rule: 'UNWRAPPED_PRIVILEGED_RPC' | 'GUARD_RPC_ID_MISMATCH' | 'GUARDED_NON_PRIVILEGED_RPC';
   file: string;
   line: number;
   rpcId: string;
@@ -263,8 +261,7 @@ export function extractRegisterRpcCalls(source: string): RpcCallSite[] {
       if (rpcId === null) {
         continue; // dynamic id — out of scope for the static checker
       }
-      const handlerArg =
-        helper === 'registerRpc' ? args[1] ?? '' : args[args.length - 1] ?? '';
+      const handlerArg = helper === 'registerRpc' ? (args[1] ?? '') : (args[args.length - 1] ?? '');
       const guardMatch = /withAdminGuard\s*\(\s*(['"])([^'"]*)\1/.exec(handlerArg);
       calls.push({
         rpcId,
@@ -296,7 +293,7 @@ export function scanSource(fileName: string, source: string): CoverageViolation[
           message:
             `${call.rpcId} is a privileged RPC per ADR-0006 but its ${call.kind} ` +
             'handler is not wrapped in withAdminGuard — see ADR-0006 §Policy 9 ' +
-            "(the guard must wrap the handler at the registration site inside the " +
+            '(the guard must wrap the handler at the registration site inside the ' +
             'owning module). Scaffold the full 3-file walk with scripts/new-admin-rpc.sh.',
         });
       } else if (call.guardRpcId !== null && call.guardRpcId !== call.rpcId) {
@@ -361,7 +358,8 @@ export function scanModuleDirectory(modulesDir: string): ScanResult {
     if (privileged.length > 0) {
       const testPath = path.join(modulesDir, '__tests__', fileName.replace(/\.ts$/, '.test.ts'));
       const hasFixture =
-        fs.existsSync(testPath) && fs.readFileSync(testPath, 'utf8').includes('resetAdminAllowlistCache');
+        fs.existsSync(testPath) &&
+        fs.readFileSync(testPath, 'utf8').includes('resetAdminAllowlistCache');
       if (!hasFixture) {
         warnings.push({
           rule: 'MISSING_ALLOWLIST_TEST_FIXTURE',
@@ -403,7 +401,7 @@ function main(): void {
     }
     console.log(
       `${isPrivilegedProbe}: NOT privileged — scripts/new-admin-rpc.sh only scaffolds ` +
-        'admin-guarded RPCs (see backend/scripts/check-admin-guard-coverage.ts)',
+        'admin-guarded RPCs (see backend/scripts/check-admin-guard-coverage.ts)'
     );
     process.exit(1);
   }
@@ -422,14 +420,14 @@ function main(): void {
     }
     console.log(
       `Scanned ${result.scannedCalls} RPC registrations (${result.privilegedCalls} privileged): ` +
-        `${result.violations.length} violation(s), ${result.warnings.length} warning(s).`,
+        `${result.violations.length} violation(s), ${result.warnings.length} warning(s).`
     );
   }
 
   if (result.violations.length > 0) {
     console.error(
       '\nwithAdminGuard coverage check FAILED — every privileged RPC must be wrapped ' +
-        '(ADR-0006). Run scripts/new-admin-rpc.sh to scaffold the full 3-file walk.',
+        '(ADR-0006). Run scripts/new-admin-rpc.sh to scaffold the full 3-file walk.'
     );
     process.exit(1);
   }

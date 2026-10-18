@@ -41,6 +41,8 @@ var _balance_adjustments: Dictionary = {}
 # --- Signals ---
 signal balance_adjustment_applied(weapon_id: String, multiplier: float)
 signal balance_adjustment_reverted(weapon_id: String)
+## Emitted when the admin weapon-balance report arrives from the server.
+signal balance_report_received(report: Dictionary)
 
 # --- Profiling Reference ---
 @onready var _profiler: Node = get_node_or_null("/root/ProfilingInstrumentation")
@@ -48,12 +50,47 @@ signal balance_adjustment_reverted(weapon_id: String)
 # --- Gear Registry Reference ---
 var gear_registry: Node
 
+# --- Network Reference ---
+# Admin-only: only the balance report fetch uses this. Adjustments stay
+# local-only (issue #1664); the server-side apply path remains unregistered.
+var network_manager: Node
+
 func _ready() -> void:
 	"""Initialize weapon balance manager."""
 	gear_registry = get_node_or_null("/root/GearRegistry")
+	network_manager = get_node_or_null("/root/NetworkManager")
 
-	# Balance adjustments are local-only (issue #1664): no server fetch RPC is
-	# registered, and wiring one is moot while the shop is const-hidden.
+# --- Admin Balance Report ---
+
+func request_balance_report(weapon_id: String = "") -> void:
+	"""Fetches the server-side weapon balance report (admin-gated RPC).
+
+	The server aggregates match telemetry per weapon (matches, wins,
+	losses, win rate, rating differential) and flags weapons outside the
+	balance band. Only allowlisted admins receive data; other callers get
+	a generic authorization error. Emits balance_report_received with the
+	parsed report on success.
+
+	Parameters:
+		weapon_id: Optional. When set, the report covers only this weapon.
+	"""
+	if not network_manager or not network_manager.is_connected:
+		push_error("Cannot request balance report: not connected to server")
+		return
+
+	var payload: Dictionary = {}
+	if weapon_id != "":
+		payload["weapon_id"] = weapon_id
+
+	var response: Dictionary = await network_manager.send_rpc(
+		"armored_archer/get_balance_metrics", JSON.stringify(payload)
+	)
+
+	if response.has("error") or not response.get("success", false):
+		push_error("Weapon balance report request failed: %s" % response.get("error", "unknown"))
+		return
+
+	balance_report_received.emit(response)
 
 # --- Damage Calculations ---
 

@@ -30,8 +30,8 @@ import { Runtime } from '../types/nakama';
 
 function createMockNk(overrides: Record<string, unknown> = {}): Runtime.Nakama {
   return {
-    storageRead: jest.fn().mockResolvedValue([]),
-    storageWrite: jest.fn().mockResolvedValue(undefined),
+    storageRead: jest.fn().mockReturnValue([]),
+    storageWrite: jest.fn().mockReturnValue(undefined),
     ...overrides,
   } as unknown as Runtime.Nakama;
 }
@@ -374,11 +374,12 @@ describe('weapon_balance', () => {
       // Both are capped at tier average * MAX_DAMAGE_PERCENTAGE * multiplier,
       // which is far below the uncapped 500-base scaling.
       const tierAverage =
-        (WEAPON_BALANCE_CONSTANTS.BASE_DAMAGES.bow +
-          WEAPON_BALANCE_CONSTANTS.BASE_DAMAGES.arrow) /
-        2.0 *
+        ((WEAPON_BALANCE_CONSTANTS.BASE_DAMAGES.bow + WEAPON_BALANCE_CONSTANTS.BASE_DAMAGES.arrow) /
+          2.0) *
         WEAPON_BALANCE_CONSTANTS.TIER_MULTIPLIERS[WeaponTier.LEGENDARY];
-      expect(baseline).toBeLessThanOrEqual(tierAverage * WEAPON_BALANCE_CONSTANTS.MAX_DAMAGE_PERCENTAGE);
+      expect(baseline).toBeLessThanOrEqual(
+        tierAverage * WEAPON_BALANCE_CONSTANTS.MAX_DAMAGE_PERCENTAGE
+      );
     });
 
     it('should ignore zero-valued attack and ability_power stats', () => {
@@ -528,7 +529,15 @@ describe('weapon_balance', () => {
       expect(adjustmentWrite[0].userId).toBe('admin-1');
       expect(adjustmentWrite[0].permissionRead).toBe(2);
       expect(adjustmentWrite[0].permissionWrite).toBe(0);
-      expect((typeof adjustmentWrite[0].value === 'string' ? (typeof adjustmentWrite[0].value === 'string' ? (typeof adjustmentWrite[0].value === 'string' ? JSON.parse(adjustmentWrite[0].value) : adjustmentWrite[0].value) : adjustmentWrite[0].value) : adjustmentWrite[0].value)).toEqual(adjustment);
+      expect(
+        typeof adjustmentWrite[0].value === 'string'
+          ? typeof adjustmentWrite[0].value === 'string'
+            ? typeof adjustmentWrite[0].value === 'string'
+              ? JSON.parse(adjustmentWrite[0].value)
+              : adjustmentWrite[0].value
+            : adjustmentWrite[0].value
+          : adjustmentWrite[0].value
+      ).toEqual(adjustment);
 
       const auditWrite = (nk.storageWrite as jest.Mock).mock.calls[1][0];
       expect(auditWrite[0].collection).toBe('audit_logs');
@@ -559,7 +568,15 @@ describe('weapon_balance', () => {
       expect(write.key).toBe('weapon_stats_bow_short_2');
       expect(write.userId).toBe('00000000-0000-0000-0000-000000000000');
 
-      const stats = (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value) as WeaponUsageStats;
+      const stats = (
+        typeof write.value === 'string'
+          ? typeof write.value === 'string'
+            ? typeof write.value === 'string'
+              ? JSON.parse(write.value)
+              : write.value
+            : write.value
+          : write.value
+      ) as WeaponUsageStats;
       expect(stats.weapon_id).toBe('bow_short_2');
       expect(stats.matches_played).toBe(1);
       expect(stats.wins).toBe(1);
@@ -577,15 +594,21 @@ describe('weapon_balance', () => {
         last_updated: 1000,
       };
       const nk = createMockNk({
-        storageRead: jest.fn().mockResolvedValue([
-          { value: JSON.stringify(existing) },
-        ]),
+        storageRead: jest.fn().mockResolvedValue([{ value: JSON.stringify(existing) }]),
       });
 
       await trackWeaponUsage(nk, 'bow_short_2', 'loss', 30);
 
       const write = (nk.storageWrite as jest.Mock).mock.calls[0][0][0];
-      const stats = (typeof write.value === 'string' ? (typeof write.value === 'string' ? (typeof write.value === 'string' ? JSON.parse(write.value) : write.value) : write.value) : write.value) as WeaponUsageStats;
+      const stats = (
+        typeof write.value === 'string'
+          ? typeof write.value === 'string'
+            ? typeof write.value === 'string'
+              ? JSON.parse(write.value)
+              : write.value
+            : write.value
+          : write.value
+      ) as WeaponUsageStats;
       expect(stats.matches_played).toBe(2);
       expect(stats.wins).toBe(1);
       expect(stats.losses).toBe(1);
@@ -598,9 +621,7 @@ describe('weapon_balance', () => {
         storageRead: jest.fn().mockRejectedValue(new Error('read failed')),
       });
 
-      await expect(
-        trackWeaponUsage(nk, 'bow_short_2', 'win', 5)
-      ).resolves.toBeUndefined();
+      await expect(trackWeaponUsage(nk, 'bow_short_2', 'win', 5)).resolves.toBeUndefined();
       expect(nk.storageWrite).not.toHaveBeenCalled();
     });
 
@@ -609,9 +630,7 @@ describe('weapon_balance', () => {
         storageWrite: jest.fn().mockRejectedValue(new Error('write failed')),
       });
 
-      await expect(
-        trackWeaponUsage(nk, 'bow_short_2', 'loss', 5)
-      ).resolves.toBeUndefined();
+      await expect(trackWeaponUsage(nk, 'bow_short_2', 'loss', 5)).resolves.toBeUndefined();
     });
   });
 
@@ -670,9 +689,7 @@ describe('weapon_balance', () => {
         last_updated: 1234,
       };
       const nk = createMockNk({
-        storageRead: jest.fn().mockResolvedValue([
-          { value: JSON.stringify(existing) },
-        ]),
+        storageRead: jest.fn().mockResolvedValue([{ value: JSON.stringify(existing) }]),
       });
 
       const result = await getWeaponStats(nk, 'bow_x');
@@ -779,36 +796,35 @@ describe('weapon_balance', () => {
   });
 
   describe('rpcGetBalanceMetrics', () => {
-    it('should return an adjustment summary for an empty payload', async () => {
+    function usageStatsObject(stats: Record<string, unknown>): { value: Record<string, unknown> } {
+      return { value: stats };
+    }
+
+    it('should return an adjustment summary for an empty payload', () => {
       const nk = createMockNk({
-        storageRead: jest.fn().mockResolvedValue([
-          adjustmentObject('bow_a', 1.2, 100),
-          adjustmentObject('bow_b', 0.8, 200),
-        ]),
+        storageList: jest.fn().mockImplementation((_userId: string, collection: string) => {
+          if (collection === 'weapon_balance_adjustments') {
+            return [adjustmentObject('bow_a', 1.2, 100), adjustmentObject('bow_b', 0.8, 200)];
+          }
+          return [];
+        }),
+        storageRead: jest.fn().mockReturnValue([]),
       });
 
-      const response = await rpcGetBalanceMetrics(
-        createMockCtx('admin-1'),
-        createMockLogger(),
-        nk,
-        ''
-      );
+      const response = rpcGetBalanceMetrics(createMockCtx('admin-1'), createMockLogger(), nk, '');
 
       const result = JSON.parse(response);
       expect(result.success).toBe(true);
       expect(result.active_adjustments).toBe(2);
       expect(result.adjustments).toEqual({ bow_a: 1.2, bow_b: 0.8 });
+      expect(result.weapons).toEqual([]);
+      expect(result.flagged_weapons).toEqual([]);
     });
 
-    it('should return the same summary for an empty JSON object payload', async () => {
+    it('should return the same summary for an empty JSON object payload', () => {
       const nk = createMockNk();
 
-      const response = await rpcGetBalanceMetrics(
-        createMockCtx('admin-1'),
-        createMockLogger(),
-        nk,
-        '{}'
-      );
+      const response = rpcGetBalanceMetrics(createMockCtx('admin-1'), createMockLogger(), nk, '{}');
 
       const result = JSON.parse(response);
       expect(result.success).toBe(true);
@@ -816,25 +832,88 @@ describe('weapon_balance', () => {
       expect(result.adjustments).toEqual({});
     });
 
-    it('should return weapon-specific metrics when a weapon_id is provided', async () => {
-      const usageStats: WeaponUsageStats = {
+    it('should include per-weapon report rows and flag out-of-band win rates', () => {
+      const over = {
+        weapon_id: 'bow_over',
+        matches_played: 40,
+        wins: 30,
+        losses: 10,
+        win_rate: 0.75,
+        avg_rating_diff: 5,
+        last_updated: 999,
+      };
+      const under = {
+        weapon_id: 'bow_under',
+        matches_played: 25,
+        wins: 5,
+        losses: 20,
+        win_rate: 0.2,
+        avg_rating_diff: -3,
+        last_updated: 998,
+      };
+      const lowSample = {
+        weapon_id: 'bow_new',
+        matches_played: 3,
+        wins: 0,
+        losses: 3,
+        win_rate: 0,
+        avg_rating_diff: 0,
+        last_updated: 997,
+      };
+      const nk = createMockNk({
+        storageList: jest.fn().mockReturnValue([]),
+        storageRead: jest
+          .fn()
+          .mockReturnValue([
+            usageStatsObject(over),
+            usageStatsObject(under),
+            usageStatsObject(lowSample),
+          ]),
+      });
+
+      const response = rpcGetBalanceMetrics(createMockCtx('admin-1'), createMockLogger(), nk, '');
+
+      const result = JSON.parse(response);
+      expect(result.success).toBe(true);
+      expect(result.weapons).toHaveLength(3);
+      const overRow = result.weapons.find(
+        (row: { weapon_id: string }) => row.weapon_id === 'bow_over'
+      );
+      expect(overRow.win_rate).toBeCloseTo(0.75);
+      expect(overRow.flagged).toBe(true);
+      expect(overRow.flag_reason).toBe('overperforming');
+      const underRow = result.weapons.find(
+        (row: { weapon_id: string }) => row.weapon_id === 'bow_under'
+      );
+      expect(underRow.flag_reason).toBe('underperforming');
+      const newRow = result.weapons.find(
+        (row: { weapon_id: string }) => row.weapon_id === 'bow_new'
+      );
+      expect(newRow.flagged).toBe(false);
+      expect(result.flagged_weapons).toEqual(['bow_over', 'bow_under']);
+    });
+
+    it('should return weapon-specific metrics when a weapon_id is provided', () => {
+      const usageStats = {
         weapon_id: 'bow_a',
         matches_played: 5,
         wins: 3,
         losses: 2,
-        average_rating_diff: 4,
+        win_rate: 0.6,
+        avg_rating_diff: 4,
         last_updated: 999,
       };
-      const storageRead = jest.fn().mockImplementation((objects) => {
-        const reads = objects as Array<{ collection: string }>;
-        if (reads[0].collection === 'weapon_balance_adjustments') {
-          return Promise.resolve([adjustmentObject('bow_a', 1.2, 100)]);
-        }
-        return Promise.resolve([{ value: JSON.stringify(usageStats) }]);
+      const nk = createMockNk({
+        storageList: jest.fn().mockImplementation((_userId: string, collection: string) => {
+          if (collection === 'weapon_balance_adjustments') {
+            return [adjustmentObject('bow_a', 1.2, 100)];
+          }
+          return [];
+        }),
+        storageRead: jest.fn().mockReturnValue([usageStatsObject(usageStats)]),
       });
-      const nk = createMockNk({ storageRead });
 
-      const response = await rpcGetBalanceMetrics(
+      const response = rpcGetBalanceMetrics(
         createMockCtx('admin-1'),
         createMockLogger(),
         nk,
@@ -845,20 +924,23 @@ describe('weapon_balance', () => {
       expect(result.success).toBe(true);
       expect(result.weapon_id).toBe('bow_a');
       expect(result.balance_multiplier).toBe(1.2);
-      expect(result.usage_stats).toEqual(usageStats);
+      expect(result.usage_stats.weapon_id).toBe('bow_a');
+      expect(result.usage_stats.matches_played).toBe(5);
+      expect(result.usage_stats.win_rate).toBeCloseTo(0.6);
     });
 
-    it('should default the balance multiplier and report null stats for an unknown weapon', async () => {
-      const storageRead = jest.fn().mockImplementation((objects) => {
-        const reads = objects as Array<{ collection: string }>;
-        if (reads[0].collection === 'weapon_balance_adjustments') {
-          return Promise.resolve([adjustmentObject('bow_a', 1.2, 100)]);
-        }
-        return Promise.resolve([]);
+    it('should default the balance multiplier and report null stats for an unknown weapon', () => {
+      const nk = createMockNk({
+        storageList: jest.fn().mockImplementation((_userId: string, collection: string) => {
+          if (collection === 'weapon_balance_adjustments') {
+            return [adjustmentObject('bow_a', 1.2, 100)];
+          }
+          return [];
+        }),
+        storageRead: jest.fn().mockReturnValue([]),
       });
-      const nk = createMockNk({ storageRead });
 
-      const response = await rpcGetBalanceMetrics(
+      const response = rpcGetBalanceMetrics(
         createMockCtx('admin-1'),
         createMockLogger(),
         nk,
@@ -872,10 +954,10 @@ describe('weapon_balance', () => {
       expect(result.usage_stats).toBeNull();
     });
 
-    it('should fall back to the summary when the payload is not valid JSON', async () => {
+    it('should reject a payload that is not valid JSON', () => {
       const nk = createMockNk();
 
-      const response = await rpcGetBalanceMetrics(
+      const response = rpcGetBalanceMetrics(
         createMockCtx('admin-1'),
         createMockLogger(),
         nk,
@@ -883,8 +965,95 @@ describe('weapon_balance', () => {
       );
 
       const result = JSON.parse(response);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject an out-of-shape weapon_id', () => {
+      const nk = createMockNk();
+
+      const response = rpcGetBalanceMetrics(
+        createMockCtx('admin-1'),
+        createMockLogger(),
+        nk,
+        JSON.stringify({ weapon_id: 42 })
+      );
+
+      const result = JSON.parse(response);
+      expect(result.success).toBe(false);
+    });
+
+    it('should never return a Promise (ADR-0008 sync tripwire)', () => {
+      const nk = createMockNk();
+
+      const response = rpcGetBalanceMetrics(createMockCtx('admin-1'), createMockLogger(), nk, '');
+
+      expect(typeof (response as unknown as Promise<string>)?.then).not.toBe('function');
+      expect(typeof response).toBe('string');
+    });
+  });
+
+  describe('registerRpcGetBalanceMetrics admin gate', () => {
+    const ADMIN_ID = '11111111-1111-4111-8111-111111111111';
+    let savedAdminEnv: string | undefined;
+
+    beforeEach(() => {
+      savedAdminEnv = process.env.ADMIN_USER_IDS;
+      process.env.ADMIN_USER_IDS = ADMIN_ID;
+      jest.resetModules();
+    });
+
+    afterEach(() => {
+      if (savedAdminEnv === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = savedAdminEnv;
+      }
+    });
+
+    function registerAndCapture(): (ctx: Runtime.Context, payload: string) => string {
+      const { registerRpcGetBalanceMetrics } = jest.requireActual('../weapon_balance');
+      let captured: ((...args: unknown[]) => string) | undefined;
+      const initializer = {
+        registerRpc: jest.fn((id: string, handler: (...args: unknown[]) => string) => {
+          expect(id).toBe('armored_archer/get_balance_metrics');
+          captured = handler;
+        }),
+      };
+      registerRpcGetBalanceMetrics(
+        initializer as unknown as import('../types/nakama').Runtime.Initializer
+      );
+      expect(captured).toBeDefined();
+      return (ctx, payload) =>
+        captured!(ctx, createMockLogger(), createMockNk(), payload) as string;
+    }
+
+    it('should reject non-admin callers with a generic error', () => {
+      const handler = registerAndCapture();
+
+      const response = handler(createMockCtx('not-an-admin'), '');
+
+      const result = JSON.parse(response);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Not authorized');
+    });
+
+    it('should reject callers with no userId', () => {
+      const handler = registerAndCapture();
+
+      const response = handler({} as Runtime.Context, '');
+
+      const result = JSON.parse(response);
+      expect(result.success).toBe(false);
+    });
+
+    it('should serve the report to allowlisted admins', () => {
+      const handler = registerAndCapture();
+
+      const response = handler(createMockCtx(ADMIN_ID), '{}');
+
+      const result = JSON.parse(response);
       expect(result.success).toBe(true);
-      expect(result.active_adjustments).toBe(0);
+      expect(result.weapons).toEqual([]);
     });
   });
 });

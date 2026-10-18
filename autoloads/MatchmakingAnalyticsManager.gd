@@ -157,6 +157,16 @@ func log_weapon_result(weapon_id: String, is_win: bool) -> void:
 		# Check for balance issues
 		_check_weapon_balance(weapon_id)
 
+	# Fire-and-forget telemetry: the server's log_weapon_result RPC feeds the
+	# admin weapon-balance report. Payload matches its valibot schema exactly.
+	if _network_manager and _network_manager.is_connected:
+		var payload: Dictionary = {
+			"weapon_id": weapon_id,
+			"is_win": is_win,
+			"timestamp": int(Time.get_unix_time_from_system())
+		}
+		_network_manager.send_rpc_async("armored_archer/log_weapon_result", JSON.stringify(payload))
+
 
 # --- Metrics Retrieval ---
 

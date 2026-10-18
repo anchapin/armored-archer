@@ -90,3 +90,22 @@ func test_track_abandonment_skips_send_when_disconnected():
 	_manager.log_match_data(10, ["bow"], 5.0, "match_6")
 	_manager.track_abandonment("match_6", "player_quit")
 	assert_eq(_network.async_calls.size(), 0, "no RPC while disconnected")
+
+# --- log_weapon_result telemetry wiring ---
+
+func test_log_weapon_result_sends_schema_payload_to_server():
+	_manager.log_weapon_result("bow", true)
+
+	assert_eq(_network.async_calls.size(), 1, "one telemetry RPC sent")
+	var call: Dictionary = _network.async_calls[0]
+	assert_eq(call["rpc_id"], "armored_archer/log_weapon_result")
+	var payload: Dictionary = JSON.parse_string(call["payload"])
+	assert_eq(payload["weapon_id"], "bow")
+	assert_eq(payload["is_win"], true)
+	assert_true(payload["timestamp"] > 0, "server schema requires a timestamp")
+	assert_eq(payload.size(), 3, "payload carries only schema fields")
+
+func test_log_weapon_result_skips_send_when_disconnected():
+	_network.is_connected = false
+	_manager.log_weapon_result("bow", false)
+	assert_eq(_network.async_calls.size(), 0, "no RPC while disconnected")
