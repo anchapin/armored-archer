@@ -2884,42 +2884,46 @@ function recordCompletionAnalytics(
   roll: number,
   lootResult: LootResult
 ): void {
-  recordStageAttempt(nk, {
-    userId,
-    timestamp: Date.now(),
-    stageId: request.stage_id,
-    stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
-    difficulty: request.difficulty,
-    bossDefeated: request.boss_defeated,
-    completed: true, // This is called only on successful completion
-    starsEarned: 3, // Default to 3 stars for completion (can be enhanced later)
-    score: 0, // Score tracking not currently implemented in request
-    attemptNumber: 1, // Simple tracking for now
-  }).catch((error) => {
-    logger.warn('Failed to record stage attempt for balance analytics: %s', String(error));
-    // Don't fail the main flow if analytics recording fails
-  });
-
-  if (lootResult.dropped && lootResult.gear) {
-    // Issue #1093: gear_unlocks_total stayed at 0; record the drop here so
-    // dashboards reflect rarity distribution from real loot rolls.
-    incrementGearUnlock(lootResult.gear.rarity);
-    recordDrop(nk, {
+  try {
+    recordStageAttempt(nk, {
       userId,
       timestamp: Date.now(),
       stageId: request.stage_id,
       stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
       difficulty: request.difficulty,
       bossDefeated: request.boss_defeated,
-      gearRarity: lootResult.gear.rarity,
-      gearType: lootResult.gear.type,
-      gearId: lootResult.gear.id,
-      dropRateUsed: dropRate,
-      rollValue: roll,
-    }).catch((error) => {
+      completed: true, // This is called only on successful completion
+      starsEarned: 3, // Default to 3 stars for completion (can be enhanced later)
+      score: 0, // Score tracking not currently implemented in request
+      attemptNumber: 1, // Simple tracking for now
+    });
+  } catch (error) {
+    logger.warn('Failed to record stage attempt for balance analytics: %s', String(error));
+    // Don't fail the main flow if analytics recording fails
+  }
+
+  if (lootResult.dropped && lootResult.gear) {
+    // Issue #1093: gear_unlocks_total stayed at 0; record the drop here so
+    // dashboards reflect rarity distribution from real loot rolls.
+    incrementGearUnlock(lootResult.gear.rarity);
+    try {
+      recordDrop(nk, {
+        userId,
+        timestamp: Date.now(),
+        stageId: request.stage_id,
+        stagePrefix: request.stage_id.split('_')[0], // Extract chapter prefix
+        difficulty: request.difficulty,
+        bossDefeated: request.boss_defeated,
+        gearRarity: lootResult.gear.rarity,
+        gearType: lootResult.gear.type,
+        gearId: lootResult.gear.id,
+        dropRateUsed: dropRate,
+        rollValue: roll,
+      });
+    } catch (error) {
       logger.warn('Failed to record drop for balance analytics: %s', String(error));
       // Don't fail the main flow if analytics recording fails
-    });
+    }
   }
 }
 

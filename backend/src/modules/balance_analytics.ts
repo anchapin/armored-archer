@@ -224,10 +224,7 @@ export function registerBalanceAnalyticsEndpoints(initializer: Runtime.Initializ
 /**
  * Records a drop event.
  */
-export async function recordDrop(
-  nk: Runtime.Nakama,
-  record: Omit<DropRecord, 'id'>
-): Promise<void> {
+export function recordDrop(nk: Runtime.Nakama, record: Omit<DropRecord, 'id'>): void {
   const dropRecord: DropRecord = {
     ...record,
     id: `drop_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -244,7 +241,7 @@ export async function recordDrop(
 
   // Persist to Nakama storage
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: DROPS_COLLECTION,
         key: dropRecord.id,
@@ -277,10 +274,10 @@ export async function recordDrop(
 /**
  * Records a stage attempt event.
  */
-export async function recordStageAttempt(
+export function recordStageAttempt(
   nk: Runtime.Nakama,
   record: Omit<StageAttemptRecord, 'id'>
-): Promise<void> {
+): void {
   const attemptRecord: StageAttemptRecord = {
     ...record,
     id: `attempt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -297,7 +294,7 @@ export async function recordStageAttempt(
 
   // Persist to Nakama storage
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: STAGE_ATTEMPTS_COLLECTION,
         key: attemptRecord.id,
@@ -828,12 +825,12 @@ export function generateBalanceInsights(startTime?: number, endTime?: number): B
  *   "drop_id": "drop_1234567890_abc123"
  * }
  */
-export async function rpcRecordDrop(
+export function rpcRecordDrop(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Record drop called for user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.record_drop, payload, 'record_drop');
@@ -857,7 +854,7 @@ export async function rpcRecordDrop(
   };
 
   try {
-    await recordDrop(nk, {
+    recordDrop(nk, {
       userId: ctx.userId,
       timestamp: Date.now(),
       stageId: data.stage_id,
@@ -909,12 +906,12 @@ export async function rpcRecordDrop(
  *   "attempt_id": "attempt_1234567890_abc123"
  * }
  */
-export async function rpcRecordStageAttempt(
+export function rpcRecordStageAttempt(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Record stage attempt called for user: %s', ctx.userId);
 
   const validation = validatePayload(
@@ -941,7 +938,7 @@ export async function rpcRecordStageAttempt(
   };
 
   try {
-    await recordStageAttempt(nk, {
+    recordStageAttempt(nk, {
       userId: ctx.userId,
       timestamp: Date.now(),
       stageId: data.stage_id,
