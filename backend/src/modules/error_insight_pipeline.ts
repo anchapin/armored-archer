@@ -37,6 +37,11 @@ import { validatePayload, ZodSchemas, createValidationErrorResponse } from './va
  */
 class ErrorInsightStore {
   private errors: RawErrorData[] = [];
+  // Parsed ms-since-epoch timestamps, parallel to `errors` (TD-004/#1665):
+  // parsed once at insert instead of twice per error per range query.
+  private errorTimestamps: number[] = [];
+  // Index of the first error not yet folded into patterns by processErrors.
+  private processedIndex = 0;
   private patterns: Map<string, ErrorPattern> = new Map();
   private insights: ErrorInsight[] = [];
   private startTime: Date = new Date();
@@ -47,21 +52,46 @@ class ErrorInsightStore {
    */
   addError(error: RawErrorData): void {
     this.errors.push(error);
+    this.errorTimestamps.push(new Date(error.timestamp).getTime());
     this.lastErrorProcessed = new Date();
 
     // Trim old errors if needed (keep last 10000)
     if (this.errors.length > 10000) {
+      const overflow = this.errors.length - 10000;
       this.errors = this.errors.slice(-10000);
+      this.errorTimestamps = this.errorTimestamps.slice(-10000);
+      this.processedIndex = Math.max(0, this.processedIndex - overflow);
     }
+  }
+
+  /**
+   * Errors not yet folded into patterns (delta for incremental processing).
+   */
+  getUnprocessedErrors(): RawErrorData[] {
+    return this.errors.slice(this.processedIndex);
+  }
+
+  /**
+   * Mark all current errors as folded into patterns.
+   */
+  markProcessed(): void {
+    this.processedIndex = this.errors.length;
   }
 
   /**
    * Get all errors within a time range
    */
   getErrorsInRange(startTime: Date, endTime: Date): RawErrorData[] {
-    return this.errors.filter(
-      (e) => new Date(e.timestamp) >= startTime && new Date(e.timestamp) <= endTime
-    );
+    const start = startTime.getTime();
+    const end = endTime.getTime();
+    const out: RawErrorData[] = [];
+    for (let i = 0; i < this.errors.length; i++) {
+      const ts = this.errorTimestamps[i];
+      if (ts >= start && ts <= end) {
+        out.push(this.errors[i]);
+      }
+    }
+    return out;
   }
 
   /**
@@ -156,6 +186,8 @@ class ErrorInsightStore {
    */
   clear(): void {
     this.errors = [];
+    this.errorTimestamps = [];
+    this.processedIndex = 0;
     this.patterns.clear();
     this.insights = [];
   }
@@ -642,29 +674,37 @@ function processErrors(): void {
     return;
   }
 
-  const now = new Date();
-  const windowMs = config.errorInsights.aggregationWindowMinutes * 60 * 1000;
-  const startTime = new Date(now.getTime() - windowMs);
+  // Incremental processing (TD-004/#1665): only fold errors collected since
+  // the last run into patterns, instead of re-analyzing the whole window on
+  // every collected error. This also fixes count inflation: the old
+  // overlapping-window recount re-added already-processed errors to pattern
+  // counts on every run.
+  const newErrors = errorStore.getUnprocessedErrors();
 
-  // Get errors in current window
-  const recentErrors = errorStore.getErrorsInRange(startTime, now);
-
-  if (recentErrors.length === 0) {
+  if (newErrors.length === 0) {
     return;
   }
+  errorStore.markProcessed();
 
-  // Analyze patterns
-  const patterns = analyzePatterns(recentErrors);
+  // Analyze patterns in the delta only
+  const patterns = analyzePatterns(newErrors);
 
-  // Update patterns in store
+  // Update patterns in store (store reads hoisted out of the loop)
+  const existingBySignature = new Map(errorStore.getPatterns().map((p) => [p.signature, p]));
   for (const pattern of patterns) {
-    const existingPatterns = errorStore.getPatterns();
-    const existing = existingPatterns.find((p) => p.signature === pattern.signature);
+    const existing = existingBySignature.get(pattern.signature);
 
     if (existing) {
       // Merge with existing
       existing.count += pattern.count;
       existing.lastSeen = pattern.lastSeen;
+      // Frequency must track the merged count (delta patterns only carry
+      // per-batch counts).
+      const hoursSinceFirst = Math.max(
+        1,
+        (Date.now() - new Date(existing.firstSeen).getTime()) / (1000 * 60 * 60)
+      );
+      existing.occurrencesPerHour = Math.round((existing.count / hoursSinceFirst) * 10) / 10;
       for (const rpc of pattern.affectedRpcs) {
         if (!existing.affectedRpcs.includes(rpc)) {
           existing.affectedRpcs.push(rpc);
@@ -681,15 +721,25 @@ function processErrors(): void {
     }
   }
 
-  // Generate insights
-  const newInsights = generateInsights(patterns);
+  // Generate insights from the MERGED store patterns for the signatures seen
+  // in this delta (their counts are cumulative; the delta patterns alone only
+  // carry per-batch counts and would never reach the insight threshold).
+  const deltaSignatures = new Set(patterns.map((p) => p.signature));
+  const mergedPatterns = errorStore.getPatterns().filter((p) => deltaSignatures.has(p.signature));
+  const newInsights = generateInsights(mergedPatterns);
 
+  const existingInsights = errorStore.getInsights();
   for (const insight of newInsights) {
-    // Check if similar insight already exists
-    const existingInsights = errorStore.getInsights();
-    const exists = existingInsights.some((i) => i.patternId === insight.patternId);
+    const existing = existingInsights.find((i) => i.patternId === insight.patternId);
 
-    if (!exists) {
+    if (existing) {
+      // Refresh in place: counts, priority, description and recommendations
+      // track the pattern as it grows, while the insight keeps its identity
+      // (id + generatedAt) so dismissals stay valid.
+      Object.assign(existing, insight, { id: existing.id, generatedAt: existing.generatedAt });
+    } else {
+      // Note: getInsights() returns the live store array, so addInsight's
+      // unshift is already visible through existingInsights.
       errorStore.addInsight(insight);
 
       // Log new insight
