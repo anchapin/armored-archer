@@ -21,8 +21,8 @@ import { Runtime } from '../../types/nakama';
 
 describe('Season Telemetry', () => {
   const mockNk: Runtime.Nakama = {
-    storageRead: jest.fn().mockResolvedValue([]),
-    storageWrite: jest.fn().mockResolvedValue(undefined),
+    storageRead: jest.fn().mockReturnValue([]),
+    storageWrite: jest.fn().mockReturnValue(undefined),
     leaderboardRecordsList: jest.fn().mockReturnValue([]),
     leaderboardRecordWrite: jest.fn(),
     leaderboardCreate: jest.fn(),
@@ -45,8 +45,8 @@ describe('Season Telemetry', () => {
 
   beforeEach(() => {
     jest.restoreAllMocks();
-    (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
-    (mockNk.storageWrite as jest.Mock).mockResolvedValue(undefined);
+    (mockNk.storageRead as jest.Mock).mockReturnValue([]);
+    (mockNk.storageWrite as jest.Mock).mockReturnValue(undefined);
     (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
   });
 
@@ -110,7 +110,7 @@ describe('Season Telemetry', () => {
     });
 
     it('should handle storage write failure gracefully', async () => {
-      (mockNk.storageWrite as jest.Mock).mockRejectedValue(new Error('Storage error'));
+      (mockNk.storageWrite as jest.Mock).mockImplementation(() => { throw new Error('Storage error'); });
 
       const event: RankChangeEvent = {
         event_id: 'rc_test_fail',
@@ -130,7 +130,7 @@ describe('Season Telemetry', () => {
         days_into_season: 5,
       };
 
-      await expect(logRankChange(mockNk, event)).resolves.toBeUndefined();
+      expect(() => logRankChange(mockNk, event)).not.toThrow();
     });
   });
 
@@ -209,7 +209,7 @@ describe('Season Telemetry', () => {
 
   describe('getRankInflation', () => {
     it('should return stable drift when no snapshots exist', async () => {
-      (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
+      (mockNk.storageRead as jest.Mock).mockReturnValue([]);
 
       const result = await getRankInflation(mockNk, 'season_1', Date.now() - 86400000, Date.now());
 
@@ -223,7 +223,7 @@ describe('Season Telemetry', () => {
         { season_id: 'season_1', timestamp: Date.now() - 3600000, avg_elo: 1050 },
         { season_id: 'season_1', timestamp: Date.now(), avg_elo: 1080 },
       ];
-      (mockNk.storageRead as jest.Mock).mockResolvedValue(
+      (mockNk.storageRead as jest.Mock).mockReturnValue(
         snapshots.map((s) => ({ value: JSON.stringify(s) }))
       );
 
@@ -242,7 +242,7 @@ describe('Season Telemetry', () => {
 
     it('should detect deflation when average drifts below 990', async () => {
       const snapshots = [{ season_id: 'season_1', timestamp: Date.now(), avg_elo: 980 }];
-      (mockNk.storageRead as jest.Mock).mockResolvedValue(
+      (mockNk.storageRead as jest.Mock).mockReturnValue(
         snapshots.map((s) => ({ value: JSON.stringify(s) }))
       );
 
@@ -255,7 +255,7 @@ describe('Season Telemetry', () => {
 
   describe('getRewardConcentration', () => {
     it('should return zero stats when no claims exist', async () => {
-      (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
+      (mockNk.storageRead as jest.Mock).mockReturnValue([]);
 
       const result = await getRewardConcentration(
         mockNk,
@@ -302,7 +302,7 @@ describe('Season Telemetry', () => {
           had_cosmetics: false,
         },
       ];
-      (mockNk.storageRead as jest.Mock).mockResolvedValue(
+      (mockNk.storageRead as jest.Mock).mockReturnValue(
         claims.map((c) => ({ value: JSON.stringify(c) }))
       );
 
@@ -346,7 +346,7 @@ describe('Season Telemetry', () => {
           had_cosmetics: true,
         },
       ];
-      (mockNk.storageRead as jest.Mock).mockResolvedValue(
+      (mockNk.storageRead as jest.Mock).mockReturnValue(
         claims.map((c) => ({ value: JSON.stringify(c) }))
       );
 
@@ -364,7 +364,7 @@ describe('Season Telemetry', () => {
 
   describe('getProgressionVelocity', () => {
     it('should return zero stats when no rank changes exist', async () => {
-      (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
+      (mockNk.storageRead as jest.Mock).mockReturnValue([]);
 
       const result = await getProgressionVelocity(
         mockNk,
@@ -406,7 +406,7 @@ describe('Season Telemetry', () => {
           days_into_season: 20,
         },
       ];
-      (mockNk.storageRead as jest.Mock).mockResolvedValue(
+      (mockNk.storageRead as jest.Mock).mockReturnValue(
         rankChanges.map((rc) => ({ value: JSON.stringify(rc) }))
       );
 
@@ -429,7 +429,7 @@ describe('Season Telemetry', () => {
 
   describe('getSeasonTelemetrySummary', () => {
     it('should return complete telemetry summary', async () => {
-      (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
+      (mockNk.storageRead as jest.Mock).mockReturnValue([]);
       (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
 
       const query: SeasonTelemetryQuery = {
@@ -452,7 +452,7 @@ describe('Season Telemetry', () => {
   describe('recordSeasonEndSnapshot', () => {
     it('should write final season summary to storage', async () => {
       (mockNk.leaderboardRecordsList as jest.Mock).mockReturnValue([]);
-      (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
+      (mockNk.storageRead as jest.Mock).mockReturnValue([]);
 
       await recordSeasonEndSnapshot(mockNk, 'season_1', Date.now() - 28 * 86400000);
 
@@ -470,7 +470,7 @@ describe('Season Telemetry', () => {
         { score: 1000, ownerId: 'user1' },
         { score: 1050, ownerId: 'user2' },
       ]);
-      (mockNk.storageRead as jest.Mock).mockResolvedValue([]);
+      (mockNk.storageRead as jest.Mock).mockReturnValue([]);
 
       await recordSeasonEndSnapshot(mockNk, 'season_1', Date.now() - 28 * 86400000);
 
@@ -524,20 +524,20 @@ describe('RPC layer and registration (#1661)', () => {
 
 
 
-  it('logRewardClaim swallows storage failures', async () => {
+  it('logRewardClaim swallows storage failures', () => {
     const nk = freshNk();
-    (nk.storageWrite as jest.Mock).mockRejectedValue(new Error('write fail'));
+    (nk.storageWrite as jest.Mock).mockImplementation(() => { throw new Error('write fail'); });
     const event = {
       event_id: 'rc1', season_id: 's1', user_id: 'u1', rank_tier: 'gold',
       coins_awarded: 10, gems_awarded: 0, timestamp: Date.now(),
     } as unknown as RewardClaimEvent;
-    await expect(logRewardClaim(nk, event)).resolves.toBeUndefined();
+    expect(() => logRewardClaim(nk, event)).not.toThrow();
   });
 
-  it('recordSeasonEndSnapshot swallows storage failures', async () => {
+  it('recordSeasonEndSnapshot swallows storage failures', () => {
     const nk = freshNk();
-    (nk.storageRead as jest.Mock).mockRejectedValue(new Error('read fail'));
-    await expect(recordSeasonEndSnapshot(nk, 's1')).resolves.toBeUndefined();
+    (nk.storageRead as jest.Mock).mockImplementation(() => { throw new Error('read fail'); });
+    expect(() => recordSeasonEndSnapshot(nk, 's1')).not.toThrow();
   });
 
   it('captureRatingSnapshot returns null when the leaderboard read throws', async () => {
@@ -545,6 +545,6 @@ describe('RPC layer and registration (#1661)', () => {
     (nk.leaderboardRecordsList as jest.Mock).mockImplementation(() => {
       throw new Error('board gone');
     });
-    await expect(captureRatingSnapshot(nk, 's1', Date.now())).resolves.toBeNull();
+    expect(captureRatingSnapshot(nk, 's1', Date.now())).toBeNull();
   });
 });
