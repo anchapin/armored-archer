@@ -209,9 +209,11 @@ jobs:
           echo "Backend coverage: $BACKEND_RESULT"
           echo "Godot coverage: $GODOT_RESULT"
 
-          # A skipped Godot job (gated by vars.GUT_BASELINE_FIXED)
-          # shouldn't block the gate — see the if: comment on
-          # godot-coverage. Treat 'skipped' as 'success' for this gate.
+          # Defensive only: the vars.GUT_BASELINE_FIXED skip-gate was
+          # removed on 2026-09-25 (issue #894) and the baseline was
+          # reconciled on 2026-10-15 (issue #1341), so the Godot job no
+          # longer skips in practice. Keep treating 'skipped' as
+          # 'success' so a future skip never red-builds this gate.
           if [ "$GODOT_RESULT" = "skipped" ]; then
             echo "Godot coverage was skipped (GUT baseline drift issue #894 follow-up); treating as success"
             GODOT_RESULT="success"
