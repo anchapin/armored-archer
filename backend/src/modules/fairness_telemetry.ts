@@ -245,12 +245,9 @@ function generateEventId(): string {
  * @param nk - Nakama runtime module
  * @param event - Hit resolution event data
  */
-export async function logHitResolution(
-  nk: Runtime.Nakama,
-  event: HitResolutionEvent
-): Promise<void> {
+export function logHitResolution(nk: Runtime.Nakama, event: HitResolutionEvent): void {
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_HIT_RESOLUTION,
         key: event.event_id,
@@ -269,7 +266,7 @@ export async function logHitResolution(
     );
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -294,9 +291,9 @@ export async function logHitResolution(
  * @param nk - Nakama runtime module
  * @param event - Disconnect event data
  */
-export async function logDisconnect(nk: Runtime.Nakama, event: DisconnectEvent): Promise<void> {
+export function logDisconnect(nk: Runtime.Nakama, event: DisconnectEvent): void {
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_DISCONNECTS,
         key: event.event_id,
@@ -315,7 +312,7 @@ export async function logDisconnect(nk: Runtime.Nakama, event: DisconnectEvent):
     );
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -340,9 +337,9 @@ export async function logDisconnect(nk: Runtime.Nakama, event: DisconnectEvent):
  * @param nk - Nakama runtime module
  * @param event - Timeout event data
  */
-export async function logTimeout(nk: Runtime.Nakama, event: TimeoutEvent): Promise<void> {
+export function logTimeout(nk: Runtime.Nakama, event: TimeoutEvent): void {
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_TIMEOUTS,
         key: event.event_id,
@@ -361,7 +358,7 @@ export async function logTimeout(nk: Runtime.Nakama, event: TimeoutEvent): Promi
     );
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -386,9 +383,9 @@ export async function logTimeout(nk: Runtime.Nakama, event: TimeoutEvent): Promi
  * @param nk - Nakama runtime module
  * @param event - Ranking delta event data
  */
-export async function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEvent): Promise<void> {
+export function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEvent): void {
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_RANKING_DELTAS,
         key: event.event_id,
@@ -407,7 +404,7 @@ export async function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEve
     );
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -436,9 +433,9 @@ export async function logRankingDelta(nk: Runtime.Nakama, event: RankingDeltaEve
  * @param nk - Nakama runtime module
  * @param event - Punch-up loss event data
  */
-export async function logPunchUpLoss(nk: Runtime.Nakama, event: PunchUpLossEvent): Promise<void> {
+export function logPunchUpLoss(nk: Runtime.Nakama, event: PunchUpLossEvent): void {
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_PUNCH_UP_LOSSES,
         key: event.event_id,
@@ -459,7 +456,7 @@ export async function logPunchUpLoss(nk: Runtime.Nakama, event: PunchUpLossEvent
     );
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -499,17 +496,14 @@ export interface FairnessQuery {
  * @param query - Query parameters
  * @returns Fairness summary data
  */
-export async function getFairnessSummary(
-  nk: Runtime.Nakama,
-  query: FairnessQuery
-): Promise<FairnessSummary> {
+export function getFairnessSummary(nk: Runtime.Nakama, query: FairnessQuery): FairnessSummary {
   const startTime = query.start_date
     ? new Date(query.start_date).getTime()
     : Date.now() - 7 * 24 * 60 * 60 * 1000; // Default to 7 days ago
   const endTime = query.end_date ? new Date(query.end_date).getTime() : Date.now();
 
   // Fetch hit resolution data
-  const hitObjects = await nk.storageRead([
+  const hitObjects = nk.storageRead([
     {
       collection: COLLECTION_HIT_RESOLUTION,
       key: '*',
@@ -518,7 +512,7 @@ export async function getFairnessSummary(
   ]);
 
   // Fetch disconnect data
-  const disconnectObjects = await nk.storageRead([
+  const disconnectObjects = nk.storageRead([
     {
       collection: COLLECTION_DISCONNECTS,
       key: '*',
@@ -527,7 +521,7 @@ export async function getFairnessSummary(
   ]);
 
   // Fetch timeout data
-  const timeoutObjects = await nk.storageRead([
+  const timeoutObjects = nk.storageRead([
     {
       collection: COLLECTION_TIMEOUTS,
       key: '*',
@@ -536,7 +530,7 @@ export async function getFairnessSummary(
   ]);
 
   // Fetch ranking delta data
-  const rankingObjects = await nk.storageRead([
+  const rankingObjects = nk.storageRead([
     {
       collection: COLLECTION_RANKING_DELTAS,
       key: '*',
@@ -647,16 +641,16 @@ interface FairnessEventLogSpec<E extends { event_id: string }> {
   /** Label for the entry debug log line. */
   debugLabel: string;
   schema: Parameters<typeof validatePayload>[0];
-  logEvent: (nk: Runtime.Nakama, event: E) => Promise<void>;
+  logEvent: (nk: Runtime.Nakama, event: E) => void;
 }
 
 function makeFairnessEventLogRpc<E extends { event_id: string }>(spec: FairnessEventLogSpec<E>) {
-  return async function fairnessEventLogRpc(
+  return function fairnessEventLogRpc(
     ctx: Runtime.Context,
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): Promise<string> {
+  ): string {
     logger.debug(`${spec.debugLabel} RPC called`);
 
     const validation = validatePayload<E>(spec.schema, payload, spec.rpcName);
@@ -669,7 +663,7 @@ function makeFairnessEventLogRpc<E extends { event_id: string }>(spec: FairnessE
       validation.data.event_id = generateEventId();
     }
 
-    await spec.logEvent(nk, validation.data);
+    spec.logEvent(nk, validation.data);
 
     return JSON.stringify({
       success: true,
@@ -727,12 +721,12 @@ export const rpcLogRankingDelta = makeFairnessEventLogRpc<RankingDeltaEvent>({
  * @param payload - Request payload (JSON string)
  * @returns Response (JSON string)
  */
-export async function rpcGetFairnessSummary(
+export function rpcGetFairnessSummary(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.debug('GetFairnessSummary RPC called');
 
   const validation = validatePayload<FairnessQuery>(
@@ -745,7 +739,7 @@ export async function rpcGetFairnessSummary(
   }
 
   try {
-    const summary = await getFairnessSummary(nk, validation.data);
+    const summary = getFairnessSummary(nk, validation.data);
 
     return JSON.stringify({
       success: true,

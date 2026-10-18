@@ -310,7 +310,7 @@ describe('Fairness Telemetry', () => {
 
 describe('branch coverage additions (#1661)', () => {
   const nk = () =>
-    ({ storageRead: jest.fn().mockResolvedValue([]), storageWrite: jest.fn().mockResolvedValue(undefined) }) as unknown as Runtime.Nakama;
+    ({ storageRead: jest.fn().mockReturnValue([]), storageWrite: jest.fn().mockReturnValue(undefined) }) as unknown as Runtime.Nakama;
 
   const punchUpEvent: PunchUpLossEvent = {
     event_id: 'e1',
@@ -333,7 +333,7 @@ describe('branch coverage additions (#1661)', () => {
 
   it('logPunchUpLoss writes to the punch-up collection', async () => {
     const mock = nk();
-    await logPunchUpLoss(mock, punchUpEvent);
+    logPunchUpLoss(mock, punchUpEvent);
     const writes = (mock.storageWrite as jest.Mock).mock.calls.map((c) => c[0][0]);
     const punchWrite = writes.find((w) => w.collection === 'fairness_punch_up_losses');
     expect(punchWrite).toBeDefined();
@@ -341,14 +341,14 @@ describe('branch coverage additions (#1661)', () => {
     expect(punchWrite.permissionWrite).toBe(0);
   });
 
-  it('logPunchUpLoss swallows storage failures', async () => {
+  it('logPunchUpLoss swallows storage failures', () => {
     const mock = nk();
-    (mock.storageWrite as jest.Mock).mockRejectedValue(new Error('disk full'));
-    await expect(logPunchUpLoss(mock, punchUpEvent)).resolves.toBeUndefined();
+    (mock.storageWrite as jest.Mock).mockImplementation(() => { throw new Error('disk full'); });
+    expect(() => logPunchUpLoss(mock, punchUpEvent)).not.toThrow();
   });
 
   it('getFairnessSummary returns zeroed stats for empty storage', async () => {
-    const summary = await getFairnessSummary(nk(), {});
+    const summary = getFairnessSummary(nk(), {});
     expect(summary.hit_resolution_stats.total_hits).toBe(0);
     expect(summary.hit_resolution_stats.avg_damage).toBe(0);
     expect(summary.disconnect_stats.total_disconnects).toBe(0);
@@ -379,13 +379,11 @@ describe('branch coverage additions (#1661)', () => {
     };
     const mock = nk();
     (mock.storageRead as jest.Mock).mockImplementation((objects: { collection: string }[]) =>
-      Promise.resolve(
-        objects.flatMap((o) =>
-          (storageByCollection[o.collection] || []).map((value) => ({ value }))
-        )
+      objects.flatMap((o) =>
+        (storageByCollection[o.collection] || []).map((value) => ({ value }))
       )
     );
-    const summary = await getFairnessSummary(mock, {
+    const summary = getFairnessSummary(mock, {
       start_date: new Date(now - 1000).toISOString(),
       end_date: new Date(now + 1000).toISOString(),
     });
@@ -420,7 +418,7 @@ describe('branch coverage additions (#1661)', () => {
 
   it('rpcGetFairnessSummary rejects invalid payloads', async () => {
     const res = JSON.parse(
-      await rpcGetFairnessSummary(
+      rpcGetFairnessSummary(
         { userId: 'u1' } as Runtime.Context,
         logger as unknown as Runtime.Logger,
         nk(),
@@ -432,9 +430,9 @@ describe('branch coverage additions (#1661)', () => {
 
   it('rpcGetFairnessSummary fails closed when storage throws', async () => {
     const mock = nk();
-    (mock.storageRead as jest.Mock).mockRejectedValue(new Error('storage down'));
+    (mock.storageRead as jest.Mock).mockImplementation(() => { throw new Error('storage down'); });
     const res = JSON.parse(
-      await rpcGetFairnessSummary(
+      rpcGetFairnessSummary(
         { userId: 'u1' } as Runtime.Context,
         logger as unknown as Runtime.Logger,
         mock,
@@ -447,25 +445,25 @@ describe('branch coverage additions (#1661)', () => {
 
 describe('event log error paths (#1661)', () => {
   const failingNk = () =>
-    ({ storageRead: jest.fn(), storageWrite: jest.fn().mockRejectedValue(new Error('write fail')) }) as unknown as Runtime.Nakama;
+    ({ storageRead: jest.fn(), storageWrite: jest.fn().mockImplementation(() => { throw new Error('write fail'); }) }) as unknown as Runtime.Nakama;
 
-  it('logHitResolution swallows storage failures', async () => {
+  it('logHitResolution swallows storage failures', () => {
     const event = { event_id: 'h1', match_id: 'm1', timestamp: 1, player_id: 'p1', hit: true, damage: 10, is_crit: false } as unknown as HitResolutionEvent;
-    await expect(logHitResolution(failingNk(), event)).resolves.toBeUndefined();
+    expect(() => logHitResolution(failingNk(), event)).not.toThrow();
   });
 
-  it('logDisconnect swallows storage failures', async () => {
+  it('logDisconnect swallows storage failures', () => {
     const event = { event_id: 'd1', match_id: 'm1', timestamp: 1, user_id: 'u1', disconnect_reason: 'quit', was_winning: false } as unknown as DisconnectEvent;
-    await expect(logDisconnect(failingNk(), event)).resolves.toBeUndefined();
+    expect(() => logDisconnect(failingNk(), event)).not.toThrow();
   });
 
-  it('logTimeout swallows storage failures', async () => {
+  it('logTimeout swallows storage failures', () => {
     const event = { event_id: 't1', match_id: 'm1', timestamp: 1, user_id: 'u1', timeout_type: 'turn', consecutive_timeouts: 2 } as unknown as TimeoutEvent;
-    await expect(logTimeout(failingNk(), event)).resolves.toBeUndefined();
+    expect(() => logTimeout(failingNk(), event)).not.toThrow();
   });
 
-  it('logRankingDelta swallows storage failures', async () => {
+  it('logRankingDelta swallows storage failures', () => {
     const event = { event_id: 'r1', match_id: 'm1', timestamp: 1, winner_id: 'w', loser_id: 'l', winner_rank_change: 1, loser_rank_change: -1 } as unknown as RankingDeltaEvent;
-    await expect(logRankingDelta(failingNk(), event)).resolves.toBeUndefined();
+    expect(() => logRankingDelta(failingNk(), event)).not.toThrow();
   });
 });
