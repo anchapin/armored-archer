@@ -1,0 +1,102 @@
+name: Android Export Smoke
+
+# Issue #1662: no CI built the Android APK, so export regressions (broken
+# presets, missing assets, ETC2/ASTC misconfiguration) were only caught by a
+# manual pre-release export. Nightly + on-demand. Emulator boot smoke is a
+# possible future step; export success + non-trivial APK size already catches
+# the common breakage class.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 7 * * *' # nightly, off the top of the hour
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.6-stable
+  GODOT_DIR: /tmp/godot
+  ANDROID_SDK_ROOT: /tmp/android-sdk
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup JDK 17 (required by apksigner/build-tools)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Godot headless
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip -O /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d "$GODOT_DIR"
+          chmod +x "$GODOT_DIR/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64"
+
+      - name: Cache Godot export templates
+        id: templates-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-export-templates-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot export templates
+        if: steps.templates-cache.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz -O /tmp/templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates
+          unzip -q /tmp/templates.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates ~/.local/share/godot/export_templates/4.6.stable
+
+      - name: Install Android SDK
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip
+          unzip -q /tmp/cmdtools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: Configure Godot editor settings (SDK paths + debug keystore)
+        run: |
+          keytool -genkeypair -keystore /tmp/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.6.tres <<TRES
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+
+          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/debug_keystore = "/tmp/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          TRES
+
+      - name: Export debug APK (proves the Android export pipeline)
+        run: |
+          mkdir -p export/android
+          "$GODOT_DIR/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64" --headless --export-debug "Android" export/android/armored-archer.apk
+
+      - name: Assert APK exists and is non-trivial
+        run: |
+          APK=export/android/armored-archer.apk
+          test -f "$APK"
+          SIZE=$(stat -c%s "$APK")
+          echo "APK size: ${SIZE} bytes"
+          if [ "$SIZE" -lt 10000000 ]; then
+            echo "::error::APK is suspiciously small (${SIZE} bytes) - export likely incomplete"
+            exit 1
+          fi
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: armored-archer-debug-apk
+          path: export/android/armored-archer.apk
+          retention-days: 7
+          if-no-files-found: error
