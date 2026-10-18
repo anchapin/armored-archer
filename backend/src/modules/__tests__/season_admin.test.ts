@@ -603,6 +603,80 @@ describe('rpcAdminValidateSeason', () => {
     expect(result.summary.failures).toBe(0);
   });
 
+  it('batches reward_distribution reads and reports unclaimed players (issue #1696)', () => {
+    mockSeasonSystem.getCurrentSeason.mockReturnValueOnce({
+      season_id: 'season_1',
+      season_number: 1,
+      start_time: 0,
+      end_time: 1,
+      status: 'ended',
+      duration_weeks: 4,
+    });
+    mockNk.leaderboardRecordsList.mockReturnValue([
+      makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
+      makeLeaderboardRecord({ rank: 2, ownerId: 'p2' }),
+    ]);
+    mockNk.storageRead.mockImplementation((reqs: { collection?: string }[]) => {
+      if (Array.isArray(reqs) && reqs[0]?.collection === 'season_rewards_claimed') {
+        return [
+          {
+            collection: 'season_rewards_claimed',
+            key: 'season_1_p1',
+            userId: 'p1',
+            value: { claimed_at: 123 },
+          },
+        ];
+      }
+      return [];
+    });
+
+    const result = JSON.parse(
+      rpcAdminValidateSeason(mockCtx, mockLogger, mockNk, '{"checks":["reward_distribution"]}')
+    );
+    const check = result.checks.find(
+      (c: { check_name: string }) => c.check_name === 'reward_distribution'
+    );
+    expect(check.status).toBe('fail');
+    expect(check.issues_found).toBe(1);
+    expect(check.details[0].player_id).toBe('p2');
+
+    const claimedReads = mockNk.storageRead.mock.calls.filter(
+      (args: { collection?: string }[][]) =>
+        Array.isArray(args[0]) && args[0][0]?.collection === 'season_rewards_claimed'
+    );
+    expect(claimedReads.length).toBe(1);
+    expect(claimedReads[0][0].length).toBe(2);
+  });
+
+  it('reward_distribution fails gracefully when the batched read throws (issue #1696)', () => {
+    mockSeasonSystem.getCurrentSeason.mockReturnValueOnce({
+      season_id: 'season_1',
+      season_number: 1,
+      start_time: 0,
+      end_time: 1,
+      status: 'ended',
+      duration_weeks: 4,
+    });
+    mockNk.leaderboardRecordsList.mockReturnValue([
+      makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
+    ]);
+    mockNk.storageRead.mockImplementation((reqs: { collection?: string }[]) => {
+      if (Array.isArray(reqs) && reqs[0]?.collection === 'season_rewards_claimed') {
+        throw new Error('storage down');
+      }
+      return [];
+    });
+
+    const result = JSON.parse(
+      rpcAdminValidateSeason(mockCtx, mockLogger, mockNk, '{"checks":["reward_distribution"]}')
+    );
+    const check = result.checks.find(
+      (c: { check_name: string }) => c.check_name === 'reward_distribution'
+    );
+    expect(check.status).toBe('fail');
+    expect(check.details[0].issue).toContain('Failed to read claimed markers');
+  });
+
   it('runs only specified checks', () => {
     mockNk.leaderboardRecordsList.mockReturnValue([]);
 
