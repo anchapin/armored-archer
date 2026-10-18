@@ -62,12 +62,14 @@ function entryLabels(metric: MetricLike, entry: MetricEntry): [string, string | 
   return order.filter((k) => k in labels).map((k) => [k, labels[k]] as [string, string | number]);
 }
 
-function serializeHistogram(
-  metric: MetricLike,
-  entry: MetricEntry,
-  labels: [string, string | number][],
-  chunks: string[]
-): void {
+interface SerializeCtx {
+  metric: MetricLike;
+  entry: MetricEntry;
+  labels: [string, string | number][];
+  chunks: string[];
+}
+
+function serializeHistogram({ metric, entry, labels, chunks }: SerializeCtx): void {
   const buckets = metric.buckets ?? [];
   // prom-client stores bucketValues per-bucket (an observation only
   // increments the smallest bucket it fits); exposition is cumulative.
@@ -83,12 +85,7 @@ function serializeHistogram(
   chunks.push(`${metric.name}_count${formatLabels(labels)} ${entry.count ?? 0}`);
 }
 
-function serializeSummary(
-  metric: MetricLike,
-  entry: MetricEntry,
-  labels: [string, string | number][],
-  chunks: string[]
-): void {
+function serializeSummary({ metric, entry, labels, chunks }: SerializeCtx): void {
   const percentiles = metric.percentiles ?? [];
   for (const q of percentiles) {
     const v = entry.td ? entry.td.percentile(q) : 0;
@@ -109,10 +106,11 @@ export function serializeRegistryToPrometheus(registry: Registry): string {
     for (const key of Object.keys(metric.hashMap)) {
       const entry = metric.hashMap[key];
       const labels = entryLabels(metric, entry);
+      const ctx: SerializeCtx = { metric, entry, labels, chunks };
       if (metric.type === 'histogram') {
-        serializeHistogram(metric, entry, labels, chunks);
+        serializeHistogram(ctx);
       } else if (metric.type === 'summary') {
-        serializeSummary(metric, entry, labels, chunks);
+        serializeSummary(ctx);
       } else {
         // counter / gauge
         chunks.push(`${metric.name}${formatLabels(labels)} ${entry.value ?? 0}`);
