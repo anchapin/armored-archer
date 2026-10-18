@@ -68,7 +68,7 @@ func _ready() -> void:
 
 	# Register with auto-aim if available
 	if not _is_e2e_test():
-		var aim_mgr = get_node_or_null("/root/AutoAimManager")
+		var aim_mgr = get_node_or_null("/root/ShootingManager")
 		if aim_mgr and aim_mgr.has_method("register_enemy"):
 			aim_mgr.register_enemy(self)
 
@@ -83,7 +83,7 @@ func reset_for_spawn() -> void:
 	collision_layer = 2
 	collision_mask = 1
 	if not _is_e2e_test():
-		var aim_mgr = get_node_or_null("/root/AutoAimManager")
+		var aim_mgr = get_node_or_null("/root/ShootingManager")
 		if aim_mgr and aim_mgr.has_method("register_enemy"):
 			aim_mgr.register_enemy(self)
 
@@ -105,7 +105,7 @@ func take_damage(amount: int) -> void:
 		die()
 
 func die() -> void:
-	var aim_mgr = get_node_or_null("/root/AutoAimManager")
+	var aim_mgr = get_node_or_null("/root/ShootingManager")
 	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
 		aim_mgr.unregister_enemy(self)
 
@@ -217,7 +217,7 @@ func reset_pooled_state() -> void:
 
 ## Cleanup when enemy is freed
 func _exit_tree() -> void:
-	var aim_mgr = get_node_or_null("/root/AutoAimManager")
+	var aim_mgr = get_node_or_null("/root/ShootingManager")
 	if aim_mgr and aim_mgr.has_method("unregister_enemy"):
 		aim_mgr.unregister_enemy(self)
 

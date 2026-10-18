@@ -41,7 +41,7 @@ func _create_enemy() -> Node:
 	return enemy
 
 func _get_autoaim() -> Node:
-	return get_node_or_null("/root/AutoAimManager")
+	return get_node_or_null("/root/ShootingManager")
 
 func _pass(test_name: String) -> void:
 	_tests_passed += 1
