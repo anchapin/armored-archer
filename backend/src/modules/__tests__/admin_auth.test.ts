@@ -532,15 +532,23 @@ describe('withAdminGuard', () => {
     expect(deniedAuditEntries(mockNk, 'armored_archer/test_rpc')).toHaveLength(0);
   });
 
-  it('supports async handlers', async () => {
+  it('throws a tripwire when the wrapped handler returns a Promise (goja cannot schedule it, ADR-0008)', () => {
     setAdminUserIds(ADMIN_ID);
     const inner = jest.fn(async () => JSON.stringify({ success: true }));
     const guarded = withAdminGuard('armored_archer/test_rpc', inner);
 
-    const result = JSON.parse(
-      (await guarded(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}')) as string
+    expect(() => guarded(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}')).toThrow(
+      /returned a Promise.*ADR-0008/
     );
-    expect(result.success).toBe(true);
+  });
+
+  it('accepts a synchronous handler that returns undefined on the admin path', () => {
+    setAdminUserIds(ADMIN_ID);
+    const inner = jest.fn();
+    const guarded = withAdminGuard('armored_archer/test_rpc', inner);
+
+    expect(() => guarded(createMockContext(ADMIN_ID), mockLogger, mockNk, '{}')).not.toThrow();
+    expect(inner).toHaveBeenCalled();
   });
 
   it('still rejects (and does not throw) when the audit sink fails', async () => {
