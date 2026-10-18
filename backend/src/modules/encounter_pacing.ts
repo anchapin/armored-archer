@@ -3,7 +3,7 @@
  * @fileoverview Manages encounter pacing tracking and analytics for fatigue prevention.
  */
 
-import { number, string, pipe, minValue, maxValue } from 'valibot';
+import { number, string, object, pipe, minValue, maxValue } from 'valibot';
 import { Runtime } from '../types/nakama';
 import { readSingleUserRecord, toStorageValue } from '../utils/storage-helpers';
 import { logAudit } from './audit';
@@ -154,7 +154,7 @@ export function rpcLogEncounterPacing(
   logger.info('Log encounter pacing called for user: %s', ctx.userId);
 
   const validation = validatePayload(
-    {
+    object({
       total_encounters: pipe(number(), minValue(0)),
       recent_encounters: pipe(number(), minValue(0)),
       combat_count: pipe(number(), minValue(0)),
@@ -170,7 +170,7 @@ export function rpcLogEncounterPacing(
       current_fatigue: pipe(number(), minValue(0), maxValue(100)),
       fatigue_level: string(),
       combat_time_total: pipe(number(), minValue(0)),
-    },
+    }),
     payload,
     'log_encounter_pacing'
   );

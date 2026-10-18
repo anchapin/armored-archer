@@ -8,7 +8,9 @@ import {
   logDisconnect,
   logTimeout,
   logRankingDelta,
+  logPunchUpLoss,
   getFairnessSummary,
+  registerFairnessTelemetryEndpoints,
   rpcLogHitResolution,
   rpcLogDisconnect,
   rpcLogTimeout,
@@ -18,6 +20,7 @@ import {
   type DisconnectEvent,
   type TimeoutEvent,
   type RankingDeltaEvent,
+  type PunchUpLossEvent,
   type FairnessQuery,
   type FairnessSummary,
 } from '../fairness_telemetry';
@@ -302,5 +305,167 @@ describe('Fairness Telemetry', () => {
         expect(mockNk.storageRead).toHaveBeenCalled();
       });
     });
+  });
+});
+
+describe('branch coverage additions (#1661)', () => {
+  const nk = () =>
+    ({ storageRead: jest.fn().mockResolvedValue([]), storageWrite: jest.fn().mockResolvedValue(undefined) }) as unknown as Runtime.Nakama;
+
+  const punchUpEvent: PunchUpLossEvent = {
+    event_id: 'e1',
+    match_id: 'm1',
+    timestamp: Date.now(),
+    season_id: 's1',
+    loser_id: 'l1',
+    winner_id: 'w1',
+    loser_old_rank: 10,
+    loser_new_rank: 12,
+    loser_rank_change: -2,
+    loser_xp_gained: 5,
+    winner_rank_change: 1,
+    amplified: true,
+    winner_k_factor: 32,
+    loser_k_factor: 32,
+    end_reason: 'ko',
+    watch: { flagged: false, reason: '', pair_loss_count: 0, player_loss_count: 0 },
+  };
+
+  it('logPunchUpLoss writes to the punch-up collection', async () => {
+    const mock = nk();
+    await logPunchUpLoss(mock, punchUpEvent);
+    const writes = (mock.storageWrite as jest.Mock).mock.calls.map((c) => c[0][0]);
+    const punchWrite = writes.find((w) => w.collection === 'fairness_punch_up_losses');
+    expect(punchWrite).toBeDefined();
+    expect(punchWrite.key).toBe('e1');
+    expect(punchWrite.permissionWrite).toBe(0);
+  });
+
+  it('logPunchUpLoss swallows storage failures', async () => {
+    const mock = nk();
+    (mock.storageWrite as jest.Mock).mockRejectedValue(new Error('disk full'));
+    await expect(logPunchUpLoss(mock, punchUpEvent)).resolves.toBeUndefined();
+  });
+
+  it('getFairnessSummary returns zeroed stats for empty storage', async () => {
+    const summary = await getFairnessSummary(nk(), {});
+    expect(summary.hit_resolution_stats.total_hits).toBe(0);
+    expect(summary.hit_resolution_stats.avg_damage).toBe(0);
+    expect(summary.disconnect_stats.total_disconnects).toBe(0);
+    expect(summary.timeout_stats.avg_consecutive_timeouts).toBe(0);
+    expect(summary.ranking_stats.avg_rank_change).toBe(0);
+  });
+
+  it('getFairnessSummary aggregates hits, disconnects, timeouts, rankings and filters by date', async () => {
+    const now = Date.now();
+    const old = now - 30 * 24 * 60 * 60 * 1000;
+    const storageByCollection: Record<string, unknown[]> = {
+      fairness_hit_resolution: [
+        { event_id: 'h1', hit: true, is_crit: true, damage: 30, timestamp: now },
+        { event_id: 'h2', hit: false, is_crit: false, damage: 10, timestamp: now },
+        { event_id: 'h3', hit: true, is_crit: false, damage: 99, timestamp: old }, // filtered out
+      ],
+      fairness_disconnects: [
+        { event_id: 'd1', disconnect_reason: 'quit', was_winning: true, timestamp: now },
+        { event_id: 'd2', disconnect_reason: 'quit', was_winning: false, timestamp: now },
+        { event_id: 'd3', disconnect_reason: 'crash', was_winning: false, timestamp: now },
+      ],
+      fairness_timeouts: [
+        { event_id: 't1', timeout_type: 'turn', consecutive_timeouts: 4, timestamp: now },
+      ],
+      fairness_ranking_deltas: [
+        { event_id: 'r1', winner_rank_change: 5, loser_rank_change: -3, timestamp: now },
+      ],
+    };
+    const mock = nk();
+    (mock.storageRead as jest.Mock).mockImplementation((objects: { collection: string }[]) =>
+      Promise.resolve(
+        objects.flatMap((o) =>
+          (storageByCollection[o.collection] || []).map((value) => ({ value }))
+        )
+      )
+    );
+    const summary = await getFairnessSummary(mock, {
+      start_date: new Date(now - 1000).toISOString(),
+      end_date: new Date(now + 1000).toISOString(),
+    });
+    expect(summary.hit_resolution_stats.total_hits).toBe(1);
+    expect(summary.hit_resolution_stats.total_misses).toBe(1);
+    expect(summary.hit_resolution_stats.total_critical_hits).toBe(1);
+    expect(summary.hit_resolution_stats.avg_damage).toBe(20);
+    expect(summary.disconnect_stats.total_disconnects).toBe(3);
+    expect(summary.disconnect_stats.disconnects_by_reason).toEqual({ quit: 2, crash: 1 });
+    expect(summary.disconnect_stats.disconnects_when_winning).toBe(1);
+    expect(summary.timeout_stats.total_timeouts).toBe(1);
+    expect(summary.timeout_stats.timeouts_by_type).toEqual({ turn: 1 });
+    expect(summary.timeout_stats.avg_consecutive_timeouts).toBe(4);
+    expect(summary.ranking_stats.total_matches).toBe(1);
+    expect(summary.ranking_stats.avg_rank_change).toBe(4); // (5 + 3) / 2
+    expect(summary.ranking_stats.max_positive_change).toBe(5);
+    expect(summary.ranking_stats.max_negative_change).toBe(-3);
+  });
+
+  it('registerFairnessTelemetryEndpoints registers the five RPC ids', () => {
+    const init = ({ registerRpc: jest.fn() }) as unknown as Runtime.Initializer;
+    registerFairnessTelemetryEndpoints(init);
+    const ids = (init.registerRpc as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(ids).toEqual([
+      'armored_archer/log_hit_resolution',
+      'armored_archer/log_disconnect',
+      'armored_archer/log_timeout',
+      'armored_archer/log_ranking_delta',
+      'armored_archer/get_fairness_summary',
+    ]);
+  });
+
+  it('rpcGetFairnessSummary rejects invalid payloads', async () => {
+    const res = JSON.parse(
+      await rpcGetFairnessSummary(
+        { userId: 'u1' } as Runtime.Context,
+        logger as unknown as Runtime.Logger,
+        nk(),
+        '{"start_date":123}'
+      )
+    );
+    expect(res.success).toBe(false);
+  });
+
+  it('rpcGetFairnessSummary fails closed when storage throws', async () => {
+    const mock = nk();
+    (mock.storageRead as jest.Mock).mockRejectedValue(new Error('storage down'));
+    const res = JSON.parse(
+      await rpcGetFairnessSummary(
+        { userId: 'u1' } as Runtime.Context,
+        logger as unknown as Runtime.Logger,
+        mock,
+        '{}'
+      )
+    );
+    expect(res).toEqual({ success: false, error: 'Failed to retrieve fairness summary' });
+  });
+});
+
+describe('event log error paths (#1661)', () => {
+  const failingNk = () =>
+    ({ storageRead: jest.fn(), storageWrite: jest.fn().mockRejectedValue(new Error('write fail')) }) as unknown as Runtime.Nakama;
+
+  it('logHitResolution swallows storage failures', async () => {
+    const event = { event_id: 'h1', match_id: 'm1', timestamp: 1, player_id: 'p1', hit: true, damage: 10, is_crit: false } as unknown as HitResolutionEvent;
+    await expect(logHitResolution(failingNk(), event)).resolves.toBeUndefined();
+  });
+
+  it('logDisconnect swallows storage failures', async () => {
+    const event = { event_id: 'd1', match_id: 'm1', timestamp: 1, user_id: 'u1', disconnect_reason: 'quit', was_winning: false } as unknown as DisconnectEvent;
+    await expect(logDisconnect(failingNk(), event)).resolves.toBeUndefined();
+  });
+
+  it('logTimeout swallows storage failures', async () => {
+    const event = { event_id: 't1', match_id: 'm1', timestamp: 1, user_id: 'u1', timeout_type: 'turn', consecutive_timeouts: 2 } as unknown as TimeoutEvent;
+    await expect(logTimeout(failingNk(), event)).resolves.toBeUndefined();
+  });
+
+  it('logRankingDelta swallows storage failures', async () => {
+    const event = { event_id: 'r1', match_id: 'm1', timestamp: 1, winner_id: 'w', loser_id: 'l', winner_rank_change: 1, loser_rank_change: -1 } as unknown as RankingDeltaEvent;
+    await expect(logRankingDelta(failingNk(), event)).resolves.toBeUndefined();
   });
 });
