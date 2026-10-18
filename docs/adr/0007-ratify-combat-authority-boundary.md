@@ -29,7 +29,7 @@ ADR-0005 lists the **values** that are server-rederived. It does not, however, p
   ```
   Three identical magic numbers (`10`, `0.5`, `0.3`, `1`).
 
-- **`backend/src/modules/weapon_balance.ts:122, 198`** — the PvP damage curve and power-rating math use the **same** `* 0.5` and `* 2` magic numbers for `weapon_stats.attack` and `stats.critical_damage` respectively.
+- **`backend/src/modules/weapon_balance.ts`** — the PvP damage curve and power-rating math used the **same** `* 0.5` and `* 2` magic numbers for `weapon_stats.attack` and `stats.critical_damage` respectively. Those functions (`calculatePvpDamage`, `calculateWeaponPowerRating`) were dormant with zero callers and were removed in #1695; only the admin-gated `get_balance_metrics` report remains in that module.
 
 That is a real multi-file duplicate: a future balance change to "attack contributes 0.6× instead of 0.5×" would silently desynchronize live combat from live combat-preview, and live combat from matchmaking power rating. The boundary ADR-0005 documents the **rule** but not the **table**; a contributor implementing the rule has to read three modules to discover the existing numbers, and there is no canonical place to make a future change.
 
@@ -79,7 +79,7 @@ Inherited verbatim from ADR-0005: a client payload field not enumerated as **Acc
 
 ### Negative / costs
 
-- Until the inline-magic-number followup lands, the constants in `combat_constants.ts` and the literals in `combat_system.ts` / `balance_session.ts` / `weapon_balance.ts` MUST stay byte-identical. The constants file's docstring calls this out per symbol; CI does not (yet) enforce it. A balance change that updates one and forgets the other is a regression.
+- Until the inline-magic-number followup lands, the constants in `combat_constants.ts` and the literals in `combat_system.ts` / `balance_session.ts` MUST stay byte-identical. (The third module originally listed here, `weapon_balance.ts`, no longer carries these literals: its dormant copies were removed in #1695.) The constants file's docstring calls this out per symbol; CI does not (yet) enforce it. A balance change that updates one and forgets the other is a regression.
 - The constants are not environment-driven, not hot-reloadable, and not per-season. If a future season wants a 10% damage buff, the path is a code change + redeploy, not a config push. That is intentional — see "Why constants, not config" below — but it is a constraint.
 - One new module to keep aligned. Module count grows by one (`combat_constants.ts`); the **net** file count shrinks once the inline literals are removed in the follow-up.
 
@@ -95,7 +95,7 @@ Splitting into `damage_constants.ts`, `crit_constants.ts`, `health_constants.ts`
 
 - **Replace inline literals in `combat_system.ts`** (lines 657-658 health, 722 crit multiplier, 851-855 damage formula) with `BASE_HEALTH`, `HEALTH_PER_LEVEL`, `CRIT_DAMAGE_MULTIPLIER`, `BASE_DAMAGE`, `ATTACK_DAMAGE_COEFFICIENT`, `DEFENSE_REDUCTION_COEFFICIENT`, `MIN_DAMAGE` from `combat_constants.ts`. Behavior-preserving.
 - **Replace inline literals in `balance_session.ts`** (lines 305-307) — same pattern as above. This is the live-preview path; fixing it is the single highest-value followup because it directly prevents live-preview-vs-resolution desync.
-- **Replace inline literals in `weapon_balance.ts`** (lines 119 `* 0.5`, 122 `* 0.3`, 195 `* 2`) — these are **related but not identical** to the combat_system numbers. The `* 0.5` for `weapon_stats.attack` may legitimately equal `ATTACK_DAMAGE_COEFFICIENT`; the `* 2` for `stats.critical_damage` is the same magic number but a different physical quantity (power rating, not damage). Each replacement should be reviewed individually with a code comment citing this ADR.
+- ~~**Replace inline literals in `weapon_balance.ts`**~~ — **moot since #1695**: the functions holding those literals were dormant (zero callers) and have been deleted. The historical note: they were **related but not identical** to the combat_system numbers — the `* 0.5` for `weapon_stats.attack` may legitimately equal `ATTACK_DAMAGE_COEFFICIENT`; the `* 2` for `stats.critical_damage` was the same magic number but a different physical quantity (power rating, not damage).
 - **Client-side consumption** — once a server-driven "send me the live combat constants as part of the season config" RPC exists, the GDScript client can read its preview numbers from the server instead of from `autoloads/const.gd`. Until then, the client MUST NOT maintain a parallel copy of these numbers; any client-side preview math is to be removed entirely (not duplicated).
 - **CI guard** — add a script (`scripts/check-combat-constants.ts`) that grep-asserts the inline literals in the three server modules still match the table, and run it in `test.yml` as a non-test smoke check.
 - **`docs/COMBAT_SYSTEM.md`** should grow a one-line cross-reference to this ADR at the top of its "Damage formula" section, replacing any prose that describes the magic numbers directly.
