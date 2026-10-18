@@ -315,6 +315,24 @@ describe('season_system', () => {
       expect(markerReads).toBe(2);
     });
 
+    it('returns a retryable error and grants nothing when the marker write keeps failing (issue #1693)', () => {
+      const record = createMockLeaderboardRecord({ rank: 5 });
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
+      // Reads stay empty: no marker ever materializes, so the failures are
+      // genuine storage errors, not a lost race.
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+      mockNk.storageWrite = jest.fn(() => {
+        throw new Error('storage unavailable');
+      });
+
+      const result = JSON.parse(
+        rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, JSON.stringify({}))
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unable to claim rewards right now, please try again');
+      expect(mockLogger.error).toHaveBeenCalled();
+    });
+
     it('should return error when no leaderboard entry', () => {
       mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
       mockNk.storageRead = jest.fn().mockReturnValue([]);
