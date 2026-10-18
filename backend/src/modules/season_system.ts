@@ -39,7 +39,6 @@ export interface SeasonRewards {
   };
 }
 
-
 /**
  * Season information data structure.
  *
@@ -992,21 +991,56 @@ export function rpcClaimSeasonRewards(
 
   const rewards = calculateRewards(playerEntry.rank, currentSeason.season_number);
 
-  // Mark rewards as claimed
-  nk.storageWrite([
-    {
-      collection: 'season_rewards_claimed',
-      key: `${currentSeason.season_id}_${ctx.userId}`,
-      userId: ctx.userId,
-      value: toStorageValue({
-        season_id: currentSeason.season_id,
-        user_id: ctx.userId,
-        claimed_at: Date.now(),
-        rank: playerEntry.rank,
-        rewards: rewards,
-      }),
-    },
-  ]);
+  // Mark rewards as claimed with a create-only OCC write (issue #1693).
+  // The read-check above is not atomic: two concurrent claims could both
+  // pass the empty-read check and grant rewards twice. version '*' makes
+  // the loser's write conflict; on conflict we re-read and report the
+  // marker as already claimed. Mirrors the OCC retry pattern of
+  // markRefundAsProcessed in store.ts.
+  const markerCollection = 'season_rewards_claimed';
+  const markerKey = `${currentSeason.season_id}_${ctx.userId}`;
+  let markerWritten = false;
+  const MAX_ATTEMPTS = 2;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      nk.storageWrite([
+        {
+          collection: markerCollection,
+          key: markerKey,
+          userId: ctx.userId,
+          value: toStorageValue({
+            season_id: currentSeason.season_id,
+            user_id: ctx.userId,
+            claimed_at: Date.now(),
+            rank: playerEntry.rank,
+            rewards: rewards,
+          }),
+          version: '*',
+        },
+      ]);
+      markerWritten = true;
+      break;
+    } catch (writeErr) {
+      const existing = nk.storageRead([
+        { collection: markerCollection, key: markerKey, userId: ctx.userId },
+      ]);
+      if (existing.length > 0) {
+        return JSON.stringify({
+          success: false,
+          error: 'Rewards already claimed for this season',
+        });
+      }
+      if (attempt === MAX_ATTEMPTS) {
+        logger.error('Failed to write season claim marker: %s', writeErr);
+      }
+    }
+  }
+  if (!markerWritten) {
+    return JSON.stringify({
+      success: false,
+      error: 'Unable to claim rewards right now, please try again',
+    });
+  }
 
   // Give rewards (coins, gems) via the unified currency ledger (issue #860)
   // so season earnings are visible in get_currency and spendable via

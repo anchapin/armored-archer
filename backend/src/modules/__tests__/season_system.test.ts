@@ -264,6 +264,57 @@ describe('season_system', () => {
       expect(parsed.error).toBe('Rewards already claimed for this season');
     });
 
+    it('writes the claim marker create-only so concurrent claims conflict (issue #1693)', () => {
+      const record = createMockLeaderboardRecord({ rank: 5 });
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
+      mockNk.storageRead = jest.fn().mockReturnValue([]);
+
+      const result = JSON.parse(
+        rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, JSON.stringify({}))
+      );
+      expect(result.success).toBe(true);
+
+      const markerWrites = (mockNk.storageWrite as jest.Mock).mock.calls
+        .map((c) => c[0])
+        .flat()
+        .filter((w) => w.collection === 'season_rewards_claimed');
+      expect(markerWrites).toHaveLength(1);
+      expect(markerWrites[0].version).toBe('*');
+    });
+
+    it('treats a create-only marker conflict as already claimed (issue #1693)', () => {
+      const record = createMockLeaderboardRecord({ rank: 5 });
+      mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([record]);
+      // First marker read: empty (both racers pass the fast-path check).
+      // After the losing write conflicts, the winner's marker is visible.
+      let markerReads = 0;
+      mockNk.storageRead = jest.fn((objects) => {
+        if (objects[0].collection === 'season_rewards_claimed') {
+          markerReads++;
+          return markerReads === 1
+            ? []
+            : [
+                {
+                  collection: 'season_rewards_claimed',
+                  key: 'season_1_test-user',
+                  value: { claimed_at: Date.now() },
+                },
+              ];
+        }
+        return [];
+      });
+      mockNk.storageWrite = jest.fn(() => {
+        throw new Error('storage write: version conflict');
+      });
+
+      const result = JSON.parse(
+        rpcClaimSeasonRewards(mockCtx, mockLogger, mockNk, JSON.stringify({}))
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Rewards already claimed for this season');
+      expect(markerReads).toBe(2);
+    });
+
     it('should return error when no leaderboard entry', () => {
       mockNk.leaderboardRecordsList = jest.fn().mockReturnValue([]);
       mockNk.storageRead = jest.fn().mockReturnValue([]);
