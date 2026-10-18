@@ -42,15 +42,6 @@ import type { Runtime } from '../../types/nakama';
 
 /** RPC ids known broken by the async-registration bug (#1674). Shrink-only. */
 const KNOWN_BROKEN = new Set([
-  // matchmaking_analytics (8)
-  'armored_archer/log_match_data',
-  'armored_archer/log_abandonment',
-  'armored_archer/log_weapon_result',
-  'armored_archer/log_queue_time',
-  'armored_archer/get_match_quality_metrics',
-  'armored_archer/get_weapon_stats',
-  'armored_archer/detect_balance_issues',
-  'armored_archer/export_analytics_report',
   // direct-registerRpc async handlers (8)
   'armored_archer/prometheus_metrics',
   'armored_archer/prometheus_deployment',

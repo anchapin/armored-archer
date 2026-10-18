@@ -131,20 +131,17 @@ const COLLECTION_BALANCE_ISSUES = 'matchmaking_balance_issues';
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 /** Read all records of a system-owned collection (wildcard key). */
-async function readAllSystemRecords(
-  nk: Runtime.Nakama,
-  collection: string
-): Promise<Runtime.StorageObject[]> {
+function readAllSystemRecords(nk: Runtime.Nakama, collection: string): Runtime.StorageObject[] {
   return nk.storageRead([{ collection, key: '*', userId: SYSTEM_USER_ID }]);
 }
 
-export async function aggregateMatchMetrics(nk: Runtime.Nakama): Promise<MatchQualityMetrics> {
+export function aggregateMatchMetrics(nk: Runtime.Nakama): MatchQualityMetrics {
   try {
     // Read all match data
-    const matchObjects = await readAllSystemRecords(nk, COLLECTION_MATCH_DATA);
+    const matchObjects = readAllSystemRecords(nk, COLLECTION_MATCH_DATA);
 
     // Read queue times
-    const queueObjects = await readAllSystemRecords(nk, COLLECTION_QUEUE_TIMES);
+    const queueObjects = readAllSystemRecords(nk, COLLECTION_QUEUE_TIMES);
 
     // Calculate metrics
     let totalMatches = matchObjects.length;
@@ -200,11 +197,9 @@ export async function aggregateMatchMetrics(nk: Runtime.Nakama): Promise<MatchQu
  * @param nk - Nakama runtime module
  * @returns Map of weapon_id to weapon statistics
  */
-export async function generateWeaponStats(
-  nk: Runtime.Nakama
-): Promise<Record<string, WeaponStats>> {
+export function generateWeaponStats(nk: Runtime.Nakama): Record<string, WeaponStats> {
   try {
-    const weaponObjects = await nk.storageRead([
+    const weaponObjects = nk.storageRead([
       {
         collection: COLLECTION_WEAPON_STATS,
         key: '*',
@@ -237,12 +232,12 @@ export async function generateWeaponStats(
  * @param nk - Nakama runtime module
  * @returns Array of detected balance issues
  */
-export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIssue[]> {
+export function detectBalanceIssues(nk: Runtime.Nakama): BalanceIssue[] {
   const issues: BalanceIssue[] = [];
 
   try {
     // Get weapon statistics
-    const weaponStats = await generateWeaponStats(nk);
+    const weaponStats = generateWeaponStats(nk);
 
     // Check for weapon balance issues
     for (const [weaponId, stats] of Object.entries(weaponStats)) {
@@ -277,7 +272,7 @@ export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIs
     }
 
     // Check for overall match quality issues
-    const qualityMetrics = await aggregateMatchMetrics(nk);
+    const qualityMetrics = aggregateMatchMetrics(nk);
 
     if (qualityMetrics.avg_rating_diff > TARGET_RATING_DIFF * 1.5) {
       issues.push({
@@ -306,7 +301,7 @@ export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIs
 
     // Store detected issues
     if (issues.length > 0) {
-      await nk.storageWrite([
+      nk.storageWrite([
         {
           collection: COLLECTION_BALANCE_ISSUES,
           key: `issues_${Date.now()}`,
@@ -331,12 +326,12 @@ export async function detectBalanceIssues(nk: Runtime.Nakama): Promise<BalanceIs
  * @param nk - Nakama runtime module
  * @returns Analytics report
  */
-export async function exportAnalyticsReport(nk: Runtime.Nakama): Promise<AnalyticsReport> {
+export function exportAnalyticsReport(nk: Runtime.Nakama): AnalyticsReport {
   try {
-    const qualityMetrics = await aggregateMatchMetrics(nk);
-    const weaponStats = await generateWeaponStats(nk);
-    const ratingDiffDistribution = await calculateRatingDiffDistribution(nk);
-    const detectedIssues = await detectBalanceIssues(nk);
+    const qualityMetrics = aggregateMatchMetrics(nk);
+    const weaponStats = generateWeaponStats(nk);
+    const ratingDiffDistribution = calculateRatingDiffDistribution(nk);
+    const detectedIssues = detectBalanceIssues(nk);
 
     return {
       quality_metrics: qualityMetrics,
@@ -357,11 +352,9 @@ export async function exportAnalyticsReport(nk: Runtime.Nakama): Promise<Analyti
  * @param nk - Nakama runtime module
  * @returns Rating difference distribution
  */
-async function calculateRatingDiffDistribution(
-  nk: Runtime.Nakama
-): Promise<RatingDiffDistribution> {
+function calculateRatingDiffDistribution(nk: Runtime.Nakama): RatingDiffDistribution {
   try {
-    const matchObjects = await readAllSystemRecords(nk, COLLECTION_MATCH_DATA);
+    const matchObjects = readAllSystemRecords(nk, COLLECTION_MATCH_DATA);
 
     const distribution: RatingDiffDistribution = {
       '0-50': 0,
@@ -425,12 +418,9 @@ function calculateMedian(values: number[]): number {
  * @param nk - Nakama runtime module
  * @param request - Match data request
  */
-export async function logMatchData(
-  nk: Runtime.Nakama,
-  request: LogMatchDataRequest
-): Promise<void> {
+export function logMatchData(nk: Runtime.Nakama, request: LogMatchDataRequest): void {
   try {
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_MATCH_DATA,
         key: request.match_id,
@@ -442,7 +432,7 @@ export async function logMatchData(
     ]);
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -467,13 +457,10 @@ export async function logMatchData(
  * @param nk - Nakama runtime module
  * @param request - Abandonment request
  */
-export async function logAbandonment(
-  nk: Runtime.Nakama,
-  request: LogAbandonmentRequest
-): Promise<void> {
+export function logAbandonment(nk: Runtime.Nakama, request: LogAbandonmentRequest): void {
   try {
     // Update match data to mark as abandoned
-    const matchObjects = await nk.storageRead([
+    const matchObjects = nk.storageRead([
       {
         collection: COLLECTION_MATCH_DATA,
         key: request.match_id,
@@ -487,7 +474,7 @@ export async function logAbandonment(
       matchData.abandoned = true;
       matchData.abandonment_reason = request.reason;
 
-      await nk.storageWrite([
+      nk.storageWrite([
         {
           collection: COLLECTION_MATCH_DATA,
           key: request.match_id,
@@ -500,7 +487,7 @@ export async function logAbandonment(
     }
 
     // Log audit trail
-    await logAudit(
+    logAudit(
       nk,
       '00000000-0000-0000-0000-000000000000',
       null,
@@ -525,15 +512,15 @@ export async function logAbandonment(
  * @param isWin - True if weapon user won
  * @param ratingDiff - Rating difference for the match
  */
-export async function logWeaponResult(
+export function logWeaponResult(
   nk: Runtime.Nakama,
   weaponId: string,
   isWin: boolean,
   ratingDiff: number
-): Promise<void> {
+): void {
   try {
     const statsKey = `weapon_stats_${weaponId}`;
-    const objects = await nk.storageRead([
+    const objects = nk.storageRead([
       {
         collection: COLLECTION_WEAPON_STATS,
         key: statsKey,
@@ -568,7 +555,7 @@ export async function logWeaponResult(
       (stats.avg_rating_diff * (stats.matches_played - 1) + ratingDiff) / stats.matches_played;
     stats.last_updated = Date.now();
 
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_WEAPON_STATS,
         key: statsKey,
@@ -589,14 +576,11 @@ export async function logWeaponResult(
  * @param nk - Nakama runtime module
  * @param request - Queue time request
  */
-export async function logQueueTime(
-  nk: Runtime.Nakama,
-  request: LogQueueTimeRequest
-): Promise<void> {
+export function logQueueTime(nk: Runtime.Nakama, request: LogQueueTimeRequest): void {
   try {
     const queueId = `queue_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_QUEUE_TIMES,
         key: queueId,
@@ -608,7 +592,7 @@ export async function logQueueTime(
     ]);
 
     // Prune old queue times (keep only last 10000)
-    const allQueueObjects = await nk.storageRead([
+    const allQueueObjects = nk.storageRead([
       {
         collection: COLLECTION_QUEUE_TIMES,
         key: '*',
@@ -619,7 +603,7 @@ export async function logQueueTime(
     if (allQueueObjects.length > 10000) {
       const toDelete = allQueueObjects.slice(0, allQueueObjects.length - 10000);
       for (const obj of toDelete) {
-        await nk.storageDelete([
+        nk.storageDelete([
           {
             collection: COLLECTION_QUEUE_TIMES,
             key: obj.key,
@@ -642,17 +626,17 @@ interface MatchmakingLogRpcSpec<E> {
   /** Label for the entry debug log line (also the rpc name for validation). */
   debugLabel: string;
   schema: Parameters<typeof validatePayload>[0];
-  run: (nk: Runtime.Nakama, data: E) => Promise<void>;
+  run: (nk: Runtime.Nakama, data: E) => void;
   result: (data: E) => Record<string, unknown>;
 }
 
 function makeMatchmakingLogRpc<E>(spec: MatchmakingLogRpcSpec<E>) {
-  return async function matchmakingLogRpc(
+  return function matchmakingLogRpc(
     ctx: Runtime.Context,
     logger: Runtime.Logger,
     nk: Runtime.Nakama,
     payload: string
-  ): Promise<string> {
+  ): string {
     logger.debug(`${spec.debugLabel} RPC called`);
 
     const validation = validatePayload<E>(spec.schema, payload, spec.debugLabel);
@@ -660,7 +644,7 @@ function makeMatchmakingLogRpc<E>(spec: MatchmakingLogRpcSpec<E>) {
       return JSON.stringify(validation.error);
     }
 
-    await spec.run(nk, validation.data);
+    spec.run(nk, validation.data);
 
     return JSON.stringify(spec.result(validation.data));
   };
@@ -717,16 +701,16 @@ export const rpcLogQueueTime = makeMatchmakingLogRpc<LogQueueTimeRequest>({
  * @param payload - Request payload (JSON string)
  * @returns Response (JSON string)
  */
-export async function rpcGetMatchQualityMetrics(
+export function rpcGetMatchQualityMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.debug('GetMatchQualityMetrics RPC called');
 
   try {
-    const metrics = await aggregateMatchMetrics(nk);
+    const metrics = aggregateMatchMetrics(nk);
 
     return JSON.stringify({
       success: true,
@@ -750,12 +734,12 @@ export async function rpcGetMatchQualityMetrics(
  * @param payload - Request payload (JSON string)
  * @returns Response (JSON string)
  */
-export async function rpcGetWeaponStats(
+export function rpcGetWeaponStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.debug('GetWeaponStats RPC called');
 
   let weaponId: string | undefined;
@@ -771,7 +755,7 @@ export async function rpcGetWeaponStats(
   try {
     if (weaponId) {
       // Return stats for specific weapon
-      const stats = await generateWeaponStats(nk);
+      const stats = generateWeaponStats(nk);
       return JSON.stringify({
         success: true,
         weapon_id: weaponId,
@@ -780,7 +764,7 @@ export async function rpcGetWeaponStats(
     }
 
     // Return all weapon stats
-    const stats = await generateWeaponStats(nk);
+    const stats = generateWeaponStats(nk);
     return JSON.stringify({
       success: true,
       stats,
@@ -803,16 +787,16 @@ export async function rpcGetWeaponStats(
  * @param payload - Request payload (JSON string)
  * @returns Response (JSON string)
  */
-export async function rpcDetectBalanceIssues(
+export function rpcDetectBalanceIssues(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.debug('DetectBalanceIssues RPC called');
 
   try {
-    const issues = await detectBalanceIssues(nk);
+    const issues = detectBalanceIssues(nk);
 
     return JSON.stringify({
       success: true,
@@ -837,16 +821,16 @@ export async function rpcDetectBalanceIssues(
  * @param payload - Request payload (JSON string)
  * @returns Response (JSON string)
  */
-export async function rpcExportAnalyticsReport(
+export function rpcExportAnalyticsReport(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.debug('ExportAnalyticsReport RPC called');
 
   try {
-    const report = await exportAnalyticsReport(nk);
+    const report = exportAnalyticsReport(nk);
 
     return JSON.stringify({
       success: true,

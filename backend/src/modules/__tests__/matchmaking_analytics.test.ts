@@ -34,7 +34,7 @@ jest.mock('../metrics', () => ({
 }));
 
 jest.mock('../audit', () => ({
-  logAudit: jest.fn().mockResolvedValue(undefined),
+  logAudit: jest.fn().mockReturnValue(undefined),
 }));
 
 jest.mock('../validation', () => ({
@@ -66,16 +66,16 @@ const mockCtx = {
 } as any;
 
 const mockNk = {
-  storageRead: jest.fn().mockResolvedValue([]),
-  storageWrite: jest.fn().mockResolvedValue(undefined),
-  storageDelete: jest.fn().mockResolvedValue(undefined),
+  storageRead: jest.fn().mockReturnValue([]),
+  storageWrite: jest.fn().mockReturnValue(undefined),
+  storageDelete: jest.fn().mockReturnValue(undefined),
 } as any;
 
 describe('Matchmaking Analytics Module', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockNk.storageRead.mockResolvedValue([]);
-    mockNk.storageWrite.mockResolvedValue(undefined);
+    mockNk.storageRead.mockReturnValue([]);
+    mockNk.storageWrite.mockReturnValue(undefined);
   });
 
   describe('Target Metrics', () => {
@@ -102,7 +102,7 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('aggregateMatchMetrics', () => {
     it('should return zero metrics when no match data exists', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const metrics = await aggregateMatchMetrics(mockNk);
 
@@ -115,12 +115,12 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should calculate average rating difference correctly', async () => {
       mockNk.storageRead
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([
           { value: { match_id: 'match1', rating_diff: 50, completed: true } },
           { value: { match_id: 'match2', rating_diff: 150, completed: true } },
           { value: { match_id: 'match3', rating_diff: 100, completed: true } },
         ])
-        .mockResolvedValueOnce([]);
+        .mockReturnValueOnce([]);
 
       const metrics = await aggregateMatchMetrics(mockNk);
 
@@ -130,12 +130,12 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should calculate completion rate correctly', async () => {
       mockNk.storageRead
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([
           { value: { match_id: 'match1', completed: true } },
           { value: { match_id: 'match2', completed: true } },
           { value: { match_id: 'match3', completed: false } },
         ])
-        .mockResolvedValueOnce([]);
+        .mockReturnValueOnce([]);
 
       const metrics = await aggregateMatchMetrics(mockNk);
 
@@ -145,8 +145,8 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should calculate median queue time correctly', async () => {
       mockNk.storageRead
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([
           { value: { queue_time: 30 } },
           { value: { queue_time: 45 } },
           { value: { queue_time: 60 } },
@@ -162,7 +162,7 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('generateWeaponStats', () => {
     it('should return empty object when no weapon stats exist', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const stats = await generateWeaponStats(mockNk);
 
@@ -170,7 +170,7 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should calculate win rate correctly', async () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockReturnValue([
         {
           value: {
             weapon_id: 'weapon_1',
@@ -193,7 +193,7 @@ describe('Matchmaking Analytics Module', () => {
     it('should detect high win rate issue', async () => {
       // First call returns weapon stats, second call returns empty for match data
       mockNk.storageRead
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([
           {
             value: {
               weapon_id: 'op_weapon',
@@ -206,7 +206,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValueOnce([]);
+        .mockReturnValueOnce([]);
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -218,7 +218,7 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should detect low win rate issue', async () => {
       mockNk.storageRead
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([
           {
             value: {
               weapon_id: 'weak_weapon',
@@ -231,7 +231,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValueOnce([]);
+        .mockReturnValueOnce([]);
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -243,7 +243,7 @@ describe('Matchmaking Analytics Module', () => {
 
     it('should skip weapons with insufficient data', async () => {
       mockNk.storageRead
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([
           {
             value: {
               weapon_id: 'new_weapon',
@@ -256,7 +256,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValueOnce([]);
+        .mockReturnValueOnce([]);
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -267,8 +267,8 @@ describe('Matchmaking Analytics Module', () => {
       // detectBalanceIssues calls generateWeaponStats (first storageRead), then aggregateMatchMetrics (second and third storageRead)
       // We need 2/3 abandonment rate = 0.667, which exceeds 5% * 1.5 = 7.5%
       mockNk.storageRead
-        .mockResolvedValueOnce([]) // No weapon stats
-        .mockResolvedValueOnce([
+        .mockReturnValueOnce([]) // No weapon stats
+        .mockReturnValueOnce([
           // Match data with high abandonment rate
           {
             value: {
@@ -289,7 +289,7 @@ describe('Matchmaking Analytics Module', () => {
             },
           },
         ])
-        .mockResolvedValueOnce([]); // No queue times
+        .mockReturnValueOnce([]); // No queue times
 
       const issues = await detectBalanceIssues(mockNk);
 
@@ -299,7 +299,7 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('exportAnalyticsReport', () => {
     it('should export comprehensive analytics report', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const report = await exportAnalyticsReport(mockNk);
 
@@ -338,7 +338,7 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('logAbandonment', () => {
     it('should log abandonment data and update match', async () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockReturnValue([
         {
           value: {
             match_id: 'match_123',
@@ -362,7 +362,7 @@ describe('Matchmaking Analytics Module', () => {
 
   describe('logWeaponResult', () => {
     it('should log weapon result and update stats', async () => {
-      mockNk.storageRead.mockResolvedValue([
+      mockNk.storageRead.mockReturnValue([
         {
           value: {
             weapon_id: 'weapon_1',
@@ -382,7 +382,7 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('should create new weapon stats if not exists', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       await logWeaponResult(mockNk, 'new_weapon', false, 50);
 
@@ -417,7 +417,7 @@ describe('Matchmaking Analytics Module', () => {
 
       // First read returns empty (checking existing queue times),
       // Second read returns the 10001 queue objects
-      mockNk.storageRead.mockResolvedValueOnce(mockQueueObjects).mockResolvedValueOnce([]);
+      mockNk.storageRead.mockReturnValueOnce(mockQueueObjects).mockReturnValueOnce([]);
 
       await logQueueTime(mockNk, {
         queue_time: 45,
@@ -483,7 +483,7 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('rpcGetMatchQualityMetrics should return metrics', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const result = await rpcGetMatchQualityMetrics(mockCtx, mockLogger, mockNk, '{}');
       const response = JSON.parse(result);
@@ -493,7 +493,7 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('rpcGetWeaponStats should return all weapon stats', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const result = await rpcGetWeaponStats(mockCtx, mockLogger, mockNk, '{}');
       const response = JSON.parse(result);
@@ -503,7 +503,7 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('rpcDetectBalanceIssues should detect issues', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const result = await rpcDetectBalanceIssues(mockCtx, mockLogger, mockNk, '{}');
       const response = JSON.parse(result);
@@ -513,7 +513,7 @@ describe('Matchmaking Analytics Module', () => {
     });
 
     it('rpcExportAnalyticsReport should export report', async () => {
-      mockNk.storageRead.mockResolvedValue([]);
+      mockNk.storageRead.mockReturnValue([]);
 
       const result = await rpcExportAnalyticsReport(mockCtx, mockLogger, mockNk, '{}');
       const response = JSON.parse(result);
