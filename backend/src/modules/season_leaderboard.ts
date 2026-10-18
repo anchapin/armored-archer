@@ -13,6 +13,7 @@ import {
   getStorageRawValue,
   parseRecordMetadata,
 } from '../utils/storage-helpers';
+import { registerRpcWithMetrics } from './metrics';
 import { calculateRank } from './rank';
 import { SeasonInfo } from './season_system';
 import { validatePayload, createValidationErrorResponse, ZodSchemas } from './validation';
@@ -372,10 +373,10 @@ export async function recordSeasonCompletion(
  * @param limit - Maximum seasons to return
  * @returns Array of season archives
  */
-export async function getSeasonHistory(
+export function getSeasonHistory(
   nk: Runtime.Nakama,
   limit: number = 10
-): Promise<SeasonArchive[]> {
+): SeasonArchive[] {
   const archiveData = getSeasonArchive(nk);
   const seasons = Object.values(archiveData);
 
@@ -724,7 +725,12 @@ async function getPlayerUsername(nk: Runtime.Nakama, playerId: string): Promise<
  * @param initializer - Nakama runtime initializer
  */
 export function registerRpcGetSeasonHistory(initializer: Runtime.Initializer): void {
-  initializer.registerRpc('armored_archer/get_season_history', rpcGetSeasonHistory);
+  registerRpcWithMetrics(
+    initializer,
+    'armored_archer/get_season_history',
+    'get_season_history',
+    rpcGetSeasonHistory
+  );
 }
 
 /**
@@ -768,12 +774,12 @@ export function registerRpcGetPlayerRank(initializer: Runtime.Initializer): void
  *   "total": 5
  * }
  */
-export async function rpcGetSeasonHistory(
+export function rpcGetSeasonHistory(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Get season history called for user: %s', ctx.userId);
 
   // Validate payload
@@ -786,7 +792,7 @@ export async function rpcGetSeasonHistory(
     const parsed = validation.data || { limit: 10 };
     const limit = parsed.limit || 10;
 
-    const history = await getSeasonHistory(nk, limit);
+    const history = getSeasonHistory(nk, limit);
 
     return JSON.stringify({
       success: true,

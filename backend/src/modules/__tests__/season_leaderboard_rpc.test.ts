@@ -1078,9 +1078,11 @@ describe('season_leaderboard_rpc', () => {
 
       registerRpcGetSeasonHistory(mockInitializer);
 
+      // Registered via the metrics wrapper (issue #1674), so the second arg is
+      // the wrapped handler rather than rpcGetSeasonHistory itself.
       expect(mockInitializer.registerRpc).toHaveBeenCalledWith(
         'armored_archer/get_season_history',
-        rpcGetSeasonHistory
+        expect.any(Function)
       );
     });
   });

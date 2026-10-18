@@ -47,8 +47,6 @@ const KNOWN_BROKEN = new Set([
   'armored_archer/prometheus_deployment',
   'armored_archer/prometheus_health',
   'armored_archer/prometheus_rollout',
-  'test.cleanup_user_storage',
-  'armored_archer/get_season_history',
   'armored_archer/rollout_check',
   'armored_archer/rollout_record_metrics',
 ]);
