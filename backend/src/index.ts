@@ -153,6 +153,7 @@ import {
 } from './modules/store';
 import { registerRpcSubmitSurvey, registerRpcGetSurveyStatus } from './modules/survey';
 import { registerTestFixtureRpcs } from './modules/test_fixtures';
+import { registerRpcGetBalanceMetrics } from './modules/weapon_balance';
 import { InitModule, Runtime } from './types/nakama';
 import { initializeCaches } from './utils/cache';
 
@@ -274,6 +275,7 @@ const InitModule: InitModule = function (
   registerFairnessTelemetryEndpoints(initializer);
   registerBalanceAnalyticsEndpoints(initializer);
   registerRpcRunBalanceSession(initializer);
+  registerRpcGetBalanceMetrics(initializer);
   registerSeasonTelemetryEndpoints(initializer);
 
   if (config.rateLimit.enabled) {

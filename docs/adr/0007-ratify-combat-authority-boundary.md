@@ -29,7 +29,7 @@ ADR-0005 lists the **values** that are server-rederived. It does not, however, p
   ```
   Three identical magic numbers (`10`, `0.5`, `0.3`, `1`).
 
-- **`backend/src/modules/weapon_balance.ts:119, 195`** — the PvP damage curve and power-rating math use the **same** `* 0.5` and `* 2` magic numbers for `weapon_stats.attack` and `stats.critical_damage` respectively.
+- **`backend/src/modules/weapon_balance.ts:122, 198`** — the PvP damage curve and power-rating math use the **same** `* 0.5` and `* 2` magic numbers for `weapon_stats.attack` and `stats.critical_damage` respectively.
 
 That is a real multi-file duplicate: a future balance change to "attack contributes 0.6× instead of 0.5×" would silently desynchronize live combat from live combat-preview, and live combat from matchmaking power rating. The boundary ADR-0005 documents the **rule** but not the **table**; a contributor implementing the rule has to read three modules to discover the existing numbers, and there is no canonical place to make a future change.
 
