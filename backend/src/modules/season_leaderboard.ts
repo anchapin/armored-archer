@@ -373,10 +373,7 @@ export async function recordSeasonCompletion(
  * @param limit - Maximum seasons to return
  * @returns Array of season archives
  */
-export function getSeasonHistory(
-  nk: Runtime.Nakama,
-  limit: number = 10
-): SeasonArchive[] {
+export function getSeasonHistory(nk: Runtime.Nakama, limit: number = 10): SeasonArchive[] {
   const archiveData = getSeasonArchive(nk);
   const seasons = Object.values(archiveData);
 

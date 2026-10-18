@@ -64,6 +64,16 @@ jest.mock('../validation', () => ({
 // Mock the audit module so progressive_rollout can call logAudit without
 // pulling in the real audit/admin_auth module graph (which would create a
 // circular import during test bootstrap).
+jest.mock('../metrics', () => ({
+  // registerRpcWithMetrics wraps handlers; tests register handlers directly,
+  // so a pass-through keeps registration assertions unchanged (issue #1674).
+  registerRpcWithMetrics: jest.fn(
+    (initializer: { registerRpc: (id: string, h: unknown) => void }, rpcId: string, _rpcName: string, handler: unknown) =>
+      initializer.registerRpc(rpcId, handler)
+  ),
+  recordSettlementOutcome: jest.fn(),
+}));
+
 jest.mock('../audit', () => ({
   logAudit: jest.fn(),
 }));

@@ -37,6 +37,16 @@ import {
   setWebhookPendingAwards,
   setWebhookConfigured,
   recordSettlementOutcome,
+  setFunnelPlayers,
+  setFunnelConversionRate,
+  setFunnelDropoff,
+  incrementSeasonRankChanges,
+  recordSeasonRankChangeDelta,
+  incrementPunchUpWatchFlag,
+  recordFailedLogin,
+  recordRevenueCents,
+  recordPaymentFailure,
+  observeRpcRequestSeconds,
   rpcCallsTotal,
 } from '../metrics';
 import { resetAdminAllowlistCache } from '../admin_auth';
@@ -115,20 +125,27 @@ jest.mock('../../config/logger', () => ({
 jest.mock('../deployment_observability', () => ({
   getDeploymentRegistry: jest.fn().mockReturnValue({
     metrics: jest.fn().mockResolvedValue('mock deployment metrics'),
+    getMetricsAsArray: jest.fn().mockReturnValue([
+      { name: 'mock_deployment_metric', help: 'mock deployment metrics', type: 'gauge', hashMap: { '': { value: 1 } } },
+    ]),
     contentType: 'text/plain',
   }),
 }));
 
 jest.mock('../health_monitor', () => ({
   getHealthRegistry: jest.fn().mockReturnValue({
-    metrics: jest.fn().mockResolvedValue('mock health metrics'),
+    getMetricsAsArray: jest.fn().mockReturnValue([
+      { name: 'mock_health_metric', help: 'mock health metrics', type: 'gauge', hashMap: { '': { value: 1 } } },
+    ]),
     contentType: 'text/plain',
   }),
 }));
 
 jest.mock('../progressive_rollout', () => ({
   getRolloutRegistry: jest.fn().mockReturnValue({
-    metrics: jest.fn().mockResolvedValue('mock rollout metrics'),
+    getMetricsAsArray: jest.fn().mockReturnValue([
+      { name: 'mock_rollout_metric', help: 'mock rollout metrics', type: 'gauge', hashMap: { '': { value: 1 } } },
+    ]),
     contentType: 'text/plain',
   }),
 }));
@@ -151,7 +168,12 @@ let capturedEndTimer: jest.Mock;
 
 jest.mock('prom-client', () => ({
   Registry: jest.fn().mockImplementation(() => ({
+    // The sync scrape endpoints use getMetricsAsArray (issue #1674); the
+    // legacy admin rpcGetMetrics handler still calls async metrics().
     metrics: jest.fn().mockResolvedValue('mock base metrics'),
+    getMetricsAsArray: jest.fn().mockReturnValue([
+      { name: 'mock_base_metric', help: 'mock base metrics', type: 'gauge', hashMap: { '': { value: 1 } } },
+    ]),
     contentType: 'text/plain',
   })),
   Counter: jest.fn().mockImplementation(() => ({
@@ -511,20 +533,22 @@ describe('metrics', () => {
       // Prometheus scrapes arrive as GET with an empty body, authenticated by
       // Nakama's runtime HTTP key rather than a user session — ctx carries no
       // userId and there is no payload to validate.
-      const cases: Array<[string, string]> = [
-        ['armored_archer/prometheus_metrics', 'mock base metrics'],
-        ['armored_archer/prometheus_deployment', 'mock deployment metrics'],
-        ['armored_archer/prometheus_health', 'mock health metrics'],
-        ['armored_archer/prometheus_rollout', 'mock rollout metrics'],
+      const cases: Array<[string, string, string]> = [
+        ['armored_archer/prometheus_metrics', 'mock_base_metric', 'mock base metrics'],
+        ['armored_archer/prometheus_deployment', 'mock_deployment_metric', 'mock deployment metrics'],
+        ['armored_archer/prometheus_health', 'mock_health_metric', 'mock health metrics'],
+        ['armored_archer/prometheus_rollout', 'mock_rollout_metric', 'mock rollout metrics'],
       ];
 
-      for (const [id, expectedText] of cases) {
+      for (const [id, expectedName, expectedHelp] of cases) {
         const handler = capturedHandlers[id];
         expect(handler).toBeDefined();
         const ctx = { userId: '' } as any;
         const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
         const result = await handler(ctx, logger, {} as any, '');
-        expect(result).toBe(expectedText);
+        expect(result).toContain(`# HELP ${expectedName} ${expectedHelp}`);
+        expect(result).toContain(`# TYPE ${expectedName} gauge`);
+        expect(result).toContain(`${expectedName} 1`);
       }
     });
 
@@ -542,7 +566,7 @@ describe('metrics', () => {
         const handler = capturedHandlers['armored_archer/prometheus_metrics'];
         const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
         const result = await handler({ userId: '' } as any, logger, {} as any, '');
-        expect(result).toBe('mock base metrics');
+        expect(result).toContain('# HELP mock_base_metric mock base metrics');
       } finally {
         if (previousAdminIds !== undefined) {
           process.env.ADMIN_USER_IDS = previousAdminIds;
@@ -1455,5 +1479,26 @@ describe('metrics', () => {
       expect(() => recordSettlementOutcome('claim_failed')).not.toThrow();
       expect(() => recordSettlementOutcome('persist_failed')).not.toThrow();
     });
+  });
+});
+
+describe('single-helper coverage (#1674 coverage ratchet)', () => {
+  it('funnel, season-rank, watch-flag, auth and payment helpers do not throw', () => {
+    expect(() => setFunnelPlayers('queue', 3)).not.toThrow();
+    expect(() => setFunnelConversionRate('queue', 'match', 0.5)).not.toThrow();
+    expect(() => setFunnelDropoff('queue', 1)).not.toThrow();
+    expect(() => incrementSeasonRankChanges('s1', true)).not.toThrow();
+    expect(() => recordSeasonRankChangeDelta('s1', -2)).not.toThrow();
+    expect(() => incrementPunchUpWatchFlag('pair_loss_count')).not.toThrow();
+    expect(() => recordFailedLogin('invalid_credentials')).not.toThrow();
+    expect(() => recordPaymentFailure('card_declined', 'stripe')).not.toThrow();
+    expect(() => observeRpcRequestSeconds('rollout_check', 'success', 0.01)).not.toThrow();
+  });
+
+  it('recordRevenueCents guards non-positive and non-finite amounts', () => {
+    expect(() => recordRevenueCents(0, 'usd', 'gems')).not.toThrow();
+    expect(() => recordRevenueCents(-5, 'usd', 'gems')).not.toThrow();
+    expect(() => recordRevenueCents(Number.NaN, 'usd', 'gems')).not.toThrow();
+    expect(() => recordRevenueCents(100, 'usd', 'gems')).not.toThrow();
   });
 });

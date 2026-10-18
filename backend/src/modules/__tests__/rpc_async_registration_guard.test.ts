@@ -42,13 +42,6 @@ import type { Runtime } from '../../types/nakama';
 
 /** RPC ids known broken by the async-registration bug (#1674). Shrink-only. */
 const KNOWN_BROKEN = new Set([
-  // direct-registerRpc async handlers (8)
-  'armored_archer/prometheus_metrics',
-  'armored_archer/prometheus_deployment',
-  'armored_archer/prometheus_health',
-  'armored_archer/prometheus_rollout',
-  'armored_archer/rollout_check',
-  'armored_archer/rollout_record_metrics',
 ]);
 
 const MODULES_DIR = path.join(__dirname, '..');
