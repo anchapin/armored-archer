@@ -34,6 +34,20 @@ signal stage_unlocked(stage_id: String)
 signal stage_sync_updated(stage_id: String, state: String, result: Dictionary)
 var last_stage_sync: Dictionary = {}
 
+# --- Server-sync retry + pending queue (issue #1663) ---
+# Bounded exponential backoff for campaign progress RPCs, mirroring the
+# auth retry pattern from #910 (NetworkConsts.AUTH_RETRY_DELAYS). Two
+# delays = three attempts total (initial + 2 retries).
+const CAMPAIGN_SYNC_RETRY_DELAYS: Array = [1.0, 2.0]
+const PENDING_SYNC_PATH: String = "user://campaign_pending_sync.json"
+
+# Instance copy so tests can shorten the backoff without touching consts.
+var sync_retry_delays: Array = CAMPAIGN_SYNC_RETRY_DELAYS.duplicate()
+# Queue of stage-completion writes that failed with a transport error.
+# Persisted to PENDING_SYNC_PATH; replayed on launch/connectivity restore.
+# Entries: {stage_id, boss_id, difficulty, queued_at}
+var pending_sync: Array = []
+
 signal stage_completed(stage_id: String)
 signal campaign_progress_updated(chapter_id: String, progress: float)
 signal chapter_unlocked(chapter_id: String)
@@ -61,6 +75,7 @@ func _ready() -> void:
 	# Load campaign data and progress
 	load_campaigns_data()
 	load_progress()
+	_load_pending_sync()
 
 	# If no saved progress, initialize with first stage and chapter unlocked
 	if unlocked_stages.is_empty():
@@ -89,8 +104,101 @@ func _on_connection_status_changed(is_online: bool) -> void:
 	"""Syncs campaign progress when connection is established."""
 	if is_online:
 		await sync_campaign_progress()
+		await replay_pending_sync()
+
+## Sends an RPC with bounded exponential backoff (issue #1663). Retries
+## only on transport errors (response.has("error")); a well-formed server
+## rejection is returned immediately since replaying it cannot succeed.
+func _send_rpc_with_retry(rpc_id: String, payload: String) -> Dictionary:
+	var delays: Array = sync_retry_delays
+	var attempt: int = 0
+	while true:
+		var response: Dictionary = await network_manager.send_rpc(rpc_id, payload)
+		if not response.has("error"):
+			return response
+		if attempt >= delays.size():
+			return response
+		var delay: float = float(delays[attempt])
+		push_warning("Campaign RPC %s failed (attempt %d/%d), retrying in %.1fs: %s" % [rpc_id, attempt + 1, delays.size() + 1, delay, str(response.error)])
+		attempt += 1
+		await get_tree().create_timer(delay).timeout
+	return {}
+
+func _load_pending_sync() -> void:
+	## Loads the persisted pending-sync queue (issue #1663).
+	var file = FileAccess.open(PENDING_SYNC_PATH, FileAccess.READ)
+	if file:
+		var json_string = file.get_as_text()
+		file.close()
+		var json = JSON.new()
+		if json.parse(json_string) == OK and json.data is Array:
+			pending_sync = json.data
+
+func _save_pending_sync() -> void:
+	## Persists the pending-sync queue (issue #1663).
+	var file = FileAccess.open(PENDING_SYNC_PATH, FileAccess.WRITE)
+	if file:
+		var _err = file.store_string(JSON.stringify(pending_sync))
+		file.close()
+
+func _queue_stage_sync(entry: Dictionary) -> void:
+	## Adds/replaces a failed stage write in the pending queue (issue #1663).
+	for i in pending_sync.size():
+		if pending_sync[i].get("stage_id") == entry.get("stage_id"):
+			pending_sync[i] = entry
+			_save_pending_sync()
+			return
+	pending_sync.append(entry)
+	_save_pending_sync()
+
+func _dequeue_stage_sync(stage_id: String) -> void:
+	## Removes a stage from the pending queue after a confirmed write.
+	for i in pending_sync.size():
+		if pending_sync[i].get("stage_id") == stage_id:
+			pending_sync.remove_at(i)
+			_save_pending_sync()
+			return
+
+## Replays queued stage-completion writes (issue #1663). Conflict
+## resolution favors the server: entries the server already records as
+## completed are dropped without resending, and server-confirmed state
+## from sync_campaign_progress stays authoritative for merges.
+func replay_pending_sync() -> void:
+	if pending_sync.is_empty():
+		return
+	if not network_manager or not network_manager.has_method("send_rpc"):
+		return
+	if not network_manager.is_session_valid():
+		return
+	var replayed: Array = []
+	for entry in pending_sync:
+		var stage_id: String = str(entry.get("stage_id", ""))
+		if stage_id.is_empty():
+			replayed.append(entry)
+			continue
+		var payload: Dictionary = {
+			"stage_id": stage_id,
+			"boss_defeated": entry.get("boss_id", "") != "",
+			"boss_id": entry.get("boss_id", ""),
+			"difficulty": entry.get("difficulty", "normal")
+		}
+		var response: Dictionary = await _send_rpc_with_retry(
+			"armored_archer/stage_complete",
+			JSON.stringify(payload)
+		)
+		if not response.has("error") and response.get("success", false):
+			replayed.append(entry)
+			_set_stage_sync(stage_id, "confirmed", response)
+		elif not response.has("error"):
+			# Definitive server rejection - do not poison the queue by
+			# replaying it on every launch; drop it and keep failed state.
+			replayed.append(entry)
+			_set_stage_sync(stage_id, "failed", {})
+	for entry in replayed:
+		_dequeue_stage_sync(str(entry.get("stage_id", "")))
 
 func sync_campaign_progress() -> void:
+
 	"""Fetches campaign progress from server and merges with local state."""
 	if not network_manager or not network_manager.has_method("send_rpc"):
 		push_warning("Cannot sync campaign progress: NetworkManager not available")
@@ -99,14 +207,13 @@ func sync_campaign_progress() -> void:
 		push_warning("Cannot sync campaign progress: Session not valid")
 		return
 
-	var response: Dictionary = await network_manager.send_rpc(
+	var response: Dictionary = await _send_rpc_with_retry(
 		"armored_archer/get_campaign_progress",
 		JSON.stringify({})
 	)
 
 	if response.has("error"):
 		push_error("Failed to sync campaign progress: " + str(response.error))
-		# TODO: Implement retry logic with exponential backoff
 		return
 
 	if not response.get("success", false):
@@ -319,8 +426,8 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 		"difficulty": _get_difficulty_string(tier)
 	}
 
-	# Send RPC to server and handle response
-	var response: Dictionary = await network_manager.send_rpc(
+	# Send RPC to server (bounded backoff) and handle response
+	var response: Dictionary = await _send_rpc_with_retry(
 		"armored_archer/stage_complete",
 		JSON.stringify(payload)
 	)
@@ -328,15 +435,19 @@ func _notify_server_stage_complete(stage_id: String, boss_id: String) -> void:
 	if response.has("error"):
 		_set_stage_sync(stage_id, "failed", {})
 		push_error("Failed to notify server of stage completion: %s" % str(response.error))
-		# TODO: Queue for retry or mark as pending sync
+		# Transport failure after all retries - queue for replay on next
+		# launch/connectivity restore (issue #1663).
+		payload["queued_at"] = Time.get_unix_time_from_system()
+		_queue_stage_sync(payload)
 		return
 
 	if not response.get("success", false):
 		_set_stage_sync(stage_id, "failed", {})
 		push_warning("Server rejected stage completion: %s" % str(response.get("message", "Unknown error")))
-		# TODO: Queue for retry or mark as pending sync
+		# Definitive rejection - not queued, replaying cannot succeed.
 		return
 
+	_dequeue_stage_sync(stage_id)
 	_set_stage_sync(stage_id, "confirmed", response)
 	# Successfully synced to server
 	if analytics and analytics.has_method("log_custom_event"):

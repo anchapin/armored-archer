@@ -17,11 +17,19 @@ extends GutTest
 ## synchronously, so CampaignManager's `await` resumes immediately.
 class StubNetworkManager extends Node:
 	var rpc_response: Dictionary = {"success": true}
+	# Optional FIFO queue; when non-empty, send_rpc pops from it instead
+	# of returning rpc_response. `calls` logs every invocation.
+	var rpc_responses: Array = []
+	var calls: Array = []
+	var session_valid: bool = true
 
 	func is_session_valid() -> bool:
-		return true
+		return session_valid
 
-	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
+	func send_rpc(rpc_id: String, payload: String, _timeout: float = 30.0) -> Dictionary:
+		calls.append({"rpc_id": rpc_id, "payload": payload})
+		if not rpc_responses.is_empty():
+			return rpc_responses.pop_front()
 		return rpc_response
 
 	func send_rpc_async(_rpc_id: String, _payload: String, _timeout: float = 10.0) -> void:
@@ -43,6 +51,8 @@ func before_each():
 	# Clean up any existing save file
 	if FileAccess.file_exists(_save_file_path):
 		DirAccess.remove_absolute(_save_file_path)
+	if FileAccess.file_exists("user://campaign_pending_sync.json"):
+		DirAccess.remove_absolute("user://campaign_pending_sync.json")
 
 	var CampaignManager = preload("res://autoloads/CampaignManager.gd")
 	_campaign_manager = CampaignManager.new()
@@ -263,3 +273,100 @@ func test_boss_defeat_all_types():
 
 	_campaign_manager.handle_boss_defeat("boss_king")
 	assert_true(_campaign_manager.is_modifier_pool_unlocked("royal_blessing"))
+
+# --- Issue #1663: bounded retry + pending-sync queue ---
+
+func _set_fast_retries():
+	_campaign_manager.sync_retry_delays = [0.01, 0.01]
+
+func test_retry_succeeds_after_transient_error():
+	_set_fast_retries()
+	_mock_network.rpc_responses = [
+		{"error": "timeout"},
+		{"success": true, "unlocked_chapters": [], "completed_stages": [], "unlocked_stages": [], "bosses_defeated": []},
+	]
+	await _campaign_manager.sync_campaign_progress()
+	assert_eq(_mock_network.calls.size(), 2, "transient error should be retried once")
+
+func test_retry_bounded_attempts():
+	_set_fast_retries()
+	_mock_network.rpc_responses = [{"error": "e1"}, {"error": "e2"}, {"error": "e3"}, {"error": "e4"}]
+	await _campaign_manager.sync_campaign_progress()
+	assert_push_error("Failed to sync campaign progress")
+	assert_eq(_mock_network.calls.size(), 3, "initial + 2 retries, then gives up")
+
+func test_no_retry_on_server_rejection():
+	_set_fast_retries()
+	_mock_network.rpc_responses = [{"success": false, "message": "bad request"}]
+	await _campaign_manager.sync_campaign_progress()
+	assert_eq(_mock_network.calls.size(), 1, "well-formed rejection must not be retried")
+
+func test_failed_stage_write_queued():
+	_set_fast_retries()
+	_campaign_manager.campaigns_data = {"campaigns": [{"id": "campaign_1", "stages": [{"id": "1_1", "boss": null}]}]}
+	_campaign_manager.unlocked_stages = ["1_1"]
+	_campaign_manager.completed_stages = []
+	_mock_network.rpc_responses = [{"error": "down"}, {"error": "down"}, {"error": "down"}]
+	await _campaign_manager._notify_server_stage_complete("1_1", "")
+	assert_push_error("Failed to notify server of stage completion")
+	assert_eq(_campaign_manager.pending_sync.size(), 1, "failed write queued after retries exhausted")
+	if _campaign_manager.pending_sync.size() == 1:
+		assert_eq(_campaign_manager.pending_sync[0].get("stage_id"), "1_1")
+	assert_eq(_campaign_manager.last_stage_sync.get("state"), "failed")
+
+func test_rejected_stage_write_not_queued():
+	_set_fast_retries()
+	_campaign_manager.campaigns_data = {"campaigns": [{"id": "campaign_1", "stages": [{"id": "1_1", "boss": null}]}]}
+	_campaign_manager.unlocked_stages = ["1_1"]
+	_campaign_manager.completed_stages = []
+	_mock_network.rpc_responses = [{"success": false, "message": "duplicate"}]
+	await _campaign_manager._notify_server_stage_complete("1_1", "")
+	assert_eq(_campaign_manager.pending_sync.size(), 0, "definitive rejection must not be queued")
+	assert_eq(_campaign_manager.last_stage_sync.get("state"), "failed")
+
+func test_replay_pending_sync_confirms_and_clears():
+	_set_fast_retries()
+	_campaign_manager.pending_sync = [{"stage_id": "1_1", "boss_id": "", "difficulty": "normal"}]
+	_mock_network.rpc_responses = [{"success": true}]
+	await _campaign_manager.replay_pending_sync()
+	assert_eq(_campaign_manager.pending_sync.size(), 0, "confirmed replay dequeues")
+	assert_eq(_campaign_manager.last_stage_sync.get("state"), "confirmed")
+	assert_eq(_mock_network.calls.size(), 1)
+	if _mock_network.calls.size() == 1:
+		assert_eq(_mock_network.calls[0].rpc_id, "armored_archer/stage_complete")
+
+func test_replay_drops_server_rejection():
+	_set_fast_retries()
+	_campaign_manager.pending_sync = [{"stage_id": "1_1", "boss_id": "", "difficulty": "normal"}]
+	_mock_network.rpc_responses = [{"success": false, "message": "already recorded"}]
+	await _campaign_manager.replay_pending_sync()
+	assert_eq(_campaign_manager.pending_sync.size(), 0, "rejected replay dropped, not re-queued")
+	assert_eq(_campaign_manager.last_stage_sync.get("state"), "failed")
+
+func test_replay_skips_when_session_invalid():
+	_mock_network.session_valid = false
+	_campaign_manager.pending_sync = [{"stage_id": "1_1", "boss_id": "", "difficulty": "normal"}]
+	await _campaign_manager.replay_pending_sync()
+	assert_eq(_campaign_manager.pending_sync.size(), 1, "offline replay leaves queue untouched")
+	assert_eq(_mock_network.calls.size(), 0, "no RPCs while offline")
+
+func test_confirmed_write_dequeues_pending_entry():
+	_set_fast_retries()
+	_campaign_manager.campaigns_data = {"campaigns": [{"id": "campaign_1", "stages": [{"id": "1_1", "boss": null}]}]}
+	_campaign_manager.unlocked_stages = ["1_1"]
+	_campaign_manager.completed_stages = []
+	_campaign_manager.pending_sync = [{"stage_id": "1_1", "boss_id": "", "difficulty": "normal"}]
+	_mock_network.rpc_responses = [{"success": true}]
+	await _campaign_manager._notify_server_stage_complete("1_1", "")
+	assert_eq(_campaign_manager.pending_sync.size(), 0, "confirmed write dequeues matching entry")
+	assert_eq(_campaign_manager.last_stage_sync.get("state"), "confirmed")
+
+func test_pending_sync_persistence_round_trip():
+	_campaign_manager.pending_sync = [{"stage_id": "1_1", "boss_id": "boss_wind", "difficulty": "hard"}]
+	_campaign_manager._save_pending_sync()
+	_campaign_manager.pending_sync = []
+	_campaign_manager._load_pending_sync()
+	assert_eq(_campaign_manager.pending_sync.size(), 1, "queue persists to disk and reloads")
+	if _campaign_manager.pending_sync.size() == 1:
+		assert_eq(_campaign_manager.pending_sync[0].get("boss_id"), "boss_wind")
+	DirAccess.remove_absolute(_campaign_manager.PENDING_SYNC_PATH)
