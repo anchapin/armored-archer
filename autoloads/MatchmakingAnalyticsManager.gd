@@ -436,8 +436,17 @@ func _send_match_data_to_server(match_data: Dictionary) -> void:
 	if not _network_manager or not _network_manager.is_connected:
 		return
 
-	# TODO: Implement RPC call to send match data to server
-	# This should call backend endpoint to store analytics data
+	# Fire-and-forget telemetry (issue #1664): send_rpc_async queues behind
+	# the NetworkManager busy gate, so analytics never block gameplay RPCs.
+	# Payload matches the server's log_match_data valibot schema exactly.
+	var payload: Dictionary = {
+		"match_id": match_data.get("match_id", ""),
+		"timestamp": match_data.get("timestamp", 0),
+		"rating_diff": match_data.get("rating_diff", 0),
+		"weapons": match_data.get("weapons", []),
+		"duration": match_data.get("duration", 0.0)
+	}
+	_network_manager.send_rpc_async("armored_archer/log_match_data", JSON.stringify(payload))
 
 
 func _send_abandonment_to_server(match_id: String, reason: String) -> void:
@@ -450,7 +459,15 @@ func _send_abandonment_to_server(match_id: String, reason: String) -> void:
 	if not _network_manager or not _network_manager.is_connected:
 		return
 
-	# TODO: Implement RPC call to send abandonment data to server
+	# Payload matches the server's log_abandonment valibot schema; reason is
+	# optional server-side and clamped to its 500-char limit.
+	var payload: Dictionary = {
+		"match_id": match_id,
+		"timestamp": int(Time.get_unix_time_from_system())
+	}
+	if not reason.is_empty():
+		payload["reason"] = reason.left(500)
+	_network_manager.send_rpc_async("armored_archer/log_abandonment", JSON.stringify(payload))
 
 
 # --- Target Getters ---
