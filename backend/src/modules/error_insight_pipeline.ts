@@ -800,12 +800,12 @@ export function registerErrorInsightRpcs(initializer: Runtime.Initializer): void
 /**
  * RPC: Get error dashboard data
  */
-async function rpcGetErrorDashboard(
+function rpcGetErrorDashboard(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Error insights dashboard requested by user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.health_check, payload, 'error_insights_dashboard');
@@ -820,12 +820,12 @@ async function rpcGetErrorDashboard(
 /**
  * RPC: Get error summary
  */
-async function rpcGetErrorSummary(
+function rpcGetErrorSummary(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Error insights summary requested by user: %s', ctx.userId);
 
   // Parse time range from payload if provided
@@ -859,12 +859,12 @@ async function rpcGetErrorSummary(
 /**
  * RPC: Get error patterns
  */
-async function rpcGetErrorPatterns(
+function rpcGetErrorPatterns(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.info('Error insights patterns requested by user: %s', ctx.userId);
 
   const patterns = errorStore.getPatterns();
@@ -880,12 +880,12 @@ async function rpcGetErrorPatterns(
 /**
  * RPC: Get pipeline statistics
  */
-async function rpcGetErrorStats(
+function rpcGetErrorStats(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.info('Error insights stats requested by user: %s', ctx.userId);
 
   const stats = errorStore.getStats();
@@ -895,12 +895,12 @@ async function rpcGetErrorStats(
 /**
  * RPC: Dismiss an insight
  */
-async function rpcDismissInsight(
+function rpcDismissInsight(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Error insight dismiss requested by user: %s', ctx.userId);
 
   if (!payload) {

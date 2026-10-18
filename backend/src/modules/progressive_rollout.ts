@@ -16,6 +16,7 @@ import { Runtime } from '../types/nakama';
 import { withAdminGuard } from './admin_auth';
 import { logAudit } from './audit';
 import { registerRpcWithMetrics } from './metrics';
+import { serializeRegistryToPrometheus } from './prometheus_serializer';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Create a dedicated registry for rollout metrics
@@ -601,12 +602,12 @@ export function registerProgressiveRollout(initializer: Runtime.Initializer): vo
 /**
  * RPC: Create a new feature flag
  */
-async function rpcCreateFeatureFlag(
+function rpcCreateFeatureFlag(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Creating feature flag');
 
   const validation = validatePayload(
@@ -641,12 +642,12 @@ async function rpcCreateFeatureFlag(
 /**
  * RPC: Update feature flag
  */
-async function rpcUpdateFeatureFlag(
+function rpcUpdateFeatureFlag(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Updating feature flag');
 
   const validation = validatePayload(
@@ -679,12 +680,12 @@ async function rpcUpdateFeatureFlag(
 /**
  * RPC: List all feature flags
  */
-async function rpcListFeatureFlags(
+function rpcListFeatureFlags(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.info('Listing feature flags');
 
   const flags = getAllFeatureFlags();
@@ -771,12 +772,12 @@ function rpcCheckFeatureFlag(
 /**
  * RPC: Advance to next rollout phase
  */
-async function rpcAdvancePhase(
+function rpcAdvancePhase(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Advancing rollout phase');
 
   const validation = validatePayload(ZodSchemas.rollout_advance, payload, 'rollout_advance');
@@ -805,12 +806,12 @@ async function rpcAdvancePhase(
 /**
  * RPC: Rollback feature to previous phase
  */
-async function rpcRollbackFeature(
+function rpcRollbackFeature(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Rolling back feature');
 
   const validation = validatePayload(ZodSchemas.rollout_rollback, payload, 'rollout_rollback');
@@ -839,12 +840,12 @@ async function rpcRollbackFeature(
 /**
  * RPC: Get rollout metrics for a feature
  */
-async function rpcGetRolloutMetrics(
+function rpcGetRolloutMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Getting rollout metrics');
 
   const validation = validatePayload(
@@ -1091,12 +1092,12 @@ function rpcRecordMetrics(
 /**
  * RPC: Get overall rollout health
  */
-async function rpcRolloutHealth(
+function rpcRolloutHealth(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.info('Rollout health check');
 
   const flags = getAllFeatureFlags();
@@ -1131,17 +1132,15 @@ async function rpcRolloutHealth(
 /**
  * RPC: Get rollout metrics in Prometheus format
  */
-async function rpcPrometheusMetrics(
+function rpcPrometheusMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.info('Prometheus metrics requested');
 
-  const metrics = await rolloutRegistry.metrics();
-
-  return metrics;
+  return serializeRegistryToPrometheus(rolloutRegistry);
 }
 
 // ============== Initialization ==============

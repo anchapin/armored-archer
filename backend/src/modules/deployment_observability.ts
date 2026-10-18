@@ -13,6 +13,7 @@ import { config } from '../config';
 import { logger } from '../config/logger';
 import { Runtime } from '../types/nakama';
 import { withAdminGuard } from './admin_auth';
+import { serializeRegistryToPrometheus } from './prometheus_serializer';
 import { validatePayload, ZodSchemas, createValidationErrorResponse } from './validation';
 
 // Create a dedicated registry for deployment metrics
@@ -183,12 +184,12 @@ export function registerDeploymentObservability(initializer: Runtime.Initializer
 /**
  * RPC: Record a deployment event
  */
-async function rpcRecordDeployment(
+function rpcRecordDeployment(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Deployment recording requested');
 
   const validation = validatePayload(ZodSchemas.deployment_record, payload, 'deployment_record');
@@ -234,12 +235,12 @@ async function rpcRecordDeployment(
 /**
  * RPC: Get deployment health status
  */
-async function rpcDeploymentHealth(
+function rpcDeploymentHealth(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Deployment health check requested');
 
   const validation = validatePayload(ZodSchemas.health_check, payload, 'deployment_health');
@@ -247,15 +248,19 @@ async function rpcDeploymentHealth(
     return createValidationErrorResponse('deployment_health', validation.error);
   }
 
-  // Get health status for current environment using get() method (async)
-  const healthMetric = await deploymentHealthStatus.get();
-
-  // Handle empty metric case (prom-client returns empty object when no values set)
-  const healthMetricValues = (
-    healthMetric as {
-      values?: Array<{ labels: { environment: string; component: string }; value: number }>;
-    }
-  ).values;
+  // Read health status synchronously from the gauge's current values.
+  // prom-client v15's get() is Promise-based and can never resolve inside
+  // goja (ADR-0008); the hashMap holds the same {labels, value} entries.
+  const healthMetricValues = Object.values(
+    (
+      deploymentHealthStatus as unknown as {
+        hashMap: Record<
+          string,
+          { labels: { environment: string; component: string }; value: number }
+        >;
+      }
+    ).hashMap
+  );
 
   const healthStatus: Record<string, boolean> = {};
   if (healthMetricValues && Array.isArray(healthMetricValues)) {
@@ -282,12 +287,12 @@ async function rpcDeploymentHealth(
 /**
  * RPC: Get deployment history
  */
-async function rpcDeploymentHistory(
+function rpcDeploymentHistory(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Deployment history requested');
 
   // Parse optional limit from payload
@@ -317,12 +322,12 @@ async function rpcDeploymentHistory(
 /**
  * RPC: Get deployment metrics in Prometheus format
  */
-async function rpcDeploymentMetrics(
+function rpcDeploymentMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Deployment metrics requested');
 
   const validation = validatePayload(ZodSchemas.health_check, payload, 'deployment_metrics');
@@ -330,10 +335,8 @@ async function rpcDeploymentMetrics(
     return createValidationErrorResponse('deployment_metrics', validation.error);
   }
 
-  // Get metrics in Prometheus text format
-  const metrics = await deploymentRegistry.metrics();
-
-  return metrics;
+  // Get metrics in Prometheus text format (sync serializer, ADR-0008)
+  return serializeRegistryToPrometheus(deploymentRegistry);
 }
 
 /**

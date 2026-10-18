@@ -302,7 +302,18 @@ export function withAdminGuard(rpcId: string, handler: AdminGatedRpcHandler): Ad
     payload: string
   ): string | Promise<string> {
     if (isAdminUser(ctx.userId)) {
-      return handler(ctx, logger, nk, payload);
+      const result = handler(ctx, logger, nk, payload);
+      // ADR-0008: goja has no promise scheduler, so a Promise returned to
+      // Nakama never resolves. Fail loudly at call time instead of silently
+      // returning a pending Promise for the admin happy path (issue #1683);
+      // the wrapped handler must be converted to a synchronous one.
+      if (typeof (result as Promise<string> | null | undefined)?.then === 'function') {
+        throw new Error(
+          `withAdminGuard(${rpcId}): wrapped handler returned a Promise; ` +
+            'goja cannot schedule it (ADR-0008). Convert the handler to synchronous.'
+        );
+      }
+      return result;
     }
 
     const callerId = ctx.userId || 'unknown';

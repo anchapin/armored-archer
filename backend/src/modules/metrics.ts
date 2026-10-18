@@ -422,24 +422,24 @@ export function registerRpcMetrics(initializer: Runtime.Initializer): void {
 }
 
 // RPC handler for N+1 detection report
-async function rpcGetNPlusOneReport(
+function rpcGetNPlusOneReport(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   _payload: string
-): Promise<string> {
+): string {
   logger.info('N+1 report endpoint called by user: %s', ctx.userId);
 
   const report = getNPlusOneReport();
   return JSON.stringify(report, null, 2);
 }
 
-async function rpcGetMetrics(
+function rpcGetMetrics(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   _nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.info('Metrics endpoint called by user: %s', ctx.userId);
 
   const validation = validatePayload(ZodSchemas.health_check, payload, 'metrics');
@@ -447,116 +447,19 @@ async function rpcGetMetrics(
     return createValidationErrorResponse('metrics', validation.error);
   }
 
-  // Get base metrics in Prometheus text format
-  const baseMetrics = await register.metrics();
+  // Get base metrics in Prometheus text format (sync serializer, ADR-0008)
+  const baseMetrics = serializeRegistryToPrometheus(register);
 
   // Get deployment metrics
   const deploymentRegistry = getDeploymentRegistry();
-  const deploymentMetrics = await deploymentRegistry.metrics();
+  const deploymentMetrics = serializeRegistryToPrometheus(deploymentRegistry);
 
   // Combine both metrics (deployment metrics have different metric names to avoid conflicts)
   return baseMetrics + '\n# Deployment metrics\n' + deploymentMetrics;
 }
 
-
-// ==========================================
-// Synchronous Prometheus exposition serializer (issue #1674)
-// ==========================================
-
-/**
- * Serializes a prom-client Registry to Prometheus text exposition format
- * WITHOUT Promise-based APIs. ADR-0008: goja has no promise scheduler, so
- * `registry.metrics()` (async since prom-client v15) can never resolve in
- * production. prom-client's metric objects expose their current values
- * synchronously via `getMetricsAsArray()`, which this walks directly.
- *
- * Supports counter, gauge, histogram and summary - the only types this
- * backend instantiates (asserted by tests). Label ordering within a
- * sample follows the metric's sortedLabelNames (matching prom-client's
- * own serializer); histogram buckets add `le` first, summaries add
- * `quantile` first, mirroring upstream output.
- */
-interface MetricLike {
-  name: string;
-  help: string;
-  type: string;
-  sortedLabelNames?: string[];
-  labelNames?: string[];
-  percentiles?: number[];
-  buckets?: number[];
-  hashMap: Record<string, MetricEntry>;
-}
-
-interface MetricEntry {
-  value?: number;
-  labels?: Record<string, string | number>;
-  bucketValues?: Record<string, number>;
-  sum?: number;
-  count?: number;
-  td?: { percentile: (q: number) => number };
-}
-
-function escapeLabelValue(value: string | number): string {
-  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-}
-
-function formatLabels(
-  entries: [string, string | number][],
-  leading?: [string, string | number]
-): string {
-  const all = leading ? [leading, ...entries] : entries;
-  if (all.length === 0) return '';
-  return '{' + all.map(([k, v]) => `${k}="${escapeLabelValue(v)}"`).join(',') + '}';
-}
-
-function entryLabels(metric: MetricLike, entry: MetricEntry): [string, string | number][] {
-  const labels = entry.labels ?? {};
-  const order = metric.sortedLabelNames ?? metric.labelNames ?? Object.keys(labels);
-  return order.filter((k) => k in labels).map((k) => [k, labels[k]] as [string, string | number]);
-}
-
-export function serializeRegistryToPrometheus(registry: Registry): string {
-  const chunks: string[] = [];
-  // prom-client's public typings hide the metric internals; the runtime
-  // objects expose them (verified by the serializer tests).
-  const metrics = registry.getMetricsAsArray() as unknown as MetricLike[];
-  for (const metric of metrics) {
-    chunks.push(`# HELP ${metric.name} ${metric.help}`);
-    chunks.push(`# TYPE ${metric.name} ${metric.type}`);
-    for (const key of Object.keys(metric.hashMap)) {
-      const entry = metric.hashMap[key];
-      const labels = entryLabels(metric, entry);
-      if (metric.type === 'histogram') {
-        const buckets = metric.buckets ?? [];
-        // prom-client stores bucketValues per-bucket (an observation only
-        // increments the smallest bucket it fits); exposition is cumulative.
-        let cumulative = 0;
-        for (const bound of buckets) {
-          cumulative += entry.bucketValues?.[String(bound)] ?? 0;
-          chunks.push(
-            `${metric.name}_bucket${formatLabels(labels, ['le', String(bound)])} ${cumulative}`
-          );
-        }
-        chunks.push(`${metric.name}_bucket${formatLabels(labels, ['le', '+Inf'])} ${entry.count ?? 0}`);
-        chunks.push(`${metric.name}_sum${formatLabels(labels)} ${entry.sum ?? 0}`);
-        chunks.push(`${metric.name}_count${formatLabels(labels)} ${entry.count ?? 0}`);
-      } else if (metric.type === 'summary') {
-        const percentiles = metric.percentiles ?? [];
-        for (const q of percentiles) {
-          const v = entry.td ? entry.td.percentile(q) : 0;
-          chunks.push(`${metric.name}${formatLabels(labels, ['quantile', String(q)])} ${v}`);
-        }
-        chunks.push(`${metric.name}_sum${formatLabels(labels)} ${entry.sum ?? 0}`);
-        chunks.push(`${metric.name}_count${formatLabels(labels)} ${entry.count ?? 0}`);
-      } else {
-        // counter / gauge
-        chunks.push(`${metric.name}${formatLabels(labels)} ${entry.value ?? 0}`);
-      }
-    }
-    chunks.push('');
-  }
-  return chunks.join('\n');
-}
+export { serializeRegistryToPrometheus } from './prometheus_serializer';
+import { serializeRegistryToPrometheus } from './prometheus_serializer';
 
 // ==========================================
 // Prometheus Scrape Endpoints (issue #1074)
@@ -1195,11 +1098,7 @@ export function recordFailedLogin(reason: string): void {
  * @param currency - ISO 4217 currency code
  * @param productType - Product category for label-based slicing
  */
-export function recordRevenueCents(
-  cents: number,
-  currency: string,
-  productType: string,
-): void {
+export function recordRevenueCents(cents: number, currency: string, productType: string): void {
   if (cents <= 0 || !Number.isFinite(cents)) return;
   revenueCentsTotal.inc({ currency, product_type: productType }, cents);
 }
@@ -1223,10 +1122,6 @@ export function recordPaymentFailure(reason: string, provider: string): void {
  * @param status - "success" | "error" | "timeout"
  * @param seconds - Wall-clock duration in seconds
  */
-export function observeRpcRequestSeconds(
-  rpc: string,
-  status: string,
-  seconds: number,
-): void {
+export function observeRpcRequestSeconds(rpc: string, status: string, seconds: number): void {
   rpcRequestDurationSeconds.observe({ rpc, status }, seconds);
 }

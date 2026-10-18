@@ -13,7 +13,9 @@
  *
  *  1. STATIC: scans src/modules/*.ts sources and asserts no async handler
  *     (declared async fn, or const produced by a factory returning an async
- *     fn) is registered through either path, outside KNOWN_BROKEN.
+ *     fn) is registered through any path — wrapped, direct, or admin-guarded
+ *     (#1683: withAdminGuard also breaks on async handlers, silently for
+ *     admin callers) — outside KNOWN_BROKEN.
  *  2. RUNTIME: invokes the wrapped handlers of the affected modules with a
  *     junk payload; every non-allowlisted handler must return a string
  *     (a validation error is a string; the ADR-0008 throw is not).
@@ -24,32 +26,23 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  registerFairnessTelemetryEndpoints,
-} from '../fairness_telemetry';
-import {
-  registerSeasonTelemetryEndpoints,
-} from '../season_telemetry';
-import {
-  registerMatchmakingAnalyticsEndpoints,
-} from '../matchmaking_analytics';
-import {
-  registerBalanceAnalyticsEndpoints,
-} from '../balance_analytics';
+import { registerFairnessTelemetryEndpoints } from '../fairness_telemetry';
+import { registerSeasonTelemetryEndpoints } from '../season_telemetry';
+import { registerMatchmakingAnalyticsEndpoints } from '../matchmaking_analytics';
+import { registerBalanceAnalyticsEndpoints } from '../balance_analytics';
 import { registerRpcRunBalanceSession } from '../balance_session';
 import { createMockLogger, createMockContext, createMockNakama } from '../../__mocks__/nakama';
 import type { Runtime } from '../../types/nakama';
 
 /** RPC ids known broken by the async-registration bug (#1674). Shrink-only. */
-const KNOWN_BROKEN = new Set([
-]);
+const KNOWN_BROKEN = new Set([]);
 
 const MODULES_DIR = path.join(__dirname, '..');
 
 interface Registration {
   rpcId: string;
   handler: string;
-  via: 'wrapped' | 'direct';
+  via: 'wrapped' | 'direct' | 'admin-guarded';
   file: string;
 }
 
@@ -89,6 +82,12 @@ function collectRegistrations(source: string, file: string): Registration[] {
   for (const m of source.matchAll(direct)) {
     out.push({ rpcId: m[1], handler: m[2], via: 'direct', file });
   }
+  // #1683: admin-gated RPCs wrap the real handler in withAdminGuard(...), so
+  // the wrapped scan above only sees the guard itself. Catch the inner name.
+  const guarded = /withAdminGuard\(\s*['"]([^'"]+)['"]\s*,\s*(\w+)\s*\)/g;
+  for (const m of source.matchAll(guarded)) {
+    out.push({ rpcId: m[1], handler: m[2], via: 'admin-guarded', file });
+  }
   return out;
 }
 
@@ -118,8 +117,7 @@ describe('async-RPC registration guard (#1674)', () => {
     // must still be detected as broken. When a fix lands, delete the id from
     // KNOWN_BROKEN. Loop-registered ids (the three season-telemetry query
     // RPCs) are invisible to this scan; the runtime check below covers them.
-    const LOOP_REGISTERED = new Set([
-                ]);
+    const LOOP_REGISTERED = new Set([]);
     const fixedButNotRemoved = [...KNOWN_BROKEN].filter(
       (id) => !stillBroken.has(id) && !LOOP_REGISTERED.has(id)
     );
