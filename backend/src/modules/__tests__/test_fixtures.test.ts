@@ -5,6 +5,7 @@
 
 import {
   registerTestFixtureRpcs,
+  rpcTestLeaderboardFixture,
   resolveDiagHangMs,
   rpcDiagHangProbe,
   rpcDiagHttpProbe,
@@ -101,3 +102,155 @@ describe('registerTestFixtureRpcs', () => {
     expect(logger.warn).toHaveBeenCalled();
   });
 });
+
+
+describe('rpcTestLeaderboardFixture (#1661 branch coverage)', () => {
+  const authedCtx = () => createMockContext();
+  const anonCtx = () =>
+    ({ ...createMockContext(), userId: '' }) as unknown as Runtime.Context;
+  const withDelete = (nk: Runtime.Nakama): jest.Mock => {
+    const del = jest.fn();
+    (nk as unknown as Record<string, unknown>).leaderboardRecordDelete = del;
+    return del;
+  };
+
+  it('rejects unauthenticated calls', () => {
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(anonCtx(), createMockLogger(), createMockNakama(), '{}')
+    );
+    expect(res).toEqual({ success: false, error: 'Authentication required' });
+  });
+
+  it('rejects invalid JSON payloads', () => {
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(authedCtx(), createMockLogger(), createMockNakama(), 'not-json{')
+    );
+    expect(res).toEqual({ success: false, error: 'Invalid JSON payload' });
+  });
+
+  it('requires leaderboard_id', () => {
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), createMockNakama(), '{"op":"write"}'
+      )
+    );
+    expect(res).toEqual({ success: false, error: 'leaderboard_id is required' });
+  });
+
+  it('rejects unknown ops', () => {
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), createMockNakama(),
+        '{"op":"nuke","leaderboard_id":"lb"}'
+      )
+    );
+    expect(res).toEqual({ success: false, error: 'Unknown op: nuke' });
+  });
+
+  it('write requires owner_id', () => {
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), createMockNakama(),
+        '{"op":"write","leaderboard_id":"lb"}'
+      )
+    );
+    expect(res).toEqual({ success: false, error: 'owner_id is required' });
+  });
+
+  it('write creates the board and writes the record with defaults', () => {
+    const nk = createMockNakama();
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), nk,
+        '{"op":"write","leaderboard_id":"lb","owner_id":"u1","score":42}'
+      )
+    );
+    expect(res).toEqual({ success: true });
+    expect(nk.leaderboardCreate).toHaveBeenCalledWith('lb', true, 'desc', 'best', '', {});
+    expect(nk.leaderboardRecordWrite).toHaveBeenCalledWith('lb', 'u1', '', 42, 0, {});
+  });
+
+  it('delete removes each owner and swallows per-record errors', () => {
+    const nk = createMockNakama();
+    const del = withDelete(nk);
+    del.mockImplementation((_lb: string, owner: string) => {
+      if (owner === 'bad') throw new Error('no board');
+    });
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), nk,
+        '{"op":"delete","leaderboard_id":"lb","owner_ids":["a","bad","c"]}'
+      )
+    );
+    expect(res).toEqual({ success: true });
+    expect(del.mock.calls.map((c) => c[1])).toEqual(['a', 'bad', 'c']);
+  });
+
+  it('delete with no owner_ids is a no-op success', () => {
+    const nk = createMockNakama();
+    const del = withDelete(nk);
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), nk, '{"op":"delete","leaderboard_id":"lb"}'
+      )
+    );
+    expect(res).toEqual({ success: true });
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('list returns the records array', () => {
+    const nk = createMockNakama();
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), nk,
+        '{"op":"list","leaderboard_id":"lb","owner_ids":["u1"],"limit":5}'
+      )
+    );
+    expect(res.success).toBe(true);
+    expect(res.records).toEqual([]);
+    expect(nk.leaderboardRecordsList).toHaveBeenCalled();
+  });
+
+  it('handler errors are logged and returned as failures', () => {
+    const nk = createMockNakama();
+    const logger = createMockLogger();
+    (nk.leaderboardCreate as jest.Mock).mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), logger, nk,
+        '{"op":"write","leaderboard_id":"lb","owner_id":"u1"}'
+      )
+    );
+    expect(res).toEqual({ success: false, error: 'boom' });
+    expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('write passes through explicit username, subscore, and metadata', () => {
+    const nk = createMockNakama();
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), nk,
+        JSON.stringify({
+          op: 'write', leaderboard_id: 'lb', owner_id: 'u1',
+          username: 'Ace', score: 7, subscore: 3, metadata: { stage: '1_1' },
+        })
+      )
+    );
+    expect(res).toEqual({ success: true });
+    expect(nk.leaderboardRecordWrite).toHaveBeenCalledWith('lb', 'u1', 'Ace', 7, 3, { stage: '1_1' });
+  });
+
+  it('list defaults owner_ids and limit when omitted', () => {
+    const nk = createMockNakama();
+    const res = JSON.parse(
+      rpcTestLeaderboardFixture(
+        authedCtx(), createMockLogger(), nk, '{"op":"list","leaderboard_id":"lb"}'
+      )
+    );
+    expect(res.success).toBe(true);
+    expect(nk.leaderboardRecordsList).toHaveBeenCalledWith('lb', [], 100, '', 0);
+  });
+});
+

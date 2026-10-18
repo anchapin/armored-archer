@@ -12,6 +12,7 @@ import {
   getRewardConcentration,
   getProgressionVelocity,
   recordSeasonEndSnapshot,
+  registerSeasonTelemetryEndpoints,
   type RankChangeEvent,
   type RewardClaimEvent,
   type SeasonTelemetryQuery,
@@ -479,5 +480,71 @@ describe('Season Telemetry', () => {
       );
       expect(snapshotWrite).toBeDefined();
     });
+  });
+});
+
+describe('RPC layer and registration (#1661)', () => {
+  const stubLogger = () =>
+    ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() }) as unknown as Runtime.Logger;
+  const stubCtx = { userId: 'u1' } as Runtime.Context;
+  const freshNk = () =>
+    ({
+      storageRead: jest.fn().mockResolvedValue([]),
+      storageWrite: jest.fn().mockResolvedValue(undefined),
+      leaderboardRecordsList: jest.fn().mockReturnValue([]),
+      leaderboardRecordWrite: jest.fn(),
+      leaderboardCreate: jest.fn(),
+    }) as unknown as Runtime.Nakama;
+
+  const captureHandlers = () => {
+    const calls: Array<[string, unknown]> = [];
+    const init = {
+      registerRpc: jest.fn((id: string, handler: unknown) => {
+        calls.push([id, handler]);
+      }),
+    } as unknown as Runtime.Initializer;
+    registerSeasonTelemetryEndpoints(init);
+    return new Map(calls);
+  };
+
+  it('registerSeasonTelemetryEndpoints registers all five RPC ids', () => {
+    const handlers = captureHandlers();
+    expect([...handlers.keys()].sort()).toEqual([
+      'armored_archer/capture_rating_snapshot',
+      'armored_archer/get_progression_velocity',
+      'armored_archer/get_rank_inflation',
+      'armored_archer/get_reward_concentration',
+      'armored_archer/get_season_telemetry',
+    ]);
+  });
+
+
+
+
+
+
+
+  it('logRewardClaim swallows storage failures', async () => {
+    const nk = freshNk();
+    (nk.storageWrite as jest.Mock).mockRejectedValue(new Error('write fail'));
+    const event = {
+      event_id: 'rc1', season_id: 's1', user_id: 'u1', rank_tier: 'gold',
+      coins_awarded: 10, gems_awarded: 0, timestamp: Date.now(),
+    } as unknown as RewardClaimEvent;
+    await expect(logRewardClaim(nk, event)).resolves.toBeUndefined();
+  });
+
+  it('recordSeasonEndSnapshot swallows storage failures', async () => {
+    const nk = freshNk();
+    (nk.storageRead as jest.Mock).mockRejectedValue(new Error('read fail'));
+    await expect(recordSeasonEndSnapshot(nk, 's1')).resolves.toBeUndefined();
+  });
+
+  it('captureRatingSnapshot returns null when the leaderboard read throws', async () => {
+    const nk = freshNk();
+    (nk.leaderboardRecordsList as jest.Mock).mockImplementation(() => {
+      throw new Error('board gone');
+    });
+    await expect(captureRatingSnapshot(nk, 's1', Date.now())).resolves.toBeNull();
   });
 });
