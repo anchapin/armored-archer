@@ -351,17 +351,39 @@ export function validateRewardDistribution(
     return result;
   }
 
+  // Batch the claimed-marker reads into a single storage call (issue #1696)
+  // instead of one round-trip per leaderboard record.
+  const claimedKeys = new Set<string>();
+  try {
+    const claimed = nk.storageRead(
+      records.map((record) => ({
+        collection: 'season_rewards_claimed',
+        key: `${seasonId}_${record.ownerId}`,
+        userId: record.ownerId,
+      }))
+    );
+    for (const obj of claimed) {
+      if (obj.value) {
+        claimedKeys.add(`${obj.collection}_${obj.key}_${obj.userId}`);
+      }
+    }
+  } catch (readErr) {
+    result.status = 'fail';
+    result.details.push({
+      player_id: '',
+      issue: `Failed to read claimed markers: ${readErr}`,
+      auto_fixed: false,
+    });
+    return result;
+  }
+
   for (const record of records) {
     try {
-      const storage = nk.storageRead([
-        {
-          collection: 'season_rewards_claimed',
-          key: `${seasonId}_${record.ownerId}`,
-          userId: record.ownerId,
-        },
-      ]);
+      const claimed = claimedKeys.has(
+        `season_rewards_claimed_${seasonId}_${record.ownerId}_${record.ownerId}`
+      );
 
-      if (storage.length === 0 || !storage[0].value) {
+      if (!claimed) {
         result.issues_found++;
         if (autoFix) {
           // Repair path writes to the unified currency ledger (issue #860)
@@ -381,7 +403,7 @@ export function validateRewardDistribution(
         });
       }
     } catch {
-      // Skip on read error
+      // Skip on repair error
     }
   }
 
@@ -584,17 +606,29 @@ export function triggerFixMissingRewards(
   const records = getAllLeaderboardRecords(nk, seasonId);
   const fixed: string[] = [];
 
+  // Batch the claimed-marker reads into a single storage call (issue #1696)
+  // instead of one round-trip per leaderboard record.
+  const claimed = nk.storageRead(
+    records.map((record) => ({
+      collection: 'season_rewards_claimed',
+      key: `${seasonId}_${record.ownerId}`,
+      userId: record.ownerId,
+    }))
+  );
+  const claimedKeys = new Set<string>();
+  for (const obj of claimed) {
+    if (obj.value) {
+      claimedKeys.add(`${obj.collection}_${obj.key}_${obj.userId}`);
+    }
+  }
+
   for (const record of records) {
     try {
-      const storage = nk.storageRead([
-        {
-          collection: 'season_rewards_claimed',
-          key: `${seasonId}_${record.ownerId}`,
-          userId: record.ownerId,
-        },
-      ]);
+      const hasClaimed = claimedKeys.has(
+        `season_rewards_claimed_${seasonId}_${record.ownerId}_${record.ownerId}`
+      );
 
-      if (storage.length === 0 || !storage[0].value) {
+      if (!hasClaimed) {
         fixed.push(record.ownerId);
         if (!dryRun) {
           // Missing-reward repair credits the unified ledger (issue #860)

@@ -577,7 +577,12 @@ describe('validateRewardDistribution', () => {
       (call: any[]) => call[0][0].collection === 'player_currency'
     );
     expect(currencyWrites).toHaveLength(1);
-    const ledgerRecord = (typeof currencyWrites[0][0][0].value === 'string' ? (typeof currencyWrites[0][0][0].value === 'string' ? JSON.parse(currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value);
+    const ledgerRecord =
+      typeof currencyWrites[0][0][0].value === 'string'
+        ? typeof currencyWrites[0][0][0].value === 'string'
+          ? JSON.parse(currencyWrites[0][0][0].value)
+          : currencyWrites[0][0][0].value
+        : currencyWrites[0][0][0].value;
     expect(ledgerRecord.user_id).toBe('p1');
     expect(ledgerRecord.gems).toBe(200);
     expect(ledgerRecord.coins).toBe(5000);
@@ -596,6 +601,80 @@ describe('rpcAdminValidateSeason', () => {
     expect(result.success).toBe(true);
     expect(result.summary.passed).toBeGreaterThan(0);
     expect(result.summary.failures).toBe(0);
+  });
+
+  it('batches reward_distribution reads and reports unclaimed players (issue #1696)', () => {
+    mockSeasonSystem.getCurrentSeason.mockReturnValueOnce({
+      season_id: 'season_1',
+      season_number: 1,
+      start_time: 0,
+      end_time: 1,
+      status: 'ended',
+      duration_weeks: 4,
+    });
+    mockNk.leaderboardRecordsList.mockReturnValue([
+      makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
+      makeLeaderboardRecord({ rank: 2, ownerId: 'p2' }),
+    ]);
+    mockNk.storageRead.mockImplementation((reqs: { collection?: string }[]) => {
+      if (Array.isArray(reqs) && reqs[0]?.collection === 'season_rewards_claimed') {
+        return [
+          {
+            collection: 'season_rewards_claimed',
+            key: 'season_1_p1',
+            userId: 'p1',
+            value: { claimed_at: 123 },
+          },
+        ];
+      }
+      return [];
+    });
+
+    const result = JSON.parse(
+      rpcAdminValidateSeason(mockCtx, mockLogger, mockNk, '{"checks":["reward_distribution"]}')
+    );
+    const check = result.checks.find(
+      (c: { check_name: string }) => c.check_name === 'reward_distribution'
+    );
+    expect(check.status).toBe('fail');
+    expect(check.issues_found).toBe(1);
+    expect(check.details[0].player_id).toBe('p2');
+
+    const claimedReads = mockNk.storageRead.mock.calls.filter(
+      (args: { collection?: string }[][]) =>
+        Array.isArray(args[0]) && args[0][0]?.collection === 'season_rewards_claimed'
+    );
+    expect(claimedReads.length).toBe(1);
+    expect(claimedReads[0][0].length).toBe(2);
+  });
+
+  it('reward_distribution fails gracefully when the batched read throws (issue #1696)', () => {
+    mockSeasonSystem.getCurrentSeason.mockReturnValueOnce({
+      season_id: 'season_1',
+      season_number: 1,
+      start_time: 0,
+      end_time: 1,
+      status: 'ended',
+      duration_weeks: 4,
+    });
+    mockNk.leaderboardRecordsList.mockReturnValue([
+      makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
+    ]);
+    mockNk.storageRead.mockImplementation((reqs: { collection?: string }[]) => {
+      if (Array.isArray(reqs) && reqs[0]?.collection === 'season_rewards_claimed') {
+        throw new Error('storage down');
+      }
+      return [];
+    });
+
+    const result = JSON.parse(
+      rpcAdminValidateSeason(mockCtx, mockLogger, mockNk, '{"checks":["reward_distribution"]}')
+    );
+    const check = result.checks.find(
+      (c: { check_name: string }) => c.check_name === 'reward_distribution'
+    );
+    expect(check.status).toBe('fail');
+    expect(check.details[0].issue).toContain('Failed to read claimed markers');
   });
 
   it('runs only specified checks', () => {
@@ -671,6 +750,34 @@ describe('triggerFixMissingRewards', () => {
     const result = triggerFixMissingRewards(mockNk, 'season_1', 1, true);
     expect(result.fixed_count).toBe(1);
     expect(mockNk.storageWrite).not.toHaveBeenCalled();
+  });
+  it('batches claimed-marker reads into one storage call (issue #1696)', () => {
+    mockNk.leaderboardRecordsList.mockReturnValue([
+      makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
+      makeLeaderboardRecord({ rank: 2, ownerId: 'p2' }),
+      makeLeaderboardRecord({ rank: 3, ownerId: 'p3' }),
+    ]);
+    // p2 has claimed; p1 and p3 have not.
+    mockNk.storageRead.mockReturnValue([
+      {
+        collection: 'season_rewards_claimed',
+        key: 'season_1_p2',
+        userId: 'p2',
+        value: { season_id: 'season_1', user_id: 'p2' },
+      },
+    ]);
+
+    const result = triggerFixMissingRewards(mockNk, 'season_1', 1, true);
+    expect(result.fixed_count).toBe(2);
+    expect(result.players_fixed).toEqual(['p1', 'p3']);
+    // One batched read carrying all three keys, not one read per record.
+    const readCalls = mockNk.storageRead.mock.calls.filter(
+      (args: unknown[][]) =>
+        Array.isArray(args[0]) &&
+        (args[0] as { collection?: string }[])[0]?.collection === 'season_rewards_claimed'
+    );
+    expect(readCalls.length).toBe(1);
+    expect((readCalls[0][0] as unknown[]).length).toBe(3);
   });
 });
 
