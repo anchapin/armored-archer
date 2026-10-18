@@ -145,13 +145,13 @@ function generateEventId(prefix: string = 'stelm'): string {
 
 // --- Core Logging Functions ---
 
-export async function logRankChange(nk: Runtime.Nakama, event: RankChangeEvent): Promise<void> {
+export function logRankChange(nk: Runtime.Nakama, event: RankChangeEvent): void {
   try {
     if (!event.event_id) {
       event.event_id = generateEventId('rc');
     }
 
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_RANK_CHANGES,
         key: event.event_id,
@@ -173,13 +173,13 @@ export async function logRankChange(nk: Runtime.Nakama, event: RankChangeEvent):
   }
 }
 
-export async function logRewardClaim(nk: Runtime.Nakama, event: RewardClaimEvent): Promise<void> {
+export function logRewardClaim(nk: Runtime.Nakama, event: RewardClaimEvent): void {
   try {
     if (!event.event_id) {
       event.event_id = generateEventId('rw');
     }
 
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_REWARD_CLAIMS,
         key: event.event_id,
@@ -191,7 +191,7 @@ export async function logRewardClaim(nk: Runtime.Nakama, event: RewardClaimEvent
     ]);
 
     // Audit trail
-    await logAudit(
+    logAudit(
       nk,
       SYSTEM_USER_ID,
       null,
@@ -226,11 +226,11 @@ export async function logRewardClaim(nk: Runtime.Nakama, event: RewardClaimEvent
   }
 }
 
-export async function captureRatingSnapshot(
+export function captureRatingSnapshot(
   nk: Runtime.Nakama,
   seasonId: string,
   _seasonStartTime: number
-): Promise<RatingSnapshot | null> {
+): RatingSnapshot | null {
   try {
     const records = listAllLeaderboardRecords(nk, seasonId, 10000);
     if (records.length === 0) {
@@ -274,7 +274,7 @@ export async function captureRatingSnapshot(
       base_elo_drift: Math.round(avgElo - 1000),
     };
 
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_RATING_SNAPSHOTS,
         key: snapshot.snapshot_id,
@@ -306,14 +306,14 @@ export async function captureRatingSnapshot(
 
 // --- Query Functions ---
 
-async function readStorageCollection<T extends { timestamp: number }>(
+function readStorageCollection<T extends { timestamp: number }>(
   nk: Runtime.Nakama,
   collection: string,
   startTime: number,
   endTime: number
-): Promise<T[]> {
+): T[] {
   try {
-    const objects = await nk.storageRead([{ collection, key: '*', userId: SYSTEM_USER_ID }]);
+    const objects = nk.storageRead([{ collection, key: '*', userId: SYSTEM_USER_ID }]);
     return objects
       .map(
         (obj: { value: string | Record<string, unknown> }) =>
@@ -325,13 +325,13 @@ async function readStorageCollection<T extends { timestamp: number }>(
   }
 }
 
-export async function getRankInflation(
+export function getRankInflation(
   nk: Runtime.Nakama,
   seasonId: string,
   startTime: number,
   endTime: number
-): Promise<SeasonTelemetrySummary['rank_inflation']> {
-  const snapshots = await readStorageCollection<RatingSnapshot>(
+): SeasonTelemetrySummary['rank_inflation'] {
+  const snapshots = readStorageCollection<RatingSnapshot>(
     nk,
     COLLECTION_RATING_SNAPSHOTS,
     startTime,
@@ -357,13 +357,13 @@ export async function getRankInflation(
   };
 }
 
-export async function getRewardConcentration(
+export function getRewardConcentration(
   nk: Runtime.Nakama,
   seasonId: string,
   startTime: number,
   endTime: number
-): Promise<SeasonTelemetrySummary['reward_concentration']> {
-  const claims = await readStorageCollection<RewardClaimEvent>(
+): SeasonTelemetrySummary['reward_concentration'] {
+  const claims = readStorageCollection<RewardClaimEvent>(
     nk,
     COLLECTION_REWARD_CLAIMS,
     startTime,
@@ -451,14 +451,14 @@ function rankVelocityByWeek(
   return { week_1: week(0), week_2: week(1), week_3: week(2), week_4: week(3) };
 }
 
-export async function getProgressionVelocity(
+export function getProgressionVelocity(
   nk: Runtime.Nakama,
   seasonId: string,
   seasonStartTime: number,
   startTime: number,
   endTime: number
-): Promise<SeasonTelemetrySummary['progression_velocity']> {
-  const rankChanges = await readStorageCollection<RankChangeEvent>(
+): SeasonTelemetrySummary['progression_velocity'] {
+  const rankChanges = readStorageCollection<RankChangeEvent>(
     nk,
     COLLECTION_RANK_CHANGES,
     startTime,
@@ -481,20 +481,24 @@ export async function getProgressionVelocity(
   };
 }
 
-export async function getSeasonTelemetrySummary(
+export function getSeasonTelemetrySummary(
   nk: Runtime.Nakama,
   query: SeasonTelemetryQuery
-): Promise<SeasonTelemetrySummary> {
+): SeasonTelemetrySummary {
   const { startTime, endTime, seasonId } = resolveQueryWindow(query);
 
   // Derive season start time from season ID if it follows the pattern season_N
   const seasonStartTime = startTime;
 
-  const [rankInflation, rewardConcentration, progressionVelocity] = await Promise.all([
-    getRankInflation(nk, seasonId, startTime, endTime),
-    getRewardConcentration(nk, seasonId, startTime, endTime),
-    getProgressionVelocity(nk, seasonId, seasonStartTime, startTime, endTime),
-  ]);
+  const rankInflation = getRankInflation(nk, seasonId, startTime, endTime);
+  const rewardConcentration = getRewardConcentration(nk, seasonId, startTime, endTime);
+  const progressionVelocity = getProgressionVelocity(
+    nk,
+    seasonId,
+    seasonStartTime,
+    startTime,
+    endTime
+  );
 
   return {
     rank_inflation: rankInflation,
@@ -506,19 +510,19 @@ export async function getSeasonTelemetrySummary(
   };
 }
 
-export async function recordSeasonEndSnapshot(
+export function recordSeasonEndSnapshot(
   nk: Runtime.Nakama,
   seasonId: string,
   seasonStartTime: number
-): Promise<void> {
+): void {
   try {
     // Capture a final rating snapshot
-    await captureRatingSnapshot(nk, seasonId, seasonStartTime);
+    captureRatingSnapshot(nk, seasonId, seasonStartTime);
 
     // Read all rank changes for the season
     const seasonStart = seasonStartTime;
     const seasonEnd = Date.now();
-    const rankChanges = await readStorageCollection<RankChangeEvent>(
+    const rankChanges = readStorageCollection<RankChangeEvent>(
       nk,
       COLLECTION_RANK_CHANGES,
       seasonStart,
@@ -547,7 +551,7 @@ export async function recordSeasonEndSnapshot(
       rank_velocity_by_week: rankVelocityByWeek(weekData),
     };
 
-    await nk.storageWrite([
+    nk.storageWrite([
       {
         collection: COLLECTION_SEASON_SUMMARIES,
         key: `summary_${seasonId}`,
@@ -652,12 +656,12 @@ function parseTelemetryQuery(
   return { ok: true, startTime, endTime, seasonId };
 }
 
-async function rpcGetSeasonTelemetry(
+function rpcGetSeasonTelemetry(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.debug('GetSeasonTelemetry RPC called');
 
   const validation = validatePayload<SeasonTelemetryQuery>(
@@ -670,7 +674,7 @@ async function rpcGetSeasonTelemetry(
   }
 
   try {
-    const summary = await getSeasonTelemetrySummary(nk, validation.data);
+    const summary = getSeasonTelemetrySummary(nk, validation.data);
     return JSON.stringify({ success: true, summary });
   } catch (error) {
     logger.error('Failed to get season telemetry summary', { error });
@@ -720,13 +724,13 @@ type TelemetryQueryFetcher = (
   seasonId: string,
   startTime: number,
   endTime: number
-) => Promise<unknown>;
+) => unknown;
 
 /**
  * Shared body of the season-telemetry query RPCs: validate the payload,
  * resolve the window, run the fetcher, and shape success/error responses.
  */
-async function runTelemetryQueryRpc(
+function runTelemetryQueryRpc(
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string,
@@ -734,7 +738,7 @@ async function runTelemetryQueryRpc(
   errorLabel: string,
   resultKey: string,
   fetcher: TelemetryQueryFetcher
-): Promise<string> {
+): string {
   logger.debug(debugName + ' RPC called');
 
   const parsed = parseTelemetryQuery(payload);
@@ -744,7 +748,7 @@ async function runTelemetryQueryRpc(
   const { startTime, endTime, seasonId } = parsed;
 
   try {
-    const result = await fetcher(nk, seasonId, startTime, endTime);
+    const result = fetcher(nk, seasonId, startTime, endTime);
     return JSON.stringify({ success: true, [resultKey]: result });
   } catch (error) {
     logger.error('Failed to get ' + errorLabel, { error });
@@ -752,12 +756,12 @@ async function runTelemetryQueryRpc(
   }
 }
 
-async function rpcCaptureRatingSnapshot(
+function rpcCaptureRatingSnapshot(
   ctx: Runtime.Context,
   logger: Runtime.Logger,
   nk: Runtime.Nakama,
   payload: string
-): Promise<string> {
+): string {
   logger.debug('CaptureRatingSnapshot RPC called');
 
   const validation = validatePayload<{ season_id?: string }>(
@@ -772,7 +776,7 @@ async function rpcCaptureRatingSnapshot(
   const seasonId = validation.data.season_id || 'current';
 
   try {
-    const snapshot = await captureRatingSnapshot(nk, seasonId, Date.now());
+    const snapshot = captureRatingSnapshot(nk, seasonId, Date.now());
     if (!snapshot) {
       return JSON.stringify({ success: false, error: 'No leaderboard entries found' });
     }

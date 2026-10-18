@@ -42,12 +42,6 @@ import type { Runtime } from '../../types/nakama';
 
 /** RPC ids known broken by the async-registration bug (#1674). Shrink-only. */
 const KNOWN_BROKEN = new Set([
-  // season_telemetry (5)
-  'armored_archer/get_season_telemetry',
-  'armored_archer/get_rank_inflation',
-  'armored_archer/get_reward_concentration',
-  'armored_archer/get_progression_velocity',
-  'armored_archer/capture_rating_snapshot',
   // fairness_telemetry (5)
   'armored_archer/log_hit_resolution',
   'armored_archer/log_disconnect',
@@ -149,10 +143,7 @@ describe('async-RPC registration guard (#1674)', () => {
     // KNOWN_BROKEN. Loop-registered ids (the three season-telemetry query
     // RPCs) are invisible to this scan; the runtime check below covers them.
     const LOOP_REGISTERED = new Set([
-      'armored_archer/get_rank_inflation',
-      'armored_archer/get_reward_concentration',
-      'armored_archer/get_progression_velocity',
-    ]);
+                ]);
     const fixedButNotRemoved = [...KNOWN_BROKEN].filter(
       (id) => !stillBroken.has(id) && !LOOP_REGISTERED.has(id)
     );
