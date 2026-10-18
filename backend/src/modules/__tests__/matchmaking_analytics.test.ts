@@ -536,4 +536,76 @@ describe('Matchmaking Analytics Module', () => {
       expect(registerRpcWithMetrics).toHaveBeenCalledTimes(8);
     });
   });
+
+  describe('admin-gated analytics registrations (issue #1691)', () => {
+    const ADMIN_ID = '11111111-1111-4111-8111-111111111111';
+    const GUARDED_IDS = [
+      'armored_archer/get_weapon_stats',
+      'armored_archer/detect_balance_issues',
+      'armored_archer/export_analytics_report',
+    ];
+    let savedAdminEnv: string | undefined;
+
+    beforeEach(() => {
+      savedAdminEnv = process.env.ADMIN_USER_IDS;
+      process.env.ADMIN_USER_IDS = ADMIN_ID;
+    });
+
+    afterEach(() => {
+      if (savedAdminEnv === undefined) {
+        delete process.env.ADMIN_USER_IDS;
+      } else {
+        process.env.ADMIN_USER_IDS = savedAdminEnv;
+      }
+    });
+
+    function captureHandlers(): Map<string, (...args: any[]) => string> {
+      registerMatchmakingAnalyticsEndpoints({} as any);
+      const { registerRpcWithMetrics } = require('../metrics');
+      const map = new Map<string, (...args: any[]) => string>();
+      for (const call of registerRpcWithMetrics.mock.calls) {
+        map.set(call[1], call[3]);
+      }
+      return map;
+    }
+
+    it('rejects non-admin callers on all three admin-only RPCs', () => {
+      const handlers = captureHandlers();
+
+      for (const id of GUARDED_IDS) {
+        const handler = handlers.get(id);
+        expect(handler).toBeDefined();
+        const result = JSON.parse(handler!({ userId: 'player-1' }, mockLogger, mockNk, '{}'));
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('Not authorized');
+      }
+    });
+
+    it('rejects callers with no userId', () => {
+      const handlers = captureHandlers();
+
+      for (const id of GUARDED_IDS) {
+        const result = JSON.parse(handlers.get(id)!({} as any, mockLogger, mockNk, '{}'));
+        expect(result.success).toBe(false);
+      }
+    });
+
+    it('serves allowlisted admins through the guard', () => {
+      const handlers = captureHandlers();
+
+      for (const id of GUARDED_IDS) {
+        const result = JSON.parse(
+          handlers.get(id)!({ userId: ADMIN_ID }, mockLogger, mockNk, '{}')
+        );
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('leaves get_match_quality_metrics player-callable', () => {
+      const handlers = captureHandlers();
+
+      const handler = handlers.get('armored_archer/get_match_quality_metrics');
+      expect(handler).toBe(rpcGetMatchQualityMetrics);
+    });
+  });
 });
