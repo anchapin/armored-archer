@@ -63,9 +63,6 @@ const KNOWN_BROKEN = new Set([
   'armored_archer/get_weapon_stats',
   'armored_archer/detect_balance_issues',
   'armored_archer/export_analytics_report',
-  // balance_analytics (2)
-  'armored_archer/record_drop',
-  'armored_archer/record_stage_attempt',
   // direct-registerRpc async handlers (8)
   'armored_archer/prometheus_metrics',
   'armored_archer/prometheus_deployment',
