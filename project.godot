@@ -195,6 +195,9 @@ Gut/settings/config_file="res://.gutconfig.json"
 
 [rendering]
 
+; Required for Android export (VRAM texture compression for mobile GPUs).
+textures/vram_compression/import_etc2_astc=true
+
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
 textures/default_texture_filter=1
