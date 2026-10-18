@@ -577,7 +577,12 @@ describe('validateRewardDistribution', () => {
       (call: any[]) => call[0][0].collection === 'player_currency'
     );
     expect(currencyWrites).toHaveLength(1);
-    const ledgerRecord = (typeof currencyWrites[0][0][0].value === 'string' ? (typeof currencyWrites[0][0][0].value === 'string' ? JSON.parse(currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value) : currencyWrites[0][0][0].value);
+    const ledgerRecord =
+      typeof currencyWrites[0][0][0].value === 'string'
+        ? typeof currencyWrites[0][0][0].value === 'string'
+          ? JSON.parse(currencyWrites[0][0][0].value)
+          : currencyWrites[0][0][0].value
+        : currencyWrites[0][0][0].value;
     expect(ledgerRecord.user_id).toBe('p1');
     expect(ledgerRecord.gems).toBe(200);
     expect(ledgerRecord.coins).toBe(5000);
@@ -671,6 +676,34 @@ describe('triggerFixMissingRewards', () => {
     const result = triggerFixMissingRewards(mockNk, 'season_1', 1, true);
     expect(result.fixed_count).toBe(1);
     expect(mockNk.storageWrite).not.toHaveBeenCalled();
+  });
+  it('batches claimed-marker reads into one storage call (issue #1696)', () => {
+    mockNk.leaderboardRecordsList.mockReturnValue([
+      makeLeaderboardRecord({ rank: 1, ownerId: 'p1' }),
+      makeLeaderboardRecord({ rank: 2, ownerId: 'p2' }),
+      makeLeaderboardRecord({ rank: 3, ownerId: 'p3' }),
+    ]);
+    // p2 has claimed; p1 and p3 have not.
+    mockNk.storageRead.mockReturnValue([
+      {
+        collection: 'season_rewards_claimed',
+        key: 'season_1_p2',
+        userId: 'p2',
+        value: { season_id: 'season_1', user_id: 'p2' },
+      },
+    ]);
+
+    const result = triggerFixMissingRewards(mockNk, 'season_1', 1, true);
+    expect(result.fixed_count).toBe(2);
+    expect(result.players_fixed).toEqual(['p1', 'p3']);
+    // One batched read carrying all three keys, not one read per record.
+    const readCalls = mockNk.storageRead.mock.calls.filter(
+      (args: unknown[][]) =>
+        Array.isArray(args[0]) &&
+        (args[0] as { collection?: string }[])[0]?.collection === 'season_rewards_claimed'
+    );
+    expect(readCalls.length).toBe(1);
+    expect((readCalls[0][0] as unknown[]).length).toBe(3);
   });
 });
 
