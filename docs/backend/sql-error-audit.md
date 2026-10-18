@@ -118,9 +118,9 @@ notification modules, plus other gear-read callers, remain outside this slice.
 
 ### Test cleanup hardening (owner-approved scope)
 
-`cleanup_test_user` is gated by the existing exact
-`TEST_FIXTURE_RPCS_ENABLED=true` test-bundle opt-in at both registration routes
-and in the handler. It must never be enabled for a real deployment. An
+`cleanup_test_user` is gated by the CI-only dual opt-in
+(`TEST_FIXTURE_RPCS_ENABLED=true` AND `CI_RECEIPT_FIXTURE=true`, issue #1694)
+at both registration routes and in the handler. It must never be enabled for a real deployment. An
 authenticated caller can clean their own user only; a cross-user request needs
 the existing server-side admin allowlist. Missing caller identity, empty or
 broken allowlists and disabled opt-in fail closed before deletes.

@@ -19,7 +19,15 @@ import { listLeaderboardRecords } from '../utils/leaderboard-list';
 export const TEST_FIXTURE_RPC_ID = 'armored_archer/test_leaderboard_fixture';
 
 export function testFixtureRpcsEnabled(env: { [key: string]: string | undefined }): boolean {
-  return env.TEST_FIXTURE_RPCS_ENABLED === 'true';
+  // Defense-in-depth (issue #1694): require BOTH CI-only variables, not
+  // just one, so a single stray TEST_FIXTURE_RPCS_ENABLED=true in a real
+  // deployment cannot activate the destructive fixture RPCs. CI's
+  // integration job always writes both into backend/.env in the same step
+  // (ci.yml); NODE_ENV cannot be the second gate because the CI bundle is
+  // itself built with webpack mode:production, which bakes
+  // NODE_ENV='production'. Same dual-gate pattern as the receipt fixture
+  // route in store.ts.
+  return env.TEST_FIXTURE_RPCS_ENABLED === 'true' && env.CI_RECEIPT_FIXTURE === 'true';
 }
 
 interface FixturePayload {

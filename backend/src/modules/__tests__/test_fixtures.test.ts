@@ -72,9 +72,13 @@ describe('rpcDiagHttpProbe (#1423)', () => {
 });
 
 describe('testFixtureRpcsEnabled', () => {
-  it('is true only for the exact string "true"', () => {
-    expect(testFixtureRpcsEnabled({ TEST_FIXTURE_RPCS_ENABLED: 'true' })).toBe(true);
-    expect(testFixtureRpcsEnabled({ TEST_FIXTURE_RPCS_ENABLED: '1' })).toBe(false);
+  it('requires both CI-only variables (issue #1694 dual gate)', () => {
+    const both = { TEST_FIXTURE_RPCS_ENABLED: 'true', CI_RECEIPT_FIXTURE: 'true' };
+    expect(testFixtureRpcsEnabled(both)).toBe(true);
+    // A single stray flag must not activate fixture RPCs.
+    expect(testFixtureRpcsEnabled({ TEST_FIXTURE_RPCS_ENABLED: 'true' })).toBe(false);
+    expect(testFixtureRpcsEnabled({ CI_RECEIPT_FIXTURE: 'true' })).toBe(false);
+    expect(testFixtureRpcsEnabled({ ...both, TEST_FIXTURE_RPCS_ENABLED: '1' })).toBe(false);
     expect(testFixtureRpcsEnabled({})).toBe(false);
   });
 });
@@ -92,7 +96,12 @@ describe('registerTestFixtureRpcs', () => {
   it('registers the leaderboard fixture and diag probe RPCs when enabled', () => {
     const init = initializer();
     const logger = createMockLogger();
-    expect(registerTestFixtureRpcs(init, logger, { TEST_FIXTURE_RPCS_ENABLED: 'true' })).toBe(true);
+    expect(
+      registerTestFixtureRpcs(init, logger, {
+        TEST_FIXTURE_RPCS_ENABLED: 'true',
+        CI_RECEIPT_FIXTURE: 'true',
+      })
+    ).toBe(true);
     const ids = (init.registerRpc as jest.Mock).mock.calls.map((c) => c[0]);
     expect(ids).toEqual([
       'armored_archer/test_leaderboard_fixture',

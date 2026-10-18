@@ -6,6 +6,7 @@ const OWNER = '00000000-0000-4000-8000-000000000001';
 const ADMIN = '00000000-0000-4000-8000-000000000002';
 const TARGET = '00000000-0000-4000-8000-000000000003';
 const originalFlag = process.env.TEST_FIXTURE_RPCS_ENABLED;
+const originalFixtureGate = process.env.CI_RECEIPT_FIXTURE;
 const originalAdmins = process.env.ADMIN_USER_IDS;
 
 function probe(userId = OWNER, payload = JSON.stringify({ user_id: OWNER })) {
@@ -21,12 +22,15 @@ function probe(userId = OWNER, payload = JSON.stringify({ user_id: OWNER })) {
 describe('test cleanup access and synchronous error contract', () => {
   beforeEach(() => {
     process.env.TEST_FIXTURE_RPCS_ENABLED = 'true';
+    process.env.CI_RECEIPT_FIXTURE = 'true';
     process.env.ADMIN_USER_IDS = ADMIN;
     resetAdminAllowlistCache();
   });
   afterAll(() => {
     if (originalFlag === undefined) delete process.env.TEST_FIXTURE_RPCS_ENABLED;
     else process.env.TEST_FIXTURE_RPCS_ENABLED = originalFlag;
+    if (originalFixtureGate === undefined) delete process.env.CI_RECEIPT_FIXTURE;
+    else process.env.CI_RECEIPT_FIXTURE = originalFixtureGate;
     if (originalAdmins === undefined) delete process.env.ADMIN_USER_IDS;
     else process.env.ADMIN_USER_IDS = originalAdmins;
     resetAdminAllowlistCache();
