@@ -45,20 +45,15 @@ signal balance_adjustment_reverted(weapon_id: String)
 # --- Profiling Reference ---
 @onready var _profiler: Node = get_node_or_null("/root/ProfilingInstrumentation")
 
-# --- Network Reference ---
-var network_manager: Node
-
 # --- Gear Registry Reference ---
 var gear_registry: Node
 
 func _ready() -> void:
 	"""Initialize weapon balance manager."""
-	network_manager = get_node_or_null("/root/NetworkManager")
 	gear_registry = get_node_or_null("/root/GearRegistry")
 
-	# Load balance adjustments from server if connected
-	if network_manager and network_manager.is_connected:
-		_fetch_balance_adjustments()
+	# Balance adjustments are local-only (issue #1664): no server fetch RPC is
+	# registered, and wiring one is moot while the shop is const-hidden.
 
 # --- Damage Calculations ---
 
@@ -280,8 +275,10 @@ func get_loadout_power_rating(loadout_data: Dictionary) -> int:
 func apply_balance_adjustment(weapon_id: String, multiplier: float) -> void:
 	"""Applies a balance adjustment to a specific weapon.
 
-	This allows for hotfixes without code deployment. Changes are logged to
-	the server for audit purposes.
+	This allows for hotfixes without code deployment. Adjustments are
+	local-only (issue #1664); the server-side apply handler in
+	weapon_balance.ts is unregistered and wiring it is a separate,
+	admin-surface decision.
 
 	Parameters:
 		weapon_id: Unique weapon identifier
@@ -298,10 +295,6 @@ func apply_balance_adjustment(weapon_id: String, multiplier: float) -> void:
 	_balance_adjustments[weapon_id] = multiplier
 	balance_adjustment_applied.emit(weapon_id, multiplier)
 
-	# Report to server for logging
-	if network_manager and network_manager.is_connected:
-		_report_balance_adjustment(weapon_id, multiplier)
-
 	if profiling_block:
 		profiling_block.end()
 
@@ -316,10 +309,6 @@ func revert_balance_adjustment(weapon_id: String) -> void:
 		_balance_adjustments.erase(weapon_id)
 		balance_adjustment_reverted.emit(weapon_id)
 
-		# Report to server for logging
-		if network_manager and network_manager.is_connected:
-			_report_balance_adjustment(weapon_id, 1.0)  # 1.0 = revert to default
-
 
 func get_balance_adjustment(weapon_id: String) -> float:
 	"""Gets the current balance adjustment for a weapon.
@@ -331,32 +320,6 @@ func get_balance_adjustment(weapon_id: String) -> float:
 		Current multiplier (1.0 = no adjustment)
 	"""
 	return _balance_adjustments.get(weapon_id, 1.0)
-
-
-func _fetch_balance_adjustments() -> void:
-	"""Fetches current balance adjustments from the server.
-
-	This is called on initialization to ensure client has latest hotfixes.
-	"""
-	if not network_manager:
-		return
-
-	# TODO: Implement RPC to fetch balance adjustments
-	# For now, adjustments are stored locally
-
-
-func _report_balance_adjustment(weapon_id: String, multiplier: float) -> void:
-	"""Reports a balance adjustment to the server for audit logging.
-
-	Parameters:
-		weapon_id: Unique weapon identifier
-		multiplier: Applied multiplier
-	"""
-	if not network_manager or not network_manager.is_connected:
-		return
-
-	# TODO: Implement RPC to report balance adjustments
-	# This should log: admin_id, weapon_id, multiplier, timestamp, reason
 
 
 # --- Helper Functions ---
