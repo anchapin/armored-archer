@@ -65,11 +65,6 @@
             "critical": false,
             "description": "Manages cosmetic skin system"
         },
-        "AutoAimManager": {
-            "test_file": "test/suites/auto_aim/test_auto_aim_manager.gd",
-            "critical": false,
-            "description": "Provides auto-aim assistance"
-        },
         "ProfilingInstrumentation": {
             "test_file": "test/suites/autoloads/test_profiling_instrumentation.gd",
             "critical": false,

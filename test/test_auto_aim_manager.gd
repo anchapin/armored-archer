@@ -30,7 +30,7 @@ func run_tests() -> void:
 	queue_free()
 
 func _create_auto_aim_manager() -> Node:
-	var aim = load("res://autoloads/AutoAimManager.gd").new()
+	var aim = load("res://autoloads/ShootingManager.gd").new()
 	add_child(aim)
 	return aim
 
