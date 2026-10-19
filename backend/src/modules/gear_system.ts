@@ -2243,7 +2243,7 @@ export function rpcStageComplete(
   request.difficulty = resolveVerifiedDifficulty(request.difficulty, logger);
 
   // Rate limit check
-  const rateLimitCheck = checkRateLimit(ctx.userId, 'stage_complete');
+  const rateLimitCheck = checkRateLimit(nk, ctx.userId, 'stage_complete');
   if (!rateLimitCheck.allowed) {
     logger.warn('Stage complete rate limited for user: %s', ctx.userId);
     return JSON.stringify({

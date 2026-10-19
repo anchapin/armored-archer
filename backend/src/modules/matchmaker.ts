@@ -433,7 +433,7 @@ function persistPendingMatch(nk: Runtime.Nakama, creatorId: string, match: PvPMa
   ]);
 
   // Anti-abuse: Record match creation
-  recordMatchAction(creatorId, 'create', match.match_id);
+  recordMatchAction(nk, creatorId, 'create', match.match_id);
 }
 
 /**
@@ -480,7 +480,7 @@ export function rpcCreateMatch(
   }
 
   // Anti-abuse: Check rate limiting
-  const rateLimitCheck = checkRateLimit(ctx.userId, 'create_match');
+  const rateLimitCheck = checkRateLimit(nk, ctx.userId, 'create_match');
   if (!rateLimitCheck.allowed) {
     logger.warn(
       'Create match rate limited for user: %s, reason: %s',
@@ -504,7 +504,7 @@ export function rpcCreateMatch(
   }
 
   // Anti-abuse: Check cooldown
-  const cooldownCheck = checkMatchCooldown(ctx.userId, 'create');
+  const cooldownCheck = checkMatchCooldown(nk, ctx.userId, 'create');
   if (!cooldownCheck.allowed) {
     logger.warn('Create match cooldown for user: %s', ctx.userId);
     return JSON.stringify({
@@ -514,7 +514,7 @@ export function rpcCreateMatch(
   }
 
   // Anti-abuse: Check concurrent match limit
-  const concurrentCheck = checkConcurrentMatchLimit(ctx.userId);
+  const concurrentCheck = checkConcurrentMatchLimit(nk, ctx.userId);
   if (!concurrentCheck.allowed) {
     logger.warn('Concurrent match limit reached for user: %s', ctx.userId);
     return JSON.stringify({
@@ -697,7 +697,7 @@ export function rpcAcceptMatch(
   const request = validation.data;
 
   // Anti-abuse: Check rate limiting
-  const rateLimitCheck = checkRateLimit(ctx.userId, 'accept_match');
+  const rateLimitCheck = checkRateLimit(nk, ctx.userId, 'accept_match');
   if (!rateLimitCheck.allowed) {
     logger.warn(
       'Accept match rate limited for user: %s, reason: %s',
@@ -721,7 +721,7 @@ export function rpcAcceptMatch(
   }
 
   // Anti-abuse: Check cooldown
-  const cooldownCheck = checkMatchCooldown(ctx.userId, 'accept');
+  const cooldownCheck = checkMatchCooldown(nk, ctx.userId, 'accept');
   if (!cooldownCheck.allowed) {
     logger.warn('Accept match cooldown for user: %s', ctx.userId);
     return JSON.stringify({
@@ -731,7 +731,7 @@ export function rpcAcceptMatch(
   }
 
   // Anti-abuse: Check concurrent match limit
-  const concurrentCheck = checkConcurrentMatchLimit(ctx.userId);
+  const concurrentCheck = checkConcurrentMatchLimit(nk, ctx.userId);
   if (!concurrentCheck.allowed) {
     logger.warn('Concurrent match limit reached for user: %s', ctx.userId);
     return JSON.stringify({
@@ -831,7 +831,7 @@ export function rpcAcceptMatch(
   ]);
 
   // Anti-abuse: Record match acceptance
-  recordMatchAction(ctx.userId, 'accept', match.match_id);
+  recordMatchAction(nk, ctx.userId, 'accept', match.match_id);
 
   logAudit(
     nk,
@@ -1148,7 +1148,7 @@ export function rpcCompleteMatch(
   const request = validation.data;
 
   // Anti-abuse: Check rate limiting
-  const rateLimitCheck = checkRateLimit(ctx.userId, 'complete_match');
+  const rateLimitCheck = checkRateLimit(nk, ctx.userId, 'complete_match');
   if (!rateLimitCheck.allowed) {
     logger.warn(
       'Complete match rate limited for user: %s, reason: %s',
@@ -1162,7 +1162,7 @@ export function rpcCompleteMatch(
   }
 
   // Anti-abuse: Check cooldown
-  const cooldownCheck = checkMatchCooldown(ctx.userId, 'complete');
+  const cooldownCheck = checkMatchCooldown(nk, ctx.userId, 'complete');
   if (!cooldownCheck.allowed) {
     logger.warn('Complete match cooldown for user: %s', ctx.userId);
     return JSON.stringify({
@@ -2253,8 +2253,9 @@ function applySettlementOutcome(
   // further match write here (issue #1078).
 
   // Anti-abuse: Record match completion
-  recordMatchAction(ctx.userId, 'complete', match.match_id);
+  recordMatchAction(nk, ctx.userId, 'complete', match.match_id);
   recordMatchAction(
+    nk,
     request.winner_id === ctx.userId ? request.loser_id : request.winner_id,
     'complete',
     match.match_id
