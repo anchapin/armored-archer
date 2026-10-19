@@ -246,22 +246,6 @@ export const ValibotSchemas = {
     })
   ),
 
-  update_rank: object({
-    match_id: pipe(string(), minLength(1), maxLength(100)),
-    winner_id: pipe(string(), minLength(1), maxLength(100)),
-    loser_id: pipe(string(), minLength(1), maxLength(100)),
-    winner_old_rank: number(),
-    loser_old_rank: number(),
-    winner_new_rank: number(),
-    loser_new_rank: number(),
-    is_punch_up: boolean(),
-    // Anti-cheat fields
-    requestId: optional(string()),
-    timestamp: optional(number()),
-    signature: optional(string()),
-    nonce: optional(string()),
-  }),
-
   // ADR-0002: winner_id/loser_id are advisory/logging only (settlement is
   // server-declared). Kept optional so legacy clients that omit them still
   // validate; values are never honored for settlement.

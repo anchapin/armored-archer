@@ -15,69 +15,47 @@ be stale; this file is the durable landing page.
 - `MVP_GAP_ANALYSIS.md` (root) — pillar-level gap analysis.
 - `docs/adr/0002-server-declared-match-settlement.md` — the ADR whose intent
   is being bypassed by `update_rank` (see Security below).
-- `autoloads/const.gd` (line 40-44) — the `MVP_PVE_ONLY` build const.
+- `autoloads/const.gd` (line 45) — the `MVP_PVE_ONLY` build const.
 
 ---
 
-## 1. Security — `armored_archer/update_rank` ADR-0002 bypass (BLOCKING)
+## 1. Security — `armored_archer/update_rank` ADR-0002 bypass (CLOSED)
 
-**Why this is first:** This is the only prerequisite that can cause real
-player harm (rating tampering, season-leaderboard injection, reward inflation)
-if the const-flip is done without it. All other items are operational or
-platform gaps.
+**Status: closed.** The client-facing `armored_archer/update_rank` RPC no
+longer exists, so there is no bypass left to close. This section is kept as
+the record of what the hole was and how it was closed; it is no longer a
+blocker for the const-flip.
 
-### What the bypass is
+### What the bypass was
 
 ADR-0002 (`docs/adr/0002-server-declared-match-settlement.md`) ratified that
-match settlement is **server-declared only**: the client may trigger settlement
-but never assert outcomes. `complete_match` was patched to treat `winner_id` /
-`loser_id` as advisory logging only (see `validation.ts` lines 250-257).
+match settlement is **server-declared only**. `update_rank` historically
+accepted client-asserted `winner_id` / `loser_id` as the authority for Elo,
+XP, and seasonal reward settlement, and its anti-cheat signature check was a
+*presence* check rather than a *requirement* check.
 
-`update_rank` was **not** patched. It still accepts client-asserted
-`winner_id` / `loser_id` as the authority for Elo, XP, and seasonal reward
-settlement, and the anti-cheat signature is **optional** — a client that omits
-all four signature fields (`requestId`, `timestamp`, `signature`, `nonce`)
-skips signature validation entirely.
+### How it was closed
 
-### Where it lives in the code
+- #955 / #984 required the anti-cheat signature (HMAC verification on by
+  default).
+- #1076 / #1114 removed the client-facing RPC entirely. Elo now moves only
+  via server-settled matches. Evidence in current code:
+  - `backend/src/index.ts` (around line 596) carries the tombstone:
+    `update_rank is intentionally NOT registered — removed in issue #1076`.
+  - `backend/src/modules/season_system.ts` (around line 639) records the
+    removal of `rpcUpdateRank` + `registerRpcUpdateRank`.
+  - `backend/src/modules/__tests__/season_system.test.ts` ("update_rank
+    removal (issue #1076)") pins that no `registerRpc*` export registers
+    `armored_archer/update_rank`.
+  - `backend/src/modules/__tests__/anti_cheat.test.ts` pins that a
+    client-asserted winner/loser payload fails signature verification.
 
-All references are in `backend/src/modules/season_system.ts`:
+### Remaining micro-cleanup (non-blocking)
 
-| Concern | Location | Risk |
-|---|---|---|
-| RPC registration | `initializer.registerRpc('armored_archer/update_rank', rpcUpdateRank)` — line 492 | Entry point is reachable behind `MVP_PVE_ONLY = true` only if any caller bypasses the const gate. |
-| Anti-cheat gate | `function validateRankUpdateSignature(...)` — lines 548-597. The actual guard is **line 566**: `if (request.requestId && request.timestamp && request.signature && request.nonce) {` — the gate is a *presence* check, not a *requirement* check. Any omitted field silently disables signature verification for the rest of the call. | A malicious client can omit all four anti-cheat fields and still get a settled rank update. |
-| RPC handler | `export function rpcUpdateRank(...)` — **lines 728-** (function begins at line 728). Reads `request.winner_id` / `request.loser_id` directly and uses them as the winners/losers for the leaderboard write at `applyEloUpdates(...)` (line 669+). | Client can self-assign any opponent and any Elo delta within the leaderboard schema. |
-| Schema (permitting the bypass) | `backend/src/modules/validation.ts` **lines 234-248** — `update_rank` declares `winner_id` / `loser_id` as required strings and the four anti-cheat fields as `optional(...)`. Compare with `complete_match` (lines 253-257) which has the ADR-0002 advisory comment. | The schema is the contract-level enabler of the bypass. |
-
-### What "close the bypass" means
-
-At minimum, two changes, both behind the existing RPC handler:
-
-1. **Make signature mandatory.** Either reject the call when any of
-   `requestId` / `timestamp` / `signature` / `nonce` is missing, or drop the
-   `if (...present)` guard and require signed payloads always. The latter
-   means migrating every legitimate caller (the client-side matchmaker +
-   combat-system integration) to sign first.
-2. **Derive `winner_id` / `loser_id` from the server match state.** Look up
-   `match_id` in the server's authoritative match record (the same record
-   `combat_system.ts` writes) and use that to authoritatively resolve the
-   winner, mirroring how `complete_match` now treats its `winner_id` /
-   `loser_id` as advisory only. Honest implementation guidance: drop the
-   client-asserted fields from the schema and add `match_id`-only lookup, or
-   cross-check the client-asserted values against the server record and
-   reject on mismatch.
-
-A regression test should pin the behavior: a request missing any signature
-field returns `ANTI_CHEAT_VIOLATION`; a request with `winner_id` not equal to
-the server-declared winner returns `MISMATCHED_OUTCOME`.
-
-### Why this is MVP-2 and not MVP
-
-The MVP-PvE slice hides PvP, Shop, and BuyGems behind `MVP_PVE_ONLY = true`.
-No honest player path can reach `update_rank` in the MVP build. The bypass
-remains dormant until the const is flipped — which is the entire point of
-making this an explicit prerequisite before that flip.
+The `update_rank` entry in `backend/src/modules/validation.ts`
+(`ZodSchemas`) is a dead schema — no handler validates against it since the
+RPC was removed. Removed alongside this doc update in the same PR; no
+behavior change.
 
 ---
 
@@ -102,7 +80,7 @@ promise iOS readiness.
 
 ---
 
-## 3. Const-flip re-enable procedure (DEFERRED — depends on #1 + #2)
+## 3. Const-flip re-enable procedure (DEFERRED — depends on #2; #1 is closed)
 
 Flipping `MVP_PVE_ONLY` from `true` to `false` is the single switch that
 restores PvP, Shop, and BuyGems in the main menu. It is implemented in
@@ -111,9 +89,9 @@ NetworkConsts.MVP_PVE_ONLY: return`).
 
 ### Pre-flight checklist (do **not** proceed until all are checked)
 
-- [ ] Section 1 closed: `update_rank` bypass is patched and a regression
-      test is in place (see `backend/src/modules/__tests__/season_system.test.ts`
-      around the existing `update_rank` coverage at line 766+).
+- [x] Section 1 closed: `update_rank` RPC removed (#1076/#1114); removal
+      pinned by `backend/src/modules/__tests__/season_system.test.ts`
+      ("update_rank removal") and `anti_cheat.test.ts` signature tests.
 - [ ] Section 2 closed (or formally deferred): iOS toolchain decision
       recorded.
 - [ ] `make backend-check` passes (lint + typecheck).
@@ -125,7 +103,7 @@ NetworkConsts.MVP_PVE_ONLY: return`).
 
 ### The flip
 
-Edit `autoloads/const.gd` line 44:
+Edit `autoloads/const.gd` (line 45 at time of writing):
 
 ```gdscript
 # Before
@@ -160,3 +138,7 @@ player-facing at the moment of the flip and must be triaged accordingly.
 - 2026-08-17 — Initial creation (issue #916). Security (ADR-0002 bypass),
   iOS toolchain, and const-flip procedure recorded. Closed prerequisites
   tracker: zero of three closed.
+- 2026-10-18 — Section 1 marked CLOSED (#1658): the `update_rank` bypass was
+  already fixed by #955/#984 (mandatory HMAC) and #1076/#1114 (RPC removed);
+  doc rewritten to record reality. Stale line references updated; dead
+  `update_rank` Zod schema removed. Tracker: one of three closed.
