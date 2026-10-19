@@ -33,47 +33,47 @@ func set_haptics_enabled(enabled: bool) -> void:
 func light_tap() -> void:
 	if not is_haptics_enabled():
 		return
-	Input.start_joy_vibration(0, 0.5, 1.0, -130)
+	_buzz(25)
 
 
 func medium_tap() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.start_joy_vibration(0, 0.5, 1.0, -120)
+		_buzz(20)
 		return
-	Input.start_joy_vibration(0, 0.5, 1.0, -150)
+	_buzz(35)
 
 
 func heavy_tap() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.start_joy_vibration(0, 0.5, 1.0, -130)
+		_buzz(25)
 		return
-	Input.start_joy_vibration(0, 0.5, 1.0, -180)
+	_buzz(60)
 
 
 func success_pulse() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.start_joy_vibration(0, 0.5, 1.0, -140)
+		_buzz(30)
 		return
-	Input.start_joy_vibration(0, 0.5, 1.0, -150)
+	_buzz(35)
 	await get_tree().create_timer(0.1).timeout
-	Input.start_joy_vibration(0, 0.5, 1.0, -150)
+	_buzz(35)
 
 
 func damage_pulse() -> void:
 	if not is_haptics_enabled():
 		return
 	if _is_budget_device:
-		Input.start_joy_vibration(0, 0.5, 1.0, -140)
+		_buzz(30)
 		return
-	Input.start_joy_vibration(0, 0.5, 1.0, -160)
+	_buzz(45)
 	await get_tree().create_timer(0.08).timeout
-	Input.start_joy_vibration(0, 0.5, 1.0, -140)
+	_buzz(30)
 
 
 func _load_settings() -> void:
@@ -104,3 +104,13 @@ func _save_settings() -> void:
 	if file:
 		file.store_string(JSON.stringify(data, "\t"))
 		file.close()
+
+
+## Phone motor on handhelds (needs the VIBRATE permission in the Android
+## export preset); gamepad rumble only when a pad is connected (#1722).
+func _buzz(duration_ms: int) -> void:
+	if _is_mobile:
+		Input.vibrate_handheld(duration_ms)
+	var pads: Array[int] = Input.get_connected_joypads()
+	if not pads.is_empty():
+		Input.start_joy_vibration(pads[0], 0.5, 1.0, duration_ms / 1000.0)
