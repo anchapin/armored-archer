@@ -100,3 +100,68 @@ jobs:
           path: export/android/armored-archer.apk
           retention-days: 7
           if-no-files-found: error
+
+  # Issue #1662 step 3: boot the exported APK in an emulator and assert the
+  # engine comes up. The export presets ship arm-only APKs (armeabi-v7a +
+  # arm64-v8a; x86/x86_64 disabled), so this job runs an arm64-v8a emulator
+  # image under software emulation on the x86_64 host - slow boot (minutes,
+  # not seconds) is expected and budgeted in the job timeout. Assertions:
+  # process alive after a generous settle window + Godot engine banner in
+  # logcat. An autoload crash on a device-only path kills the process and
+  # fails the alive check. A boot screenshot is uploaded for human review.
+  # A game-side boot marker print would be a stronger assertion; that is a
+  # production code change and deliberately not bundled with this CI job.
+  boot-smoke:
+    runs-on: ubuntu-latest
+    needs: export
+    timeout-minutes: 75
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@v7
+        with:
+          name: armored-archer-debug-apk
+          path: export/android
+
+      - name: Enable KVM (best effort; arm images fall back to software emulation)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+
+      - name: Boot APK in arm64 emulator and assert engine startup
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: arm64-v8a
+          disable-animations: true
+          emulator-boot-timeout: 1800
+          script: |
+            set -e
+            adb shell input keyevent 82 || true
+            adb install -r export/android/armored-archer.apk
+            adb logcat -c
+            adb shell am start -n com.armoredarcher.game/com.godot.game.GodotApp
+            echo "Launched; settling under software emulation..."
+            sleep 120
+            if ! adb shell pidof com.armoredarcher.game > /tmp/game.pid || [ ! -s /tmp/game.pid ]; then
+              echo "::error::Game process not running 120s after launch (autoload crash on device path?)"
+              adb logcat -d | tail -150
+              exit 1
+            fi
+            echo "Game process alive: $(cat /tmp/game.pid)"
+            if ! adb logcat -d | grep -q "Godot Engine v4.6"; then
+              echo "::error::Godot engine banner not found in logcat"
+              adb logcat -d | tail -150
+              exit 1
+            fi
+            echo "Godot engine banner confirmed in logcat"
+            adb exec-out screencap -p > boot-smoke.png
+
+      - name: Upload boot screenshot
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-boot-smoke-screenshot
+          path: boot-smoke.png
+          retention-days: 7
+          if-no-files-found: warn
