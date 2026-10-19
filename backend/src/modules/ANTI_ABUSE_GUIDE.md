@@ -89,12 +89,12 @@ initializeRateLimiting(
 );
 ```
 
-### `checkRateLimit(userId, rpcName)`
+### `checkRateLimit(nk, userId, rpcName)`
 
 Check if a user is currently rate limited for a specific RPC.
 
 ```typescript
-const result = checkRateLimit(userId, 'create_match');
+const result = checkRateLimit(nk, userId, 'create_match');
 if (!result.allowed) {
   // User is rate limited
   console.log(`Retry after: ${result.retryAfter}ms`);
@@ -102,46 +102,46 @@ if (!result.allowed) {
 }
 ```
 
-### `checkMatchCooldown(userId, action)`
+### `checkMatchCooldown(nk, userId, action)`
 
 Check if a player is on cooldown for a specific match action.
 
 ```typescript
-const result = checkMatchCooldown(userId, 'create');
+const result = checkMatchCooldown(nk, userId, 'create');
 if (!result.allowed) {
   // Player is in cooldown
   console.log(`Retry after: ${result.retryAfter}ms`);
 }
 ```
 
-### `checkConcurrentMatchLimit(userId)`
+### `checkConcurrentMatchLimit(nk, userId)`
 
 Check if a player has reached the maximum active matches.
 
 ```typescript
-const result = checkConcurrentMatchLimit(userId);
+const result = checkConcurrentMatchLimit(nk, userId);
 if (!result.allowed) {
   console.log(`Active: ${result.activeCount}, Limit: ${result.limit}`);
 }
 ```
 
-### `checkAbandonmentLimit(userId)`
+### `checkAbandonmentLimit(nk, userId)`
 
 Check if a player has exceeded abandonment limits.
 
 ```typescript
-const result = checkAbandonmentLimit(userId);
+const result = checkAbandonmentLimit(nk, userId);
 if (!result.allowed) {
   console.log(`Abandonments: ${result.abandonCount}, Limit: ${result.limit}`);
 }
 ```
 
-### `checkDuplicateTurn(userId, matchId, turnNumber)`
+### `checkDuplicateTurn(nk, userId, matchId, turnNumber)`
 
 Check if a turn has already been submitted.
 
 ```typescript
-const result = checkDuplicateTurn(userId, matchId, turnNumber);
+const result = checkDuplicateTurn(nk, userId, matchId, turnNumber);
 if (result.isDuplicate) {
   console.log(`Last turn: ${result.lastTurnNumber}`);
 }
@@ -159,17 +159,17 @@ if (detection.suspicious) {
 }
 ```
 
-### `recordMatchAction(userId, action, matchId?)`
+### `recordMatchAction(nk, userId, action, matchId?)`
 
 Record a match action for cooldown and concurrent tracking.
 
 ```typescript
-recordMatchAction(userId, 'create', matchId);
-recordMatchAction(userId, 'complete', matchId);
-recordMatchAction(userId, 'abandon', matchId);
+recordMatchAction(nk, userId, 'create', matchId);
+recordMatchAction(nk, userId, 'complete', matchId);
+recordMatchAction(nk, userId, 'abandon', matchId);
 ```
 
-### `cleanupTurnTracking(userId, matchId)`
+### `cleanupTurnTracking(nk, userId, matchId)`
 
 Clean up turn tracking when a match is completed.
 
@@ -273,7 +273,7 @@ console.log(`Tracked turns: ${stats.trackedTurns}`);
 ### Player Rate Limit Status
 
 ```typescript
-const status = getPlayerRateLimitStatus(userId);
+const status = getPlayerRateLimitStatus(nk, userId);
 console.log(`Active matches: ${status.activeMatches}`);
 console.log(`Abandonments: ${status.abandonCount}`);
 console.log(`Last action: ${status.lastMatchAction}`);
@@ -281,7 +281,7 @@ console.log(`Last action: ${status.lastMatchAction}`);
 
 ## Security Considerations
 
-1. **Memory Management**: The system includes automatic cleanup of old entries every 5 minutes to prevent memory leaks.
+1. **Durable State**: Rate-limit, cooldown, concurrency, abandonment, and turn-dedup state lives in Nakama storage (collection `pvp_rate_limits`), shared by every Nakama instance and surviving restarts (issue #1697). Writes use optimistic concurrency; a storage outage fails open (logged), and exhausted contention fails closed. The only in-memory state is an observability mirror for `getRateLimitStats`, cleaned up every 5 minutes.
 
 2. **Per-User Tracking**: All rate limiting and tracking is per-user to ensure fair play while preventing abuse.
 
@@ -323,13 +323,12 @@ Comprehensive tests are available in `rate_limit.test.ts` covering:
 - Turn submission duplicate detection (5 tests)
 - Win trading detection (5 tests)
 - Statistics and monitoring (3 tests)
+- Durable storage behavior: cross-instance sharing, restart persistence, OCC contention, storage-outage fallback, stale-entry pruning (8 tests)
 - Cleanup and memory management (2 tests)
-
-Total: 34 tests, 32 passing
 
 ## Future Enhancements
 
-1. **Persistent Storage**: Move in-memory tracking to Redis or database for horizontal scaling
+1. ~~Persistent Storage~~: Done in issue #1697 - durable Nakama storage with OCC (Redis is unreachable from the goja runtime, ADR-0008)
 2. **IP-Based Rate Limiting**: Add IP address tracking in addition to per-user limits
 3. **Machine Learning**: Enhance win trading detection with ML-based pattern recognition
 4. **Reputation System**: Track player reputation over time with exponential decay
