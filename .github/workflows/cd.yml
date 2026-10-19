@@ -30,6 +30,10 @@ jobs:
     environment:
       name: staging
       url: https://staging.armored-archer.example.com
+    env:
+      # Read at job level so the notify step's if: can test presence
+      # (secrets.* is not available in step conditions) - issue #1362.
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -161,9 +165,8 @@ jobs:
 
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (staging)
-        if: always() && env.ACT != 'true'
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        # Skipped until DISCORD_WEBHOOK_URL is configured (issue #1362).
+        if: always() && env.ACT != 'true' && env.DISCORD_WEBHOOK_URL != ''
         run: |
           # Discord's Slack-compatible endpoint accepts this Slack-format payload unchanged.
           curl -sSf -X POST -H 'Content-Type: application/json' \
@@ -223,6 +226,10 @@ jobs:
     environment:
       name: production
       url: https://armored-archer.example.com
+    env:
+      # Read at job level so the notify step's if: can test presence
+      # (secrets.* is not available in step conditions) - issue #1362.
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -354,9 +361,8 @@ jobs:
 
       # Deployment observability: Send deployment notification
       - name: Send deployment notification (production)
-        if: always() && env.ACT != 'true'
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        # Skipped until DISCORD_WEBHOOK_URL is configured (issue #1362).
+        if: always() && env.ACT != 'true' && env.DISCORD_WEBHOOK_URL != ''
         run: |
           # Discord's Slack-compatible endpoint accepts this Slack-format payload unchanged.
           curl -sSf -X POST -H 'Content-Type: application/json' \
