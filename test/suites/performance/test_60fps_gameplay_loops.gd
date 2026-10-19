@@ -101,7 +101,7 @@ func test_combat_calculations_performance() -> void:
 
 	# Run combat calculations
 	for i in range(iterations):
-		var damage = combat_manager.calculate_damage(
+		var damage = CombatMath.calculate_damage(
 			base_damage,
 			attacker_stats,
 			defender_stats,
