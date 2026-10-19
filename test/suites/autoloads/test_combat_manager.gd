@@ -108,7 +108,7 @@ func test_calculate_damage_basic():
 	# Test base_damage + attack - defense formula
 	var attacker_stats = {"attack": 10, "crit_rate": 0}
 	var defender_stats = {"defense": 5, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.0)
 	# base 20 + attack 10 - defense 5 = 25
 	assert_eq(damage, 25, "Basic damage calculation should be 25")
 
@@ -116,7 +116,7 @@ func test_calculate_damage_minimum_one():
 	# Test damage never goes below 1
 	var attacker_stats = {"attack": 0, "crit_rate": 0}
 	var defender_stats = {"defense": 100, "dodge": 0}
-	var damage = _combat.calculate_damage(10, attacker_stats, defender_stats, 1.0)
+	var damage = CombatMath.calculate_damage(10, attacker_stats, defender_stats, 1.0)
 	# base 10 + attack 0 - defense 100 = -90, but min is 1
 	assert_eq(damage, 1, "Damage should never be less than 1")
 
@@ -124,7 +124,7 @@ func test_calculate_damage_zero_attack():
 	# Test with zero attack stat
 	var attacker_stats = {"attack": 0, "crit_rate": 0}
 	var defender_stats = {"defense": 5, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.0)
 	# base 20 + attack 0 - defense 5 = 15
 	assert_eq(damage, 15, "Damage should be calculated correctly with zero attack")
 
@@ -132,7 +132,7 @@ func test_calculate_damage_high_defense():
 	# Test when defense exceeds attack + base
 	var attacker_stats = {"attack": 10, "crit_rate": 0}
 	var defender_stats = {"defense": 50, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.0)
 	# base 20 + attack 10 - defense 50 = -20, but min is 1
 	assert_eq(damage, 1, "Damage should be 1 when defense exceeds attack + base")
 
@@ -141,7 +141,7 @@ func test_calculate_damage_crit_hit():
 	# Since we can't control randf(), we'll test that crit is possible
 	var attacker_stats = {"attack": 10, "crit_rate": 100}  # 100% crit rate
 	var defender_stats = {"defense": 5, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 2.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 2.0)
 	# base 20 + attack 10 - defense 5 = 25, * 2.0 = 50 (if crit)
 	# Since crit_rate is 100%, damage should be 50
 	assert_eq(damage, 50, "Critical hit should double damage with 100% crit rate")
@@ -150,14 +150,14 @@ func test_calculate_damage_crit_multiplier_2x():
 	# Test damage doubled with 2.0 multiplier
 	var attacker_stats = {"attack": 10, "crit_rate": 100}
 	var defender_stats = {"defense": 5, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 2.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 2.0)
 	assert_eq(damage, 50, "Damage should be doubled with 2.0 multiplier")
 
 func test_calculate_damage_crit_multiplier_3x():
 	# Test damage tripled with 3.0 multiplier
 	var attacker_stats = {"attack": 10, "crit_rate": 100}
 	var defender_stats = {"defense": 5, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 3.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 3.0)
 	# base 20 + attack 10 - defense 5 = 25, * 3.0 = 75
 	assert_eq(damage, 75, "Damage should be tripled with 3.0 multiplier")
 
@@ -166,7 +166,7 @@ func test_calculate_damage_dodge():
 	# With 100% dodge, damage should always be 0
 	var attacker_stats = {"attack": 10, "crit_rate": 100}
 	var defender_stats = {"defense": 5, "dodge": 100}  # 100% dodge rate
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 2.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 2.0)
 	# With 100% dodge, attack should be dodged
 	assert_eq(damage, 0, "Damage should be 0 when dodge succeeds")
 
@@ -174,7 +174,7 @@ func test_calculate_damage_stats_with_defaults():
 	# Test with missing stats uses 0 defaults
 	var attacker_stats = {}  # Empty dict - should use 0 defaults
 	var defender_stats = {}  # Empty dict - should use 0 defaults
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.0)
 	# base 20 + attack 0 - defense 0 = 20
 	assert_eq(damage, 20, "Missing stats should default to 0")
 
@@ -182,7 +182,7 @@ func test_calculate_damage_integer_result():
 	# Test result is int (not float)
 	var attacker_stats = {"attack": 10, "crit_rate": 0}
 	var defender_stats = {"defense": 5, "dodge": 0}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.0)
 	assert_true(typeof(damage) == TYPE_INT, "Damage result should be integer")
 	assert_eq(damage, 25, "Integer damage should be 25")
 

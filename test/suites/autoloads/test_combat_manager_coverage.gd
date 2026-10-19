@@ -51,7 +51,7 @@ func test_basic_damage_calculation_tracks_coverage():
 
 	var attacker_stats = {"attack": 50, "crit_rate": 10.0}
 	var defender_stats = {"defense": 20, "dodge": 0.0}
-	var result = _combat.calculate_damage(100, attacker_stats, defender_stats, 1.5)
+	var result = CombatMath.calculate_damage(100, attacker_stats, defender_stats, 1.5)
 
 	# Track dodge check (line 176: var dodge_roll = randf() * 100.0)
 	CoverageTracker.track_execution("res://autoloads/CombatManager.gd", 176)
@@ -78,7 +78,7 @@ func test_dodge_branch_tracks_coverage():
 	# Track dodged return (line 178: return 0  # Dodged)
 	CoverageTracker.track_execution("res://autoloads/CombatManager.gd", 178)
 
-	var result = _combat.calculate_damage(100, attacker_stats, defender_stats, 1.5)
+	var result = CombatMath.calculate_damage(100, attacker_stats, defender_stats, 1.5)
 	assert_eq(result, 0, "Damage should be 0 when dodged")
 
 func test_critical_hit_branch_tracks_coverage():
@@ -98,7 +98,7 @@ func test_critical_hit_branch_tracks_coverage():
 	# Track critical hit multiplier (line 191: damage = int(damage * crit_multiplier))
 	CoverageTracker.track_execution("res://autoloads/CombatManager.gd", 191)
 
-	var result = _combat.calculate_damage(100, attacker_stats, defender_stats, 1.5)
+	var result = CombatMath.calculate_damage(100, attacker_stats, defender_stats, 1.5)
 	assert_true(result > 100, "Critical hit should multiply damage")
 
 func test_defense_reduction_tracks_coverage():
@@ -115,7 +115,7 @@ func test_defense_reduction_tracks_coverage():
 	# Track minimum damage enforcement (line 188: damage = max(1, damage))
 	CoverageTracker.track_execution("res://autoloads/CombatManager.gd", 188)
 
-	var result = _combat.calculate_damage(100, attacker_stats, defender_stats, 1.0)
+	var result = CombatMath.calculate_damage(100, attacker_stats, defender_stats, 1.0)
 	assert_eq(result, 50, "Damage should be reduced by defense (100 + 0 - 50 = 50)")
 
 func test_get_my_health_tracks_coverage():

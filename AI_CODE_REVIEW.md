@@ -97,7 +97,7 @@ func set_value(val: float) -> void:
 
 # Use autoloads for cross-scene data
 GameManager.set_player_state(state)
-var damage = CombatManager.calculate_damage(base, modifier)
+var damage = CombatMath.calculate_damage(base, attacker_stats, defender_stats, crit_multiplier)
 ```
 
 **❌ INCORRECT:**

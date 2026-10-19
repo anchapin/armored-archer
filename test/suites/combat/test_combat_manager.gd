@@ -124,7 +124,7 @@ func test_calculate_damage_basic():
 	var attacker_stats = {"attack": 10, "crit_rate": 0}
 	var defender_stats = {"defense": 5, "dodge": 0}
 	# base 20 + attack 10 - defense 5 = 25
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.5)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.5)
 	assert_eq(damage, 25, "Basic damage calculation should be 25")
 
 # Test: calculate_damage minimum 1
@@ -132,7 +132,7 @@ func test_calculate_damage_min():
 	var attacker_stats = {"attack": 0, "crit_rate": 0}
 	var defender_stats = {"defense": 100, "dodge": 0}
 	# base 10 + attack 0 - defense 100 = -90 -> clamped to 1
-	var damage = _combat.calculate_damage(10, attacker_stats, defender_stats, 1.5)
+	var damage = CombatMath.calculate_damage(10, attacker_stats, defender_stats, 1.5)
 	assert_eq(damage, 1, "Minimum damage should be 1")
 
 # Test: calculate_damage critical hit
@@ -143,14 +143,14 @@ func test_calculate_damage_crit():
 	var attacker_stats = {"attack": 10, "crit_rate": 100}
 	var defender_stats = {"defense": 0, "dodge": 0}
 	# base 20 + attack 10 = 30. 30 * 2.0 = 60
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 2.0)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 2.0)
 	assert_eq(damage, 60, "Critical hit should double damage")
 
 # Test: calculate_damage dodge
 func test_calculate_damage_dodge():
 	var attacker_stats = {"attack": 10, "crit_rate": 0}
 	var defender_stats = {"defense": 0, "dodge": 100}
-	var damage = _combat.calculate_damage(20, attacker_stats, defender_stats, 1.5)
+	var damage = CombatMath.calculate_damage(20, attacker_stats, defender_stats, 1.5)
 	assert_eq(damage, 0, "Dodged attack should deal 0 damage")
 
 # Test: submit_combat_action success
