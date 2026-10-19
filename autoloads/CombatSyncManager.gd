@@ -17,10 +17,25 @@ signal combat_started(match_id: String)
 signal offline_state_changed(is_offline: bool)  # Issue #1081: circuit breaker surfaced state
 
 # --- Properties ---
-var player_health: int = 100
-var opponent_health: int = 100
+# ADR-0009 (issue #1714, option b): health/turn are backed by the shared
+# server-known snapshot in CombatStateCache; CombatManager's RPC echo is the
+# other write path. Reads anywhere return the same latest server-known value.
+var player_health: int:
+	get:
+		return CombatStateCache.my_health
+	set(value):
+		CombatStateCache.my_health = maxi(0, value)
+var opponent_health: int:
+	get:
+		return CombatStateCache.opponent_health
+	set(value):
+		CombatStateCache.opponent_health = maxi(0, value)
 var combat_log: Array[Dictionary] = []
-var is_my_turn: bool = false
+var is_my_turn: bool:
+	get:
+		return CombatStateCache.is_my_turn
+	set(value):
+		CombatStateCache.is_my_turn = value
 
 # --- State ---
 var current_match_id: String = ""
@@ -37,7 +52,8 @@ const POLL_FAILURE_CIRCUIT_BREAK_LIMIT: int = 5  # Stop polling after 5 consecut
 
 # --- Initialization ---
 func _ready() -> void:
-	pass
+	# Seed the shared snapshot with this path's pre-combat placeholder.
+	CombatStateCache.update_snapshot(100, 100, false, "", "")
 
 # --- Combat Lifecycle ---
 
@@ -52,6 +68,7 @@ func start_combat(match_id: String) -> void:
 	_poll_failures = 0
 	_circuit_broken = false
 	_is_offline = false
+	CombatStateCache.update_snapshot(player_health, opponent_health, is_my_turn, "active", "poll")
 
 	combat_started.emit(match_id)
 
@@ -91,6 +108,7 @@ func send_move(angle: float, power: float) -> void:
 
 	# Switch turn
 	is_my_turn = false
+	CombatStateCache.update_snapshot(player_health, opponent_health, is_my_turn, CombatStateCache.match_status, "poll")
 
 ## Updates opponent state from polling response
 func update_opponent_state(opponent_move_data: Dictionary) -> void:
@@ -111,6 +129,7 @@ func update_opponent_state(opponent_move_data: Dictionary) -> void:
 
 		opponent_moved.emit(opponent_move_data)
 		is_my_turn = true
+		CombatStateCache.update_snapshot(player_health, opponent_health, is_my_turn, CombatStateCache.match_status, "poll")
 
 ## Gets current turn indicator
 func get_current_turn() -> String:
@@ -185,6 +204,7 @@ func end_combat(winner: String) -> void:
 		"timestamp": Time.get_ticks_msec()
 	})
 
+	CombatStateCache.update_snapshot(player_health, opponent_health, is_my_turn, "ended", "poll")
 	combat_ended.emit(winner)
 
 ## Issue #1081: called by UI or NetworkManager when connectivity is restored

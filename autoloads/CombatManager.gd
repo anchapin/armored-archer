@@ -9,9 +9,24 @@ const RPC_GET_MATCH_STATE = "armored_archer/get_match_state"
 
 # --- Combat State ---
 var current_match_state: Dictionary = {}
-var is_my_turn: bool = false
-var my_health: int = 0
-var opponent_health: int = 0
+# ADR-0009 (issue #1714, option b): health/turn are backed by the shared
+# server-known snapshot in CombatStateCache; both write paths (this RPC echo
+# and CombatSyncManager's polling loop) feed it, so all screens read one value.
+var is_my_turn: bool:
+	get:
+		return CombatStateCache.is_my_turn
+	set(value):
+		CombatStateCache.is_my_turn = value
+var my_health: int:
+	get:
+		return CombatStateCache.my_health
+	set(value):
+		CombatStateCache.my_health = maxi(0, value)
+var opponent_health: int:
+	get:
+		return CombatStateCache.opponent_health
+	set(value):
+		CombatStateCache.opponent_health = maxi(0, value)
 
 # --- Signals ---
 signal combat_action_submitted(result: Dictionary)
@@ -26,6 +41,8 @@ var network_manager: Node
 func _ready() -> void:
 	if network_manager == null:
 		network_manager = get_node_or_null("/root/NetworkManager")
+	# Seed the shared snapshot with this path's empty placeholder.
+	CombatStateCache.update_snapshot(0, 0, false, "", "")
 
 # --- Submit Combat Action ---
 func submit_combat_action(match_id: String, action_type: String, angle: float, power: float = 1.0) -> void:
@@ -146,6 +163,7 @@ func _apply_perspective() -> void:
 	else:
 		my_health = current_match_state.get("opponent_health", 100)
 		opponent_health = current_match_state.get("creator_health", 100)
+	CombatStateCache.update_snapshot(my_health, opponent_health, is_my_turn, current_match_state.get("status", ""), "rpc")
 
 # --- Utility Methods ---
 func get_current_match_state() -> Dictionary:
