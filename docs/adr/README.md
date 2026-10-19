@@ -16,10 +16,11 @@ ADRs follow the MADR-flavored format used in ADR-0004: `Status`, `Date`, `Issue`
 | [0006](./0006-admin-gate-allowlist-policy.md) | Admin-gate allowlist policy | Accepted | 2026-08-18 | #1153, #1075, #1155, #1077 |
 | [0007](./0007-ratify-combat-authority-boundary.md) | Ratify the combat-authority boundary at the damage-math constants layer | Accepted | 2026-09-17 | #1087 |
 | [0008](./0008-nakama-js-runtime-sync-handler-invariant.md) | Nakama JS runtime (goja) constraints govern sync RPC handlers | Accepted | 2026-09-28 | #1421 |
+| [0009](./0009-combat-state-ownership-boundary.md) | Combat state ownership boundary (CombatManager vs CombatSyncManager) | Accepted | 2026-10-19 | #1714 |
 
 ## Adding a new ADR
 
-1. Pick the next number (`0009`; scan the directory first — this index has lagged before).
+1. Pick the next number (`0010`; scan the directory first — this index has lagged before).
 2. Filename: `NNNN-kebab-case-title.md`.
 3. Use the ADR-0004 format. The minimum is `Status`, `Context`, `Decision`, `Consequences`; `Date`, `Issue`, `Supersedes`, and `Related ADRs` should also be present.
 4. Add a row to the table above.
