@@ -96,11 +96,13 @@ jobs:
 
   godot-coverage:
     name: Frontend Coverage (Godot)
-    # Skip-gated pending issue #894 follow-up: the gut_baseline_gate.json
-    # baseline of {tests: 538, failing: 49} no longer matches the
-    # current GUT suite (~582 tests, ~54 failing). Without updating the
-    # baseline — which violates the ratchet-down design — the gate will
-    # keep blocking PRs. Skip until the baseline is reconciled.
+    # The GUT baseline gate is LIVE here (gut_baseline_gate.py against
+    # data/gut-baseline.json): failing must not exceed baseline (0) +
+    # tolerance (5). The old vars.GUT_BASELINE_FIXED skip-gate was removed
+    # on 2026-09-25 (issue #894) and the baseline reconciled on 2026-10-15
+    # (issue #1341) - see the notes at the bottom of this file and
+    # data/gut-baseline.json. Ratchet the baseline DOWN as suites are
+    # fixed; never raise it.
     runs-on: ubuntu-latest
 
     steps:
