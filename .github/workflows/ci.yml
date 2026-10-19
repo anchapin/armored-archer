@@ -404,6 +404,9 @@ jobs:
           fi
           echo "Autoload scripts validated"
 
+      - name: Autoload count ratchet guard (issue #1660)
+        run: ./scripts/check-autoload-count.sh
+
   python-lint:
     name: Python Lint
     runs-on: ubuntu-latest
