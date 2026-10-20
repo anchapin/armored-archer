@@ -3,7 +3,8 @@
 # Inputs (environment): GODOT_BIN, ANDROID_SDK_ROOT, KEYSTORE_PATH, KEYSTORE_ALIAS,
 # KEYSTORE_PASSWORD. Never echo the password; Godot reads the release
 # keystore from GODOT_ANDROID_KEYSTORE_RELEASE_* environment variables.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'echo "::error::build script failed at line $LINENO: $BASH_COMMAND"' ERR
 
 : "${GODOT_BIN:?}" "${ANDROID_SDK_ROOT:?}" "${KEYSTORE_PATH:?}" "${KEYSTORE_ALIAS:?}" "${KEYSTORE_PASSWORD:?}"
 AAB=export/android/armored-archer-release.aab
@@ -47,7 +48,10 @@ export GODOT_ANDROID_KEYSTORE_RELEASE_USER="$KEYSTORE_ALIAS"
 export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$KEYSTORE_PASSWORD"
 mkdir -p export/android
 "$GODOT_BIN" --headless --import || true
-"$GODOT_BIN" --headless --export-release "Android Release" "$AAB"
+if ! "$GODOT_BIN" --headless --export-release "Android Release" "$AAB" > /tmp/export.log 2>&1; then
+	echo "::error::godot export failed: $(grep -iE 'error|fail|not found|invalid' /tmp/export.log | tail -6 | tr '\n' '|' | cut -c1-900)"
+	exit 1
+fi
 
 # 5. Checks.
 test -f "$AAB" || { echo "::error::AAB was not produced"; exit 1; }
