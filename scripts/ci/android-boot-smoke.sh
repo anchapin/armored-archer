@@ -30,8 +30,8 @@ sleep 60
 
 PID=$(adb shell pidof "$PKG" || true)
 if [ -z "$PID" ]; then
-	fail "Game process not running 60s after launch (autoload crash on device path?)" \
-		"$(adb logcat -d | grep -iE 'fatal|AndroidRuntime|godot|vulkan|signal|abi' | tail -12)"
+	DIAG=$(adb logcat -d -v brief | grep -E "armoredarcher|AndroidRuntime|F/libc|DEBUG|[Gg]odot|[Vv]ulkan|ActivityManager.*(died|crash|Force)" | cut -c1-220 | tail -14)
+	fail "Game process not running 60s after launch" "$DIAG"
 fi
 echo "Game process alive: $PID"
 
