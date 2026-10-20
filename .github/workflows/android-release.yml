@@ -12,6 +12,8 @@ name: Android Release (AAB)
 #               upload keystore.
 
 on:
+  push:
+    branches: ['trial/android-release-dryrun']
   workflow_dispatch:
     inputs:
       mode:
@@ -31,7 +33,7 @@ concurrency:
 
 jobs:
   dry-run:
-    if: inputs.mode == 'dry-run'
+    if: inputs.mode == 'dry-run' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
