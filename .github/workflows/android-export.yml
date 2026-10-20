@@ -118,6 +118,8 @@ jobs:
     needs: export
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v5
+
       - name: Download debug APK
         uses: actions/download-artifact@v7
         with:
@@ -138,27 +140,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-boot-timeout: 900
-          script: |
-            set -e
-            adb shell input keyevent 82 || true
-            adb install -r export/android/armored-archer.apk
-            adb logcat -c
-            adb shell am start -n com.armoredarcher.game/com.godot.game.GodotApp
-            echo "Launched; settling..."
-            sleep 60
-            if ! adb shell pidof com.armoredarcher.game > /tmp/game.pid || [ ! -s /tmp/game.pid ]; then
-              echo "::error::Game process not running 60s after launch (autoload crash on device path?)"
-              adb logcat -d | tail -150
-              exit 1
-            fi
-            echo "Game process alive: $(cat /tmp/game.pid)"
-            if ! adb logcat -d | grep -q "Godot Engine v4.6"; then
-              echo "::error::Godot engine banner not found in logcat"
-              adb logcat -d | tail -150
-              exit 1
-            fi
-            echo "Godot engine banner confirmed in logcat"
-            adb exec-out screencap -p > boot-smoke.png
+          script: bash scripts/ci/android-boot-smoke.sh
 
       - name: Upload boot screenshot
         if: always()
