@@ -18,9 +18,11 @@ echo "abilist: $(adb shell getprop ro.product.cpu.abilist || true)"
 
 OUT=$(adb install -r "$APK" 2>&1) || fail "adb install failed" "$OUT"
 adb logcat -c
-OUT=$(adb shell am start -n "$PKG/com.godot.game.GodotApp" 2>&1) || fail "am start failed" "$OUT"
-if echo "$OUT" | grep -qi "error"; then
-	fail "am start reported error" "$OUT"
+# Resolve the launcher activity instead of hardcoding it: "am start -n" on the
+# Godot activity name was rejected as not exported (SecurityException).
+OUT=$(adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 2>&1) || fail "monkey launch failed" "$OUT"
+if ! echo "$OUT" | grep -q "Events injected: 1"; then
+	fail "launcher intent not delivered" "$OUT $(adb shell cmd package resolve-activity --brief "$PKG" 2>&1)"
 fi
 
 echo "Launched; settling..."
