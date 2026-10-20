@@ -122,6 +122,18 @@ func _clear_combat_input() -> void:
 	if touch_ui:
 		touch_ui.clear_input()
 
+func on_back_requested() -> bool:
+	## Android Back during combat opens the pause menu; Back again resumes (#1724).
+	if not GameManager.is_game_active:
+		return false
+	_toggle_pause()
+	return true
+
+func on_app_paused() -> void:
+	## App went to the background: pause combat so the player returns to the pause menu (#1724).
+	if GameManager.is_game_active and not _owns_tree_pause:
+		_toggle_pause()
+
 func _toggle_pause() -> void:
 	if not GameManager.is_game_active:
 		return
