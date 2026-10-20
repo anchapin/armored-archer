@@ -45,21 +45,13 @@ func _ready() -> void:
 
 func load_difficulty_state() -> void:
 	"""Loads difficulty state from persistent storage."""
-	var file = FileAccess.open("user://difficulty_state.json", FileAccess.READ)
-	if file:
-		var json_string = file.get_as_text()
-		file.close()
-		var json = JSON.new()
-		var parse_result = json.parse(json_string)
-		if parse_result == OK:
-			var save_data = json.data
-			current_modifier = save_data.get("current_modifier", 0.0)
-			win_streak = save_data.get("win_streak", 0)
-			lose_streak = save_data.get("lose_streak", 0)
-			match_history = save_data.get("match_history", [])
-			_update_difficulty_level()
-		else:
-			push_error("Failed to parse difficulty state JSON")
+	var save_data = SaveIO.read_json("user://difficulty_state.json")
+	if save_data is Dictionary:
+		current_modifier = save_data.get("current_modifier", 0.0)
+		win_streak = save_data.get("win_streak", 0)
+		lose_streak = save_data.get("lose_streak", 0)
+		match_history = save_data.get("match_history", [])
+		_update_difficulty_level()
 	else:
 		# Initialize with default state
 		current_modifier = 0.0
@@ -76,10 +68,7 @@ func save_difficulty_state() -> void:
 		"lose_streak": lose_streak,
 		"match_history": match_history
 	}
-	var file = FileAccess.open("user://difficulty_state.json", FileAccess.WRITE)
-	if file:
-		var _err = file.store_string(JSON.stringify(save_data))
-		file.close()
+	var _ok = SaveIO.write_json("user://difficulty_state.json", save_data)
 
 func track_match_outcome(won: bool, match_type: String) -> void:
 	"""Tracks match outcome and updates difficulty accordingly.
