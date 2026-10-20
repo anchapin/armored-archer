@@ -111,10 +111,16 @@ jobs:
   # fails the alive check. A boot screenshot is uploaded for human review.
   # A game-side boot marker print would be a stronger assertion; that is a
   # production code change and deliberately not bundled with this CI job.
+  # First nightly run (Oct 20) hit "Timeout waiting for emulator to boot"
+  # after 30m: the software-emulated arm64 image never booted on the x86_64
+  # runner, so the job failed before touching the APK. Non-blocking until a
+  # KVM-capable path exists, so a red main reflects real regressions only.
+  # Check the job log for the screenshot and boot result by hand.
   boot-smoke:
     runs-on: ubuntu-latest
     needs: export
     timeout-minutes: 75
+    continue-on-error: true
     steps:
       - name: Download debug APK
         uses: actions/download-artifact@v7
