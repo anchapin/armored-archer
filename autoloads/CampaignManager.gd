@@ -126,20 +126,13 @@ func _send_rpc_with_retry(rpc_id: String, payload: String) -> Dictionary:
 
 func _load_pending_sync() -> void:
 	## Loads the persisted pending-sync queue (issue #1663).
-	var file = FileAccess.open(PENDING_SYNC_PATH, FileAccess.READ)
-	if file:
-		var json_string = file.get_as_text()
-		file.close()
-		var json = JSON.new()
-		if json.parse(json_string) == OK and json.data is Array:
-			pending_sync = json.data
+	var data = SaveIO.read_json(PENDING_SYNC_PATH)
+	if data is Array:
+		pending_sync = data
 
 func _save_pending_sync() -> void:
 	## Persists the pending-sync queue (issue #1663).
-	var file = FileAccess.open(PENDING_SYNC_PATH, FileAccess.WRITE)
-	if file:
-		var _err = file.store_string(JSON.stringify(pending_sync))
-		file.close()
+	var _ok = SaveIO.write_text(PENDING_SYNC_PATH, JSON.stringify(pending_sync))
 
 func _queue_stage_sync(entry: Dictionary) -> void:
 	## Adds/replaces a failed stage write in the pending queue (issue #1663).
@@ -740,26 +733,17 @@ func save_progress() -> void:
 		"unlocked_modifier_pools": unlocked_modifier_pools,
 		"bosses_defeated": bosses_defeated
 	}
-	var file = FileAccess.open("user://campaign_progress.json", FileAccess.WRITE)
-	if file:
-		var _err = file.store_string(JSON.stringify(save_data))
-		file.close()
+	var _ok = SaveIO.write_json("user://campaign_progress.json", save_data)
 
 func load_progress() -> void:
 	"""Loads campaign progress from user://campaign_progress.json."""
-	var file = FileAccess.open("user://campaign_progress.json", FileAccess.READ)
-	if file:
-		var json_string = file.get_as_text()
-		file.close()
-		var json = JSON.new()
-		var parse_result = json.parse(json_string)
-		if parse_result == OK:
-			var save_data = json.data
-			unlocked_chapters = save_data.get("unlocked_chapters", [])
-			unlocked_stages = save_data.get("unlocked_stages", [])
-			completed_stages = save_data.get("completed_stages", [])
-			unlocked_modifier_pools = save_data.get("unlocked_modifier_pools", [])
-			bosses_defeated = save_data.get("bosses_defeated", [])
+	var save_data = SaveIO.read_json("user://campaign_progress.json")
+	if save_data is Dictionary:
+		unlocked_chapters = save_data.get("unlocked_chapters", [])
+		unlocked_stages = save_data.get("unlocked_stages", [])
+		completed_stages = save_data.get("completed_stages", [])
+		unlocked_modifier_pools = save_data.get("unlocked_modifier_pools", [])
+		bosses_defeated = save_data.get("bosses_defeated", [])
 
 func sync_modifiers_from_server() -> void:
 	"""Fetches unlocked modifiers from the server and syncs local state."""
