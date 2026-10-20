@@ -112,3 +112,17 @@ Note: Armored Archer is free to play with optional in-app purchases for cosmetic
 **Storage:** Requires ~200MB free space
 **Internet:** Constant internet connection required
 **Age:** Rated Teen for mild fantasy violence
+
+## Release preset and 16 KB check (issue #1725)
+
+`export_presets.cfg` has two Android presets:
+
+- `Android` (preset.0): debug APK, arm64 + armeabi-v7a. Used for playtests and the nightly boot smoke.
+- `Android Release` (preset.1): Gradle build, AAB, arm64-v8a only, `target_sdk` 36. Release signing values stay empty in the file; Godot reads `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`, `GODOT_ANDROID_KEYSTORE_RELEASE_USER` and `GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD` from the environment. Never commit a keystore or password.
+
+Facts to keep in mind:
+
+- Play requires new apps and updates to target Android 16 (API 36) from Aug 31 2026. Godot 4.6's Gradle template defaults to `compileSdk`/`targetSdk` 35, so a release build must raise `compileSdk` (and build tools) to 36 in `android/build/config.gradle` after the template is installed. The release workflow (not yet written) will patch this at build time instead of committing the template.
+- Play requires 16 KB page-size support for native code. `python3 scripts/ci/check_elf_alignment.py <file.apk|file.aab>` checks every 64-bit `.so` for LOAD alignment >= 16384. The stock Godot 4.6 `android_release.apk` template passes (arm64-v8a and x86_64 `libgodot_android.so`, `libc++_shared.so`).
+- New personal Play developer accounts must run a closed test with 12+ testers for 14 continuous days before production access.
+- Preset check: `godot4 --headless --editor --script scripts/validate_android_export_preset.gd`.
