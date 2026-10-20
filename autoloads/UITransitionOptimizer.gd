@@ -110,3 +110,10 @@ func refresh_optimizations() -> void:
 ## Clean up resources when the node exits the tree
 func _exit_tree() -> void:
 	pass
+
+## Android Back button and app-background handling (issue #1724)
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		BackNavigation.handle_back(get_tree())
+	elif what == NOTIFICATION_APPLICATION_PAUSED:
+		BackNavigation.handle_app_paused(get_tree())
