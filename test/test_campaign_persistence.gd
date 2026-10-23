@@ -32,8 +32,12 @@ func after_each() -> void:
 
 ## Helper: Remove test save file
 func _remove_test_save_file() -> void:
-	if FileAccess.file_exists(SAVE_FILE_PATH):
-		DirAccess.remove_absolute(SAVE_FILE_PATH)
+	# SaveIO keeps the previous good file as "<path>.bak" (issue #1723);
+	# the backup has to go too or the fallback leaks stale progress into
+	# the next test.
+	for suffix in ["", ".tmp", ".bak"]:
+		if FileAccess.file_exists(SAVE_FILE_PATH + suffix):
+			DirAccess.remove_absolute(SAVE_FILE_PATH + suffix)
 
 ## Helper: Create CampaignManager test instance
 func _create_campaign_manager() -> CampaignManager:
