@@ -71,8 +71,11 @@ func run_all_tests():
 ## === Helper Functions ===
 
 func _remove_save_file():
-	if FileAccess.file_exists(SAVE_FILE_PATH):
-		DirAccess.remove_absolute(SAVE_FILE_PATH)
+	# SaveIO keeps the previous good file as "<path>.bak" (issue #1723);
+	# the backup has to go too or the fallback loads stale progress.
+	for suffix in ["", ".tmp", ".bak"]:
+		if FileAccess.file_exists(SAVE_FILE_PATH + suffix):
+			DirAccess.remove_absolute(SAVE_FILE_PATH + suffix)
 
 func _write_save(data: Dictionary):
 	var file = FileAccess.open(SAVE_FILE_PATH, FileAccess.WRITE)

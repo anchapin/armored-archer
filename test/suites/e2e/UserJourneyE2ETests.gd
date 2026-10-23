@@ -76,6 +76,10 @@ func _ready() -> void:
 	var dir = DirAccess.open("user://")
 	if dir:
 		var _err = dir.remove("campaign_progress.json")
+		# SaveIO keeps the previous good file as "<path>.bak" (issue #1723);
+		# a leftover backup would restore stale progress via the fallback.
+		dir.remove("campaign_progress.json.bak")
+		dir.remove("campaign_progress.json.tmp")
 
 	print("=== E2E User Journey Tests Starting (Hardened) ===")
 	print("Issue: #475 - QA-001 Priority: Medium")

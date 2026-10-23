@@ -48,11 +48,14 @@ var _mock_analytics: StubAnalyticsManager = null
 var _save_file_path = "user://campaign_progress.json"
 
 func before_each():
-	# Clean up any existing save file
-	if FileAccess.file_exists(_save_file_path):
-		DirAccess.remove_absolute(_save_file_path)
-	if FileAccess.file_exists("user://campaign_pending_sync.json"):
-		DirAccess.remove_absolute("user://campaign_pending_sync.json")
+	# Clean up any existing save file. SaveIO keeps the previous good file as
+	# "<path>.bak" (issue #1723), so the backup has to go too: a leftover backup
+	# would be loaded through the fallback and leak stale progress into the
+	# next test (and into the next run of the suite).
+	for path in [_save_file_path, "user://campaign_pending_sync.json"]:
+		for suffix in ["", ".tmp", ".bak"]:
+			if FileAccess.file_exists(path + suffix):
+				DirAccess.remove_absolute(path + suffix)
 
 	var CampaignManager = preload("res://autoloads/CampaignManager.gd")
 	_campaign_manager = CampaignManager.new()
