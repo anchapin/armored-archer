@@ -52,9 +52,38 @@ func _validate() -> void:
 		var names: Array[String] = []
 		for property: Dictionary in schema.get_property_list():
 			names.append(property.name)
-		for key: String in config.get_section_keys(options):
-			_expect(key in names, "Recognized Android export option: " + key)
+		for section: String in ["preset.0.options", "preset.1.options"]:
+			for key: String in config.get_section_keys(section):
+				_expect(key in names, "Recognized Android export option (%s): %s" % [section, key])
+	_validate_release_preset(config)
 	_finish()
+
+
+func _validate_release_preset(config: ConfigFile) -> void:
+	## Issue #1725: Play Store release preset (AAB, arm64 only, no tracked secrets).
+	var preset := "preset.1"
+	var options := "preset.1.options"
+	_expect(config.has_section(preset) and config.has_section(options), "Release preset must exist")
+	_expect(config.get_value(preset, "name", "") == "Android Release", "Release preset name")
+	_expect(config.get_value(preset, "platform", "") == "Android", "Release preset platform")
+	_expect(config.get_value(preset, "export_path", "") == "export/android/armored-archer-release.aab",
+		"Release preset exports an AAB")
+	var expected := {
+		"gradle_build/use_gradle_build": true,
+		"gradle_build/export_format": 1,
+		"architectures/armeabi-v7a": false,
+		"architectures/arm64-v8a": true,
+		"architectures/x86": false,
+		"architectures/x86_64": false,
+		"package/unique_name": "com.armoredarcher.game",
+		"package/signed": true,
+	}
+	for key: String in expected:
+		_expect(config.get_value(options, key, null) == expected[key], "Release: " + key)
+	var target_sdk := int(config.get_value(options, "gradle_build/target_sdk", "0"))
+	_expect(target_sdk >= 36, "Release targets API 36+ (Play requirement from Aug 31 2026)")
+	for key: String in ["keystore/release", "keystore/release_user", "keystore/release_password"]:
+		_expect(config.get_value(options, key, "") == "", "No tracked release signing value: " + key)
 
 
 func _expect(passed: bool, label: String) -> void:
