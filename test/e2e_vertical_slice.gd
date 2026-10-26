@@ -27,7 +27,6 @@ var test_phase: String = ""
 var network_manager: Node
 var player_stats_manager: Node
 var campaign_manager: Node
-var inventory_manager: Node
 
 # Test configuration
 const TEST_STAGE_ID: String = "1_1"
@@ -54,7 +53,6 @@ func _init() -> void:
 	network_manager = get_node("/root/NetworkManager")
 	player_stats_manager = get_node("/root/PlayerStatsManager")
 	campaign_manager = get_node("/root/CampaignManager")
-	inventory_manager = get_node("/root/InventoryManager")
 
 	# Verify managers are available
 	if not network_manager:

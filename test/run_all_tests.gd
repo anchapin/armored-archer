@@ -33,7 +33,6 @@ func _run_next_test():
 		"res://test/test_store_manager.gd",
 		"res://test/test_campaign_manager.gd",
 		"res://test/test_season_manager.gd",
-		"res://test/test_inventory_manager.gd",
 		"res://test/test_shooting_manager.gd",
 
 		# Gear and items
