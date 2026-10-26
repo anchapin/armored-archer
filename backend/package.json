@@ -112,7 +112,7 @@
     "webpack-cli": "^7.2.3"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.81.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.82.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
     "@opentelemetry/exporter-zipkin": "^2.12.0",
     "@opentelemetry/resources": "2.12.0",
