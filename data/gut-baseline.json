@@ -7,14 +7,11 @@
   "tests": 828,
   "passing": 747,
   "failing": 0,
-  "risky_pending": 104,
+  "risky_pending": 101,
   "tolerance": 5,
   "pending_stubs_conversion": [
     "test/suites/autoloads/test_network_manager.gd::test_send_rpc_timeout",
-    "test/suites/autoloads/test_network_manager.gd::test_send_rpc_auth_error",
-    "test/suites/signals/test_signal_patterns.gd::test_watch_signals_basic",
-    "test/suites/signals/test_signal_patterns.gd::test_wait_for_signal_async",
-    "test/suites/signals/test_signal_patterns.gd::test_signal_emission_with_parameters"
+    "test/suites/autoloads/test_network_manager.gd::test_send_rpc_auth_error"
   ],
   "pending_conversions_issue_1361_followup": [
     "test/suites/autoloads/test_coverage_tracker.gd::test_set_script_line_map",
