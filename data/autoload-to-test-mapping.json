@@ -20,11 +20,6 @@
             "critical": false,
             "description": "Manages UI theme (light/dark mode)"
         },
-        "AccessibilityManager": {
-            "test_file": "test/suites/autoloads/test_accessibility_manager.gd",
-            "critical": false,
-            "description": "Manages accessibility settings (font scale, screen reader)"
-        },
         "PlayerStatsManager": {
             "test_file": "test/suites/player/test_player_stats_manager.gd",
             "critical": true,

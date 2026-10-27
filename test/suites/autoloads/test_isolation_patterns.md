@@ -71,14 +71,14 @@ func test_multiple_tests_dont_share_state():
 ```gdscript
 extends GutTest
 
-var _manager: AccessibilityManager
+var _manager: ConfigBackedManager
 var _mock_config: ConfigFile
 
 func before_each():
 	# Create fresh mock ConfigFile
 	_mock_config = ConfigFile.new()
 	# Inject mock to avoid file I/O
-	_manager = AccessibilityManager.new(_mock_config)
+	_manager = ConfigBackedManager.new(_mock_config)
 	add_child_autofree(_manager)
 
 func test_config_file_injection():

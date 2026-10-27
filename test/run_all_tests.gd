@@ -59,9 +59,6 @@ func _run_next_test():
 		"res://test/test_audio_manager.gd",
 		"res://test/test_audio_manager_issue_914.gd",
 
-		# Accessibility
-		"res://test/test_accessibility_manager.gd",
-
 		# Combat and sync
 		"res://test/test_combat_sync_manager.gd",
 		"res://test/test_auto_aim_manager.gd",
