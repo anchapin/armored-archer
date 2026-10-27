@@ -87,7 +87,6 @@ The Godot client uses autoloads for global managers. Key autoloads (defined in `
 | `ObjectPool` | Object pooling for performance |
 | `DesignTokens` | Design system constants (spacing, colors, typography) |
 | `ThemeManager` | UI theme management (light/dark modes) |
-| `AccessibilityManager` | Accessibility features (text scaling, screen reader) |
 
 ### Design System (UI)
 The project has a design system for UI components located in `scenes/ui/components/`:

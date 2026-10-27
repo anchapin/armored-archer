@@ -256,20 +256,9 @@ var bg = ThemeManager.get_background_color()
 ThemeManager.theme_changed.connect(_on_theme_changed)
 ```
 
-## Accessibility Manager
+## Accessibility
 
-Use `AccessibilityManager` for accessibility settings:
+Accessibility settings are applied at the call site (there is no accessibility
+autoload — the former accessibility-settings singleton was removed in issue
+#1751 as unused code). See `docs/ACCESSIBILITY.md` for the guidelines.
 
-```gdscript
-# Get scaled font size
-var size = AccessibilityManager.get_scaled_font_size(14)
-
-# Set font scale (0.8 to 1.5)
-AccessibilityManager.set_font_scale(1.2)
-
-# Enable high contrast
-AccessibilityManager.set_high_contrast(true)
-
-# Check WCAG compliance
-var passes = AccessibilityManager.meets_wcag_aa(foreground, background)
-```

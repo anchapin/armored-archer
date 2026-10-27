@@ -36,7 +36,7 @@ The beta launches only when ALL hard blockers are met. Soft blockers require doc
 | # | Criterion | Threshold | Owner | Status |
 |---|-----------|-----------|-------|--------|
 | S1 | Performance targets met | 60 FPS flagship, 30+ FPS budget devices | Client Lead | Done — PerformanceProfiler with device tier system, object pooling, aim smoothing |
-| S2 | Accessibility baseline | Text scaling, screen reader support | Design Lead | Done — AccessibilityManager with text scaling and screen reader support |
+| S2 | Accessibility baseline | Text scaling, screen reader support | Design Lead | Not Started — the unused accessibility-settings autoload was removed in issue #1751; guidelines live in `docs/ACCESSIBILITY.md` |
 | S3 | Feedback system active | In-app feedback and bug reporting | Community Manager | Done — feedback collector added in sprint 6 |
 | S4 | Onboarding flow complete | Tutorial and first-match guidance | Product Manager | Done — TutorialManager + beta welcome screen |
 | S5 | Load test passed | 100+ concurrent users | Backend Lead | Not Started |
@@ -111,7 +111,7 @@ The beta launches only when ALL hard blockers are met. Soft blockers require doc
 | 4.4 | Device matrix tested | 3+ iOS devices, 5+ Android devices | `docs/archive/pre-v4/BETA_TEST_PLAN.md` | Not Started — needs physical devices |
 | 4.5 | Critical user journeys verified | Registration, gameplay, progression, IAP | `docs/archive/pre-v4/BETA_TEST_PLAN.md` Sec. 2 | Done — E2E test suite covers core journeys |
 | 4.6 | Performance benchmarks recorded | FPS, load times, memory documented | `docs/PERFORMANCE.md` | In Progress — profiler functional, needs device benchmarks |
-| 4.7 | Accessibility tested | Text scaling, screen reader on device | `autoloads/AccessibilityManager.gd` | In Progress — code exists, needs device testing |
+| 4.7 | Accessibility tested | Text scaling, screen reader on device | `docs/ACCESSIBILITY.md` | Not Started — no runtime accessibility layer (unused autoload removed in issue #1751) |
 | 4.8 | No flaky tests blocking CI | Flaky test detection clean | `.github/workflows/flaky-tests.yml` | Done |
 
 ---

@@ -6,27 +6,11 @@ This document outlines the accessibility standards and guidelines for the Armore
 
 Armored Archer aims to be accessible to all players. This includes players with visual impairments, motor disabilities, and other accessibility needs.
 
-## Accessibility Manager
-
-The `AccessibilityManager` autoload provides accessibility functionality:
-
-```gdscript
-# Get singleton reference
-var a11y = AccessibilityManager
-
-# Font scaling (0.8 to 1.5)
-a11y.set_font_scale(1.2)  # 120% scale
-var scaled_size = a11y.get_scaled_font_size(14)  # Returns 16
-
-# High contrast mode
-a11y.set_high_contrast(true)
-
-# Reduced motion
-a11y.set_reduced_motion(true)
-
-# Screen reader support
-a11y.set_screen_reader_enabled(true)
-```
+> **Note (issue #1751):** the accessibility-settings autoload was removed as dead
+> code — it was never called by any game code. The runtime helpers it offered
+> (font scaling, high contrast, reduced motion, screen reader toggles) are not
+> currently wired into the UI. The guidelines below describe the standards
+> the UI must meet; use the engine-native equivalents listed per section.
 
 ## Color Contrast (WCAG)
 
@@ -35,13 +19,6 @@ All UI text must meet WCAG AA contrast ratios:
 - **Normal text**: 4.5:1 contrast ratio
 - **Large text** (18px+): 3.0:1 contrast ratio
 - **UI components**: 3.0:1 contrast ratio
-
-### Testing Contrast
-
-```gdscript
-var passes_aa = AccessibilityManager.meets_wcag_aa(foreground, background)
-var passes_aaa = AccessibilityManager.meets_wcag_aaa(foreground, background)
-```
 
 ### Design Tokens with WCAG Compliance
 
@@ -68,9 +45,12 @@ The game supports 80% to 150% font scaling:
 
 ### Implementation
 
+Scale font sizes locally where they are applied (no global font-scale
+singleton is registered):
+
 ```gdscript
-# Get scaled font size
-var size = AccessibilityManager.get_scaled_font_size(base_size)
+# Scale a font size at the call site
+var size = int(base_size * font_scale)
 
 # Apply to label
 label.add_theme_font_size_override("font_size", size)
@@ -81,8 +61,8 @@ label.add_theme_font_size_override("font_size", size)
 For users sensitive to motion:
 
 ```gdscript
-# Check if reduced motion is enabled
-if AccessibilityManager.is_reduced_motion_enabled():
+# Check the reduced-motion preference where the animation is triggered
+if reduced_motion_enabled:
     # Skip animations
     pass
 else:
@@ -99,8 +79,8 @@ High contrast mode provides:
 - Clearer borders
 
 ```gdscript
-# Get high contrast color
-var bg = AccessibilityManager.get_accessibility_color("background", is_dark_theme)
+# Get a high contrast color from the design tokens
+var bg = DesignTokens.COLOR_BACKGROUND_DARK
 ```
 
 ## Screen Reader Support
