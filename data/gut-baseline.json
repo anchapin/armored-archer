@@ -7,7 +7,7 @@
   "tests": 828,
   "passing": 747,
   "failing": 0,
-  "risky_pending": 104,
+  "risky_pending": 97,
   "tolerance": 5,
   "pending_stubs_conversion": [
     "test/suites/autoloads/test_network_manager.gd::test_send_rpc_timeout",
@@ -29,13 +29,6 @@
     "test/suites/autoloads/test_object_pool.gd::test_object_pool_has_acquire_release",
     "test/suites/autoloads/test_vfx_manager.gd::test_internal_methods_exist",
     "test/suites/autoloads/test_auto_aim_manager.gd::test_auto_aim_manager_has_targeting_methods",
-    "test/suites/autoloads/test_theme_manager.gd::test_fresh_instance_per_test",
-    "test/suites/autoloads/test_theme_manager.gd::test_multiple_instances_have_independent_state",
-    "test/suites/autoloads/test_theme_manager.gd::test_set_theme_emits_signal_with_parameters",
-    "test/suites/autoloads/test_theme_manager.gd::test_async_theme_change",
-    "test/suites/autoloads/test_theme_manager.gd::test_config_file_injection",
-    "test/suites/autoloads/test_theme_manager.gd::test_set_theme_with_invalid_name_defaults_to_gilded",
-    "test/suites/autoloads/test_theme_manager.gd::test_toggle_theme_switches_between_dark_and_light",
     "test/suites/integration/test_cross_manager_integration.gd::test_player_stats_with_gear_integration",
     "test/suites/integration/test_cross_manager_integration.gd::test_gear_equipped_affects_combat",
     "test/suites/integration/test_cross_manager_integration.gd::test_season_manager_affects_player_rewards",
@@ -46,5 +39,5 @@
     "test/suites/integration/test_network_combat_integration.gd::test_campaign_manager_with_combat",
     "test/suites/player/test_player_stats_manager.gd::test_stats_updated_signal"
   ],
-  "note": "Ratchet ceiling for the GUT CI gate (scripts/gut_baseline_gate.py). Ratchet failing DOWN as per-suite fix PRs land; never raise it without team sign-off. Recount 2026-10-18 (issue #1667, measured locally, Godot 4.6.1): suite grew to 834 tests, 753 passing, 104 risky/pending. The single failing test (test_stage1_survivability.gd::test_enemy_contact_damage_respects_cooldown, pre-existing on main) is absorbed by tolerance=5; failing stays ratcheted at 0. Gate verified live and passing in coverage.yml godot-coverage. Previous baseline history preserved in git."
+  "note": "Ratchet ceiling for the GUT CI gate (scripts/gut_baseline_gate.py). Ratchet failing DOWN as per-suite fix PRs land; never raise it without team sign-off. Ratcheted down 2026-10-26 (issue #1748): the 7 test_theme_manager.gd pending stubs were rewritten against the current ThemeMode API, so risky_pending drops 104 -> 97. Recount 2026-10-18 (issue #1667, measured locally, Godot 4.6.1): suite grew to 834 tests, 753 passing, 104 risky/pending. The single failing test (test_stage1_survivability.gd::test_enemy_contact_damage_respects_cooldown, pre-existing on main) is absorbed by tolerance=5; failing stays ratcheted at 0. Gate verified live and passing in coverage.yml godot-coverage. Previous baseline history preserved in git."
 }
