@@ -10,6 +10,14 @@
 ##   PerformanceProfiler.get_performance_targets() - Get FPS targets for current device
 ##   PerformanceProfiler.export_snapshot_json() - Snapshot as JSON (benchmark gate / telemetry)
 ##
+## Runtime frame-time adaptation (issue #1726):
+## The boot tier is picked once from the device CPU/RAM. During a long session a
+## heating/throttling phone can no longer hold that tier, so a rolling frame-time
+## monitor watches the real frame times and steps the quality tier DOWN one step
+## at a time after a sustained overrun, and back UP after a sustained recovery.
+## The monitor never steps above the boot tier and never fights a manual
+## quality choice (see set_quality_tier / set_manual_quality_override).
+##
 extends Node
 
 # --- Performance Targets ---
@@ -29,6 +37,18 @@ const MEMORY_LEAK_THRESHOLD_MB: float = 50.0
 const MEMORY_GROWTH_RATE_THRESHOLD: float = 10.0
 ## Number of samples needed for leak detection
 const MEMORY_LEAK_SAMPLE_COUNT: int = 60
+
+# --- Runtime Frame-Time Adaptation (issue #1726) ---
+## Consecutive over-budget frames required before the quality tier steps down
+const ADAPTIVE_DOWNSTEP_SAMPLES: int = 60
+## Consecutive comfortably-under-budget frames required before stepping back up
+const ADAPTIVE_UPSTEP_SAMPLES: int = 60
+## Minimum number of seconds between two quality tier changes (hysteresis)
+const ADAPTIVE_TIER_COOLDOWN_SECONDS: float = 5.0
+## A frame time may exceed the tier budget by this factor before it counts as an overrun
+const ADAPTIVE_DEGRADE_TOLERANCE: float = 1.4
+## A frame time at or below this factor of the tier budget counts as recovered
+const ADAPTIVE_RECOVERY_TOLERANCE: float = 1.05
 
 # --- Performance Settings ---
 var _target_fps: int = FLAGSHIP_TARGET_FPS
@@ -59,6 +79,28 @@ var _session_start_time: int = 0
 enum DeviceTier { FLAGSHP, MID_RANGE, BUDGET }
 var _device_tier: DeviceTier = DeviceTier.FLAGSHP
 
+# --- Runtime Frame-Time Adaptation State (issue #1726) ---
+## Tier detected at boot - the adaptive monitor never steps above it
+var _boot_tier: DeviceTier = DeviceTier.FLAGSHP
+## Engine FPS cap that was active before the profiler applied tier settings
+var _boot_engine_max_fps: int = 0
+## Master switch for the automatic frame-time monitor (opt-out flag)
+var _adaptive_quality_enabled: bool = true
+## True while the user has pinned the quality tier manually
+var _manual_quality_override: bool = false
+## Consecutive frames that exceeded the current tier budget
+var _over_budget_streak: int = 0
+## Consecutive frames that were comfortably under the current tier budget
+var _recovery_streak: int = 0
+## Simulated seconds of monitored runtime (drives the tier change cooldown)
+var _adaptive_clock: float = 0.0
+## Monitor time of the last quality tier change
+var _last_tier_change_time: float = 0.0
+## Number of frame-time samples seen so far
+var _adaptive_sample_count: int = 0
+## Samples ignored after start-up so loading spikes never degrade the quality tier
+var adaptive_warmup_samples: int = 90
+
 # --- Signals ---
 ## Emitted when FPS drops below target
 signal fps_dropped(current_fps: float, target_fps: int)
@@ -68,6 +110,8 @@ signal memory_warning(current_mb: float, threshold_mb: int)
 signal device_tier_detected(tier: DeviceTier)
 ## Emitted when memory leak is detected
 signal memory_leak_detected(current_mb: float, growth_mb: float, rate_mb_per_min: float)
+## Emitted when the effective quality tier changes ("degraded", "recovered" or "manual")
+signal quality_tier_changed(tier: DeviceTier, reason: String)
 
 func _ready() -> void:
 	_initialize_profiler()
@@ -77,19 +121,30 @@ func _initialize_profiler() -> void:
 	_startup_memory_mb = _get_memory_usage_mb()
 	_peak_memory_mb = _startup_memory_mb
 
+	# Remember the FPS cap that was active before tier settings were applied so
+	# the flagship tier can restore it when the adaptive monitor steps back up.
+	_boot_engine_max_fps = Engine.max_fps
+
 	# Initialize session start time for leak detection
 	_session_start_time = Time.get_unix_time_from_system()
 
 	# Detect device tier
 	_detect_device_tier()
+	_boot_tier = _device_tier
 
 	# Apply performance settings based on device tier
 	_apply_performance_settings()
 
-func _process(_delta: float) -> void:
+	# Start the runtime frame-time monitor with a clean slate
+	_reset_adaptive_tracking()
+
+func _process(delta: float) -> void:
 	# Update FPS tracking
 	var current_fps = Engine.get_frames_per_second()
 	_update_fps_tracking(current_fps)
+
+	# Feed the runtime frame-time monitor (issue #1726)
+	submit_frame_time_sample(delta * 1000.0)
 
 	# Update memory tracking
 	var current_memory = _get_memory_usage_mb()
@@ -213,7 +268,13 @@ func _detect_device_tier() -> void:
 	device_tier_detected.emit(_device_tier)
 
 func _apply_performance_settings() -> void:
-	match _device_tier:
+	_apply_tier_settings(_device_tier)
+
+## Apply the quality settings of a tier (FPS cap, particle/effects caps).
+## This is the single source of truth for the tier settings, used by the boot
+## path and by the runtime frame-time monitor.
+func _apply_tier_settings(tier: DeviceTier) -> void:
+	match tier:
 		DeviceTier.BUDGET:
 			_target_fps = BUDGET_MIN_FPS
 			_max_particles = 50
@@ -231,7 +292,20 @@ func _apply_performance_settings() -> void:
 			_max_particles = 100
 			_shadow_quality = 2
 			_texture_compression = true
-			# VSync enabled by default for flagship
+			# VSync enabled by default for flagship.
+			# The flagship tier keeps the FPS cap that was active before the
+			# profiler applied any tier settings.
+			Engine.max_fps = _boot_engine_max_fps
+
+## Map a tier index (0 = flagship, 1 = mid-range, 2 = budget) to a tier
+func _tier_from_index(index: int) -> DeviceTier:
+	match index:
+		0:
+			return DeviceTier.FLAGSHP
+		1:
+			return DeviceTier.MID_RANGE
+		_:
+			return DeviceTier.BUDGET
 
 func _get_tier_name() -> String:
 	match _device_tier:
@@ -241,6 +315,48 @@ func _get_tier_name() -> String:
 			return "Mid-Range"
 		_:
 			return "Flagship"
+
+# --- Runtime Frame-Time Adaptation Internals (issue #1726) ---
+
+## Decide whether the sustained frame-time trends justify a tier change.
+## A step down needs ADAPTIVE_DOWNSTEP_SAMPLES consecutive over-budget frames,
+## a step up needs ADAPTIVE_UPSTEP_SAMPLES consecutive recovered frames and
+## both are gated by the tier change cooldown so the tier cannot oscillate.
+func _evaluate_adaptive_quality() -> void:
+	if not is_adaptive_quality_active():
+		return
+
+	# Hysteresis: wait for the cooldown before changing the tier again.
+	if get_adaptive_cooldown_remaining() > 0.0:
+		return
+
+	if _over_budget_streak >= ADAPTIVE_DOWNSTEP_SAMPLES:
+		# Already at the lowest tier - nothing left to give up.
+		if int(_device_tier) >= int(DeviceTier.BUDGET):
+			return
+		_apply_adaptive_tier(_tier_from_index(int(_device_tier) + 1), "degraded")
+	elif _recovery_streak >= ADAPTIVE_UPSTEP_SAMPLES:
+		# Never step above the tier that was detected at boot.
+		if int(_device_tier) <= int(_boot_tier):
+			return
+		_apply_adaptive_tier(_tier_from_index(int(_device_tier) - 1), "recovered")
+
+## Switch to a new quality tier and apply its settings
+func _apply_adaptive_tier(tier: DeviceTier, reason: String) -> void:
+	_device_tier = tier
+	_apply_tier_settings(tier)
+	_over_budget_streak = 0
+	_recovery_streak = 0
+	_last_tier_change_time = _adaptive_clock
+	quality_tier_changed.emit(tier, reason)
+
+## Clear the sustained frame-time counters and the tier change cooldown
+func _reset_adaptive_tracking() -> void:
+	_over_budget_streak = 0
+	_recovery_streak = 0
+	# The cooldown only applies between two tier changes, so the first change
+	# is allowed as soon as the sustained window is reached.
+	_last_tier_change_time = _adaptive_clock - ADAPTIVE_TIER_COOLDOWN_SECONDS
 
 # --- Public API ---
 
@@ -282,6 +398,10 @@ func get_startup_memory_mb() -> float:
 ## Get device tier (0=Flagship, 1=Mid-Range, 2=Budget)
 func get_device_tier() -> int:
 	return _device_tier
+
+## Get the tier that was detected at boot (the adaptive monitor never steps above it)
+func get_boot_device_tier() -> int:
+	return int(_boot_tier)
 
 ## Check if running on budget device
 func is_budget_device() -> bool:
@@ -342,18 +462,138 @@ func log_profiling_snapshot(label: String) -> void:
 		 snapshot.memory_current_mb, snapshot.memory_peak_mb, snapshot.device_tier])
 
 ## Set target FPS (can be used for dynamic performance adjustment)
+## This counts as an explicit quality choice, so the automatic frame-time
+## monitor stops adjusting the quality tier until the override is cleared.
 func set_target_fps(fps: int) -> void:
 	_target_fps = clamp(fps, BUDGET_MIN_FPS, FLAGSHIP_TARGET_FPS)
 	Engine.max_fps = _target_fps
+	_manual_quality_override = true
 
 ## Enable/disable VSync
 func set_vsync_enabled(enabled: bool) -> void:
 	_vsync_enabled = enabled
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if enabled else DisplayServer.VSYNC_DISABLED)
 
-## Reset performance settings to defaults based on device tier
+## Reset performance settings to defaults based on the tier detected at boot.
+## Also clears a manual quality override so the automatic monitor takes over again.
 func reset_performance_settings() -> void:
+	_device_tier = _boot_tier
+	_manual_quality_override = false
 	_apply_performance_settings()
+	_reset_adaptive_tracking()
+
+# --- Runtime Frame-Time Adaptation API (issue #1726) ---
+
+## Feed a frame time (milliseconds) to the runtime quality monitor.
+## The engine feeds the real frame time every frame; automated tests inject
+## synthetic frame times through this same seam.
+func submit_frame_time_sample(frame_time_ms: float) -> void:
+	if frame_time_ms <= 0.0:
+		return
+
+	_adaptive_clock += frame_time_ms / 1000.0
+	_adaptive_sample_count += 1
+
+	# The monitor stays inert while it is disabled or while the user pinned the
+	# quality tier manually.
+	if not is_adaptive_quality_active():
+		return
+
+	# Ignore the warm-up window: loading a stage can produce slow frames that
+	# must not degrade the quality tier.
+	if _adaptive_sample_count <= adaptive_warmup_samples:
+		_over_budget_streak = 0
+		_recovery_streak = 0
+		return
+
+	var budget_ms: float = get_tier_budget_ms()
+	var recovery_ms: float = get_tier_recovery_ms()
+
+	if frame_time_ms > budget_ms:
+		_over_budget_streak += 1
+		_recovery_streak = 0
+	elif frame_time_ms <= recovery_ms:
+		_recovery_streak += 1
+		_over_budget_streak = 0
+	else:
+		# Ambiguous band: neither an overrun nor a clear recovery.
+		_over_budget_streak = 0
+		_recovery_streak = 0
+
+	_evaluate_adaptive_quality()
+
+## Frame-time budget (ms) of the current tier before an overrun is counted
+func get_tier_budget_ms() -> float:
+	return (1000.0 / float(max(_target_fps, 1))) * ADAPTIVE_DEGRADE_TOLERANCE
+
+## Frame time (ms) at or below which the current tier counts as recovered
+func get_tier_recovery_ms() -> float:
+	return (1000.0 / float(max(_target_fps, 1))) * ADAPTIVE_RECOVERY_TOLERANCE
+
+## True when the automatic frame-time monitor may change the quality tier
+func is_adaptive_quality_active() -> bool:
+	return _adaptive_quality_enabled and not _manual_quality_override
+
+## Enable or disable the automatic frame-time monitor (opt-out flag).
+## Disabling it keeps the current quality tier untouched.
+func set_adaptive_quality_enabled(enabled: bool) -> void:
+	_adaptive_quality_enabled = enabled
+	if not enabled:
+		_reset_adaptive_tracking()
+
+## True while the user has pinned the quality tier manually
+func is_manual_quality_override_active() -> bool:
+	return _manual_quality_override
+
+## Pin (true) or release (false) the manual quality override.
+## While pinned, the automatic monitor never changes the quality tier.
+func set_manual_quality_override(enabled: bool) -> void:
+	_manual_quality_override = enabled
+	if not enabled:
+		# Hand control back to the automatic monitor, restarting from the boot tier.
+		_device_tier = _boot_tier
+		_apply_performance_settings()
+	_reset_adaptive_tracking()
+
+## Apply a quality tier chosen by the user and pin it, so the automatic
+## frame-time monitor never fights the manual choice.
+func set_quality_tier(tier: int) -> void:
+	var index: int = clampi(tier, int(DeviceTier.FLAGSHP), int(DeviceTier.BUDGET))
+	_manual_quality_override = true
+	_device_tier = _tier_from_index(index)
+	_apply_tier_settings(_device_tier)
+	_reset_adaptive_tracking()
+	quality_tier_changed.emit(_device_tier, "manual")
+
+## Seconds remaining before the monitor may change the quality tier again
+func get_adaptive_cooldown_remaining() -> float:
+	return maxf(0.0, _last_tier_change_time + ADAPTIVE_TIER_COOLDOWN_SECONDS - _adaptive_clock)
+
+## Snapshot of the runtime frame-time monitor (diagnostics / telemetry)
+func get_adaptive_status() -> Dictionary:
+	return {
+		"enabled": _adaptive_quality_enabled,
+		"manual_override": _manual_quality_override,
+		"active": is_adaptive_quality_active(),
+		"current_tier": int(_device_tier),
+		"boot_tier": int(_boot_tier),
+		"over_budget_streak": _over_budget_streak,
+		"recovery_streak": _recovery_streak,
+		"cooldown_remaining": get_adaptive_cooldown_remaining(),
+		"budget_ms": get_tier_budget_ms(),
+		"recovery_ms": get_tier_recovery_ms(),
+	}
+
+## Testing / QA hook: simulate a device tier on any host.
+## The simulated tier also becomes the tier the monitor is not allowed to
+## step above, so the runtime behaviour can be reproduced deterministically.
+func override_detected_device_tier(tier: int) -> void:
+	var index: int = clampi(tier, int(DeviceTier.FLAGSHP), int(DeviceTier.BUDGET))
+	_boot_tier = _tier_from_index(index)
+	_device_tier = _boot_tier
+	_apply_performance_settings()
+	_adaptive_sample_count = 0
+	_reset_adaptive_tracking()
 
 ## Get memory leak detection status
 ## Returns: Dictionary with leak_detected, current_memory_mb, memory_growth_mb, growth_rate_mb_per_min

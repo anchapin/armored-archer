@@ -20,6 +20,12 @@ func run_tests() -> void:
 	await test_memory_leak_reset()
 	await test_profiling_snapshot()
 	await test_set_target_fps()
+	await test_adaptive_quality_step_down()
+	await test_adaptive_quality_step_up()
+	await test_adaptive_quality_spike_immunity()
+	await test_adaptive_quality_healthy_frames()
+	await test_adaptive_quality_manual_override()
+	await test_adaptive_quality_opt_out()
 
 	print("\n=== PerformanceProfiler Test Results ===")
 	print("Passed: %d" % _tests_passed)
@@ -380,4 +386,246 @@ func test_set_target_fps() -> void:
 	# Restore original
 	profiler.set_target_fps(original_target)
 
+	profiler.queue_free()
+
+# --- Runtime Frame-Time Adaptation Tests (issue #1726) ---
+
+## Create a profiler instance with a deterministic device tier.
+## The real frame loop is disabled so only injected frame times are monitored.
+func _create_adaptive_profiler(tier: int) -> Node:
+	var profiler = load("res://autoloads/PerformanceProfiler.gd").new()
+	add_child(profiler)
+	# Deterministic tests: no real frames feed the monitor and no warm-up window.
+	profiler.set_process(false)
+	profiler.adaptive_warmup_samples = 0
+	profiler.override_detected_device_tier(tier)
+	return profiler
+
+## Keep the real autoload monitor from touching the global FPS cap while the
+## adaptive tests run.
+func _disable_autoload_adaptive_monitor() -> void:
+	var autoload = _get_autoload_profiler()
+	if autoload != null and autoload.has_method("set_adaptive_quality_enabled"):
+		autoload.set_adaptive_quality_enabled(false)
+
+## Re-enable the real autoload monitor after the adaptive tests are done.
+func _restore_autoload_adaptive_monitor() -> void:
+	var autoload = _get_autoload_profiler()
+	if autoload != null and autoload.has_method("set_adaptive_quality_enabled"):
+		autoload.set_adaptive_quality_enabled(true)
+
+## Get the PerformanceProfiler autoload instance (null outside a running tree)
+func _get_autoload_profiler() -> Node:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	return tree.root.get_node_or_null("PerformanceProfiler")
+
+func test_adaptive_quality_step_down() -> void:
+	_disable_autoload_adaptive_monitor()
+	var original_max_fps = Engine.max_fps
+	var profiler = _create_adaptive_profiler(0)  # simulate a flagship device
+
+	var over_budget_ms = profiler.get_tier_budget_ms() * 2.0
+
+	# The sustained window must be exhausted before anything changes.
+	for _i in range(profiler.ADAPTIVE_DOWNSTEP_SAMPLES - 1):
+		profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 0:
+		_pass("test_adaptive_no_step_down_before_sustained_window")
+	else:
+		_fail("test_adaptive_no_step_down_before_sustained_window",
+			"Tier changed before the sustained window elapsed")
+
+	# The sustained overrun steps the quality down exactly one tier.
+	profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 1:
+		_pass("test_adaptive_step_down_after_sustained_overrun")
+	else:
+		_fail("test_adaptive_step_down_after_sustained_overrun",
+			"Sustained overrun should step the tier down one step, got tier %d" % profiler.get_device_tier())
+
+	# The tier settings (FPS cap, particle/effects caps) follow the new tier.
+	if profiler.get_target_fps() == 45 and profiler.get_max_particles() == 75 and profiler.get_shadow_quality() == 1:
+		_pass("test_adaptive_step_down_applies_tier_settings")
+	else:
+		_fail("test_adaptive_step_down_applies_tier_settings",
+			"Mid-range tier settings were not applied")
+
+	if Engine.max_fps == 45:
+		_pass("test_adaptive_step_down_applies_fps_cap")
+	else:
+		_fail("test_adaptive_step_down_applies_fps_cap",
+			"Engine.max_fps should be 45 after the step down, got %d" % Engine.max_fps)
+
+	Engine.max_fps = original_max_fps
+	profiler.queue_free()
+
+func test_adaptive_quality_step_up() -> void:
+	_disable_autoload_adaptive_monitor()
+	var original_max_fps = Engine.max_fps
+	var profiler = _create_adaptive_profiler(1)  # simulate a mid-range device
+
+	# A sustained overrun pushes the device into the budget tier.
+	var over_budget_ms = profiler.get_tier_budget_ms() * 2.0
+	for _i in range(profiler.ADAPTIVE_DOWNSTEP_SAMPLES):
+		profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 2:
+		_pass("test_adaptive_step_down_to_budget_tier")
+	else:
+		_fail("test_adaptive_step_down_to_budget_tier",
+			"Sustained overrun should reach the budget tier, got tier %d" % profiler.get_device_tier())
+
+	# The device recovers: the frame times are back at the tier's target.
+	var recovered = false
+	for _i in range(600):
+		var target_frame_ms = 1000.0 / float(max(profiler.get_target_fps(), 1))
+		profiler.submit_frame_time_sample(target_frame_ms)
+		if profiler.get_device_tier() == 1:
+			recovered = true
+			break
+	if recovered:
+		_pass("test_adaptive_step_up_after_sustained_recovery")
+	else:
+		_fail("test_adaptive_step_up_after_sustained_recovery",
+			"Sustained recovery should step the tier back up")
+
+	# The monitor never steps above the tier that was detected at boot.
+	for _i in range(300):
+		var target_frame_ms = 1000.0 / float(max(profiler.get_target_fps(), 1))
+		profiler.submit_frame_time_sample(target_frame_ms)
+	if profiler.get_device_tier() == 1:
+		_pass("test_adaptive_never_steps_above_boot_tier")
+	else:
+		_fail("test_adaptive_never_steps_above_boot_tier",
+			"The monitor must never step above the boot tier, got tier %d" % profiler.get_device_tier())
+
+	Engine.max_fps = original_max_fps
+	profiler.queue_free()
+
+func test_adaptive_quality_spike_immunity() -> void:
+	_disable_autoload_adaptive_monitor()
+	var original_max_fps = Engine.max_fps
+	var profiler = _create_adaptive_profiler(0)
+
+	var healthy_ms = 1000.0 / float(max(profiler.get_target_fps(), 1))
+	var spike_ms = profiler.get_tier_budget_ms() * 10.0
+
+	# A single spike is ignored.
+	profiler.submit_frame_time_sample(spike_ms)
+	for _i in range(120):
+		profiler.submit_frame_time_sample(healthy_ms)
+	if profiler.get_device_tier() == 0:
+		_pass("test_adaptive_single_spike_ignored")
+	else:
+		_fail("test_adaptive_single_spike_ignored",
+			"A single slow frame must not change the quality tier")
+
+	# Interleaved spikes are ignored as well.
+	for _i in range(30):
+		profiler.submit_frame_time_sample(spike_ms)
+		profiler.submit_frame_time_sample(healthy_ms)
+	if profiler.get_device_tier() == 0:
+		_pass("test_adaptive_interleaved_spikes_ignored")
+	else:
+		_fail("test_adaptive_interleaved_spikes_ignored",
+			"Interleaved slow frames must not change the quality tier")
+
+	Engine.max_fps = original_max_fps
+	profiler.queue_free()
+
+func test_adaptive_quality_healthy_frames() -> void:
+	_disable_autoload_adaptive_monitor()
+	var original_max_fps = Engine.max_fps
+	var profiler = _create_adaptive_profiler(0)
+
+	var healthy_ms = 1000.0 / float(max(profiler.get_target_fps(), 1))
+	for _i in range(300):
+		profiler.submit_frame_time_sample(healthy_ms)
+
+	# Healthy frame times keep the boot settings untouched.
+	if profiler.get_device_tier() == 0 and profiler.get_target_fps() == 60 and profiler.get_max_particles() == 100:
+		_pass("test_adaptive_healthy_frames_keep_boot_settings")
+	else:
+		_fail("test_adaptive_healthy_frames_keep_boot_settings",
+			"Healthy frame times must not change the boot tier settings")
+
+	Engine.max_fps = original_max_fps
+	profiler.queue_free()
+
+func test_adaptive_quality_manual_override() -> void:
+	_disable_autoload_adaptive_monitor()
+	var original_max_fps = Engine.max_fps
+	var profiler = _create_adaptive_profiler(0)
+
+	# The user picks a quality tier: the monitor must not fight that choice.
+	profiler.set_quality_tier(0)
+	if profiler.is_manual_quality_override_active() and not profiler.is_adaptive_quality_active():
+		_pass("test_adaptive_manual_override_engaged")
+	else:
+		_fail("test_adaptive_manual_override_engaged",
+			"A manual quality override should disable the automatic monitor")
+
+	var over_budget_ms = profiler.get_tier_budget_ms() * 2.0
+	for _i in range(300):
+		profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 0 and profiler.get_target_fps() == 60:
+		_pass("test_adaptive_manual_override_blocks_tier_changes")
+	else:
+		_fail("test_adaptive_manual_override_blocks_tier_changes",
+			"The automatic monitor must not fight a manual quality choice")
+
+	# Releasing the override hands control back to the monitor.
+	profiler.set_manual_quality_override(false)
+	if profiler.is_adaptive_quality_active():
+		_pass("test_adaptive_manual_override_released")
+	else:
+		_fail("test_adaptive_manual_override_released",
+			"Releasing the override should re-enable the automatic monitor")
+
+	for _i in range(profiler.ADAPTIVE_DOWNSTEP_SAMPLES):
+		profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 1:
+		_pass("test_adaptive_resumes_after_override_released")
+	else:
+		_fail("test_adaptive_resumes_after_override_released",
+			"The monitor should step down again once the override is released")
+
+	Engine.max_fps = original_max_fps
+	profiler.queue_free()
+
+func test_adaptive_quality_opt_out() -> void:
+	_disable_autoload_adaptive_monitor()
+	var original_max_fps = Engine.max_fps
+	var profiler = _create_adaptive_profiler(0)
+
+	# The opt-out flag keeps the profiler completely passive.
+	profiler.set_adaptive_quality_enabled(false)
+	if not profiler.is_adaptive_quality_active():
+		_pass("test_adaptive_opt_out_disables_monitor")
+	else:
+		_fail("test_adaptive_opt_out_disables_monitor",
+			"set_adaptive_quality_enabled(false) should disable the automatic monitor")
+
+	var over_budget_ms = profiler.get_tier_budget_ms() * 2.0
+	for _i in range(300):
+		profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 0:
+		_pass("test_adaptive_opt_out_keeps_tier")
+	else:
+		_fail("test_adaptive_opt_out_keeps_tier",
+			"The opt-out flag must keep the quality tier untouched")
+
+	# Re-enabling the monitor makes it react to sustained overruns again.
+	profiler.set_adaptive_quality_enabled(true)
+	for _i in range(profiler.ADAPTIVE_DOWNSTEP_SAMPLES):
+		profiler.submit_frame_time_sample(over_budget_ms)
+	if profiler.get_device_tier() == 1:
+		_pass("test_adaptive_reenabled_after_opt_out")
+	else:
+		_fail("test_adaptive_reenabled_after_opt_out",
+			"The monitor should step down again after being re-enabled")
+
+	_restore_autoload_adaptive_monitor()
+	Engine.max_fps = original_max_fps
 	profiler.queue_free()
