@@ -5,7 +5,7 @@
 # reference (mirrors the data/gut-baseline.json ratchet rule in AGENTS.md).
 set -euo pipefail
 
-MAX_AUTOLOADS="${MAX_AUTOLOADS:-51}"
+MAX_AUTOLOADS="${MAX_AUTOLOADS:-50}"
 
 COUNT=$(python3 - <<'PY'
 import re
