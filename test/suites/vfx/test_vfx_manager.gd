@@ -113,6 +113,79 @@ func test_play_elemental_effects_route_through_object_pool() -> void:
 		)
 
 
+# play_muzzle_flash() must acquire exactly one hit particle from
+# ObjectPool, offset along the shot direction, and auto-return it on
+# the finished signal (regression: ShootingManager called this method
+# and it did not exist, so the call silently no-op'd).
+func test_play_muzzle_flash_routes_through_hit_pool() -> void:
+	if not _require_autoloads():
+		return
+	var before: int = _acquires("hit")
+	_vfx.call("play_muzzle_flash", Vector2(20.0, 20.0), Vector2.RIGHT)
+	assert_eq(
+		_acquires("hit") - before, 1,
+		"play_muzzle_flash() must acquire exactly one hit particle"
+	)
+	var effect: GPUParticles2D = \
+		(_pool.get("_active_hit_effects") as Array).back()
+	assert_eq(
+		effect.get_parent(), _stage,
+		"muzzle-flash particle must be parented into the current scene"
+	)
+	assert_eq(
+		effect.global_position, Vector2(28.0, 20.0),
+		"muzzle-flash particle must sit a short distance along the shot direction"
+	)
+	assert_true(
+		effect.emitting,
+		"muzzle-flash particle must be emitting after spawn"
+	)
+	effect.emit_signal("finished")
+	await get_tree().process_frame
+	assert_true(
+		(_pool.get("_hit_effect_pool") as Array).has(effect),
+		"muzzle-flash particle must return to its pool on the finished signal"
+	)
+
+
+# spawn_death_particles() must acquire exactly one death particle from
+# ObjectPool and auto-return it (regression: base_enemy called this
+# method and it did not exist, so the call silently no-op'd). A zero
+# count spawns nothing.
+func test_spawn_death_particles_routes_through_death_pool() -> void:
+	if not _require_autoloads():
+		return
+	var before: int = _acquires("death")
+	_vfx.call("spawn_death_particles", Vector2(20.0, 20.0), 5)
+	assert_eq(
+		_acquires("death") - before, 1,
+		"spawn_death_particles() must acquire exactly one death particle"
+	)
+	var effect: GPUParticles2D = \
+		(_pool.get("_active_death_effects") as Array).back()
+	assert_eq(
+		effect.get_parent(), _stage,
+		"death particle must be parented into the current scene"
+	)
+	assert_true(
+		effect.emitting,
+		"death particle must be emitting after spawn"
+	)
+	effect.emit_signal("finished")
+	await get_tree().process_frame
+	assert_true(
+		(_pool.get("_death_effect_pool") as Array).has(effect),
+		"death particle must return to its pool on the finished signal"
+	)
+
+	var zero_before: int = _acquires("death")
+	_vfx.call("spawn_death_particles", Vector2(20.0, 20.0), 0)
+	assert_eq(
+		_acquires("death") - zero_before, 0,
+		"spawn_death_particles() with a zero count must spawn nothing"
+	)
+
+
 # show_damage_popup() must acquire the Label from ObjectPool, configure it,
 # and return it to the pool via the safety-net tween (issue #1090 keeps
 # popups alive for reuse instead of queue_free'ing them).

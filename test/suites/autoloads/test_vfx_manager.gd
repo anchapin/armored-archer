@@ -37,6 +37,9 @@ func test_particle_methods_exist():
 	assert_true(_vfx.has_method("play_ice_effect"), "play_ice_effect should exist")
 	assert_true(_vfx.has_method("play_lightning_effect"), "play_lightning_effect should exist")
 	assert_true(_vfx.has_method("play_charge_effect"), "play_charge_effect should exist")
+	assert_true(_vfx.has_method("play_death_effect"), "play_death_effect should exist")
+	assert_true(_vfx.has_method("play_muzzle_flash"), "play_muzzle_flash should exist")
+	assert_true(_vfx.has_method("spawn_death_particles"), "spawn_death_particles should exist")
 
 func test_screen_shake_methods_exist():
 	assert_true(_vfx.has_method("trigger_light_shake"), "trigger_light_shake should exist")

@@ -139,6 +139,35 @@ func play_death_effect(global_position: Vector2) -> void:
 	trigger_heavy_shake()
 
 
+func play_muzzle_flash(global_position: Vector2, direction: Vector2) -> void:
+	"""Play a brief muzzle-flash burst at the bow position.
+
+	No dedicated muzzle-flash scene exists, so this reuses the pooled
+	hit burst. The burst is offset a short distance along the shot
+	direction so it reads as coming from the bow; direction is
+	otherwise unused, because the hit process material is shared and
+	must not be mutated per shot.
+	"""
+	var flash_position := global_position
+	if direction.length() > 0.001:
+		flash_position += direction.normalized() * 8.0
+	_spawn_pooled_particle("hit", flash_position)
+
+
+func spawn_death_particles(global_position: Vector2, particle_count: int = 5) -> void:
+	"""Spawn the death burst for an enemy defeat.
+
+	particle_count is accepted for call-site compatibility (base_enemy
+	and CombatJuiceManager pass 5, and zero must spawn nothing); one
+	authored death burst is spawned so deaths look consistent with
+	play_death_effect() and play_combat_vfx(). The authored burst
+	governs particle density, not the count.
+	"""
+	if particle_count <= 0:
+		return
+	play_death_effect(global_position)
+
+
 func spawn_arrow_trail(parent: Node) -> GPUParticles2D:
 	"""Attach arrow trail particle to a parent node (e.g., Arrow).
 
