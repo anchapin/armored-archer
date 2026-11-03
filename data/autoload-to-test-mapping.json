@@ -95,11 +95,6 @@
             "critical": true,
             "description": "Central registry for gear and skin definitions"
         },
-        "InventoryManager": {
-            "test_file": "test/suites/gear/test_inventory_manager.gd",
-            "critical": false,
-            "description": "Manages gear loading, equipping, and stat calculation"
-        },
         "CombatSyncManager": {
             "test_file": "test/suites/autoloads/test_combat_sync_manager.gd",
             "critical": true,
