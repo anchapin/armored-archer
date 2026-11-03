@@ -101,6 +101,8 @@ The project includes comprehensive smoke tests that validate the complete vertic
 
 For detailed documentation, see [`.planning/VERTICAL_SLICE_SMOKE_TEST.md`](.planning/VERTICAL_SLICE_SMOKE_TEST.md).
 
+**One-command offline demo:** `./scripts/run-offline-demo.sh` (issue #1765) runs the PvE core loop completely offline — headless asset import, then the `test/smoke/smoke_stage.gd` stage harness with login and server calls skipped (`MVP_PVE_ONLY`) — and prints a structured summary (play time, enemies spawned/killed, boss state, script/parse errors). It exits 0 only on a completed run; see `./scripts/run-offline-demo.sh --help` for `--timeout`, `--min-alive`, and exit codes. It starts no backend service and leaves no Godot process running.
+
 ---
 
 ## 🚀 Quick Start
