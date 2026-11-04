@@ -150,3 +150,12 @@ jobs:
           path: boot-smoke.png
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Upload boot diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-boot-diagnostics
+          path: android-boot-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
