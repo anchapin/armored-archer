@@ -121,6 +121,17 @@ Note: Armored Archer is free to play with optional in-app purchases for cosmetic
 script, keystore, credential or store submission was changed or produced by it.
 Nothing here contains a secret value, and no signing key was generated.
 
+**Decision and implementation status (2026-11-08).** The settled release intent
+is a separate Gradle/AAB preset, arm64-v8a only, targeting SDK 36. The debug
+playtest preset keeps both ARM ABIs. These choices are not open questions.
+[Draft #1732](https://github.com/anchapin/armored-archer/pull/1732) contains the
+release preset, validator changes and native-library alignment checker.
+[Draft #1733](https://github.com/anchapin/armored-archer/pull/1733) contains the
+manual-only release workflow and build-time SDK setup. Neither draft is merged
+as of this status date. Review and merge of those drafts, signing/secret setup,
+and Play Console setup remain pending. This plan does not authorize a release,
+store submission or promotion.
+
 **Ownership.** Alex owns the Play Console account, the release keystore and its
 credentials, the CI secret configuration, and every decision flagged
 "DECISION FOR ALEX" below. This repository only owns the build definition and
@@ -128,7 +139,9 @@ the checks.
 
 ### 1. Verified current state
 
-All rows below were read from this worktree (base commit `86dcece9`), not assumed.
+The rows below are the original repository snapshot at base commit `86dcece9`,
+not a claim that the unmerged release drafts have landed. See the status above
+for settled intent and pending implementation.
 
 - Export preset: one preset, `name="Android"`, `platform="Android"` -
   `export_presets.cfg:3-6`.
@@ -183,8 +196,8 @@ All rows below were read from this worktree (base commit `86dcece9`), not assume
   updates must target Android 16 (API level 36) or higher to be submitted to
   Google Play" (Wear OS / Android Automotive excepted to API 35, Android TV /
   Android XR to API 34). "Existing apps must target Android 15 (API level 35)
-  or higher to remain available to new users..." Extensions to
-  November 1, 2026 are available.
+  or higher to remain available to new users..." The original source snapshot
+  also mentioned extensions to November 1, 2026; that date is past and is not an available plan here.
   <https://developer.android.com/google/play/requirements/target-sdk>
 - **16 KB page size.** Google Play compatibility requirement: "all apps
   targeting Android 15 (API level 35) and higher must support 16 KB memory page
@@ -241,9 +254,9 @@ All rows below were read from this worktree (base commit `86dcece9`), not assume
    `armeabi-v7a=true`. Any preset change for (a), (c) or (d) must update that
    contract in the same change, or CI breaks.
 
-### 4. Proposal (a): release preset shape - DECISION FOR ALEX
+### 4. Release preset shape - settled intent; signing setup pending
 
-Shape of the intended release preset (design only, not applied):
+Shape of the intended release preset (implemented in draft #1732, not on main):
 
 - A **separate** preset (for example `Android Release`) so the maintained
   debug playtest preset in `export_presets.cfg` keeps working for
@@ -282,8 +295,10 @@ This change contains **no** credential value, **no** keystore creation step and
 
 ### 5. Proposal (b): 16 KB alignment verification - CI step design
 
-Design only. No workflow file was modified; this is the shape the step should
-take when it is implemented.
+No workflow file is changed by this documentation. Draft #1732 implements
+`python3 scripts/ci/check_elf_alignment.py <file.apk|file.aab>` for native-library
+LOAD alignment. Draft #1733 runs it against the built AAB. The checks below
+describe the verification goals, not additional landed CI steps.
 
 - **Trigger.** A release-shaped build, not the nightly debug APK. The existing
   `export` job produces a debug APK with the non-Gradle preset
@@ -314,82 +329,53 @@ take when it is implemented.
 - **Failure handling.** Do not paper over an UNALIGNED library. If a library
   is unaligned, the fix is a new export template / NDK, not a wrapper flag.
 
-### 6. Proposal (c): dropping armeabi-v7a - DECISION FOR ALEX
+### 6. Release ABI choice - settled
 
-Current state: armeabi-v7a is still exported (`export_presets.cfg:23`), and
-the CI emulator job is documented as relying on the arm-only APK
-(`.github/workflows/android-export.yml:104-113`).
+The Play release is **arm64-v8a only**. The existing debug playtest preset
+continues to export both arm64-v8a and armeabi-v7a. Draft #1732 implements this
+split in a separate release preset and validates both presets. Do not drop the
+debug ABI or reopen the release choice as a prerequisite for draft review.
+No device-share percentage is assumed here.
 
-**DECISION FOR ALEX - keep or drop armeabi-v7a.** Options:
+### 7. Release target SDK - settled intent
 
-- **C1 - Keep both ABIs (status quo).** Zero risk to the debug playtest path
-  and to the CI boot-smoke job. Costs extra build time and, for APK
-  downloads, extra size; for AAB the size effect is largely handled by Play's
-  per-device ABI splitting.
-- **C2 - Drop armeabi-v7a, ship arm64-v8a only.** Halves the native library
-  payload and removes an ABI that only old 32-bit devices need. Consequences
-  to plan for: `export_presets.cfg:23` flips to `false`, the validator
-  contract changes (`scripts/validate_android_export_preset.gd:35`), the CI
-  boot-smoke comment and job assumptions change
-  (`.github/workflows/android-export.yml:104-113`), and any real device
-  coverage of 32-bit-only hardware is lost.
-- **C3 - Drop armeabi-v7a only for the Play release preset**, keeping it in
-  the debug playtest preset. Two presets, two ABI sets, more surface area to
-  keep in sync.
+The intended release targets **SDK 36**. Draft #1732 sets
+`gradle_build/target_sdk=36`; draft #1733 installs Android Platform 36,
+Build-Tools 35.0.1 and NDK 28.1.13356709, then raises the installed Godot
+Gradle template's compileSdk to 36 at build time. The debug export workflow
+is separate and is not changed by these release drafts.
 
-The decision needs device data this repository does not have: the Play Console
-device catalog / install analytics for `com.armoredarcher.game`, plus the
-minimum Android version of the existing playtest fleet. That data is Alex's
-to pull; this plan deliberately does not invent a percentage.
-
-### 7. Proposal (d): target SDK per current Play policy
-
-- Policy value verified on 2026-10-29: **Android 16 / API level 36** for new
-  apps and app updates, from August 31 2026
-  (<https://developer.android.com/google/play/requirements/target-sdk>).
-- Engine value verified on 2026-10-29: Godot 4.6 defaults to **35**
-  (`export_plugin.cpp:290`, `platform/android/java/app/config.gradle:9`).
-- Therefore the Godot default does not meet the current Play policy, and the
-  gap must be closed deliberately rather than by accident.
-- **DECISION FOR ALEX - how to reach API 36.** Options:
-  - **D1 - `gradle_build/target_sdk=36` in the release preset.** Smallest
-    change. Godot will warn: "Target SDK 36 is higher than the default version
-    35. This may work, but wasn't tested and may be unstable."
-    (`export_plugin.cpp:3089-3098`), so the release build must be smoke-tested
-    on a real device and in the emulator before upload.
-  - **D2 - Ship 35 and use the Play extension.** The policy page states an
-    extension to November 1, 2026 is available. This is a temporary
-    reprieve, not a policy that matches a 2026-10 submission, and Play's
-    deadline for API 36 still applies to new apps.
-  - **D3 - Custom Android source-template build with `targetSdk 36`.** Most
-    control, most work: it means building the export templates from source
-    (NDK/CMake, `docs/ANDROID_PLAYTEST.md:18`) and owning that build. Out of
-    scope for this issue unless D1 and D2 both fail.
+This distinguishes intended release configuration from the engine's default
+SDK 35 recorded in the original snapshot above. The expired November 1
+extension is not an alternative. Release artifact checks and real-device
+startup testing remain necessary before upload; an old debug-nightly pass
+is not evidence that a release build starts or renders correctly.
 
 ### 8. Sequenced plan (design - do not execute as part of this issue)
 
-1. Alex pulls the device analytics that decision (c) needs and answers (c).
-2. Alex confirms the signing path (A1 / A2 / A3) and the target SDK path
-   (D1 / D2 / D3). Nothing else can be finalised before these two answers.
-3. Add the release preset (Gradle on, AAB format, explicit min/target SDK,
-   arm64/armeabi per decision (c)), and update the validator contract
-   `scripts/validate_android_export_preset.gd:30-45` in the same change.
-4. Align the Android SDK versions in CI with the documented toolchain
-   (Build-Tools 35.0.1, Platform 35, NDK 28.1.13356709) - needed by
-   `zipalign -P 16` and by the Gradle build.
-5. Implement the 16 KB alignment step of proposal (b) against the release
-   bundle; wire it to fail the build on an UNALIGNED library.
-6. Implement the CI signing path chosen in step 2, using only secret-store
-   references and environment variables - no values in the repository, no
-   keystore in the repository, no keystore in build logs.
-7. Produce an internal-test AAB, verify it installs and boots on a real
-   device (the emulator job at `.github/workflows/android-export.yml:116-143`
-   covers the engine banner only), and confirm Play Console accepts the
-   bundle (target SDK, 16 KB eligibility, signing).
-8. Run the closed/internal test track, then promote to production.
-9. Update `docs/APP_SUBMISSION_CHECKLIST.md`, `docs/EXPORT_GUIDE.md` and
-   `docs/ANDROID_PLAYTEST.md` to point at the release preset so the debug and
-   release paths stay distinguishable.
+1. Review draft #1732 against the settled separate-preset, arm64-only, SDK 36
+   intent. It includes the release preset, validator and alignment checker;
+   merge only after review and green checks.
+2. Review draft #1733 after #1732. Its manual-only workflow produces an AAB
+   artifact, never auto-publishes, and uses a throwaway key in dry-run mode.
+   Real release mode uses the `release` GitHub Environment and its secrets.
+   Review and merge remain pending; this plan does not run either mode.
+3. Keep the release toolchain consistent with that draft: Android Platform 36,
+   Build-Tools 35.0.1, NDK 28.1.13356709 and compileSdk 36. Do not silently
+   rewrite the debug export workflow to match it.
+4. Alex completes signing and store setup: his upload keystore, the required
+   reviewer on the `release` Environment, its signing secrets and the Play
+   Console account/app entry. No secret values belong in the repo or logs.
+   The account was not set up at the last confirmed checkpoint; current setup
+   must be checked before any release execution.
+5. After the required review, setup and execution approval, build and verify
+   the release AAB, including signature, target SDK and 16 KB alignment. Test
+   installation and usable startup on a real device, then verify Play Console
+   acceptance. No debug-nightly result substitutes for release validation.
+6. Run a test track or promote to production only with separate approval.
+7. Update `docs/APP_SUBMISSION_CHECKLIST.md`, `docs/EXPORT_GUIDE.md` and
+   `docs/ANDROID_PLAYTEST.md` when the release drafts land so the debug and
+   release paths remain distinguishable.
 
 ### 9. Commands to run when implementing (design only, not run here)
 
