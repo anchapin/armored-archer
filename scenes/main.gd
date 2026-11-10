@@ -80,11 +80,12 @@ func _exit_tree() -> void:
 	EnemySpawner.stop_stage()
 
 func _setup_pause_controls() -> void:
+	$HUD/CombatStatus.set_margin_offset(20, 70, 20, 0)
 	_pause_button = Button.new()
 	_pause_button.text = "Pause"
-	_pause_button.position = Vector2(20, 70)
+	_pause_button.custom_minimum_size = Vector2(96, 48)
 	_pause_button.process_mode = Node.PROCESS_MODE_ALWAYS
-	$HUD.add_child(_pause_button)
+	$HUD/CombatStatus/StatusRow.add_child(_pause_button)
 	_pause_button.pressed.connect(_toggle_pause)
 
 	_pause_overlay = Control.new()

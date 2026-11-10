@@ -13,6 +13,8 @@
 [ext_resource type="Script" uid="uid://cndocvbyuvp3h" path="res://scenes/ui/game_over.gd" id="12_jbj1t"]
 [ext_resource type="Script" uid="uid://cv7vpqhaxfs10" path="res://scenes/ui/components/enemies_counter.gd" id="13_trceg"]
 
+[ext_resource type="PackedScene" path="res://scenes/ui/safe_area_container.tscn" id="14_safe_area"]
+
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 4
 background_color = Color(0.22, 0.27, 0.23, 1)
@@ -65,15 +67,19 @@ script = ExtResource("12_jbj1t")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1093523127]
 zoom = Vector2(1.25, 1.25)
 
-[node name="EnemiesCounter" type="Label" parent="HUD" unique_id=146457940]
-anchors_preset = -1
-anchor_left = 0.05
-anchor_top = 0.05
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = 20.0
-offset_top = 20.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="CombatStatus" parent="HUD" instance=ExtResource("14_safe_area")]
+mouse_filter = 2
+
+[node name="StatusRow" type="HBoxContainer" parent="HUD/CombatStatus"]
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 16
+
+[node name="EnemiesCounter" type="Label" parent="HUD/CombatStatus/StatusRow" unique_id=146457940]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
 text = "Enemies: 0 / 0"
+vertical_alignment = 1
 script = ExtResource("13_trceg")
