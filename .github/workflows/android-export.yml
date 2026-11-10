@@ -77,6 +77,25 @@ jobs:
           export/android/debug_keystore_pass = "android"
           TRES
 
+      # Diagnostic branch only: never change committed production settings or
+      # the scheduled/default Mobile renderer. This APK is not a release build.
+      - name: Override renderer in disposable diagnostic checkout only
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/ci/android-compatibility-experiment'
+        run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          project = Path("project.godot")
+          source = project.read_text()
+          original = 'renderer/rendering_method="mobile"'
+          assert source.count(original) == 1, "Unexpected renderer configuration"
+          assert 'renderer/rendering_method.mobile=' not in source
+          assert 'renderer/rendering_method.android=' not in source
+          replacement = 'renderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"'
+          project.write_text(source.replace(original, replacement))
+          print("Diagnostic checkout renderer: gl_compatibility; production file unchanged")
+          PYTHON
+          git diff -- project.godot
+
       - name: Export debug APK (proves the Android export pipeline)
         run: |
           mkdir -p export/android
