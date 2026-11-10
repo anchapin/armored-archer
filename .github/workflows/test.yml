@@ -33,11 +33,7 @@ jobs:
       - name: Setup Godot
         if: env.ACT != 'true'
         run: |
-          # Download Godot headless binary directly
-          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
-          unzip -q godot.zip
-          chmod +x Godot_v4.6-stable_linux.x86_64
-          mv Godot_v4.6-stable_linux.x86_64 godot4
+          bash scripts/ci/download-godot.sh ./godot4
 
       - name: Import Godot Assets
         if: env.ACT != 'true'
@@ -101,10 +97,7 @@ jobs:
 
       - name: Setup Godot
         run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
-          unzip -q godot.zip
-          chmod +x Godot_v4.6-stable_linux.x86_64
-          mv Godot_v4.6-stable_linux.x86_64 godot4
+          bash scripts/ci/download-godot.sh ./godot4
 
       - name: Test fail-closed health probe against loopback fixtures
         run: |
@@ -128,10 +121,7 @@ jobs:
 
       - name: Setup Godot
         run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O godot.zip
-          unzip -q godot.zip
-          chmod +x Godot_v4.6-stable_linux.x86_64
-          mv Godot_v4.6-stable_linux.x86_64 godot4
+          bash scripts/ci/download-godot.sh ./godot4
 
       - name: Run GUT with real coverage instrumentation (issue #1097)
         env:

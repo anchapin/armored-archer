@@ -133,6 +133,8 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts/tests -p 'test_sonar_sanitize.py' -v
           node --test scripts/tests/sonar*.test.js
+      - name: Run Godot download fixture regressions
+        run: python3 -m unittest discover -s scripts/tests -p 'test_download_godot.py' -v
       - name: Run port preflight regressions
         run: python3 -m unittest discover -s scripts/tests -p 'test_compose_ports.py' -v
       - name: Validate resolved compose port models
@@ -826,9 +828,7 @@ jobs:
       # checked-in stub is not a measurement; generate it in this job too.
       - name: Setup Godot for real integration benchmark
         run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip -O /tmp/godot.zip
-          unzip -q /tmp/godot.zip -d /tmp/godot-integration
-          chmod +x /tmp/godot-integration/Godot_v4.6-stable_linux.x86_64
+          bash scripts/ci/download-godot.sh /tmp/godot-integration/Godot_v4.6-stable_linux.x86_64
 
       - name: Generate real client performance snapshot
         run: |
