@@ -125,3 +125,24 @@ func test_keyboard_pause_action_toggles_and_victory_stays_frozen() -> void:
 	assert_true(stage.game_over.visible)
 	assert_true(stage.game_over.can_process())
 	assert_eq(stage.game_over.result_label.text, "Victory!")
+
+func test_status_row_keeps_pause_beside_counter_with_safe_area_padding() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var status: MarginContainer = stage.get_node("HUD/CombatStatus")
+	var row: HBoxContainer = status.get_node("StatusRow")
+	var counter: Label = row.get_node("EnemiesCounter")
+	var pause: Button = stage._pause_button
+	assert_eq(pause.get_parent(), row)
+	assert_false(counter.get_global_rect().intersects(pause.get_global_rect()))
+	assert_gte(pause.size.y, 48.0)
+	assert_gte(pause.global_position.x, counter.get_global_rect().end.x + 16.0)
+	var margins: Dictionary = SafeAreaManager.get_safe_margins()
+	assert_eq(status.get_theme_constant("margin_left"), int(margins.left + 20))
+	assert_eq(status.get_theme_constant("margin_top"), int(margins.top + 70))
+	assert_eq(status.get_theme_constant("margin_right"), int(margins.right + 20))
+	stage._pause_button.pressed.emit()
+	assert_true(get_tree().paused)
+	assert_true(stage._pause_overlay.visible)
+	stage._toggle_pause()
+	assert_false(get_tree().paused)
