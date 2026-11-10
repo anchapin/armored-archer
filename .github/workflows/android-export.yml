@@ -90,7 +90,8 @@ jobs:
           assert source.count(original) == 1, "Unexpected renderer configuration"
           assert 'renderer/rendering_method.mobile=' not in source
           assert 'renderer/rendering_method.android=' not in source
-          project.write_text(source.replace(original, 'renderer/rendering_method="gl_compatibility"'))
+          replacement = 'renderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"'
+          project.write_text(source.replace(original, replacement))
           print("Diagnostic checkout renderer: gl_compatibility; production file unchanged")
           PYTHON
           git diff -- project.godot
