@@ -46,25 +46,38 @@ func test_matchmaking_manager_integration():
 	assert_true(mm_mgr.is_in_queue(), "Should be in matchmaking queue")
 
 func test_combat_sync_integration():
-	# Issue #1361 follow-up: production CombatSyncManager does not expose
-	# `current_match_state` as a writable attribute; assignment is rejected.
-	pending("Production CombatSyncManager has no current_match_state writer (issue #1361 follow-up)")
-	return
+	# ADR-0009 (issue #1714): the shared static CombatStateCache is the
+	# single read-through snapshot. CombatSyncManager (polling write path)
+	# and CombatManager (RPC echo write path) are separate instances but read
+	# the same snapshot, so a cross-manager read proves the cache wiring.
 	var sync_mgr = CombatSyncManagerClass.new()
 	add_child_autofree(sync_mgr)
 
 	var combat_mgr = CombatManagerClass.new()
 	add_child_autofree(combat_mgr)
 
-	sync_mgr.current_match_state = {
-		"match_id": "test_match",
-		"creator_id": "player1",
-		"opponent_id": "player2",
-		"creator_health": 80,
-		"opponent_health": 60
-	}
+	# start_combat() overwrites the snapshot deterministically (100/100/turn),
+	# so all assertions below are made after it - the managers' _ready()
+	# seeds differ (CombatSyncManager 100/100/false, CombatManager 0/0/false).
+	sync_mgr.start_combat("test_match")
 
-	assert_eq(sync_mgr.get_match_id(), "test_match", "Sync manager should track match")
+	# (a) The sync manager tracks the live match.
+	assert_eq(sync_mgr.current_match_id, "test_match", "Sync manager should track match")
+	assert_true(sync_mgr.is_combat_active, "Combat should be active after start_combat")
+
+	# (b) A *separate* CombatManager instance reads the same snapshot.
+	assert_eq(combat_mgr.my_health, 100, "CombatManager should read shared my_health")
+	assert_eq(combat_mgr.opponent_health, 100, "CombatManager should read shared opponent_health")
+	assert_true(combat_mgr.is_my_turn, "CombatManager should read shared turn state")
+
+	# (c) Damage applied by the sync path is visible to the other manager.
+	sync_mgr.apply_opponent_damage(40)
+	assert_eq(combat_mgr.opponent_health, 60, "Damage should propagate through the shared cache")
+
+	# Cleanup: stop the 0.5s polling timer and clear the static snapshot so
+	# it cannot leak into other suites.
+	sync_mgr.end_combat("player")
+	CombatStateCache.reset()
 
 func test_gem_manager_with_player_stats():
 	pending("ENV_DEPENDENT: requires live Nakama / authenticated session; see issue #960")
