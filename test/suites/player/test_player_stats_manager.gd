@@ -7,6 +7,11 @@ var _player
 class MockNetwork:
 	extends Node
 	var is_server_connected: bool = true
+	# Production PlayerStatsManager gates every RPC path on
+	# `network_manager.is_connected` (see autoloads/PlayerStatsManager.gd).
+	# The stub must expose that exact property - the same pattern as
+	# test/suites/autoloads/test_player_stats_manager_coverage.gd:21.
+	var is_connected: bool = true
 	var mock_responses: Dictionary = {}
 	var last_rpc_id: String = ""
 	var last_payload: String = ""
@@ -167,14 +172,24 @@ func test_get_player_stats_no_network():
 
 # Test: stats_updated signal is emitted when stats change
 func test_stats_updated_signal():
-	# Issue #1361 follow-up: production PlayerStatsManager emits `stats_updated`
-	# only via the RPC methods (load_player_stats, gain_xp, allocate_stats,
-	# respec_stats). Direct assignment to `player_stats` does not emit it.
-	pending("Direct `player_stats =` does not emit stats_updated in production (issue #1361 follow-up)")
-	return
+	# Production PlayerStatsManager emits `stats_updated` only from its RPC
+	# paths (get_player_stats, gain_xp, allocate_stat, respec_stats) - a
+	# direct assignment to `player_stats` never emits it. Exercise the real
+	# get_player_stats() path against a mocked network manager (no live
+	# server needed) and assert the signal carries the response dictionary.
+	var mock_net = MockNetwork.new()
+	_player.network_manager = mock_net
+	var test_stats = {"level": 3, "xp": 120, "stats": {"attack": 15}}
+	mock_net.mock_responses[_player.RPC_GET_PLAYER_STATS] = test_stats
+
 	watch_signals(_player)
-	_player.player_stats = {"stats": {"attack": 15}}
+	var result = await _player.get_player_stats()
+
 	assert_signal_emitted(_player, "stats_updated", "stats_updated signal should be emitted")
+	assert_signal_emitted_with_parameters(_player, "stats_updated", [test_stats],
+		"stats_updated should be emitted with the player stats dictionary")
+	assert_eq(result, test_stats, "get_player_stats should return the RPC response")
+	assert_eq(_player.player_stats, test_stats, "Internal stats should be the RPC response")
 
 # Test: xp_gained signal is emitted when XP is gained
 func test_xp_gained_signal():
