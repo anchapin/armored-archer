@@ -186,8 +186,8 @@ func test_stats_updated_signal():
 	var result = await _player.get_player_stats()
 
 	assert_signal_emitted(_player, "stats_updated", "stats_updated signal should be emitted")
-	assert_signal_emitted_with_parameters(_player, "stats_updated", [test_stats],
-		"stats_updated should be emitted with the player stats dictionary")
+	# GUT's fourth argument is an emission index, not a message.
+	assert_signal_emitted_with_parameters(_player, "stats_updated", [test_stats])
 	assert_eq(result, test_stats, "get_player_stats should return the RPC response")
 	assert_eq(_player.player_stats, test_stats, "Internal stats should be the RPC response")
 
