@@ -24,18 +24,53 @@ func after_each():
 	pass
 
 func test_network_connect_and_combat_flow():
-	# Issue #1361 follow-up: production NetworkManager does not expose
-	# `is_server_connected` as a settable attribute; the test assumes it does.
-	pending("Production NetworkManager has no is_server_connected attribute (issue #1361 follow-up)")
-	return
+	# Issue #1815: rewritten against NetworkManager's real connection
+	# lifecycle. Production NetworkManager never had an `is_server_connected`
+	# attribute; the real flag is `is_connected`
+	# (autoloads/NetworkManager.gd), raised by handle_reconnection(), which
+	# also emits connection_status_changed(true). A session is only valid
+	# when a token exists AND the manager is connected
+	# (is_session_valid() == not session_token.is_empty() and is_connected).
+	#
+	# The manager is added to the tree in the production E2E isolation mode
+	# (E2E_TEST=1), where NetworkManager._ready() skips the automatic
+	# authenticate_device() / _refresh_session() calls. That keeps the test
+	# completely offline - no live Nakama, no HTTP traffic - while still
+	# exercising the real production methods. The env var is restored right
+	# after the node enters the tree so no other suite is affected.
+	var previous_e2e := OS.get_environment("E2E_TEST")
+	OS.set_environment("E2E_TEST", "1")
 	var net_mgr = NetworkManagerClass.new()
 	add_child_autofree(net_mgr)
+	OS.set_environment("E2E_TEST", previous_e2e)
 
+	# (a) A fresh manager is disconnected and holds no valid session.
+	assert_false(net_mgr.is_connected, "A fresh NetworkManager should not be connected")
+	assert_false(net_mgr.is_session_valid(), "A fresh NetworkManager should not have a valid session")
+
+	# (b) handle_reconnection() raises the flag and announces it.
+	# Offline-safe: with no refresh token it performs no session refresh.
+	watch_signals(net_mgr)
+
+	net_mgr.handle_reconnection()
+
+	assert_true(net_mgr.is_connected, "handle_reconnection() should set is_connected")
+	assert_false(net_mgr.is_offline, "handle_reconnection() should clear the offline flag")
+	assert_signal_emitted_with_parameters(net_mgr, "connection_status_changed", [true])
+
+	# (c) A session becomes valid once a token is present and the manager
+	# is connected (the production definition of is_session_valid()).
+	net_mgr.session_token = "offline-test-session-token"
+	assert_true(net_mgr.is_session_valid(), "Connected manager with a token should be valid")
+
+	# (d) CombatManager reads the same flag through its settable
+	# network_manager property (the gate in CombatManager.submit_combat_action).
 	var combat_mgr = CombatManagerClass.new()
 	add_child_autofree(combat_mgr)
 	combat_mgr.network_manager = net_mgr
 
-	assert_true(net_mgr.is_server_connected, "Network should be connected")
+	assert_eq(combat_mgr.network_manager, net_mgr, "CombatManager should use the manager under test")
+	assert_true(combat_mgr.network_manager.is_connected, "CombatManager should see the connected manager")
 
 func test_matchmaking_manager_integration():
 	# Issue #1361 follow-up: production MatchmakerManager has no `_join_queue`
