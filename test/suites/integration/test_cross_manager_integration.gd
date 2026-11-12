@@ -4,6 +4,7 @@ extends GutTest
 const GameManagerClass = preload("res://autoloads/GameManager.gd")
 const PlayerStatsManagerClass = preload("res://autoloads/PlayerStatsManager.gd")
 const GearManagerClass = preload("res://autoloads/GearManager.gd")
+const CombinedStatsManagerClass = preload("res://autoloads/CombinedStatsManager.gd")
 const CombatManagerClass = preload("res://autoloads/CombatManager.gd")
 const SeasonManagerClass = preload("res://autoloads/SeasonManager.gd")
 const StoreManagerClass = preload("res://autoloads/StoreManager.gd")
@@ -85,49 +86,68 @@ func test_combat_manager_network_integration():
 	assert_eq(combat_mgr.opponent_health, 100, "Opponent should have 100 health")
 
 func test_gear_equipped_affects_combat():
-	# Issue #1361 follow-up: production GearManager.gd has no `_player_gear`
-	# property and the combat assertion references `combat_mgr.opponent_health`
-	# which the production manager does not expose as an attribute.
-	pending("Production GearManager lacks _player_gear; CombatManager lacks opponent_health attr (issue #1361 follow-up)")
-	return
-	var mock_net = MockNetworkManager.new()
-	mock_net.user_id = "test_player"
-	mock_net.mock_rpc_responses["armored_archer/submit_combat_action"] = {
-		"success": true,
-		"result": {
-			"damage": 30,
-			"creator_health": 100,
-			"opponent_health": 70
-		}
-	}
-
+	# Issue #1805: the shipped gear -> stats bridge is CombinedStatsManager.
+	# CombinedStatsManager.gear_manager is a settable reference; when it is
+	# wired to a GearManager, get_total_equipped_stats() is folded into the
+	# combined stats (attack / defense / dodge / crit_rate / health) and
+	# recalculate_stats() re-emits combined_stats_updated.
+	#
+	# NOTE: this test deliberately does NOT touch CombatManager. Combat
+	# damage is server-authoritative, so CombatManager never reads gear; the
+	# mocked submit_combat_action -> opponent_health path is already covered
+	# by test/suites/combat/test_combat_manager.gd. What gear does feed is
+	# the player's attack power, via the CombinedStatsManager bridge tested
+	# below.
 	var gear_mgr = GearManagerClass.new()
 	add_child_autofree(gear_mgr)
-	gear_mgr.network_manager = mock_net
+	# The suite owns its own GearManager instance, so no network is involved.
+	gear_mgr.network_manager = null
+	# Use the shipped fallback summation in get_total_equipped_stats()
+	# (GearManager.gd:398-407), which consumes the documented inventory gear
+	# shape {id, stats: [{name, value}]} (see test/suites/gear/test_gear_manager.gd).
+	gear_mgr.gear_balance_calculator = null
 
-	gear_mgr._player_gear = {
-		"bow": {"item_id": "bow_rare", "attack_bonus": 10},
-		"quiver": {"item_id": "quiver_common", "damage_multiplier": 1.2}
+	var combined_mgr = CombinedStatsManagerClass.new()
+	add_child_autofree(combined_mgr)
+	# _ready() resolves the autoload singletons; re-point the manager at the
+	# suite's own GearManager and drop the base-stats source so the gear
+	# contribution is the only variable in the comparison.
+	combined_mgr.gear_manager = gear_mgr
+	combined_mgr.player_stats_manager = null
+
+	# (a) Baseline: nothing equipped, so no gear contribution.
+	gear_mgr.player_inventory = {"gear": []}
+	gear_mgr.equipped_gear = {}
+	combined_mgr.recalculate_stats()
+	var base_attack: float = combined_mgr.get_attack_power()
+	assert_eq(base_attack, 0.0, "No equipped gear should mean no gear attack contribution")
+
+	# (b) Equip a bow with 10 attack through the public inventory API.
+	gear_mgr.player_inventory = {
+		"gear": [
+			{
+				"id": "bow_rare",
+				"name": "Rare Bow",
+				"type": "bow",
+				"stats": [{"name": "attack", "value": 10}]
+			}
+		]
 	}
+	gear_mgr.equipped_gear = {"bow": "bow_rare"}
 
-	var combat_mgr = CombatManagerClass.new()
-	add_child_autofree(combat_mgr)
-	combat_mgr.network_manager = mock_net
+	var gear_attack = gear_mgr.get_total_equipped_stats().get("attack", 0)
+	assert_eq(gear_attack, 10, "Equipped bow should contribute 10 attack")
 
-	combat_mgr.current_match_state = {
-		"match_id": "match123",
-		"creator_id": "test_player",
-		"opponent_id": "enemy",
-		"creator_health": 100,
-		"opponent_health": 100,
-		"current_turn_user_id": "test_player"
-	}
+	# (c) The gear contribution lands in the combined stats and the
+	# combined_stats_updated signal is emitted on recalculation.
+	watch_signals(combined_mgr)
+	combined_mgr.recalculate_stats()
 
-	watch_signals(combat_mgr)
-	await combat_mgr.submit_combat_action("match123", "shoot", 45.0, 1.0)
-
-	assert_signal_emitted(combat_mgr, "combat_action_submitted")
-	assert_eq(combat_mgr.opponent_health, 70, "Opponent should take damage")
+	assert_signal_emitted(combined_mgr, "combined_stats_updated")
+	var expected_attack: float = base_attack + 10.0
+	assert_eq(combined_mgr.get_attack_power(), expected_attack, "Combined attack rises by gear")
+	var all_stats: Dictionary = combined_mgr.get_all_stats()
+	assert_eq(all_stats.get("attack", 0.0), expected_attack, "Combined stats include gear attack")
 
 func test_season_manager_affects_player_rewards():
 	# Issue #1361 follow-up: production SeasonManager.gd has no
