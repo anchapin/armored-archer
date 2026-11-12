@@ -12,7 +12,7 @@ When every hosted Actions job fails with *"recent account payments have failed o
 
 ```text
 /                          # Godot 4.6 client project (res://)
-├── autoloads/             # 55 singletons registered in project.godot [autoload] (52 here + 3 elsewhere: EnemySpawner→scenes/, GutCoverageTracker→addons/gut/, AnalyticsManager→addons/analytics_manager/); `const.gd` lives here but is NOT an autoload
+├── autoloads/             # 49 singletons registered in project.godot [autoload] (48 here, including EnemySpawner, + AnalyticsManager in addons/analytics_manager/); `const.gd` lives here but is NOT an autoload
 │   └── const.gd           # Shared constants (use for anything needed in 3+ files)
 ├── scenes/                # .tscn organized by feature (player/, enemies/, ui/, pvp/, effects/)
 ├── scripts/               # 80+ root-level files: shared GDScript + dev tooling (shell/python/ts)
