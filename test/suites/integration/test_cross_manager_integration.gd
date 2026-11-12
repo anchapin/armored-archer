@@ -1,7 +1,6 @@
 extends GutTest
 
 # Preload manager classes to avoid duplicate loads
-const GameManagerClass = preload("res://autoloads/GameManager.gd")
 const PlayerStatsManagerClass = preload("res://autoloads/PlayerStatsManager.gd")
 const GearManagerClass = preload("res://autoloads/GearManager.gd")
 const CombinedStatsManagerClass = preload("res://autoloads/CombinedStatsManager.gd")
@@ -27,6 +26,21 @@ class MockNetworkManager extends Node:
 			"currency": 500,
 			"gems": 50
 		}
+
+## Shared transport for the real stats and inventory read RPCs.
+class MockStatsGearNetworkManager extends Node:
+	var is_connected: bool = true
+	var rpc_responses: Dictionary = {}
+	var rpc_calls: Array = []
+	var payloads: Array = []
+
+	func is_session_valid() -> bool:
+		return true
+
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		rpc_calls.append(rpc_id)
+		payloads.append(JSON.parse_string(payload))
+		return rpc_responses.get(rpc_id, {"error": "Unexpected RPC: %s" % rpc_id})
 
 ## Mock transport serving StoreManager's real currency RPCs.
 ## Mirrors the stub-injection precedent of test/test_store_purchase_flow.gd.
@@ -56,32 +70,41 @@ func after_each():
 	pass
 
 func test_player_stats_with_gear_integration():
-	# Issue #1361 follow-up: production GameManager.gd does not expose
-	# `network_manager` as a settable property — assignment is rejected at runtime.
-	pending("Production GameManager has no `network_manager` property (issue #1361 follow-up)")
-	return
-	var mock_net = MockNetworkManager.new()
-	mock_net.user_id = "test_player_1"
-
-	var game_mgr = GameManagerClass.new()
-	add_child_autofree(game_mgr)
-	game_mgr.network_manager = mock_net
+	# Both real managers use the same local transport. This covers their RPC
+	# response paths, not gear-derived stat calculation or a live backend.
+	var mock_net = MockStatsGearNetworkManager.new()
+	add_child_autofree(mock_net)
+	var stats_response: Dictionary = {"level": 10, "xp": 125, "attack": 20}
+	var inventory_response: Dictionary = {
+		"gear": [{"id": "test_bow", "type": "bow", "stats": [{"name": "attack", "value": 10}]}],
+		"equipped_gear": {"bow": "test_bow"},
+		"unlocked_modifier_pools": ["starter_pool"]
+	}
+	mock_net.rpc_responses["armored_archer/get_player_stats"] = stats_response
+	mock_net.rpc_responses["armored_archer/get_inventory"] = inventory_response
 
 	var player_mgr = PlayerStatsManagerClass.new()
 	add_child_autofree(player_mgr)
-
-	player_mgr.network_manager = mock_net
-	player_mgr.user_id = "test_player_1"
-
 	var gear_mgr = GearManagerClass.new()
 	add_child_autofree(gear_mgr)
+	# GearManager._ready() sets its network reference, so inject after entry.
+	player_mgr.network_manager = mock_net
 	gear_mgr.network_manager = mock_net
+	watch_signals(player_mgr)
+	watch_signals(gear_mgr)
 
-	await player_mgr.load_player_data()
-	await gear_mgr.load_player_gear()
+	var loaded_stats: Dictionary = await player_mgr.get_player_stats()
+	await gear_mgr._load_inventory()
 
-	assert_eq(player_mgr.get_currency(), 500, "Player should have 500 currency")
-	assert_eq(player_mgr.get_level(), 10, "Player should be level 10")
+	assert_eq(loaded_stats, stats_response, "Stats should come from the RPC response")
+	assert_eq(player_mgr.get_level(), 10, "Level should come from get_player_stats")
+	assert_signal_emitted_with_parameters(player_mgr, "stats_updated", [stats_response])
+	assert_eq(gear_mgr.player_inventory.get("gear", []), inventory_response["gear"], "Inventory should come from get_inventory")
+	assert_eq(gear_mgr.equipped_gear, inventory_response["equipped_gear"], "Equipped slots should come from get_inventory")
+	assert_eq(gear_mgr.unlocked_modifier_pools, inventory_response["unlocked_modifier_pools"], "Modifier pools should come from get_inventory")
+	assert_signal_emitted_with_parameters(gear_mgr, "inventory_updated", [inventory_response])
+	assert_eq(mock_net.rpc_calls, ["armored_archer/get_player_stats", "armored_archer/get_inventory"], "Both managers should use their real RPC IDs on the shared transport")
+	assert_eq(mock_net.payloads, [{}, {}], "Read RPCs should send empty JSON objects")
 
 func test_combat_manager_network_integration():
 	var mock_net = MockNetworkManager.new()
