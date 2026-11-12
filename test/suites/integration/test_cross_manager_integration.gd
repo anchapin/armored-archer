@@ -28,6 +28,27 @@ class MockNetworkManager extends Node:
 			"gems": 50
 		}
 
+## Mock transport serving StoreManager's real currency RPCs.
+## Mirrors the stub-injection precedent of test/test_store_purchase_flow.gd.
+class MockStoreNetworkManager extends Node:
+	var is_connected: bool = true
+	var rpc_responses: Dictionary = {}
+
+	func _init():
+		rpc_responses["armored_archer/get_currency"] = {
+			"gems": 50,
+			"coins": 500
+		}
+		rpc_responses["armored_archer/spend_gems"] = {
+			"success": true,
+			"new_balance": 40
+		}
+
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		if rpc_responses.has(rpc_id):
+			return rpc_responses[rpc_id]
+		return {"error": "Unknown RPC: %s" % rpc_id}
+
 func before_each():
 	Engine.time_scale = 1.0
 
@@ -172,26 +193,56 @@ func test_season_manager_affects_player_rewards():
 	assert_eq(bonus_xp, 150, "Season bonus should apply to XP rewards")
 
 func test_inventory_manager_with_store():
-	# Issue #1361 follow-up: production PlayerStatsManager.gd does not expose
-	# `_currency` / `_gems` as writable attributes (they're method-driven).
-	pending("Production PlayerStatsManager has no _currency / _gems attrs (issue #1361 follow-up)")
-	return
+	# Issue #1803: the pending body of this test named PlayerStatsManager,
+	# but the shipped currency API lives in StoreManager (load_currency /
+	# get_gems / get_coins / spend_gems) - PlayerStatsManager has no
+	# currency API at all. The test is rewritten against the real
+	# StoreManager currency path over a mock transport, with a GearManager
+	# inventory fixture co-existing in the same test.
+	var mock_net = MockStoreNetworkManager.new()
+	add_child_autofree(mock_net)
+
 	var store_mgr = StoreManagerClass.new()
 	add_child_autofree(store_mgr)
+	# StoreManager.network_manager is an @onready var, so the stub has to be
+	# injected after the node entered the tree (same order as the
+	# StoreManager stub precedent in test/test_store_purchase_flow.gd).
+	store_mgr.network_manager = mock_net
 
+	# Inventory fixture owned by the gear manager, co-existing with the
+	# store currency flow.
 	var gear_mgr = GearManagerClass.new()
 	add_child_autofree(gear_mgr)
+	gear_mgr.network_manager = null
+	gear_mgr.player_inventory = {
+		"gear": [
+			{
+				"id": "sword_common",
+				"name": "Common Sword",
+				"type": "sword",
+				"stats": [{"name": "attack", "value": 5}]
+			}
+		]
+	}
+	gear_mgr.equipped_gear = {"sword": "sword_common"}
 
-	var player_mgr = PlayerStatsManagerClass.new()
-	add_child_autofree(player_mgr)
-	player_mgr._currency = 100
-	player_mgr._gems = 50
+	var inventory: Dictionary = gear_mgr.get_full_inventory()
+	assert_eq(inventory.get("gear", []).size(), 1, "Inventory should hold the fixture gear")
+	assert_eq(inventory.get("equipped_gear", {}).get("sword", ""), "sword_common", "Sword should be equipped")
 
-	var item_price = 80
-	var item_gem_price = 10
+	# (a) load_currency() reads the balances from the server response.
+	watch_signals(store_mgr)
+	await store_mgr.load_currency()
+	assert_eq(store_mgr.get_gems(), 50, "Gems should come from the get_currency response")
+	assert_eq(store_mgr.get_coins(), 500, "Coins should come from the get_currency response")
+	assert_signal_emitted(store_mgr, "currency_updated")
+	assert_signal_emitted_with_parameters(store_mgr, "currency_updated", [50, 500])
 
-	var can_afford = player_mgr.can_afford(item_price)
-	assert_true(can_afford, "Player should afford item with currency")
+	# (b) spend_gems() adopts the server-authoritative new balance.
+	await store_mgr.spend_gems(10, "test_purchase")
+	assert_eq(store_mgr.get_gems(), 40, "Gems should adopt the server new_balance")
+	assert_eq(store_mgr.get_coins(), 500, "Coins should be untouched by a gem spend")
+	assert_signal_emitted(store_mgr, "currency_updated")
 
-	player_mgr.spend_currency(item_price)
-	assert_eq(player_mgr.get_currency(), 20, "Currency should decrease after purchase")
+	# (c) The gear inventory co-exists untouched next to the store flow.
+	assert_eq(gear_mgr.get_full_inventory().get("gear", []).size(), 1, "Inventory should still hold the fixture gear")
