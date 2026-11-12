@@ -61,12 +61,12 @@
             "description": "Manages cosmetic skin system"
         },
         "ProfilingInstrumentation": {
-            "test_file": "test/suites/autoloads/test_profiling_instrumentation.gd",
+            "test_file": "test/suites/performance/test_profiling_instrumentation.gd",
             "critical": false,
             "description": "Provides runtime performance profiling and code timing"
         },
         "PerformanceProfiler": {
-            "test_file": "test/suites/autoloads/test_performance_profiler.gd",
+            "test_file": "test/suites/performance/test_performance_profiler.gd",
             "critical": false,
             "description": "Tracks FPS, memory usage, and device capability detection"
         },
@@ -76,7 +76,7 @@
             "description": "Manages object pooling for performance"
         },
         "ShootingManager": {
-            "test_file": "test/suites/shooting/test_shooting_manager.gd",
+            "test_file": "test/suites/autoloads/test_shooting_manager.gd",
             "critical": false,
             "description": "Manages shooting mechanics, ammo, and cooldown"
         },
@@ -109,23 +109,8 @@
             "test_file": "test/suites/autoloads/test_vfx_manager.gd",
             "critical": false,
             "description": "Manages visual effects and particles"
-        },
-        "UIAutomation": {
-            "test_file": "test/suites/autoloads/test_ui_automation.gd",
-            "critical": false,
-            "description": "Provides common UI animations and transitions"
-        },
-        "AnimationUtils": {
-            "test_file": "test/suites/autoloads/test_animation_utils.gd",
-            "critical": false,
-            "description": "Reusable tween utility functions for UI animations"
-        },
-        "LootManager": {
-            "test_file": "test/suites/loot/test_loot_manager.gd",
-            "critical": false,
-            "description": "Handles loot drops and rewards"
         }
     },
     "version": "1.1.0",
-    "last_updated": "2026-03-30T00:00:00Z"
+    "last_updated": "2026-11-12T00:00:00Z"
 }
