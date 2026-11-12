@@ -63,6 +63,19 @@ class MockStoreNetworkManager extends Node:
 			return rpc_responses[rpc_id]
 		return {"error": "Unknown RPC: %s" % rpc_id}
 
+## Mock transport serving SeasonManager's real season rewards RPCs.
+## Same stub-injection precedent as MockStoreNetworkManager above.
+class MockSeasonNetworkManager extends Node:
+	var is_connected: bool = true
+	var rpc_responses: Dictionary = {}
+	var rpc_calls: Array = []
+
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		rpc_calls.append(rpc_id)
+		if rpc_responses.has(rpc_id):
+			return rpc_responses[rpc_id]
+		return {"error": "Unknown RPC: %s" % rpc_id}
+
 func before_each():
 	Engine.time_scale = 1.0
 
@@ -194,26 +207,51 @@ func test_gear_equipped_affects_combat():
 	assert_eq(all_stats.get("attack", 0.0), expected_attack, "Combined stats include gear attack")
 
 func test_season_manager_affects_player_rewards():
-	# Issue #1361 follow-up: production SeasonManager.gd has no
-	# `get_season_bonus_xp` method; the test calls a non-existent API.
-	pending("Production SeasonManager has no get_season_bonus_xp() (issue #1361 follow-up)")
-	return
-	var season_mgr = SeasonManagerClass.new()
-	add_child_autofree(season_mgr)
+	# Issue #1814: the shipped player-rewards path in SeasonManager is the
+	# server-driven season rewards RPC flow - get_season_rewards() /
+	# claim_season_rewards() over the shared transport, cached into
+	# season_rewards, announced via rewards_loaded / rewards_claimed and
+	# readable synchronously via get_rewards_sync() / is_rewards_claimed().
+	# There is no XP-bonus API in production (that was an invented stub).
+	var mock_net = MockSeasonNetworkManager.new()
+	add_child_autofree(mock_net)
 
-	var player_mgr = PlayerStatsManagerClass.new()
-	add_child_autofree(player_mgr)
-
-	season_mgr.current_season = {
-		"season_id": "season_1",
-		"bonus_multiplier": 1.5,
-		"active": true
+	var rewards_fixture: Dictionary = {
+		"coins": 500,
+		"gems": 25,
+		"loot_box": "season_1_chest"
+	}
+	mock_net.rpc_responses["armored_archer/get_season_rewards"] = {
+		"success": true,
+		"rewards": rewards_fixture
+	}
+	mock_net.rpc_responses["armored_archer/claim_season_rewards"] = {
+		"success": true,
+		"claimed": true,
+		"rewards": rewards_fixture
 	}
 
-	var base_xp = 100
-	var bonus_xp = season_mgr.get_season_bonus_xp(base_xp)
+	var season_mgr = SeasonManagerClass.new()
+	add_child_autofree(season_mgr)
+	# SeasonManager.network_manager is an @onready var, so the stub has to be
+	# injected after the node entered the tree.
+	season_mgr.network_manager = mock_net
+	watch_signals(season_mgr)
 
-	assert_eq(bonus_xp, 150, "Season bonus should apply to XP rewards")
+	# (a) The rewards the server hands out become readable player rewards.
+	await season_mgr.get_season_rewards()
+	assert_signal_emitted_with_parameters(season_mgr, "rewards_loaded", [rewards_fixture])
+	assert_eq(season_mgr.get_rewards_sync(), rewards_fixture, "Rewards should come from the get_season_rewards response")
+	assert_false(season_mgr.is_rewards_claimed(), "Rewards should not be claimed before the claim RPC")
+
+	# (b) Claiming the rewards emits rewards_claimed and flips the claim flag.
+	await season_mgr.claim_season_rewards()
+	assert_signal_emitted_with_parameters(season_mgr, "rewards_claimed", [rewards_fixture])
+	assert_eq(season_mgr.get_rewards_sync(), rewards_fixture, "Claimed rewards should stay readable")
+	assert_true(season_mgr.is_rewards_claimed(), "is_rewards_claimed should reflect the claim response")
+
+	# (c) The real SeasonManager RPC IDs were used on the shared transport.
+	assert_eq(mock_net.rpc_calls, ["armored_archer/get_season_rewards", "armored_archer/claim_season_rewards"], "SeasonManager should use its real rewards RPC IDs")
 
 func test_inventory_manager_with_store():
 	# Issue #1803: the pending body of this test named PlayerStatsManager,
