@@ -17,6 +17,17 @@ const CAMPAIGN_PROGRESS_FILES: Array = [
 	"user://campaign_progress.json.bak"
 ]
 
+# Local transport fixture for the shipped create/accept-match RPC paths.
+class MatchmakingTransport:
+	extends Node
+	var is_connected: bool = true
+	var responses: Dictionary = {}
+	var calls: Array = []
+
+	func send_rpc(rpc_id: String, payload: String) -> Dictionary:
+		calls.append({"rpc_id": rpc_id, "payload": JSON.parse_string(payload)})
+		return responses.get(rpc_id, {"error": "Unexpected matchmaking RPC"})
+
 func before_each():
 	Engine.time_scale = 1.0
 
@@ -73,20 +84,40 @@ func test_network_connect_and_combat_flow():
 	assert_true(combat_mgr.network_manager.is_connected, "CombatManager should see the connected manager")
 
 func test_matchmaking_manager_integration():
-	# Issue #1361 follow-up: production MatchmakerManager has no `_join_queue`
-	# method; the test calls a non-existent API.
-	pending("Production MatchmakerManager has no _join_queue method (issue #1361 follow-up)")
-	return
+	# Issue #1816: matchmaking creates and accepts matches, not a queue.
+	# Own both managers and stub only the transport; no live RPC or analytics.
+	var transport = MatchmakingTransport.new()
+	add_child_autofree(transport)
 	var mm_mgr = MatchmakerManagerClass.new()
 	add_child_autofree(mm_mgr)
+	mm_mgr.network_manager = transport
+	mm_mgr.analytics = null
+	var created_match = {"match_id": "created-local-match", "status": "waiting"}
+	var accepted_match = {"match_id": "accepted-local-match", "status": "active"}
+	transport.responses = {
+		"armored_archer/create_match": {"success": true, "match": created_match},
+		"armored_archer/accept_match": {"success": true, "match": accepted_match}
+	}
+	assert_false(mm_mgr.is_in_match(), "Fresh manager should have no current match")
+	watch_signals(mm_mgr)
 
-	var net_mgr = NetworkManagerClass.new()
-	add_child_autofree(net_mgr)
-	mm_mgr.network_manager = net_mgr
+	await mm_mgr.create_match("ranked")
 
-	mm_mgr._join_queue("pvp", 1500)
+	assert_signal_emitted_with_parameters(mm_mgr, "match_created", [created_match])
+	assert_eq(mm_mgr.get_current_match(), created_match, "Created match should be cached")
+	assert_true(mm_mgr.is_in_match(), "Waiting match should count as in-match")
+	assert_eq(transport.calls.size(), 1, "Create should send exactly one RPC")
+	assert_eq(transport.calls[0].rpc_id, "armored_archer/create_match")
+	assert_eq(transport.calls[0].payload, {"match_type": "ranked", "is_punch_up": false})
 
-	assert_true(mm_mgr.is_in_queue(), "Should be in matchmaking queue")
+	await mm_mgr.accept_match("accepted-local-match")
+
+	assert_signal_emitted_with_parameters(mm_mgr, "match_accepted", [accepted_match])
+	assert_eq(mm_mgr.get_current_match(), accepted_match, "Accepted match should replace the cache")
+	assert_true(mm_mgr.is_in_match(), "Active match should count as in-match")
+	assert_eq(transport.calls.size(), 2, "Accept should send exactly one more RPC")
+	assert_eq(transport.calls[1].rpc_id, "armored_archer/accept_match")
+	assert_eq(transport.calls[1].payload, {"match_id": "accepted-local-match"})
 
 func test_combat_sync_integration():
 	# ADR-0009 (issue #1714): the shared static CombatStateCache is the
