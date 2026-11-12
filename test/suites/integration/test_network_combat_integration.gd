@@ -9,6 +9,14 @@ const GemManagerClass = preload("res://autoloads/GemManager.gd")
 const PlayerStatsManagerClass = preload("res://autoloads/PlayerStatsManager.gd")
 const CampaignManagerClass = preload("res://autoloads/CampaignManager.gd")
 
+## Files CampaignManager may write while the test runs: the progress save
+## plus the SaveIO backup/temp siblings (issue #1723).
+const CAMPAIGN_PROGRESS_FILES: Array = [
+	"user://campaign_progress.json",
+	"user://campaign_progress.json.tmp",
+	"user://campaign_progress.json.bak"
+]
+
 func before_each():
 	Engine.time_scale = 1.0
 
@@ -95,22 +103,103 @@ func test_gem_manager_with_player_stats():
 	assert_true(total_value > 0, "Should have gems from both systems")
 
 func test_campaign_manager_with_combat():
-	# Issue #1361 follow-up: production CampaignManager does not expose
-	# `_current_level` / `_level_data` as writable attributes.
-	pending("Production CampaignManager has no _current_level / _level_data writers (issue #1361 follow-up)")
-	return
+	# Issue #1804: rewritten against CampaignManager's real stage-data API.
+	# The old stub assumed `_current_level` / `_level_data` writers that the
+	# production manager never had. Production is stage-based: campaigns_data
+	# (campaigns[].stages[] with id / difficulty / enemy) is read through
+	# get_stage_data() / get_enemy_data() / get_difficulty_tier(), and
+	# complete_stage() records the stage and emits stage_completed.
+	#
+	# This suite owns its own manager instance with a fixture campaigns_data,
+	# so it does not depend on (nor duplicate) the autoload spawn-context
+	# suite in test/suites/dev/test_campaign_spawn_context.gd.
+	#
+	# Snapshot the shared progress file before the manager touches it, so the
+	# file can be restored afterwards (CampaignManager saves on _ready() and
+	# on complete_stage()).
+	var progress_snapshot := _snapshot_campaign_progress()
+
 	var campaign_mgr = CampaignManagerClass.new()
 	add_child_autofree(campaign_mgr)
+	# Offline-safe: with no network manager the completion path stays local
+	# (_notify_server_stage_complete -> "offline") and never calls a server.
+	campaign_mgr.network_manager = null
 
-	var combat_mgr = CombatManagerClass.new()
-	add_child_autofree(combat_mgr)
-
-	campaign_mgr._current_level = 5
-	campaign_mgr._level_data = {
-		"level_5": {
-			"difficulty": "hard",
-			"enemy_health": 200
-		}
+	campaign_mgr.campaigns_data = {
+		"campaigns": [
+			{
+				"id": "chapter_5",
+				"stages": [
+					{
+						"id": "5_1",
+						"name": "Iron Gate",
+						"waves": 1,
+						"boss": null,
+						"difficulty": 3,
+						"biome": "mountain",
+						"enemy": {
+							"type": "Armored Sentinel",
+							"health": 200,
+							"attack": 20,
+							"defense": 8,
+							"speed": 6
+						}
+					}
+				]
+			}
+		]
 	}
+	campaign_mgr.unlocked_chapters = ["chapter_5"]
+	campaign_mgr.unlocked_stages = ["5_1"]
+	campaign_mgr.completed_stages = []
 
-	assert_eq(campaign_mgr.get_current_level(), 5, "Should be on level 5")
+	# (a) The stage reads back through the public stage-data API.
+	assert_eq(campaign_mgr.get_stage_data("5_1").difficulty, 3, "Stage 5_1 should be difficulty tier 3")
+	assert_eq(campaign_mgr.get_enemy_data("5_1").health, 200, "Stage 5_1 enemy should have 200 health")
+	assert_eq(campaign_mgr.get_difficulty_tier("5_1"), 3, "Stage 5_1 difficulty tier should be 3")
+
+	# (b) Completing the stage emits stage_completed and records completion.
+	watch_signals(campaign_mgr)
+
+	campaign_mgr.complete_stage("5_1")
+
+	assert_signal_emitted_with_parameters(campaign_mgr, "stage_completed", ["5_1"])
+	assert_true(campaign_mgr.is_stage_completed("5_1"), "Stage 5_1 should be marked as completed")
+
+	# Leave the shared user:// progress file as we found it (complete_stage
+	# saves progress), so the rest of the suite is unaffected.
+	_restore_campaign_progress(progress_snapshot)
+
+# --- helpers for the campaign stage-data test ---
+
+func _snapshot_campaign_progress() -> Array:
+	## Captures the campaign progress files so the test can restore them.
+	var snapshot: Array = []
+	for path: String in CAMPAIGN_PROGRESS_FILES:
+		if not FileAccess.file_exists(path):
+			snapshot.append({"path": path, "existed": false, "content": ""})
+			continue
+		var file := FileAccess.open(path, FileAccess.READ)
+		if file == null:
+			snapshot.append({"path": path, "existed": false, "content": ""})
+			continue
+		var content := file.get_as_text()
+		file.close()
+		snapshot.append({"path": path, "existed": true, "content": content})
+	return snapshot
+
+func _restore_campaign_progress(snapshot: Array) -> void:
+	## Restores (or removes) the campaign progress files.
+	for entry in snapshot:
+		var path := str(entry.get("path", ""))
+		if path == "":
+			continue
+		if bool(entry.get("existed", false)):
+			var file := FileAccess.open(path, FileAccess.WRITE)
+			if file != null:
+				file.store_string(str(entry.get("content", "")))
+				file.close()
+		elif FileAccess.file_exists(path):
+			var dir := DirAccess.open("user://")
+			if dir != null:
+				var _err := dir.remove(path.get_file())
