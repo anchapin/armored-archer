@@ -1,5 +1,12 @@
 extends Control
 
+# Issue #1825: UIAutomation is not registered as an autoload, so the previous
+# UIAutomation autoload-node lookups always returned null and the
+# animations-enabled checks were dead code. Use the script's shipped static API
+# instead. The const is deliberately named differently from the (unused)
+# autoload name so it can never shadow an autoload singleton.
+const UIAutomationAPI := preload("res://autoloads/UIAutomation.gd")
+
 # --- State ---
 var current_chapter: String = "chapter_1"
 var available_chapters: Array = []
@@ -275,7 +282,7 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	# Get colors from DesignTokens if available
-	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
+	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
 	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
 	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
 	var text_color = Color.WHITE
@@ -439,8 +446,7 @@ var _fade_rect: ColorRect = null
 
 ## Fade-out current screen, swap scene, fade-in the next.
 func _transition_to_file(scene_path: String) -> void:
-	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 
@@ -453,8 +459,7 @@ func _transition_to_file(scene_path: String) -> void:
 	tween.tween_callback(func(): get_tree().change_scene_to_file(scene_path))
 
 func _transition_to_packed(scene: PackedScene) -> void:
-	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_packed(scene)
 		return
 

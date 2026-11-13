@@ -89,9 +89,9 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
 	# Get DesignTokens colors
-	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
-	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color("#EF4444")
-	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
+	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
+	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
+	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
 	var text_color = Color.WHITE
 	
 	if theme_manager:

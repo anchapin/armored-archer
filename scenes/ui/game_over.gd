@@ -194,14 +194,25 @@ func _apply_theme() -> void:
 	if not theme_manager:
 		return
 
-	var colors = theme_manager.get_theme_colors()
-
 	# Apply background color
 	theme_manager.apply_background(self)
 
 	# Apply colors to labels and buttons
+	# Issue #1832: the heading sits on the dark Panel, so it must use the
+	# light Relic Archive on-surface colours instead of the dark
+	# Tactile Heroism "on_surface" (#383833) which was invisible there.
 	if result_label:
-		result_label.modulate = colors["on_surface"]
+		result_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE)
+	if loot_label:
+		loot_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE_VARIANT)
+	# Issue #1832: ArcheryBaseButton already renders the Relic Archive primary
+	# style (gold background + dark "on primary" text). Tinting it with the
+	# dark Tactile Heroism primary blue turned the button dark-on-dark, so the
+	# buttons keep their own palette here.
+	if restart_button:
+		restart_button.modulate = Color.WHITE
+	if pvp_challenge_button:
+		pvp_challenge_button.modulate = Color.WHITE
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
