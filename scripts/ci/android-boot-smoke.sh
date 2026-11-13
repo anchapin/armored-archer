@@ -39,6 +39,11 @@ collect_diagnostics() {
 	timeout 20s adb shell getprop > "$DIAGNOSTICS/device-properties.txt" 2>&1
 	timeout 20s adb exec-out screencap -p > "$DIAGNOSTICS/screen.png" 2> "$DIAGNOSTICS/screencap-error.txt"
 	collect_configuration_state after-smoke
+	# Post-smoke only: no new work before launch or the 60-second assertions.
+	# Read-only and best-effort; no resets, settings changes, or new assertions.
+	timeout 5s adb shell dumpsys SurfaceFlinger --list > "$DIAGNOSTICS/after-smoke-surfaces.txt" 2>&1 || true
+	timeout 5s adb shell dumpsys gfxinfo "$PKG" > "$DIAGNOSTICS/after-smoke-gfxinfo.txt" 2>&1 || true
+	timeout 5s adb shell dumpsys display > "$DIAGNOSTICS/after-smoke-render-displays.txt" 2>&1 || true
 	printf 'boot-smoke exit status: %s\n' "$result" > "$DIAGNOSTICS/result.txt"
 	if [ "$result" -ne 0 ]; then
 		echo '::group::Game and crash log tail (full buffers in artifact)'
