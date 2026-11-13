@@ -17,6 +17,7 @@ const PLAYER_SCRIPT = preload("res://scripts/character_body_2d.gd")
 
 var player
 var manager
+var other_players: Array[Node] = []
 
 
 func before_each() -> void:
@@ -27,14 +28,21 @@ func before_each() -> void:
 	add_child_autofree(player)
 	await get_tree().process_frame
 
+	player.set_physics_process(false)
+	other_players.clear()
 	# Other suites drop fixtures into the "Player" group; make sure the
 	# routing target is the player this test owns.
 	for node in get_tree().get_nodes_in_group("Player"):
 		if node != player and is_instance_valid(node):
+			other_players.append(node)
 			node.remove_from_group("Player")
 
 
 func after_each() -> void:
+	for node in other_players:
+		if is_instance_valid(node):
+			node.add_to_group("Player")
+	other_players.clear()
 	player = null
 	manager = null
 
@@ -81,7 +89,8 @@ func test_combat_juice_hit_reaction_routing():
 		{"damage": 25, "source": "melee"}
 	)
 
-	assert_signal_emitted_with_parameters(manager, "juice_effect_started", ["hit_reaction"])
+	assert_signal_emitted_with_parameters(manager, "juice_effect_started",
+		["hit_reaction", {"damage": 25, "source": "melee"}])
 	assert_signal_emitted(manager, "juice_effect_completed")
 	assert_signal_emitted(player, "flinch_started")
 	assert_true(player.is_flinching(), "The routed hit reaction must reach the player")
@@ -138,21 +147,90 @@ func test_hit_reaction_sources():
 
 ## Test juice_effect_completed signal for hit reactions
 func test_hit_reaction_completion_signal():
-	_completed_types.clear()
-	manager.juice_effect_completed.connect(_on_juice_effect_completed)
-
+	watch_signals(manager)
 	manager.trigger_combat_juice(
 		CombatJuiceManager.EffectType.HIT_REACTION,
 		{"damage": 25, "source": "melee"}
 	)
+	assert_signal_emitted(manager, "juice_effect_completed")
+	var args = get_signal_parameters(manager, "juice_effect_completed")
+	assert_eq(args[0], "hit_reaction")
+	assert_eq(args[1].get("reaction"), "flinch")
+	assert_true(args[1].get("success", false))
 
-	# Wait a frame for signal processing
-	await get_tree().process_frame
 
-	assert_true(_completed_types.has("hit_reaction"),
-		"juice_effect_completed should be emitted for hit reactions")
+func _prepare_manual_reaction() -> void:
+	player.set_process(false)
+	player.body_sprite.modulate = Color(0.4, 0.6, 0.8, 0.7)
+	player.body_sprite.scale = Vector2(1.2, 0.8)
+	watch_signals(player)
 
 
-## Collects the effect types reported by the juice manager.
-func _on_juice_effect_completed(effect_type: String, _data: Dictionary) -> void:
-	_completed_types.append(effect_type)
+func test_repeated_flinch_restores_original_nonwhite_tint() -> void:
+	_prepare_manual_reaction()
+	var original: Color = player.body_sprite.modulate
+	player.trigger_flinch()
+	player._process(0.1)
+	player.trigger_flinch()
+	assert_eq(player._flinch_time_left, PLAYER_SCRIPT.FLINCH_DURATION)
+	player._process(0.21)
+	assert_eq(player.body_sprite.modulate, original)
+	assert_false(player.is_flinching())
+	assert_eq(player.get_hit_reaction(), "")
+	assert_signal_emit_count(player, "flinch_started", 2)
+	assert_signal_emit_count(player, "flinch_ended", 1)
+	player._process(1.0)
+	assert_signal_emit_count(player, "flinch_ended", 1)
+
+
+func test_repeated_stutter_does_not_compound_squash() -> void:
+	_prepare_manual_reaction()
+	var original: Vector2 = player.body_sprite.scale
+	player.trigger_stutter()
+	player._process(0.02)
+	player.trigger_stutter()
+	assert_eq(player.body_sprite.scale, original * PLAYER_SCRIPT.STUTTER_SQUASH_SCALE)
+	assert_eq(player._stutter_time_left, PLAYER_SCRIPT.STUTTER_DURATION)
+	player._process(0.06)
+	assert_eq(player.body_sprite.scale, original)
+	assert_false(player.is_stuttering())
+	assert_eq(player.get_hit_reaction(), "")
+	assert_signal_emit_count(player, "stutter_started", 2)
+	assert_signal_emit_count(player, "stutter_ended", 1)
+
+
+func test_overlap_keeps_remaining_flinch_then_restores_both_properties() -> void:
+	_prepare_manual_reaction()
+	var original_color: Color = player.body_sprite.modulate
+	var original_scale: Vector2 = player.body_sprite.scale
+	player.trigger_flinch()
+	player.trigger_stutter()
+	player.trigger_flinch()
+	assert_eq(player.get_hit_reaction(), "stutter")
+	player._process(0.06)
+	assert_eq(player.get_hit_reaction(), "flinch")
+	assert_eq(player.body_sprite.scale, original_scale)
+	assert_ne(player.body_sprite.modulate, original_color)
+	player._process(0.2)
+	assert_eq(player.body_sprite.modulate, original_color)
+	assert_eq(player.get_hit_reaction(), "")
+	assert_signal_emit_count(player, "flinch_ended", 1)
+	assert_signal_emit_count(player, "stutter_ended", 1)
+
+
+func test_completed_reaction_captures_new_baseline_for_next_cycle() -> void:
+	_prepare_manual_reaction()
+	player.trigger_flinch()
+	player.trigger_stutter()
+	player._process(1.0)
+	var new_color := Color(0.7, 0.8, 0.9, 0.6)
+	var new_scale := Vector2(0.7, 1.1)
+	player.body_sprite.modulate = new_color
+	player.body_sprite.scale = new_scale
+	player.trigger_stutter()
+	player.trigger_flinch()
+	player.trigger_stutter()
+	player._process(1.0)
+	assert_eq(player.body_sprite.modulate, new_color)
+	assert_eq(player.body_sprite.scale, new_scale)
+	assert_eq(player.get_hit_reaction(), "")
