@@ -3,9 +3,13 @@
 # Updated: 2026-03-17 - Added design system support
 extends Control
 
-const UI_AUTOMATION = preload("res://autoloads/UIAutomation.gd")
-
 const NetworkConsts := preload("res://autoloads/const.gd")
+# Issue #1825: UIAutomation is not registered as an autoload, so the previous
+# UIAutomation autoload-node lookup always returned null and the
+# animations-enabled check was dead code. Use the script's shipped static API
+# instead. The const is deliberately named differently from the (unused)
+# autoload name so it can never shadow an autoload singleton.
+const UIAutomationAPI := preload("res://autoloads/UIAutomation.gd")
 
 # --- UI References ---
 var loading_label: Label
@@ -210,7 +214,7 @@ var _fade_rect: ColorRect = null
 ## Fade-out current screen, swap scene, fade-in the next. Used for all menu
 ## transitions (login → main menu → campaign map at minimum).
 func _transition_to_scene(scene_path: String) -> void:
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 

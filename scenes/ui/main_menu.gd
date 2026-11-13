@@ -1,8 +1,12 @@
 extends Control
 
-const UI_AUTOMATION = preload("res://autoloads/UIAutomation.gd")
-
 const NetworkConsts := preload("res://autoloads/const.gd")
+# Issue #1825: UIAutomation is not registered as an autoload, so the previous
+# UIAutomation autoload-node lookups always returned null and the
+# animation/animation-setting checks were dead code. Use the script's shipped
+# static API instead. The const is deliberately named differently from the
+# (unused) autoload name so it can never shadow an autoload singleton.
+const UIAutomationAPI := preload("res://autoloads/UIAutomation.gd")
 
 # =============================================================================
 # MAIN MENU - Armored Archer (Relic Archive Redesign)
@@ -84,8 +88,6 @@ func _ready() -> void:
 	# Apply Relic Archive dark theme
 	_apply_relic_archive_theme()
 
-	# ArcheryBaseButton owns hover/press animations; do not add competing tweens.
-
 	# Animate menu entry
 	_animate_menu_entry()
 
@@ -166,7 +168,7 @@ func _on_quit_pressed() -> void:
 # --- Scene Transitions ---
 func _transition_to_scene(scene_path: String) -> void:
 	"""Animate menu transition with fade effect."""
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 	
@@ -177,7 +179,7 @@ func _transition_to_scene(scene_path: String) -> void:
 
 func _transition_to_scene_packed(scene: PackedScene) -> void:
 	"""Animate menu transition with fade effect for packed scenes."""
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_packed(scene)
 		return
 	
@@ -282,7 +284,7 @@ func _animate_menu_entry() -> void:
 		return
 
 	# Check if animations are enabled
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		return
 
 	# Set initial state
@@ -303,7 +305,7 @@ func _animate_character_preview() -> void:
 		return
 	
 	# Only animate if animations are enabled
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		return
 	
 	# Create a looping bob animation

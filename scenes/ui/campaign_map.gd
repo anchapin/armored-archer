@@ -1,6 +1,11 @@
 extends Control
 
-const UI_AUTOMATION = preload("res://autoloads/UIAutomation.gd")
+# Issue #1825: UIAutomation is not registered as an autoload, so the previous
+# UIAutomation autoload-node lookups always returned null and the
+# animations-enabled checks were dead code. Use the script's shipped static API
+# instead. The const is deliberately named differently from the (unused)
+# autoload name so it can never shadow an autoload singleton.
+const UIAutomationAPI := preload("res://autoloads/UIAutomation.gd")
 
 # --- State ---
 var current_chapter: String = "chapter_1"
@@ -441,7 +446,7 @@ var _fade_rect: ColorRect = null
 
 ## Fade-out current screen, swap scene, fade-in the next.
 func _transition_to_file(scene_path: String) -> void:
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 
@@ -454,7 +459,7 @@ func _transition_to_file(scene_path: String) -> void:
 	tween.tween_callback(func(): get_tree().change_scene_to_file(scene_path))
 
 func _transition_to_packed(scene: PackedScene) -> void:
-	if not UI_AUTOMATION.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_packed(scene)
 		return
 
