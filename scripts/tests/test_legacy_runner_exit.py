@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the real legacy runner's process exits in a disposable Godot project.
 
-Usage: python3 scripts/test_legacy_runner_exit.py --godot /path/to/godot4
+Usage: python3 scripts/tests/test_legacy_runner_exit.py --godot /path/to/godot4
 Only the manifest in a temporary copy is replaced. Production runner execution,
 result collection and quit handling stay intact; no repository fixtures linger.
 """
@@ -16,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--godot', required=True)
     parser.add_argument('--runner', type=pathlib.Path,
-                        default=pathlib.Path(__file__).resolve().parents[1] / 'test/run_all_tests.gd')
+                        default=pathlib.Path(__file__).resolve().parents[2] / 'test/run_all_tests.gd')
     args = parser.parse_args()
     source = args.runner.read_text()
     cases = [
