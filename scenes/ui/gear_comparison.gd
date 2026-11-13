@@ -96,15 +96,15 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 
 	match better:
 		"gear1":
-			result_text = "Left gear is better\n"  # Green
+			result_text = "Left gear is better\n"
 		"gear2":
-			result_text = "Right gear is better\n"  # Green
+			result_text = "Right gear is better\n"
 		"equal":
-			result_text = "Both gear are equal\n"  # Yellow
+			result_text = "Both gear are equal\n"
 
 	# Add stat differences to the result
 	if differences.size() > 0:
-		result_text += "\nStat Differences:\n"  # White
+		result_text += "\nStat Differences:\n"
 		for diff in differences:
 			var stat: String = diff.get("stat", "")
 			var gear1_val: int = diff.get("gear1_value", 0)
@@ -114,9 +114,9 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 
 			var diff_text: String = "%s: %d vs %d" % [stat, gear1_val, gear2_val]
 			if diff_better == "gear1":
-				diff_text += " (+%d)" % diff_val  # Green
+				diff_text += " (+%d)" % diff_val
 			elif diff_better == "gear2":
-				diff_text += " (%d)" % diff_val  # Red
+				diff_text += " (%d)" % diff_val
 
 			result_text += diff_text + "\n"
 
@@ -146,9 +146,11 @@ func _apply_theme() -> void:
 	
 	# Apply colors to labels
 	if gear1_name:
-		gear1_name.modulate = colors["on_surface"]
+		gear1_name.modulate = Color.WHITE
+		gear1_name.add_theme_color_override("font_color", colors["on_surface"])
 	if gear2_name:
-		gear2_name.modulate = colors["on_surface"]
+		gear2_name.modulate = Color.WHITE
+		gear2_name.add_theme_color_override("font_color", colors["on_surface"])
 	if result_label:
 		result_label.modulate = Color.WHITE
 		result_label.add_theme_color_override("font_color", colors["on_surface"])

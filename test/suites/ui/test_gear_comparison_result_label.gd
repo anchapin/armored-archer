@@ -48,8 +48,34 @@ func test_populated_labels_use_screen_text_color_and_keep_rarity_words() -> void
 		assert_eq(label.get_theme_color("font_color"), ThemeManager.get_text_color())
 	assert_eq(scene.gear1_rarity.text, "Rare")
 	assert_eq(scene.gear2_rarity.text, "Common")
+	scene._apply_theme()
+	assert_eq(scene.gear1_name.modulate, Color.WHITE)
+	assert_eq(scene.gear2_name.modulate, Color.WHITE)
 	var modifier = scene.gear1_modifiers.get_child(0)
 	assert_eq(modifier.get_child(0).text, "Swift")
 	assert_eq(modifier.get_child(1).text, ": Quick draw")
 	assert_eq(modifier.get_child(0).get_theme_color("font_color"), ThemeManager.get_text_color())
 	assert_eq(modifier.get_child(1).get_theme_color("font_color"), ThemeManager.get_text_color())
+
+func test_close_receives_viewport_mouse_input_through_local_background() -> void:
+	# Isolate GUI input from GUT runner controls, which can cover the root viewport.
+	var viewport = SubViewport.new()
+	viewport.size = Vector2i(720, 1280)
+	add_child_autofree(viewport)
+	var scene = COMPARISON_SCENE.instantiate()
+	viewport.add_child(scene)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var closed = [false]
+	scene.comparison_closed.connect(func(): closed[0] = true)
+	var point = scene.close_button.get_global_rect().get_center()
+	for pressed in [true, false]:
+		var event = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		event.position = point
+		viewport.push_input(event, true)
+		await get_tree().process_frame
+	assert_true(closed[0])
+	await get_tree().process_frame
+	assert_false(is_instance_valid(scene))
