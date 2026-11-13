@@ -50,13 +50,15 @@ func set_gear_comparison(gear1: Dictionary, gear2: Dictionary, comparison: Dicti
 
 func _display_gear(gear: Dictionary, name_label: Label, rarity_label: Label, stats_container: VBoxContainer, modifiers_container: VBoxContainer) -> void:
 	var rarity: String = gear.get("rarity", "common")
-	var color: Color = rarity_colors.get(rarity, Color.WHITE)
+	var color: Color = theme_manager.get_text_color() if theme_manager else rarity_colors.get(rarity, Color.WHITE)
 
 	name_label.text = gear.get("name", "Unknown")
-	name_label.modulate = color
+	name_label.modulate = Color.WHITE
+	name_label.add_theme_color_override("font_color", color)
 
 	rarity_label.text = rarity.capitalize()
-	rarity_label.modulate = color
+	rarity_label.modulate = Color.WHITE
+	rarity_label.add_theme_color_override("font_color", color)
 
 	_clear_container(stats_container)
 	var stats: Array = gear.get("stats", [])
@@ -72,7 +74,7 @@ func _display_gear(gear: Dictionary, name_label: Label, rarity_label: Label, sta
 
 		var mod_name_label: Label = Label.new()
 		mod_name_label.text = modifier.get("name", "Unknown")
-		mod_name_label.add_theme_color_override("font_color", Color.YELLOW)
+		mod_name_label.add_theme_color_override("font_color", theme_manager.get_text_color() if theme_manager else Color.YELLOW)
 
 		var mod_desc_label: Label = Label.new()
 		mod_desc_label.text = ": %s" % modifier.get("description", "")
@@ -88,30 +90,21 @@ func _clear_container(container: VBoxContainer) -> void:
 func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
-	# Get DesignTokens colors
-	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
-	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
-	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
-	var text_color = Color.WHITE
-	
-	if theme_manager:
-		text_color = theme_manager.get_text_color()
-
 	# Build result text with stat differences
 	var result_text: String = ""
 	var differences: Array = comparison.get("differences", [])
 
 	match better:
 		"gear1":
-			result_text = "[color=#22C55E]Left gear is better[/color]\n"  # Green
+			result_text = "Left gear is better\n"
 		"gear2":
-			result_text = "[color=#22C55E]Right gear is better[/color]\n"  # Green
+			result_text = "Right gear is better\n"
 		"equal":
-			result_text = "[color=#F59E0B]Both gear are equal[/color]\n"  # Yellow
+			result_text = "Both gear are equal\n"
 
 	# Add stat differences to the result
 	if differences.size() > 0:
-		result_text += "\n[color=#FFFFFF]Stat Differences:[/color]\n"  # White
+		result_text += "\nStat Differences:\n"
 		for diff in differences:
 			var stat: String = diff.get("stat", "")
 			var gear1_val: int = diff.get("gear1_value", 0)
@@ -121,9 +114,9 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 
 			var diff_text: String = "%s: %d vs %d" % [stat, gear1_val, gear2_val]
 			if diff_better == "gear1":
-				diff_text += " [color=#22C55E](+%d)[/color]" % diff_val  # Green
+				diff_text += " (+%d)" % diff_val
 			elif diff_better == "gear2":
-				diff_text += " [color=#EF4444](%d)[/color]" % diff_val  # Red
+				diff_text += " (%d)" % diff_val
 
 			result_text += diff_text + "\n"
 
@@ -139,17 +132,28 @@ func _apply_theme() -> void:
 		return
 	
 	var colors = theme_manager.get_theme_colors()
+	# Keep this screen's existing Label widgets readable on its parchment canvas.
+	if not theme:
+		theme = Theme.new()
+	theme.set_color("font_color", "Label", colors["on_surface"])
 	
 	# Apply background color
 	theme_manager.apply_background(self)
+	# This local background is created after parent layout; anchors alone leave it zero-sized.
+	var background := get_node_or_null("_theme_background") as ColorRect
+	if background:
+		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	
 	# Apply colors to labels
 	if gear1_name:
-		gear1_name.modulate = colors["on_surface"]
+		gear1_name.modulate = Color.WHITE
+		gear1_name.add_theme_color_override("font_color", colors["on_surface"])
 	if gear2_name:
-		gear2_name.modulate = colors["on_surface"]
+		gear2_name.modulate = Color.WHITE
+		gear2_name.add_theme_color_override("font_color", colors["on_surface"])
 	if result_label:
-		result_label.modulate = colors["on_surface"]
+		result_label.modulate = Color.WHITE
+		result_label.add_theme_color_override("font_color", colors["on_surface"])
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
