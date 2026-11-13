@@ -298,7 +298,6 @@ signal stutter_ended
 
 var _flinch_time_left: float = 0.0
 var _stutter_time_left: float = 0.0
-var _hit_reaction: String = ""
 var _hit_reaction_base_modulate: Color = Color.WHITE
 var _hit_reaction_base_scale: Vector2 = Vector2.ONE
 
@@ -326,7 +325,6 @@ func on_damage_taken(damage: int, source: String = "", reaction_type: String = "
 		if reaction == "stutter":
 			trigger_stutter()
 			stutter_triggered = true
-	_hit_reaction = reaction
 
 	return {
 		"success": true,
@@ -353,22 +351,24 @@ func _choose_hit_reaction(amount: int, source: String, reaction_type: String) ->
 ## Play the flinch reaction (visual hit recoil, ~200 ms).
 ## Returns immediately — the reaction plays out over time.
 func trigger_flinch() -> void:
-	_flinch_time_left = FLINCH_DURATION
-	_hit_reaction = "flinch"
 	if body_sprite:
-		_hit_reaction_base_modulate = body_sprite.modulate
+		# A retrigger extends the effect, never captures its temporary tint.
+		if not is_flinching():
+			_hit_reaction_base_modulate = body_sprite.modulate
 		body_sprite.modulate = Color(1.0, 0.55, 0.55, body_sprite.modulate.a)
+	_flinch_time_left = FLINCH_DURATION
 	flinch_started.emit(FLINCH_DURATION)
 
 
 ## Play the stutter reaction (brief stagger squash, ~50 ms).
 ## Returns immediately — the reaction plays out over time.
 func trigger_stutter() -> void:
-	_stutter_time_left = STUTTER_DURATION
-	_hit_reaction = "stutter"
 	if body_sprite:
-		_hit_reaction_base_scale = body_sprite.scale
+		# Reuse the first scale so repeated squashes cannot accumulate.
+		if not is_stuttering():
+			_hit_reaction_base_scale = body_sprite.scale
 		body_sprite.scale = _hit_reaction_base_scale * STUTTER_SQUASH_SCALE
+	_stutter_time_left = STUTTER_DURATION
 	stutter_started.emit(STUTTER_DURATION)
 
 
@@ -384,7 +384,11 @@ func is_stuttering() -> bool:
 
 ## The reaction currently playing ("", "flinch" or "stutter").
 func get_hit_reaction() -> String:
-	return _hit_reaction
+	if is_stuttering():
+		return "stutter"
+	if is_flinching():
+		return "flinch"
+	return ""
 
 
 ## Advances the running reactions. Additive: the script had no _process().
