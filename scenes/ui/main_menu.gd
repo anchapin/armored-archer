@@ -1,6 +1,12 @@
 extends Control
 
 const NetworkConsts := preload("res://autoloads/const.gd")
+# Issue #1825: UIAutomation is not registered as an autoload, so the previous
+# UIAutomation autoload-node lookups always returned null and the
+# animation/animation-setting checks were dead code. Use the script's shipped
+# static API instead. The const is deliberately named differently from the
+# (unused) autoload name so it can never shadow an autoload singleton.
+const UIAutomationAPI := preload("res://autoloads/UIAutomation.gd")
 
 # =============================================================================
 # MAIN MENU - Armored Archer (Relic Archive Redesign)
@@ -36,7 +42,6 @@ const NetworkConsts := preload("res://autoloads/const.gd")
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
 @onready var theme_manager: Node = get_node_or_null("/root/ThemeManager")
-@onready var ui_automation: Node = get_node_or_null("/root/UIAutomation")
 
 # --- Scene Instances for cleanup ---
 var _shop_instance: Node = null
@@ -166,7 +171,7 @@ func _on_quit_pressed() -> void:
 # --- Scene Transitions ---
 func _transition_to_scene(scene_path: String) -> void:
 	"""Animate menu transition with fade effect."""
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 	
@@ -177,7 +182,7 @@ func _transition_to_scene(scene_path: String) -> void:
 
 func _transition_to_scene_packed(scene: PackedScene) -> void:
 	"""Animate menu transition with fade effect for packed scenes."""
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_packed(scene)
 		return
 	
@@ -278,9 +283,6 @@ func _apply_surface_tier_style(panel: PanelContainer, tier: String) -> void:
 
 # --- UI Animations ---
 func _add_button_animations() -> void:
-	if not ui_automation:
-		return
-
 	# Add hover animations to each button
 	_add_button_animation(play_button)
 	_add_button_animation(loadout_button)
@@ -296,23 +298,32 @@ func _add_button_animation(button: ArcheryBaseButton) -> void:
 	button.button_down.connect(func(): _on_button_press(button))
 
 func _on_button_hover(button: ArcheryBaseButton) -> void:
-	if ui_automation and ui_automation.has_method("button_hover_in") and is_instance_valid(button):
-		ui_automation.button_hover_in(button)
+	if not is_instance_valid(button):
+		return
+	if not UIAutomationAPI.are_animations_enabled():
+		return
+	UIAutomationAPI.button_hover_in(button)
 
 func _on_button_hover_exit(button: ArcheryBaseButton) -> void:
-	if ui_automation and ui_automation.has_method("button_hover_out") and is_instance_valid(button):
-		ui_automation.button_hover_out(button)
+	if not is_instance_valid(button):
+		return
+	if not UIAutomationAPI.are_animations_enabled():
+		return
+	UIAutomationAPI.button_hover_out(button)
 
 func _on_button_press(button: ArcheryBaseButton) -> void:
-	if ui_automation and ui_automation.has_method("button_press") and is_instance_valid(button):
-		ui_automation.button_press(button)
+	if not is_instance_valid(button):
+		return
+	if not UIAutomationAPI.are_animations_enabled():
+		return
+	UIAutomationAPI.button_press(button)
 
 func _animate_menu_entry() -> void:
 	if not menu_container:
 		return
 
 	# Check if animations are enabled
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		return
 
 	# Set initial state
@@ -333,7 +344,7 @@ func _animate_character_preview() -> void:
 		return
 	
 	# Only animate if animations are enabled
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UIAutomationAPI.are_animations_enabled():
 		return
 	
 	# Create a looping bob animation
