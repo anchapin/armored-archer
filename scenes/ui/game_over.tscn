@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cndocvbyuvp3h" path="res://scenes/ui/game_over.gd" id="1_game_over_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/safe_area_container.tscn" id="2_safe_area_container"]
 [ext_resource type="Script" uid="uid://bvk14a8cbgsak" path="res://scenes/ui/safe_area_container.gd" id="3_x6o8e"]
-[ext_resource type="Script" uid="uid://cx8y22877gji7" path="res://scenes/ui/components/base_button.gd" id="4_vfrx6"]
+[ext_resource type="Script" path="res://scenes/ui/components/primary_token_button.gd" id="4_vfrx6"]
 
 [node name="GameOver" type="Control" unique_id=1460505904]
 layout_mode = 3

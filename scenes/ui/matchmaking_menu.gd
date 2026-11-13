@@ -198,12 +198,10 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	if match_data.get("is_punch_up", false):
 		info_vbox.add_child(punch_up_label)
 
-	var accept_button: ArcheryBaseButton = ArcheryBaseButton.new()
+	var accept_button: ArcheryBaseButton = preload("res://scenes/ui/components/primary_token_button.gd").new()
 	accept_button.text = "Accept"
 	
-	# Style button with DesignTokens
-	if design_tokens:
-		accept_button.modulate = ArcherDesignTokens.COLOR_PRIMARY
+	# Primary-token styles are applied by the button without tinting its text.
 	
 	accept_button.pressed.connect(_on_accept_match.bind(match_data.get("match_id", "")))
 

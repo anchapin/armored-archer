@@ -202,10 +202,6 @@ func _apply_theme() -> void:
 	# Apply colors to labels and buttons
 	if result_label:
 		result_label.modulate = colors["on_surface"]
-	if restart_button:
-		restart_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
-	if pvp_challenge_button:
-		pvp_challenge_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
