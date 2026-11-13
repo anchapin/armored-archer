@@ -1,5 +1,7 @@
 extends Control
 
+const UI_AUTOMATION = preload("res://autoloads/UIAutomation.gd")
+
 const NetworkConsts := preload("res://autoloads/const.gd")
 
 # =============================================================================
@@ -36,7 +38,6 @@ const NetworkConsts := preload("res://autoloads/const.gd")
 @onready var gem_manager: Node = get_node_or_null("/root/GemManager")
 @onready var store_manager: Node = get_node_or_null("/root/StoreManager")
 @onready var theme_manager: Node = get_node_or_null("/root/ThemeManager")
-@onready var ui_automation: Node = get_node_or_null("/root/UIAutomation")
 
 # --- Scene Instances for cleanup ---
 var _shop_instance: Node = null
@@ -83,8 +84,7 @@ func _ready() -> void:
 	# Apply Relic Archive dark theme
 	_apply_relic_archive_theme()
 
-	# Add hover animations to buttons
-	_add_button_animations()
+	# ArcheryBaseButton owns hover/press animations; do not add competing tweens.
 
 	# Animate menu entry
 	_animate_menu_entry()
@@ -166,7 +166,7 @@ func _on_quit_pressed() -> void:
 # --- Scene Transitions ---
 func _transition_to_scene(scene_path: String) -> void:
 	"""Animate menu transition with fade effect."""
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 	
@@ -177,7 +177,7 @@ func _transition_to_scene(scene_path: String) -> void:
 
 func _transition_to_scene_packed(scene: PackedScene) -> void:
 	"""Animate menu transition with fade effect for packed scenes."""
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		get_tree().change_scene_to_packed(scene)
 		return
 	
@@ -277,42 +277,12 @@ func _apply_surface_tier_style(panel: PanelContainer, tier: String) -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 # --- UI Animations ---
-func _add_button_animations() -> void:
-	if not ui_automation:
-		return
-
-	# Add hover animations to each button
-	_add_button_animation(play_button)
-	_add_button_animation(loadout_button)
-	_add_button_animation(pvp_button)
-	_add_button_animation(shop_button)
-	_add_button_animation(buy_gems_button)
-	_add_button_animation(settings_button)
-	_add_button_animation(quit_button)
-
-func _add_button_animation(button: ArcheryBaseButton) -> void:
-	button.mouse_entered.connect(func(): _on_button_hover(button))
-	button.mouse_exited.connect(func(): _on_button_hover_exit(button))
-	button.button_down.connect(func(): _on_button_press(button))
-
-func _on_button_hover(button: ArcheryBaseButton) -> void:
-	if ui_automation and ui_automation.has_method("button_hover_in") and is_instance_valid(button):
-		ui_automation.button_hover_in(button)
-
-func _on_button_hover_exit(button: ArcheryBaseButton) -> void:
-	if ui_automation and ui_automation.has_method("button_hover_out") and is_instance_valid(button):
-		ui_automation.button_hover_out(button)
-
-func _on_button_press(button: ArcheryBaseButton) -> void:
-	if ui_automation and ui_automation.has_method("button_press") and is_instance_valid(button):
-		ui_automation.button_press(button)
-
 func _animate_menu_entry() -> void:
 	if not menu_container:
 		return
 
 	# Check if animations are enabled
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		return
 
 	# Set initial state
@@ -333,7 +303,7 @@ func _animate_character_preview() -> void:
 		return
 	
 	# Only animate if animations are enabled
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		return
 	
 	# Create a looping bob animation

@@ -1,5 +1,7 @@
 extends Control
 
+const UI_AUTOMATION = preload("res://autoloads/UIAutomation.gd")
+
 # --- State ---
 var current_chapter: String = "chapter_1"
 var available_chapters: Array = []
@@ -439,8 +441,7 @@ var _fade_rect: ColorRect = null
 
 ## Fade-out current screen, swap scene, fade-in the next.
 func _transition_to_file(scene_path: String) -> void:
-	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 
@@ -453,8 +454,7 @@ func _transition_to_file(scene_path: String) -> void:
 	tween.tween_callback(func(): get_tree().change_scene_to_file(scene_path))
 
 func _transition_to_packed(scene: PackedScene) -> void:
-	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		get_tree().change_scene_to_packed(scene)
 		return
 

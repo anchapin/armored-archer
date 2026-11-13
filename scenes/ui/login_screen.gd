@@ -3,6 +3,8 @@
 # Updated: 2026-03-17 - Added design system support
 extends Control
 
+const UI_AUTOMATION = preload("res://autoloads/UIAutomation.gd")
+
 const NetworkConsts := preload("res://autoloads/const.gd")
 
 # --- UI References ---
@@ -208,8 +210,7 @@ var _fade_rect: ColorRect = null
 ## Fade-out current screen, swap scene, fade-in the next. Used for all menu
 ## transitions (login → main menu → campaign map at minimum).
 func _transition_to_scene(scene_path: String) -> void:
-	var ui_automation: Node = get_node_or_null("/root/UIAutomation")
-	if ui_automation and ui_automation.has_method("are_animations_enabled") and not ui_automation.are_animations_enabled():
+	if not UI_AUTOMATION.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
 
