@@ -139,6 +139,8 @@ func _on_matches_loaded(matches: Array, power_rating: int) -> void:
 		var no_matches_label: Label = Label.new()
 		no_matches_label.text = "No matches available"
 		no_matches_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		# Issue #1832: dark panel surface -> light text.
+		no_matches_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE)
 		matches_container.add_child(no_matches_label)
 	else:
 		for match_data in matches:
@@ -153,10 +155,12 @@ func _create_match_item(match_data: Dictionary) -> Control:
 
 	var type_label: Label = Label.new()
 	type_label.text = "%s" % match_data.get("match_type", "unknown").capitalize()
-	
+
 	# Apply theme text color
-	if theme_manager:
-		type_label.modulate = theme_manager.get_text_color()
+	# Issue #1832: the match list sits on the dark panel surface, so the
+	# opponent entry title uses the light Relic Archive on-surface colour
+	# instead of the dark Tactile Heroism text colour.
+	type_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE)
 
 	var opponent_rank: int = match_data.get("creator_rank", 0)
 	var player_rank_val: int = matchmaker_manager.get_player_rank_sync() if matchmaker_manager else 0
@@ -165,8 +169,9 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	rank_label.text = "Opponent Power Rating: %d" % opponent_rank
 
 	# Apply theme text color
-	if theme_manager:
-		rank_label.modulate = theme_manager.get_text_color()
+	# Issue #1832: opponent power-rating metadata must stay readable on the
+	# dark surface.
+	rank_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE)
 
 	# Display Power Rating difference - use DesignTokens colors
 	var rank_diff_label: Label = Label.new()
@@ -184,8 +189,8 @@ func _create_match_item(match_data: Dictionary) -> Control:
 		rank_diff_label.modulate = success_color  # Green for lower Power Rating
 	else:
 		rank_diff_label.text = "(evenly matched)"
-		if theme_manager:
-			rank_diff_label.modulate = theme_manager.get_text_color()
+		# Issue #1832: readable on the dark surface.
+		rank_diff_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE_VARIANT)
 
 	var punch_up_label: Label = Label.new()
 	if match_data.get("is_punch_up", false):
@@ -202,8 +207,10 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	accept_button.text = "Accept"
 	
 	# Style button with DesignTokens
-	if design_tokens:
-		accept_button.modulate = ArcherDesignTokens.COLOR_PRIMARY
+	# Issue #1832: ArcheryBaseButton already renders the Relic Archive primary
+	# style (gold background + dark "on primary" text). The dark Tactile
+	# Heroism primary blue tint made the button dark-on-dark, so it is dropped.
+	accept_button.modulate = Color.WHITE
 	
 	accept_button.pressed.connect(_on_accept_match.bind(match_data.get("match_id", "")))
 
@@ -342,18 +349,19 @@ func _apply_theme() -> void:
 	if not theme_manager:
 		return
 	
-	var colors = theme_manager.get_theme_colors()
-	
 	# Apply background color
 	theme_manager.apply_background(self)
 	
 	# Apply colors to labels
+	# Issue #1832: the status labels sit on the dark TopPanel surface, so they
+	# use the light Relic Archive on-surface colours instead of the dark
+	# Tactile Heroism "on_surface" (#383833) which was invisible there.
 	if loading_label:
-		loading_label.modulate = colors["on_surface"]
+		loading_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE)
 	if rank_label:
-		rank_label.modulate = colors["on_surface"]
+		rank_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE)
 	if punch_up_stats_label:
-		punch_up_stats_label.modulate = colors["on_surface"]
+		punch_up_stats_label.add_theme_color_override("font_color", ArcherDesignTokens.RA_ON_SURFACE_VARIANT)
 	
 	# Refresh matches to apply theme to entries
 	if not current_matches.is_empty():
