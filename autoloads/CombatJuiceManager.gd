@@ -229,15 +229,24 @@ func _trigger_damage_number(data: Dictionary) -> Dictionary:
 ##
 ##   reaction_type: "flinch" or "stutter"
 ##   source: Source of damage (melee, ranged, etc.)
+##
+## Issue #1823: this used to look up "/root/PlayerCharacter", a node that
+## never existed in the project, so HIT_REACTION juice was always dropped.
+## The real player is scenes/player.tscn (scripts/character_body_2d.gd),
+## which joins the "Player" group in its _ready().
 func _trigger_hit_reaction(data: Dictionary) -> Dictionary:
-	# Route to player character
-	var player = get_node_or_null("/root/PlayerCharacter")
+	# Route to the player character (the only node in the "Player" group).
+	var player = get_tree().get_first_node_in_group("Player")
 	if not player or not player.has_method("on_damage_taken"):
 		return {"success": false, "error": "Player or method not found"}
 
 	juice_effect_started.emit("hit_reaction", data)
 
-	var result = player.on_damage_taken(data.damage, data.source)
+	var damage: float = float(data.get("damage", 0.0))
+	var source: String = str(data.get("source", ""))
+	var reaction_type: String = str(data.get("reaction_type", ""))
+	var raw_result = player.on_damage_taken(int(damage), source, reaction_type)
+	var result: Dictionary = raw_result if raw_result is Dictionary else {"success": true}
 
 	juice_effect_completed.emit("hit_reaction", result)
 	return result
