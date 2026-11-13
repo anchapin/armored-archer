@@ -43,7 +43,7 @@ signal gate_blocked(gate_name: String, required_level: int)
 
 func _ready() -> void:
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Get PlayerStatsManager reference
 	player_stats_manager = get_node_or_null("/root/PlayerStatsManager")

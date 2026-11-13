@@ -39,7 +39,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Get manager references
 	player_stats = get_node_or_null("/root/PlayerStatsManager")
@@ -203,9 +203,9 @@ func _apply_theme() -> void:
 	if result_label:
 		result_label.modulate = colors["on_surface"]
 	if restart_button:
-		restart_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color.WHITE
+		restart_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
 	if pvp_challenge_button:
-		pvp_challenge_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color.WHITE
+		pvp_challenge_button.modulate = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()

@@ -31,7 +31,7 @@ var theme_manager: Node
 
 func _ready() -> void:
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Get ProgressionIndicatorManager reference
 	progression_manager = get_node_or_null("/root/ProgressionIndicatorManager")
@@ -120,7 +120,7 @@ func _create_quest_panel(quest_data: Dictionary) -> Control:
 	var level_requirement = quest_data.get("level_requirement", 1)
 
 	# Get colors from DesignTokens
-	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
+	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
 	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
 	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
 	var text_color = Color.WHITE

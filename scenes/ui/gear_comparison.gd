@@ -34,7 +34,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 	
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 	
 	# Apply theme if available
 	if theme_manager:
@@ -89,9 +89,9 @@ func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
 	# Get DesignTokens colors
-	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
-	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
-	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
+	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
+	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color("#EF4444")
+	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
 	var text_color = Color.WHITE
 	
 	if theme_manager:

@@ -32,7 +32,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 	
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 	
 	# Apply theme if available
 	if theme_manager:
@@ -172,9 +172,9 @@ func _create_match_item(match_data: Dictionary) -> Control:
 	var rank_diff_label: Label = Label.new()
 	var rank_diff: int = opponent_rank - player_rank_val
 
-	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
-	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.ORANGE
-	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
+	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
+	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
+	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color("#EF4444")
 
 	if rank_diff > 0:
 		rank_diff_label.text = "(+%d above you)" % rank_diff

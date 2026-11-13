@@ -58,7 +58,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Get PlayerStatsManager reference
 	player_stats = get_node_or_null("/root/PlayerStatsManager")
@@ -275,7 +275,7 @@ func create_stage_button(stage_data: Dictionary, stage_markers: Dictionary = {})
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	# Get colors from DesignTokens if available
-	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#4A90D9")
+	var primary_color = ArcherDesignTokens.COLOR_PRIMARY if design_tokens else Color("#0060ce")
 	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color("#22C55E")
 	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color("#F59E0B")
 	var text_color = Color.WHITE
