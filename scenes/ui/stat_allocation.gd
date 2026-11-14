@@ -1,21 +1,21 @@
 extends Control
 
 # --- Node References ---
-@onready var level_label: Label = $VBoxContainer/StatsContainer/LevelContainer/LevelLabel
-@onready var xp_label: Label = $VBoxContainer/StatsContainer/XPContainer/XPLabel
-@onready var ability_points_label: Label = $VBoxContainer/AbilityPointsLabel
+@onready var level_label: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/LevelContainer/LevelLabel
+@onready var xp_label: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/XPContainer/XPLabel
+@onready var ability_points_label: Label = $SafeAreaContainer/VBoxContainer/AbilityPointsLabel
 
-@onready var attack_value: Label = $VBoxContainer/StatsContainer/AttackContainer/AttackValue
-@onready var attack_plus: Button = $VBoxContainer/StatsContainer/AttackContainer/AttackPlus
-@onready var defense_value: Label = $VBoxContainer/StatsContainer/DefenseContainer/DefenseValue
-@onready var defense_plus: Button = $VBoxContainer/StatsContainer/DefenseContainer/DefensePlus
-@onready var dodge_value: Label = $VBoxContainer/StatsContainer/DodgeContainer/DodgeValue
-@onready var dodge_plus: Button = $VBoxContainer/StatsContainer/DodgeContainer/DodgePlus
-@onready var crit_rate_value: Label = $VBoxContainer/StatsContainer/CritRateContainer/CritRateValue
-@onready var crit_rate_plus: Button = $VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus
+@onready var attack_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackValue
+@onready var attack_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackPlus
+@onready var defense_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefenseValue
+@onready var defense_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefensePlus
+@onready var dodge_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgeValue
+@onready var dodge_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgePlus
+@onready var crit_rate_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRateValue
+@onready var crit_rate_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus
 
-@onready var xp_progress_bar: ProgressBar = $VBoxContainer/XPProgressBar
-@onready var back_button: Button = $VBoxContainer/BackButton
+@onready var xp_progress_bar: ProgressBar = $SafeAreaContainer/VBoxContainer/XPProgressBar
+@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BackButton
 @onready var loading_indicator: Control = $LoadingIndicator
 
 # --- PlayerStatsManager Reference ---

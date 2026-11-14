@@ -1,35 +1,35 @@
 extends Control
 
 # --- Node References ---
-@onready var level_label: Label = $VBoxContainer/StatsContainer/LevelContainer/LevelLabel
-@onready var xp_label: Label = $VBoxContainer/StatsContainer/XPContainer/XPLabel
-@onready var ability_points_label: Label = $VBoxContainer/AbilityPointsLabel
+@onready var level_label: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/LevelContainer/LevelLabel
+@onready var xp_label: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/XPContainer/XPLabel
+@onready var ability_points_label: Label = $SafeAreaContainer/VBoxContainer/AbilityPointsLabel
 
-@onready var attack_value: Label = $VBoxContainer/StatsContainer/AttackContainer/AttackValue
-@onready var attack_plus: Button = $VBoxContainer/StatsContainer/AttackContainer/AttackPlus
-@onready var defense_value: Label = $VBoxContainer/StatsContainer/DefenseContainer/DefenseValue
-@onready var defense_plus: Button = $VBoxContainer/StatsContainer/DefenseContainer/DefensePlus
-@onready var dodge_value: Label = $VBoxContainer/StatsContainer/DodgeContainer/DodgeValue
-@onready var dodge_plus: Button = $VBoxContainer/StatsContainer/DodgeContainer/DodgePlus
-@onready var crit_rate_value: Label = $VBoxContainer/StatsContainer/CritRateContainer/CritRateValue
-@onready var crit_rate_plus: Button = $VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus
+@onready var attack_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackValue
+@onready var attack_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackPlus
+@onready var defense_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefenseValue
+@onready var defense_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefensePlus
+@onready var dodge_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgeValue
+@onready var dodge_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgePlus
+@onready var crit_rate_value: Label = $SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRateValue
+@onready var crit_rate_plus: Button = $SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus
 
-@onready var xp_progress_bar: ProgressBar = $VBoxContainer/XPProgressBar
-@onready var back_button: Button = $VBoxContainer/BackButton
+@onready var xp_progress_bar: ProgressBar = $SafeAreaContainer/VBoxContainer/XPProgressBar
+@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BackButton
 @onready var loading_indicator: Control = $LoadingIndicator
 
 # --- Respec Section ---
-@onready var respec_button: Button = $VBoxContainer/RespecButton
-@onready var respec_cost_label: Label = $VBoxContainer/RespecContainer/RespecCostLabel
-@onready var respec_cooldown_label: Label = $VBoxContainer/RespecContainer/RespecCooldownLabel
-@onready var free_respec_label: Label = $VBoxContainer/RespecContainer/FreeRespecLabel
+@onready var respec_button: Button = $SafeAreaContainer/VBoxContainer/RespecButton
+@onready var respec_cost_label: Label = $SafeAreaContainer/VBoxContainer/RespecContainer/RespecCostLabel
+@onready var respec_cooldown_label: Label = $SafeAreaContainer/VBoxContainer/RespecContainer/RespecCooldownLabel
+@onready var free_respec_label: Label = $SafeAreaContainer/VBoxContainer/RespecContainer/FreeRespecLabel
 
 # --- Build Slots Section ---
-@onready var build_slots_container: HBoxContainer = $VBoxContainer/BuildSlotsContainer
-@onready var build_slot_1_button: Button = $VBoxContainer/BuildSlotsContainer/BuildSlot1
-@onready var build_slot_2_button: Button = $VBoxContainer/BuildSlotsContainer/BuildSlot2
-@onready var build_slot_3_button: Button = $VBoxContainer/BuildSlotsContainer/BuildSlot3
-@onready var save_build_button: Button = $VBoxContainer/BuildSlotsContainer/SaveBuildButton
+@onready var build_slots_container: HBoxContainer = $SafeAreaContainer/VBoxContainer/BuildSlotsContainer
+@onready var build_slot_1_button: Button = $SafeAreaContainer/VBoxContainer/BuildSlotsContainer/BuildSlot1
+@onready var build_slot_2_button: Button = $SafeAreaContainer/VBoxContainer/BuildSlotsContainer/BuildSlot2
+@onready var build_slot_3_button: Button = $SafeAreaContainer/VBoxContainer/BuildSlotsContainer/BuildSlot3
+@onready var save_build_button: Button = $SafeAreaContainer/VBoxContainer/BuildSlotsContainer/SaveBuildButton
 @onready var save_build_dialog: ConfirmationDialog = $SaveBuildDialog
 @onready var build_name_input: LineEdit = $SaveBuildDialog/BuildNameInput
 
