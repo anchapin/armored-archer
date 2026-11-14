@@ -39,7 +39,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Get manager references
 	player_stats = get_node_or_null("/root/PlayerStatsManager")

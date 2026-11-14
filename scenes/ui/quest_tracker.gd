@@ -31,7 +31,7 @@ var theme_manager: Node
 
 func _ready() -> void:
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Get ProgressionIndicatorManager reference
 	progression_manager = get_node_or_null("/root/ProgressionIndicatorManager")
