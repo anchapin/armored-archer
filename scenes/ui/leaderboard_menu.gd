@@ -1,23 +1,23 @@
 extends Control
 
 # --- UI References ---
-@onready var season_label: Label = $VBoxContainer/SeasonPanel/SeasonLabel
-@onready var time_label: Label = $VBoxContainer/SeasonPanel/TimeLabel
-@onready var your_rank_label: Label = $VBoxContainer/YourRankPanel/RankLabel
-@onready var your_tier_label: Label = $VBoxContainer/YourRankPanel/TierLabel
-@onready var leaderboard_container: VBoxContainer = $VBoxContainer/ScrollContainer/LeaderboardContainer
-@onready var rewards_button: Button = $VBoxContainer/BottomPanel/RewardsButton
-@onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
-@onready var loading_label: Label = $VBoxContainer/LoadingLabel
+@onready var season_label: Label = $SafeAreaContainer/VBoxContainer/SeasonPanel/SeasonVBox/SeasonLabel
+@onready var time_label: Label = $SafeAreaContainer/VBoxContainer/SeasonPanel/SeasonVBox/TimeLabel
+@onready var your_rank_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/RankLabel
+@onready var your_tier_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierLabel
+@onready var leaderboard_container: VBoxContainer = $SafeAreaContainer/VBoxContainer/ScrollContainer/LeaderboardContainer
+@onready var rewards_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/RewardsButton
+@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
+@onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
 
 # --- New UI References (added in enhanced scene) ---
-@onready var motivational_label: Label = $VBoxContainer/YourRankPanel/MotivationalLabel
-@onready var tier_progress_bar: ProgressBar = $VBoxContainer/YourRankPanel/TierProgressBar
-@onready var tier_progress_label: Label = $VBoxContainer/YourRankPanel/TierProgressLabel
-@onready var decay_warning_label: Label = $VBoxContainer/YourRankPanel/DecayWarningLabel
+@onready var motivational_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/MotivationalLabel
+@onready var tier_progress_bar: ProgressBar = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierProgressBar
+@onready var tier_progress_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierProgressLabel
+@onready var decay_warning_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/DecayWarningLabel
 @onready var season_message_panel: Control = $SeasonMessagePanel
 @onready var reward_preview_panel: Control = $RewardPreviewPanel
-@onready var preview_rewards_button: Button = $VBoxContainer/BottomPanel/PreviewRewardsButton
+@onready var preview_rewards_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/PreviewRewardsButton
 
 # --- Theme Manager Reference ---
 var theme_manager: Node
