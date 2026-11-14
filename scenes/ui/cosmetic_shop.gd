@@ -215,6 +215,12 @@ func _on_purchase_confirmed() -> void:
 
 func _on_purchase_canceled() -> void:
 	purchase_confirmation_dialog.hide()
+	# A canceled bundle must not own the next skin confirmation.
+	if _bundle_confirm_handler.is_valid() and yes_button.pressed.is_connected(_bundle_confirm_handler):
+		yes_button.pressed.disconnect(_bundle_confirm_handler)
+	_bundle_confirm_handler = Callable()
+	if not yes_button.pressed.is_connected(_on_purchase_confirmed):
+		yes_button.pressed.connect(_on_purchase_confirmed)
 
 func _on_skin_purchased(skin_id: String) -> void:
 	_show_skin_preview(skin_id)
