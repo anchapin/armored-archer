@@ -163,21 +163,22 @@ func _run_tests_async(test_files: Array):
 		if not (test_instance is Node):
 			_record_load_failure(test_file, "is not a Node and cannot be added to the test tree")
 			continue
-		_test_root.add_child(test_instance)
-		_tests_run += 1
 
 		# Wait for test to complete by connecting to test_completed signal
 		var test_completed := false
-		var local_passed := 0
-		var local_failed := 0
+		var local_counts := {"passed": 0, "failed": 0}
 
 		if test_instance.has_signal("test_completed"):
 			test_instance.test_completed.connect(func(_name, passed):
 				if passed:
-					local_passed += 1
+					local_counts.passed += 1
 				else:
-					local_failed += 1
+					local_counts.failed += 1
 			)
+
+		# Connect before _ready can emit results or free the test instance.
+		_test_root.add_child(test_instance)
+		_tests_run += 1
 
 		# Wait for test to finish - give it more time for async operations
 		# Wait up to 10 seconds (600 frames) for each test
@@ -201,16 +202,17 @@ func _run_tests_async(test_files: Array):
 				_total_passed += test_instance._tests_passed
 				_total_failed += test_instance._tests_failed
 			else:
-				_total_passed += local_passed
-				_total_failed += local_failed
+				_total_passed += local_counts.passed
+				_total_failed += local_counts.failed
 			test_instance.queue_free()
 		else:
-			_record_load_failure(test_file, "could not be instantiated")
+			# A test that completed and freed itself was instantiated successfully.
+			_total_passed += local_counts.passed
+			_total_failed += local_counts.failed
 
 	_all_tests_completed = true
 	await process_frame
 	_print_summary()
-	quit()
 
 # Records a listed test file that could not be loaded or instantiated as a
 # failure so it is counted in the summary and produces a non-zero exit code.
