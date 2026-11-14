@@ -197,7 +197,7 @@ func test_loadout_does_not_consume_format_power_rating() -> void:
 	## untouched for its other callers.
 	var text := _read_text(LOADOUT_SCRIPT_PATH)
 	assert_false(
-		text.contains("format_power_rating"),
+		_references_power_rating_formatter(text),
 		"loadout.gd must not feed the colour-tagged formatter output into a plain Label (issue #1851)."
 	)
 
@@ -223,3 +223,19 @@ func test_gear_balance_calculator_source_still_uses_markup() -> void:
 		text.contains("[color=%s]%d[/color]"),
 		"format_power_rating() must keep returning colour markup for its other callers (issue #1851)."
 	)
+
+func _references_power_rating_formatter(source: String) -> bool:
+	# Ignore full-line documentation comments, but preserve the broad guard
+	# against formatter references in every executable line.
+	for line in source.split("\n"):
+		if line.strip_edges().begins_with("#"):
+			continue
+		if line.contains("format_power_rating"):
+			return true
+	return false
+
+func test_power_rating_guard_distinguishes_comments_and_references() -> void:
+	assert_false(_references_power_rating_formatter("# format_power_rating() returns BBCode"))
+	assert_true(_references_power_rating_formatter("label.text = calculator.format_power_rating(data)"))
+	assert_true(_references_power_rating_formatter("label.text = calculator.format_power_rating (data)"))
+	assert_true(_references_power_rating_formatter("var formatter = calculator.format_power_rating"))
