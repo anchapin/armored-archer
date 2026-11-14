@@ -90,11 +90,17 @@ class StubGemManager extends Node:
 		return true
 
 
+var _fixture_viewport: SubViewport
 var _shop: Node
 var _stub_gem_manager: StubGemManager
 
 
 func before_each() -> void:
+	# Stable embedded popup bounds for the headless dummy display.
+	_fixture_viewport = SubViewport.new()
+	_fixture_viewport.size = Vector2i(1280, 720)
+	_fixture_viewport.gui_embed_subwindows = true
+	add_child_autofree(_fixture_viewport)
 	# The stub lives in the tree so its `await get_tree().process_frame`
 	# inside `purchase_bundle()` can resolve.
 	_stub_gem_manager = StubGemManager.new()
@@ -136,7 +142,10 @@ func _instantiate_shop() -> Node:
 	assert_not_null(shop, "%s must instantiate as a Control." % SCENE_PATH)
 	if shop == null:
 		return null
-	add_child_autofree(shop)
+	_fixture_viewport.add_child(shop)
+	# Dummy-font wrapping can grow the popup beyond the viewport.
+	# Wrapping is not part of these node/connection/purchase-routing tests.
+	shop.confirmation_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_shop = shop
 	return shop
 
