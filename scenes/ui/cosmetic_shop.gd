@@ -41,6 +41,12 @@ var available_bundles: Array = []
 # --- Skin Buttons Dictionary ---
 var skin_buttons: Dictionary = {}
 
+# --- Bundle Confirmation Handler ---
+# Stored so the bundle-specific handler can be disconnected again. Two
+# separately created lambdas are never equal in Godot, so disconnecting a
+# freshly created `func()` could never match the connected one.
+var _bundle_confirm_handler: Callable = Callable()
+
 # --- Initialization ---
 func _ready() -> void:
 	if store_manager:
@@ -280,15 +286,24 @@ func _on_bundle_purchase_pressed() -> void:
 	purchase_confirmation_dialog.popup_centered()
 
 	# Temporarily override the confirmation handler
-	yes_button.pressed.disconnect(_on_purchase_confirmed)
-	yes_button.pressed.connect(func(): _on_bundle_purchase_confirmed(bundle_id))
+	if yes_button.pressed.is_connected(_on_purchase_confirmed):
+		yes_button.pressed.disconnect(_on_purchase_confirmed)
+	if _bundle_confirm_handler.is_valid() and yes_button.pressed.is_connected(_bundle_confirm_handler):
+		yes_button.pressed.disconnect(_bundle_confirm_handler)
+
+	_bundle_confirm_handler = func(): _on_bundle_purchase_confirmed(bundle_id)
+	yes_button.pressed.connect(_bundle_confirm_handler)
 
 func _on_bundle_purchase_confirmed(bundle_id: String) -> void:
 	purchase_confirmation_dialog.hide()
 
 	# Restore the normal confirmation handler
-	yes_button.pressed.disconnect(func(): _on_bundle_purchase_confirmed(bundle_id))
-	yes_button.pressed.connect(_on_purchase_confirmed)
+	if _bundle_confirm_handler.is_valid() and yes_button.pressed.is_connected(_bundle_confirm_handler):
+		yes_button.pressed.disconnect(_bundle_confirm_handler)
+	_bundle_confirm_handler = Callable()
+
+	if not yes_button.pressed.is_connected(_on_purchase_confirmed):
+		yes_button.pressed.connect(_on_purchase_confirmed)
 
 	if await gem_manager.purchase_bundle(bundle_id):
 		_update_bundle_display()
