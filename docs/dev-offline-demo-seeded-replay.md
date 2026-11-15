@@ -25,10 +25,14 @@ line; the runner surfaces that value as the `seed:` line of its summary.
 
 4. Diff the seeded replay blocks (the section headed
    `OFFLINE DEMO REPLAY SUMMARY (seeded)` — it carries no wall-clock values,
-   so a diff shows only real gameplay differences):
+   so a diff shows only real gameplay differences). Extract the block from
+   each capture first — the full runner output also contains wall-clock
+   lines (`wall_time_seconds`, `play_time_seconds`) that always differ:
 
    ```sh
-   diff /tmp/before.txt /tmp/after.txt
+   sed -n '/OFFLINE DEMO REPLAY SUMMARY/,/^====/p' /tmp/before.txt > /tmp/before.replay
+   sed -n '/OFFLINE DEMO REPLAY SUMMARY/,/^====/p' /tmp/after.txt > /tmp/after.replay
+   diff /tmp/before.replay /tmp/after.replay
    ```
 
 A diff is shown to the reviewer; it is not auto-gated. An identical replay
