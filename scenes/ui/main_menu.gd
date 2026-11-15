@@ -88,9 +88,6 @@ func _ready() -> void:
 	# Apply Relic Archive dark theme
 	_apply_relic_archive_theme()
 
-	# Add hover animations to buttons
-	_add_button_animations()
-
 	# Animate menu entry
 	_animate_menu_entry()
 
@@ -282,42 +279,6 @@ func _apply_surface_tier_style(panel: PanelContainer, tier: String) -> void:
 	panel.add_theme_stylebox_override("panel", style)
 
 # --- UI Animations ---
-func _add_button_animations() -> void:
-	# Add hover animations to each button
-	_add_button_animation(play_button)
-	_add_button_animation(loadout_button)
-	_add_button_animation(pvp_button)
-	_add_button_animation(shop_button)
-	_add_button_animation(buy_gems_button)
-	_add_button_animation(settings_button)
-	_add_button_animation(quit_button)
-
-func _add_button_animation(button: ArcheryBaseButton) -> void:
-	button.mouse_entered.connect(func(): _on_button_hover(button))
-	button.mouse_exited.connect(func(): _on_button_hover_exit(button))
-	button.button_down.connect(func(): _on_button_press(button))
-
-func _on_button_hover(button: ArcheryBaseButton) -> void:
-	if not is_instance_valid(button):
-		return
-	if not UIAutomationAPI.are_animations_enabled():
-		return
-	UIAutomationAPI.button_hover_in(button)
-
-func _on_button_hover_exit(button: ArcheryBaseButton) -> void:
-	if not is_instance_valid(button):
-		return
-	if not UIAutomationAPI.are_animations_enabled():
-		return
-	UIAutomationAPI.button_hover_out(button)
-
-func _on_button_press(button: ArcheryBaseButton) -> void:
-	if not is_instance_valid(button):
-		return
-	if not UIAutomationAPI.are_animations_enabled():
-		return
-	UIAutomationAPI.button_press(button)
-
 func _animate_menu_entry() -> void:
 	if not menu_container:
 		return
