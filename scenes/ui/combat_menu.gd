@@ -1,18 +1,18 @@
 extends Control
 
 # --- UI References ---
-@onready var my_health_bar: ProgressBar = $VBoxContainer/StatsPanel/MyStatsContainer/HealthBar
-@onready var my_health_label: Label = $VBoxContainer/StatsPanel/MyStatsContainer/HealthLabel
-@onready var opponent_health_bar: ProgressBar = $VBoxContainer/StatsPanel/OpponentStatsContainer/HealthBar
-@onready var opponent_health_label: Label = $VBoxContainer/StatsPanel/OpponentStatsContainer/HealthLabel
-@onready var turn_label: Label = $VBoxContainer/TurnPanel/TurnLabel
-@onready var combat_log: TextEdit = $VBoxContainer/LogPanel/CombatLog
-@onready var shoot_button: Button = $VBoxContainer/ActionPanel/ShootButton
-@onready var angle_slider: HSlider = $VBoxContainer/ActionPanel/AngleSlider
-@onready var angle_value_label: Label = $VBoxContainer/ActionPanel/AngleValueLabel
-@onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
-@onready var loading_label: Label = $VBoxContainer/LoadingLabel
-@onready var stats_panel: Control = $VBoxContainer/StatsPanel
+@onready var my_health_bar: ProgressBar = $SafeAreaContainer/VBoxContainer/StatsPanel/StatsVBox/MyStatsContainer/MyHealthBar
+@onready var my_health_label: Label = $SafeAreaContainer/VBoxContainer/StatsPanel/StatsVBox/MyStatsContainer/MyHealthLabel
+@onready var opponent_health_bar: ProgressBar = $SafeAreaContainer/VBoxContainer/StatsPanel/StatsVBox/OpponentStatsContainer/OpponentHealthBar
+@onready var opponent_health_label: Label = $SafeAreaContainer/VBoxContainer/StatsPanel/StatsVBox/OpponentStatsContainer/OpponentHealthLabel
+@onready var turn_label: Label = $SafeAreaContainer/VBoxContainer/TurnPanel/TurnLabel
+@onready var combat_log: TextEdit = $SafeAreaContainer/VBoxContainer/LogPanel/CombatLog
+@onready var shoot_button: Button = $SafeAreaContainer/VBoxContainer/ActionPanel/ActionVBox/ShootButton
+@onready var angle_slider: HSlider = $SafeAreaContainer/VBoxContainer/ActionPanel/ActionVBox/AngleSlider
+@onready var angle_value_label: Label = $SafeAreaContainer/VBoxContainer/ActionPanel/ActionVBox/AngleValueLabel
+@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
+@onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
+@onready var stats_panel: Control = $SafeAreaContainer/VBoxContainer/StatsPanel
 
 # --- Theme Manager Reference ---
 var theme_manager: Node

@@ -142,8 +142,11 @@ func _update_stats_display() -> void:
 		combined_stats = {"attack": 0, "defense": 0, "speed": 200, "health": 100, "dodge": 0, "crit_rate": 0}
 
 	# Display section header
+	# NOTE (issue #1851): a plain Label does not render BBCode, so markup tags
+	# would be shown literally. Keep the text markup-free (issue #1836 did the
+	# same for the gear comparison screen).
 	var header_label: Label = Label.new()
-	header_label.text = "[b]Total Stats (Base + Gear):[/b]"
+	header_label.text = "Total Stats (Base + Gear):"
 	stats_container.add_child(header_label)
 
 	# Display combined stats
@@ -168,8 +171,12 @@ func _update_stats_display() -> void:
 				if not gear_data.is_empty():
 					total_power += gear_balance_calculator.get_gear_power_rating(gear_data)
 
+			# NOTE (issue #1851): `format_power_rating()` returns a colour-tagged
+			# BBCode string, which a plain Label renders literally. Use the
+			# numeric rating at this call site; the formatter itself stays
+			# untouched because its other callers expect the markup.
 			var power_label: Label = Label.new()
-			power_label.text = "\n[b]Gear Power:[/b] %s" % gear_balance_calculator.format_power_rating(total_power)
+			power_label.text = "\nGear Power: %d" % int(total_power)
 			power_label.add_theme_font_size_override("font_size", 16)
 			stats_container.add_child(power_label)
 
@@ -178,7 +185,7 @@ func _update_stats_display() -> void:
 			var synergy_bonuses: Dictionary = gear_manager.get_synergy_bonuses()
 			if not synergy_bonuses.is_empty():
 				var synergy_label: Label = Label.new()
-				synergy_label.text = "\n[b]Synergy Bonuses:[/b]"
+				synergy_label.text = "\nSynergy Bonuses:"
 				stats_container.add_child(synergy_label)
 
 				for stat_name in synergy_bonuses.keys():

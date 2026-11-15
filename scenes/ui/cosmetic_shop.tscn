@@ -101,6 +101,10 @@ text = "Bow"
 layout_mode = 2
 text = "Arrow"
 
+[node name="AmuletButton" type="Button" parent="MainContainer/SlotTabs"]
+layout_mode = 2
+text = "Amulet"
+
 [node name="SkinCatalog" type="ScrollContainer" parent="MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -151,6 +155,38 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
 text = "Equip"
 disabled = true
+
+[node name="BundleContainer" type="PanelContainer" parent="MainContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 0)
+size_flags_horizontal = 0
+visible = false
+
+[node name="BundleNameLabel" type="Label" parent="MainContainer/BundleContainer"]
+layout_mode = 2
+text = "Bundle"
+horizontal_alignment = 1
+
+[node name="BundleDescriptionLabel" type="Label" parent="MainContainer/BundleContainer"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="BundlePriceLabel" type="Label" parent="MainContainer/BundleContainer"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+
+[node name="BundleSaveLabel" type="Label" parent="MainContainer/BundleContainer"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+
+[node name="BundlePurchaseButton" type="Button" parent="MainContainer/BundleContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+text = "Purchase Bundle"
 
 [node name="PurchaseConfirmationDialog" type="ConfirmationDialog" parent="."]
 title = "Confirm Purchase"
