@@ -173,6 +173,45 @@ Key tables: `player_stats`, `catalog`, `inventory`, `loadout`. Enums: `gear_type
 - Branches: `fix/issue-<number>`, `feat/<description>`, `refactor/<description>`; PRs target `main` (never `develop`); push with `--force-with-lease`, never bare `--force`.
 - PR gate: backend lint + typecheck + tests green; docs updated when behavior changes. First-contribution walkthrough: `CONTRIBUTING.md` (defers to this file).
 
+## Visual-Change Evidence
+
+PRs that change what the game *looks* must ship screenshot evidence, or say
+explicitly in the PR body why not (issue #1860). The evidence convention,
+note format and worked example live in
+[`production/qa/evidence/README.md`](production/qa/evidence/README.md); the
+committed example is `production/qa/evidence/1860/`.
+
+**Trigger paths** — a PR needs evidence when it touches any of:
+
+- `scenes/ui/**` (UI layout, node tree, theme overrides)
+- `assets/**` (sprites, sprite sheets, icons)
+- `themes/**` (UI themes and theme resources)
+- VFX / effects code (`scenes/effects/**`, `shaders/**`, effect scripts)
+- HUD (health, ammo, boss bars, score HUD scenes/scripts)
+
+**Producing the evidence** (Linux + `xvfb`; ~10 s per run):
+
+```bash
+./scripts/capture-visual-evidence.sh --slug <issue-or-pr-id> --stage 1_3 \
+    --title "What changed" --observed "What the frames show" \
+    --not-assessed "What was not checked"
+```
+
+The wrapper plays the offline PvE demo under `xvfb-run` (the #1766/#1779
+loop), validates every frame with `scripts/validate_capture_frames.py`
+(size + distinct-colour check; 1x1 / uniform frames are placeholders and make
+the wrapper fail with exit code 1) and writes
+`production/qa/evidence/<id>/note.md` plus the frames. Report-only: no CI gate,
+no required check, no committed pixel-diff baselines.
+
+**Explicit opt-out wording** — if the change cannot be captured (or does not
+need to be), the PR body must contain a sentence in this form:
+
+> `Visual evidence: not attached — <reason>.`
+
+A missing statement is a review failure; an unexplained missing attachment is
+a review failure too.
+
 ## AI Agent-Assisted Development
 
 - Commits containing AI-generated changes need the `[AI-assisted]` prefix plus `AI Model:` and `Task:` trailers in the body, e.g. `[AI-assisted] feat: ...` / `- AI Model: ...` / `- Task: ...` — enforced by the commit-msg hook. Document AI-assisted scope in the PR description.

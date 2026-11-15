@@ -1,0 +1,52 @@
+{
+  "frames": [
+    {
+      "file": "01_stage_loaded.png",
+      "path": "/home/hatch/workspace/fixtrees/armored-archer-worker-1860/production/qa/evidence/1860/frames/01_stage_loaded.png",
+      "bytes": 11327,
+      "status": "ok",
+      "width": 640,
+      "height": 360,
+      "distinct_colors": 59
+    },
+    {
+      "file": "02_wave_spawn.png",
+      "path": "/home/hatch/workspace/fixtrees/armored-archer-worker-1860/production/qa/evidence/1860/frames/02_wave_spawn.png",
+      "bytes": 16186,
+      "status": "ok",
+      "width": 640,
+      "height": 360,
+      "distinct_colors": 96
+    },
+    {
+      "file": "03_shot_fired.png",
+      "path": "/home/hatch/workspace/fixtrees/armored-archer-worker-1860/production/qa/evidence/1860/frames/03_shot_fired.png",
+      "bytes": 13081,
+      "status": "ok",
+      "width": 640,
+      "height": 360,
+      "distinct_colors": 71
+    },
+    {
+      "file": "04_enemy_death.png",
+      "path": "/home/hatch/workspace/fixtrees/armored-archer-worker-1860/production/qa/evidence/1860/frames/04_enemy_death.png",
+      "bytes": 10284,
+      "status": "ok",
+      "width": 640,
+      "height": 360,
+      "distinct_colors": 47
+    },
+    {
+      "file": "05_boss_spawn.png",
+      "path": "/home/hatch/workspace/fixtrees/armored-archer-worker-1860/production/qa/evidence/1860/frames/05_boss_spawn.png",
+      "bytes": 10080,
+      "status": "ok",
+      "width": 640,
+      "height": 360,
+      "distinct_colors": 47
+    }
+  ],
+  "frames_total": 5,
+  "placeholders": 0,
+  "result": "PASS"
+}
