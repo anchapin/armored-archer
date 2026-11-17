@@ -220,15 +220,13 @@ class PublisherSecurityTests(unittest.TestCase):
     def test_replacement_after_snapshot_does_not_change_saved_bytes(self):
         f = self.fixture
         old = (f.frames / publisher.EXPECTED[0]).read_bytes()
-        original = publisher.tempfile.TemporaryDirectory
+        original = publisher.output_stage
 
         def change_after_reads(*args, **kwargs):
             (f.frames / publisher.EXPECTED[0]).write_bytes(b"replaced after read")
             return original(*args, **kwargs)
 
-        with mock.patch.object(
-            publisher.tempfile, "TemporaryDirectory", side_effect=change_after_reads
-        ):
+        with mock.patch.object(publisher, "output_stage", side_effect=change_after_reads):
             destination = publisher.publish(f.args)
         self.assertEqual((destination / "frames" / publisher.EXPECTED[0]).read_bytes(), old)
 

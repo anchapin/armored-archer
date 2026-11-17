@@ -4,12 +4,12 @@
 import argparse
 import json
 import sys
-import tempfile
 import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-from capture_input import absolute_parts, open_directory, read_regular
+from capture_input import absolute_parts, read_regular
+from capture_output import output_stage
 from validate_capture_frames import UnreadableFrame, decode_pixels
 
 STEPS = ("stage_loaded", "wave_spawn", "shot_fired", "enemy_death", "boss_spawn")
@@ -73,10 +73,6 @@ def publish(args):
     root = absolute_parts(args.root)
     if not args.slug or Path(args.slug).name != args.slug or args.slug in (".", ".."):
         raise ValueError("slug must be a single path segment")
-    root_fd = open_directory(root, create=True)
-    import os
-
-    os.close(root_fd)
     destination = root / args.slug
     if destination.exists() or destination.is_symlink():
         raise FileExistsError(f"existing evidence preserved: {destination}; choose a new slug")
@@ -87,14 +83,12 @@ def publish(args):
         if ("Vulkan " in line or "OpenGL " in line or "Rendering Device" in line)
     ]
     runtime = "; ".join(renderer) or "Not identified in runtime log; inspect run.log"
-    with tempfile.TemporaryDirectory(prefix=".capture-", dir=root) as temporary:
-        staging = Path(temporary) / "output"
-        (staging / "frames").mkdir(parents=True)
+    with output_stage(root) as staging:
         for record in records:
-            (staging / "frames" / record["file"]).write_bytes(snapshots[record["file"]])
+            staging.write(record["file"], snapshots[record["file"]], frame=True)
             record["path"] = str(destination / "frames" / record["file"])
-        (staging / "validation.json").write_text(json.dumps(validation, indent=2) + "\n")
-        (staging / "run.log").write_bytes(log_bytes)
+        staging.write("validation.json", (json.dumps(validation, indent=2) + "\n").encode())
+        staging.write("run.log", log_bytes)
         table = "\n".join(
             f"| `frames/{r['file']}` | {r['width']}x{r['height']} | {r['distinct_colors']} | {r['bytes']} |"
             for r in records
@@ -141,18 +135,8 @@ create a new output directory when repeating the underlying capture command.
 ./scripts/capture-visual-evidence.sh --slug NEW_SLUG --stage {args.stage}
 ```
 """
-        (staging / "note.md").write_text(note)
-        # Exclusive reservation prevents two writers from choosing the same slug.
-        # rename replaces only our empty reservation; nonempty destinations fail.
-        destination.mkdir()
-        try:
-            staging.rename(destination)
-        except OSError:
-            try:
-                destination.rmdir()
-            except OSError:
-                pass
-            raise
+        staging.write("note.md", note.encode())
+        staging.install(args.slug)
     return destination
 
 

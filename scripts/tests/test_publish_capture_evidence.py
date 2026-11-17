@@ -95,13 +95,15 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(root.read_text(), "preserve")
 
     def test_copy_failure_cleans_staging(self):
-        with mock.patch.object(Path, "write_bytes", side_effect=OSError("injected disk failure")):
+        with mock.patch(
+            "capture_output.OutputStage.write", side_effect=OSError("injected disk failure")
+        ):
             with self.assertRaises(OSError):
                 publisher.publish(self.args)
         self.assertEqual(list(Path(self.args.root).iterdir()), [])
 
     def test_rename_failure_cleans_reservation(self):
-        with mock.patch.object(Path, "rename", side_effect=OSError("injected rename failure")):
+        with mock.patch("capture_output.os.rename", side_effect=OSError("injected rename failure")):
             with self.assertRaises(OSError):
                 publisher.publish(self.args)
         self.assertEqual(list(Path(self.args.root).iterdir()), [])
