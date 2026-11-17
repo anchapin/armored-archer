@@ -10,12 +10,14 @@ import os
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
 VALIDATOR_PATH = ROOT / "scripts/validate_capture_frames.py"
 WRAPPER_PATH = ROOT / "scripts/capture-visual-evidence.sh"
 EXAMPLE_FRAMES = ROOT / "production/qa/evidence/1860/frames"

@@ -101,45 +101,45 @@ EOF
 
 # --- argument parsing ------------------------------------------------------
 
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
     case "$1" in
         --slug)
-            [ $# -ge 2 ] || { log_error "--slug needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--slug needs a value"; exit 2; }
             SLUG="$2"; shift 2 ;;
         --slug=*)
             SLUG="${1#*=}"; shift ;;
         --title)
-            [ $# -ge 2 ] || { log_error "--title needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--title needs a value"; exit 2; }
             TITLE="$2"; shift 2 ;;
         --title=*)
             TITLE="${1#*=}"; shift ;;
         --stage)
-            [ $# -ge 2 ] || { log_error "--stage needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--stage needs a value"; exit 2; }
             STAGE="$2"; shift 2 ;;
         --stage=*)
             STAGE="${1#*=}"; shift ;;
         --observed)
-            [ $# -ge 2 ] || { log_error "--observed needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--observed needs a value"; exit 2; }
             OBSERVED+=("$2"); shift 2 ;;
         --observed=*)
             OBSERVED+=("${1#*=}"); shift ;;
         --not-assessed)
-            [ $# -ge 2 ] || { log_error "--not-assessed needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--not-assessed needs a value"; exit 2; }
             NOT_ASSESSED+=("$2"); shift 2 ;;
         --not-assessed=*)
             NOT_ASSESSED+=("${1#*=}"); shift ;;
         --evidence-root)
-            [ $# -ge 2 ] || { log_error "--evidence-root needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--evidence-root needs a value"; exit 2; }
             EVIDENCE_ROOT="$2"; shift 2 ;;
         --evidence-root=*)
             EVIDENCE_ROOT="${1#*=}"; shift ;;
         --godot)
-            [ $# -ge 2 ] || { log_error "--godot needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--godot needs a value"; exit 2; }
             GODOT_BIN="$2"; shift 2 ;;
         --godot=*)
             GODOT_BIN="${1#*=}"; shift ;;
         --timeout)
-            [ $# -ge 2 ] || { log_error "--timeout needs a value"; exit 2; }
+            [[ $# -ge 2 ]] || { log_error "--timeout needs a value"; exit 2; }
             TIMEOUT_SECONDS="$2"; shift 2 ;;
         --timeout=*)
             TIMEOUT_SECONDS="${1#*=}"; shift ;;
@@ -152,33 +152,35 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ -z "$SLUG" ]; then
+if [[ -z "$SLUG" ]]; then
     log_error "--slug is required (the issue or PR id used as folder name)"
     usage
     exit 2
 fi
 case "$SLUG" in
     */*|.|..) log_error "--slug must be a single path segment"; exit 2 ;;
+    *) : ;;
 esac
 case "$TIMEOUT_SECONDS" in
     ''|*[!0-9]*) log_error "--timeout must be a positive number of seconds"; exit 2 ;;
+    *) : ;;
 esac
-if [ "$TIMEOUT_SECONDS" -le 0 ]; then
+if [[ "$TIMEOUT_SECONDS" -le 0 ]]; then
     log_error "--timeout must be greater than 0"
     exit 2
 fi
-if [ ${#OBSERVED[@]} -eq 0 ]; then
+if [[ ${#OBSERVED[@]} -eq 0 ]]; then
     OBSERVED=("Frames captured by the #1766/#1779 gameplay screenshot spike (see the table above for the per-frame pixel checks).")
 fi
-if [ ${#NOT_ASSESSED[@]} -eq 0 ]; then
+if [[ ${#NOT_ASSESSED[@]} -eq 0 ]]; then
     NOT_ASSESSED=("Windows / real-rendering-host path: NOT assessed - the #1766 spike never attempted it (no such host is reachable from this environment) and this wrapper was not run there.")
 fi
 
 # --- environment -----------------------------------------------------------
 
 resolve_godot() {
-    if [ -n "$GODOT_BIN" ]; then
-        if [ -x "$GODOT_BIN" ] || command -v "$GODOT_BIN" >/dev/null 2>&1; then
+    if [[ -n "$GODOT_BIN" ]]; then
+        if [[ -x "$GODOT_BIN" ]] || command -v "$GODOT_BIN" >/dev/null 2>&1; then
             return 0
         fi
         log_error "Godot binary '$GODOT_BIN' is not executable"
@@ -186,7 +188,7 @@ resolve_godot() {
     fi
     local candidate
     for candidate in godot4 godot "${PROJECT_ROOT}/.bin/godot4"; do
-        if command -v "$candidate" >/dev/null 2>&1 || [ -x "$candidate" ]; then
+        if command -v "$candidate" >/dev/null 2>&1 || [[ -x "$candidate" ]]; then
             GODOT_BIN="$candidate"
             return 0
         fi
@@ -222,7 +224,7 @@ then
 fi
 
 # Fresh worktrees have no .godot/ import cache (#991); import once, headless.
-if [ ! -f "${PROJECT_ROOT}/.godot/global_script_class_cache.cfg" ]; then
+if [[ ! -f "${PROJECT_ROOT}/.godot/global_script_class_cache.cfg" ]]; then
     log_info "Fresh checkout detected - running godot import (one-time)..."
     if ! (cd "$PROJECT_ROOT" && timeout 300 "$GODOT_BIN" --headless --quit --import) >/tmp/evidence-import.log 2>&1; then
         log_error "Godot import failed (see /tmp/evidence-import.log)"
@@ -251,7 +253,7 @@ log_info "Running: ${RUN_COMMAND}"
 GODOT_EXIT=0
 (cd "$PROJECT_ROOT" && "${RUN_ARGS[@]}") >"$LOG_FILE" 2>&1 || GODOT_EXIT=$?
 
-if [ "$GODOT_EXIT" -ne 0 ]; then
+if [[ "$GODOT_EXIT" -ne 0 ]]; then
     FAILED_LOG="/tmp/visual-evidence-failed-${SLUG}.log"
     cp "$LOG_FILE" "$FAILED_LOG" 2>/dev/null || true
     log_error "The capture run failed (exit ${GODOT_EXIT}). Log: ${FAILED_LOG}"
@@ -260,7 +262,7 @@ if [ "$GODOT_EXIT" -ne 0 ]; then
 fi
 
 SUMMARY_LINE="$(grep -m1 '^SPIKE_SUMMARY ' "$LOG_FILE" || true)"
-if [ -z "$SUMMARY_LINE" ]; then
+if [[ -z "$SUMMARY_LINE" ]]; then
     FAILED_LOG="/tmp/visual-evidence-failed-${SLUG}.log"
     cp "$LOG_FILE" "$FAILED_LOG" 2>/dev/null || true
     log_error "The capture run produced no SPIKE_SUMMARY line. Log: ${FAILED_LOG}"
@@ -272,7 +274,7 @@ fi
 # placeholder), so check it explicitly instead of trusting the exit code.
 SUMMARY_JSON="${SUMMARY_LINE#SPIKE_SUMMARY }"
 SPIKE_RESULT="$(printf '%s' "$SUMMARY_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("result", ""))' 2>/dev/null || echo "UNREADABLE")"
-if [ "$SPIKE_RESULT" != "PASS" ]; then
+if [[ "$SPIKE_RESULT" != "PASS" ]]; then
     FAILED_LOG="/tmp/visual-evidence-failed-${SLUG}.log"
     cp "$LOG_FILE" "$FAILED_LOG" 2>/dev/null || true
     log_error "The capture run did not PASS (SPIKE_SUMMARY result: ${SPIKE_RESULT}). Log: ${FAILED_LOG}"
@@ -292,7 +294,7 @@ if ! python3 "$VALIDATOR" --dir "$FRAMES_DIR" --json >"$VALIDATION_JSON"; then
 fi
 
 # Publish only a complete, validated run. Existing evidence is never overwritten.
-PUBLISH_ARGS=(--frames "$FRAMES_DIR" --validation "$VALIDATION_JSON" --log "$LOG_FILE"
+PUBLISH_ARGS=(--run-root "$STAGE_DIR" --frames "$FRAMES_DIR" --validation "$VALIDATION_JSON" --log "$LOG_FILE"
     --root "$EVIDENCE_ROOT" --slug "$SLUG" --version "$GODOT_VERSION" --command "$RUN_COMMAND"
     --stage "$STAGE" --title "$TITLE" --summary "$SUMMARY_JSON")
 for line in "${OBSERVED[@]}"; do PUBLISH_ARGS+=(--observed "$line"); done

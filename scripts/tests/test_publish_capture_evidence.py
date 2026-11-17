@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location(
     "publisher", ROOT / "scripts/publish_capture_evidence.py"
 )
@@ -23,8 +25,10 @@ class PublisherTests(unittest.TestCase):
         self.base = Path(self.temp.name)
         self.frames = self.base / "frames"
         self.frames.mkdir()
+        from test_capture_visual_evidence import write_png
+
         for name in publisher.EXPECTED:
-            (self.frames / name).write_bytes(b"already validated fixture")
+            write_png(self.frames / name, 64, 36, alt_colour=(90, 70, 40))
         self.validation = {
             "frames_total": 5,
             "result": "PASS",
@@ -44,6 +48,7 @@ class PublisherTests(unittest.TestCase):
         self.log = self.base / "run.log"
         self.log.write_text("Vulkan 1.3 - Forward Mobile - Using Device #0: llvmpipe\n")
         self.args = SimpleNamespace(
+            run_root=str(self.base),
             frames=str(self.frames),
             validation=str(self.manifest),
             log=str(self.log),
@@ -90,9 +95,7 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(root.read_text(), "preserve")
 
     def test_copy_failure_cleans_staging(self):
-        with mock.patch.object(
-            publisher.shutil, "copyfile", side_effect=OSError("injected disk failure")
-        ):
+        with mock.patch.object(Path, "write_bytes", side_effect=OSError("injected disk failure")):
             with self.assertRaises(OSError):
                 publisher.publish(self.args)
         self.assertEqual(list(Path(self.args.root).iterdir()), [])

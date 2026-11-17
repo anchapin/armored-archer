@@ -3,44 +3,84 @@
 
 import argparse
 import json
-import shutil
 import sys
 import tempfile
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
+
+from capture_input import absolute_parts, open_directory, read_regular
+from validate_capture_frames import UnreadableFrame, decode_pixels
 
 STEPS = ("stage_loaded", "wave_spawn", "shot_fired", "enemy_death", "boss_spawn")
 EXPECTED = [f"{i:02d}_{step}.png" for i, step in enumerate(STEPS, 1)]
 
 
-def publish(args):
-    """Stage all output, reserve a new destination, then install the directory."""
-    frames = Path(args.frames)
-    validation = json.loads(Path(args.validation).read_text())
-    summary = json.loads(args.summary)
+def _input_paths(args):
+    run_root = absolute_parts(args.run_root)
+    frames = absolute_parts(args.frames)
+    if frames != run_root / "frames":
+        raise ValueError("frames must be the run-root frames directory")
+    if absolute_parts(args.validation) != run_root / "validation.json":
+        raise ValueError("validation must be run-root/validation.json")
+    if absolute_parts(args.log) != run_root / "run.log":
+        raise ValueError("log must be run-root/run.log")
+    return run_root, frames
+
+
+def _validate_manifest(frames, validation, summary):
     names = sorted(p.name for p in frames.glob("*.png"))
     records = validation["frames"]
+    valid_records = sorted(r["file"] for r in records) == EXPECTED and all(
+        r.get("status") == "ok" for r in records
+    )
+    valid_summary = (
+        summary.get("result") == "PASS"
+        and summary.get("captures") == 5
+        and summary.get("errors_logged") == 0
+    )
     if (
         names != EXPECTED
-        or sorted(r["file"] for r in records) != EXPECTED
+        or not valid_records
+        or not valid_summary
         or validation.get("frames_total") != 5
         or validation.get("result") != "PASS"
-        or any(r.get("status") != "ok" for r in records)
-        or summary.get("result") != "PASS"
-        or summary.get("captures") != 5
-        or summary.get("errors_logged") != 0
     ):
         raise ValueError(
             "expected exactly five validated gameplay capture steps and a matching PASS summary"
         )
-    root = Path(args.root).absolute()
+    return records
+
+
+def _snapshot_frames(frames, records):
+    snapshots = {name: read_regular(frames / name, within=frames) for name in EXPECTED}
+    for record in records:
+        data = snapshots[record["file"]]
+        width, height, colours = decode_pixels(data)
+        if min(width, height, colours) <= 1:
+            raise ValueError("publisher frame snapshot is a placeholder")
+        record.update(width=width, height=height, distinct_colors=colours, bytes=len(data))
+    return snapshots
+
+
+def publish(args):
+    """Stage a complete input snapshot without replacing existing evidence."""
+    run_root, frames = _input_paths(args)
+    validation = json.loads(read_regular(args.validation, within=run_root))
+    records = _validate_manifest(frames, validation, json.loads(args.summary))
+    snapshots = _snapshot_frames(frames, records)
+    log_bytes = read_regular(args.log, within=run_root)
+    root = absolute_parts(args.root)
     if not args.slug or Path(args.slug).name != args.slug or args.slug in (".", ".."):
         raise ValueError("slug must be a single path segment")
-    root.mkdir(parents=True, exist_ok=True)
+    root_fd = open_directory(root, create=True)
+    import os
+
+    os.close(root_fd)
     destination = root / args.slug
     if destination.exists() or destination.is_symlink():
         raise FileExistsError(f"existing evidence preserved: {destination}; choose a new slug")
-    log = Path(args.log).read_text()
+    log = log_bytes.decode("utf-8")
     renderer = [
         line
         for line in log.splitlines()
@@ -51,10 +91,10 @@ def publish(args):
         staging = Path(temporary) / "output"
         (staging / "frames").mkdir(parents=True)
         for record in records:
-            shutil.copyfile(frames / record["file"], staging / "frames" / record["file"])
+            (staging / "frames" / record["file"]).write_bytes(snapshots[record["file"]])
             record["path"] = str(destination / "frames" / record["file"])
         (staging / "validation.json").write_text(json.dumps(validation, indent=2) + "\n")
-        shutil.copyfile(args.log, staging / "run.log")
+        (staging / "run.log").write_bytes(log_bytes)
         table = "\n".join(
             f"| `frames/{r['file']}` | {r['width']}x{r['height']} | {r['distinct_colors']} | {r['bytes']} |"
             for r in records
@@ -119,6 +159,7 @@ create a new output directory when repeating the underlying capture command.
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in (
+        "run-root",
         "frames",
         "validation",
         "log",
@@ -136,7 +177,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         publish(args)
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, UnreadableFrame, zlib.error) as exc:
         print(f"evidence output failed: {exc}", file=sys.stderr)
         return 1
     return 0
