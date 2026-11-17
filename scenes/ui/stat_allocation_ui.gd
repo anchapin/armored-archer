@@ -54,7 +54,43 @@ var saved_builds: Dictionary = {}
 # --- Constants ---
 const MAX_BUILD_SLOTS: int = 3
 
+## Hand-built scenes without the SafeAreaContainer wrapper leave every
+## SafeAreaContainer @onready ref null. Retry those refs against the same
+## path without the SafeAreaContainer/ prefix so the buttons and labels
+## still resolve; refs that stay null are guarded at their use sites.
+func _resolve_missing_refs() -> void:
+	var safe_area_paths: Dictionary = {
+		"level_label": "SafeAreaContainer/VBoxContainer/StatsContainer/LevelContainer/LevelLabel",
+		"xp_label": "SafeAreaContainer/VBoxContainer/StatsContainer/XPContainer/XPLabel",
+		"ability_points_label": "SafeAreaContainer/VBoxContainer/AbilityPointsLabel",
+		"attack_value": "SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackValue",
+		"attack_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackPlus",
+		"defense_value": "SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefenseValue",
+		"defense_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefensePlus",
+		"dodge_value": "SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgeValue",
+		"dodge_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgePlus",
+		"crit_rate_value": "SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRateValue",
+		"crit_rate_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus",
+		"xp_progress_bar": "SafeAreaContainer/VBoxContainer/XPProgressBar",
+		"back_button": "SafeAreaContainer/VBoxContainer/BackButton",
+		"respec_button": "SafeAreaContainer/VBoxContainer/RespecButton",
+		"respec_cost_label": "SafeAreaContainer/VBoxContainer/RespecContainer/RespecCostLabel",
+		"respec_cooldown_label": "SafeAreaContainer/VBoxContainer/RespecContainer/RespecCooldownLabel",
+		"free_respec_label": "SafeAreaContainer/VBoxContainer/RespecContainer/FreeRespecLabel",
+		"build_slots_container": "SafeAreaContainer/VBoxContainer/BuildSlotsContainer",
+		"build_slot_1_button": "SafeAreaContainer/VBoxContainer/BuildSlotsContainer/BuildSlot1",
+		"build_slot_2_button": "SafeAreaContainer/VBoxContainer/BuildSlotsContainer/BuildSlot2",
+		"build_slot_3_button": "SafeAreaContainer/VBoxContainer/BuildSlotsContainer/BuildSlot3",
+		"save_build_button": "SafeAreaContainer/VBoxContainer/BuildSlotsContainer/SaveBuildButton",
+	}
+	for slot in safe_area_paths:
+		if get(slot) == null:
+			var full_path: String = safe_area_paths[slot]
+			set(slot, get_node_or_null(full_path.trim_prefix("SafeAreaContainer/")))
+
 func _ready() -> void:
+	_resolve_missing_refs()
+
 	# Show loading indicator while waiting for player stats
 	if loading_indicator:
 		loading_indicator.visible = true
@@ -109,12 +145,18 @@ func _setup_store_manager() -> void:
 
 func _setup_button_connections() -> void:
 	"""Sets up all button signal connections."""
-	attack_plus.pressed.connect(_on_attack_plus_pressed)
-	defense_plus.pressed.connect(_on_defense_plus_pressed)
-	dodge_plus.pressed.connect(_on_dodge_plus_pressed)
-	crit_rate_plus.pressed.connect(_on_crit_rate_plus_pressed)
-	back_button.pressed.connect(_on_back_pressed)
-	respec_button.pressed.connect(_on_respec_pressed)
+	if attack_plus:
+		attack_plus.pressed.connect(_on_attack_plus_pressed)
+	if defense_plus:
+		defense_plus.pressed.connect(_on_defense_plus_pressed)
+	if dodge_plus:
+		dodge_plus.pressed.connect(_on_dodge_plus_pressed)
+	if crit_rate_plus:
+		crit_rate_plus.pressed.connect(_on_crit_rate_plus_pressed)
+	if back_button:
+		back_button.pressed.connect(_on_back_pressed)
+	if respec_button:
+		respec_button.pressed.connect(_on_respec_pressed)
 
 	if save_build_button:
 		save_build_button.pressed.connect(_on_save_build_pressed)
@@ -173,29 +215,41 @@ func refresh_respec_ui() -> void:
 	var cooldown_remaining: int = stat_allocation_manager.get_respec_cooldown_remaining()
 
 	if cost == 0 and stat_allocation_manager.has_free_respec():
-		respec_cost_label.text = "Free Respec Available!"
-		respec_cost_label.modulate = Color.GREEN
-		free_respec_label.visible = true
-		free_respec_label.text = "%d free respec remaining this season" % (stat_allocation_manager.FREE_RESPEC_PER_SEASON - stat_allocation_manager.free_respecs_used_this_season)
+		if respec_cost_label:
+			respec_cost_label.text = "Free Respec Available!"
+			respec_cost_label.modulate = Color.GREEN
+		if free_respec_label:
+			free_respec_label.visible = true
+			free_respec_label.text = "%d free respec remaining this season" % (stat_allocation_manager.FREE_RESPEC_PER_SEASON - stat_allocation_manager.free_respecs_used_this_season)
 	else:
-		respec_cost_label.text = "Cost: %d Gems" % cost
-		respec_cost_label.modulate = Color.WHITE
-		free_respec_label.visible = false
+		if respec_cost_label:
+			respec_cost_label.text = "Cost: %d Gems" % cost
+			respec_cost_label.modulate = Color.WHITE
+		if free_respec_label:
+			free_respec_label.visible = false
 
 	if cooldown_remaining > 0:
-		respec_cooldown_label.text = "Cooldown: %s" % stat_allocation_manager.format_cooldown_time(cooldown_remaining)
-		respec_button.disabled = true
-		respec_cooldown_label.visible = true
+		if respec_cooldown_label:
+			respec_cooldown_label.text = "Cooldown: %s" % stat_allocation_manager.format_cooldown_time(cooldown_remaining)
+			respec_cooldown_label.visible = true
+		if respec_button:
+			respec_button.disabled = true
 	else:
-		respec_cooldown_label.visible = false
-		respec_button.disabled = false
+		if respec_cooldown_label:
+			respec_cooldown_label.visible = false
+		if respec_button:
+			respec_button.disabled = false
 
 func _update_button_states() -> void:
 	"""Updates button enabled/disabled states based on ability points."""
-	attack_plus.disabled = current_ability_points <= 0
-	defense_plus.disabled = current_ability_points <= 0
-	dodge_plus.disabled = current_ability_points <= 0
-	crit_rate_plus.disabled = current_ability_points <= 0
+	if attack_plus:
+		attack_plus.disabled = current_ability_points <= 0
+	if defense_plus:
+		defense_plus.disabled = current_ability_points <= 0
+	if dodge_plus:
+		dodge_plus.disabled = current_ability_points <= 0
+	if crit_rate_plus:
+		crit_rate_plus.disabled = current_ability_points <= 0
 
 func _update_xp_progress() -> void:
 	"""Updates XP progress bar."""
@@ -205,7 +259,8 @@ func _update_xp_progress() -> void:
 	var xp_needed_for_next_level: int = xp_for_next_level - xp_for_current_level
 
 	var progress: float = float(xp_in_current_level) / float(xp_needed_for_next_level)
-	xp_progress_bar.value = progress * 100.0
+	if xp_progress_bar:
+		xp_progress_bar.value = progress * 100.0
 
 func _update_build_slots_ui() -> void:
 	"""Updates build slots button display."""
@@ -404,11 +459,13 @@ func _on_respec_cooldown_remaining(seconds: int) -> void:
 	if respec_cooldown_label:
 		if seconds > 0:
 			respec_cooldown_label.text = "Cooldown: %s" % stat_allocation_manager.format_cooldown_time(seconds)
-			respec_button.disabled = true
+			if respec_button:
+				respec_button.disabled = true
 			respec_cooldown_label.visible = true
 		else:
 			respec_cooldown_label.visible = false
-			respec_button.disabled = false
+			if respec_button:
+				respec_button.disabled = false
 
 func _on_currency_updated(_gems: int, _coins: int) -> void:
 	refresh_respec_ui()
@@ -419,11 +476,15 @@ func _on_back_pressed() -> void:
 # --- Visual Effects ---
 
 func show_level_up_effect(new_level: int, ability_points_gained: int) -> void:
+	if not ability_points_label:
+		return
 	var tween = create_tween()
 	var _t1 = tween.tween_property(ability_points_label, "modulate", Color.YELLOW, 0.2)
 	var _t2 = tween.tween_property(ability_points_label, "modulate", Color.WHITE, 0.2)
 
 func show_xp_gained_effect(amount: int) -> void:
+	if not xp_label:
+		return
 	var tween = create_tween()
 	var _t1 = tween.tween_property(xp_label, "modulate", Color.GREEN, 0.2)
 	var _t2 = tween.tween_property(xp_label, "modulate", Color.WHITE, 0.2)
@@ -432,6 +493,8 @@ func show_stat_allocated_effect(_stat_name: String, _amount: int) -> void:
 	pass
 
 func show_respec_effect(new_stats: Dictionary) -> void:
+	if not respec_button:
+		return
 	var tween = create_tween()
 	var _t1 = tween.tween_property(respec_button, "modulate", Color.CYAN, 0.2)
 	var _t2 = tween.tween_property(respec_button, "modulate", Color.WHITE, 0.2)

@@ -27,7 +27,35 @@ var current_xp: int = 0
 var current_ability_points: int = 0
 var current_stats: Dictionary = {}
 
+## Hand-built scenes without the SafeAreaContainer wrapper (the legacy
+## test/test_stat_allocation.gd fixture builds the pre-#1849 layout) leave
+## every SafeAreaContainer @onready ref null. Retry those refs against the
+## same path without the SafeAreaContainer/ prefix so the buttons and
+## labels still resolve; refs that stay null are guarded at their use sites.
+func _resolve_missing_refs() -> void:
+	var safe_area_paths: Dictionary = {
+		"level_label": "SafeAreaContainer/VBoxContainer/StatsContainer/LevelContainer/LevelLabel",
+		"xp_label": "SafeAreaContainer/VBoxContainer/StatsContainer/XPContainer/XPLabel",
+		"ability_points_label": "SafeAreaContainer/VBoxContainer/AbilityPointsLabel",
+		"attack_value": "SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackValue",
+		"attack_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/AttackContainer/AttackPlus",
+		"defense_value": "SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefenseValue",
+		"defense_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/DefenseContainer/DefensePlus",
+		"dodge_value": "SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgeValue",
+		"dodge_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/DodgeContainer/DodgePlus",
+		"crit_rate_value": "SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRateValue",
+		"crit_rate_plus": "SafeAreaContainer/VBoxContainer/StatsContainer/CritRateContainer/CritRatePlus",
+		"xp_progress_bar": "SafeAreaContainer/VBoxContainer/XPProgressBar",
+		"back_button": "SafeAreaContainer/VBoxContainer/BackButton",
+	}
+	for slot in safe_area_paths:
+		if get(slot) == null:
+			var full_path: String = safe_area_paths[slot]
+			set(slot, get_node_or_null(full_path.trim_prefix("SafeAreaContainer/")))
+
 func _ready() -> void:
+	_resolve_missing_refs()
+
 	# Show loading indicator while waiting for player stats
 	if loading_indicator:
 		loading_indicator.visible = true
@@ -52,11 +80,16 @@ func _ready() -> void:
 	_setup_button_connections()
 
 func _setup_button_connections() -> void:
-	attack_plus.pressed.connect(_on_attack_plus_pressed)
-	defense_plus.pressed.connect(_on_defense_plus_pressed)
-	dodge_plus.pressed.connect(_on_dodge_plus_pressed)
-	crit_rate_plus.pressed.connect(_on_crit_rate_plus_pressed)
-	back_button.pressed.connect(_on_back_pressed)
+	if attack_plus:
+		attack_plus.pressed.connect(_on_attack_plus_pressed)
+	if defense_plus:
+		defense_plus.pressed.connect(_on_defense_plus_pressed)
+	if dodge_plus:
+		dodge_plus.pressed.connect(_on_dodge_plus_pressed)
+	if crit_rate_plus:
+		crit_rate_plus.pressed.connect(_on_crit_rate_plus_pressed)
+	if back_button:
+		back_button.pressed.connect(_on_back_pressed)
 
 func refresh_ui() -> void:
 	if not player_stats_manager:
@@ -84,10 +117,14 @@ func refresh_ui() -> void:
 	_update_xp_progress()
 
 func _update_button_states() -> void:
-	attack_plus.disabled = current_ability_points <= 0
-	defense_plus.disabled = current_ability_points <= 0
-	dodge_plus.disabled = current_ability_points <= 0
-	crit_rate_plus.disabled = current_ability_points <= 0
+	if attack_plus:
+		attack_plus.disabled = current_ability_points <= 0
+	if defense_plus:
+		defense_plus.disabled = current_ability_points <= 0
+	if dodge_plus:
+		dodge_plus.disabled = current_ability_points <= 0
+	if crit_rate_plus:
+		crit_rate_plus.disabled = current_ability_points <= 0
 
 func _update_xp_progress() -> void:
 	var xp_for_current_level: int = _get_xp_for_level(current_level)
@@ -96,7 +133,8 @@ func _update_xp_progress() -> void:
 	var xp_needed_for_next_level: int = xp_for_next_level - xp_for_current_level
 
 	var progress: float = float(xp_in_current_level) / float(xp_needed_for_next_level)
-	xp_progress_bar.value = progress * 100.0
+	if xp_progress_bar:
+		xp_progress_bar.value = progress * 100.0
 
 func _get_xp_for_level(level: int) -> int:
 	var base_xp: int = 100
@@ -142,11 +180,15 @@ func _on_back_pressed() -> void:
 	queue_free()
 
 func show_level_up_effect(new_level: int, ability_points_gained: int) -> void:
+	if not ability_points_label:
+		return
 	var tween = create_tween()
 	var _t1 = tween.tween_property(ability_points_label, "modulate", Color.YELLOW, 0.2)
 	var _t2 = tween.tween_property(ability_points_label, "modulate", Color.WHITE, 0.2)
 
 func show_xp_gained_effect(amount: int) -> void:
+	if not xp_label:
+		return
 	var tween = create_tween()
 	var _t1 = tween.tween_property(xp_label, "modulate", Color.GREEN, 0.2)
 	var _t2 = tween.tween_property(xp_label, "modulate", Color.WHITE, 0.2)
