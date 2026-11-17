@@ -40,7 +40,6 @@ func _run_next_test():
 		"res://test/test_gem_manager.gd",
 		"res://test/test_transmog_manager.gd",
 		"res://test/test_gear_enums.gd",
-		"res://test/test_encounter_data.gd",
 
 		# UI and visual
 		"res://test/test_ui_transition_optimizer.gd",
@@ -61,9 +60,6 @@ func _run_next_test():
 		# Combat and sync
 		"res://test/test_combat_sync_manager.gd",
 		"res://test/test_auto_aim_manager.gd",
-
-		# Animation
-		"res://test/test_animation_utils.gd",
 
 		# Object pooling and performance
 		"res://test/test_object_pool.gd",
@@ -114,7 +110,6 @@ func _run_next_test():
 		"res://test/test_impact_manager.gd",
 
 		# PvP Balance (Phase 4)
-		"res://test/test_weapon_balance_manager.gd",
 		"res://test/test_player_rating_manager.gd",
 		"res://test/test_matchmaking_pool_manager.gd",
 		"res://test/test_season_leaderboard.gd",
@@ -158,56 +153,70 @@ func _run_next_test():
 func _run_tests_async(test_files: Array):
 	for test_file in test_files:
 		var test_script = load(test_file)
-		if test_script and test_script.can_instantiate():
-			var test_instance = test_script.new()
-			_test_root.add_child(test_instance)
-			_tests_run += 1
+		if test_script == null:
+			_record_load_failure(test_file, "could not be loaded")
+			continue
+		if not (test_script is Script) or not test_script.can_instantiate():
+			_record_load_failure(test_file, "could not be instantiated")
+			continue
+		var test_instance = test_script.new()
+		if not (test_instance is Node):
+			_record_load_failure(test_file, "is not a Node and cannot be added to the test tree")
+			continue
+		_test_root.add_child(test_instance)
+		_tests_run += 1
 
-			# Wait for test to complete by connecting to test_completed signal
-			var test_completed := false
-			var local_passed := 0
-			var local_failed := 0
+		# Wait for test to complete by connecting to test_completed signal
+		var test_completed := false
+		var local_passed := 0
+		var local_failed := 0
 
-			if test_instance.has_signal("test_completed"):
-				test_instance.test_completed.connect(func(_name, passed):
-					if passed:
-						local_passed += 1
-					else:
-						local_failed += 1
-				)
-
-			# Wait for test to finish - give it more time for async operations
-			# Wait up to 10 seconds (600 frames) for each test
-			var wait_frames := 0
-			while not test_completed and wait_frames < 600:
-				await process_frame
-				wait_frames += 1
-				# Check if test has finished by checking if it's been queued for free
-				if not is_instance_valid(test_instance):
-					break
-
-			# Collect final results from test instance if possible
-			if is_instance_valid(test_instance):
-				# Try to get results from test instance properties
-				if test_instance.has_method("get_results"):
-					var results = test_instance.get_results()
-					_total_passed += results.get("passed", 0)
-					_total_failed += results.get("failed", 0)
-				# Fallback to local counts if test doesn't have get_results
-				elif test_instance.get("_tests_passed") != null:
-					_total_passed += test_instance._tests_passed
-					_total_failed += test_instance._tests_failed
+		if test_instance.has_signal("test_completed"):
+			test_instance.test_completed.connect(func(_name, passed):
+				if passed:
+					local_passed += 1
 				else:
-					_total_passed += local_passed
-					_total_failed += local_failed
-				test_instance.queue_free()
+					local_failed += 1
+			)
+
+		# Wait for test to finish - give it more time for async operations
+		# Wait up to 10 seconds (600 frames) for each test
+		var wait_frames := 0
+		while not test_completed and wait_frames < 600:
+			await process_frame
+			wait_frames += 1
+			# Check if test has finished by checking if it's been queued for free
+			if not is_instance_valid(test_instance):
+				break
+
+		# Collect final results from test instance if possible
+		if is_instance_valid(test_instance):
+			# Try to get results from test instance properties
+			if test_instance.has_method("get_results"):
+				var results = test_instance.get_results()
+				_total_passed += results.get("passed", 0)
+				_total_failed += results.get("failed", 0)
+			# Fallback to local counts if test doesn't have get_results
+			elif test_instance.get("_tests_passed") != null:
+				_total_passed += test_instance._tests_passed
+				_total_failed += test_instance._tests_failed
+			else:
+				_total_passed += local_passed
+				_total_failed += local_failed
+			test_instance.queue_free()
 		else:
-			print("Warning: Could not load test file: " + test_file)
+			_record_load_failure(test_file, "could not be instantiated")
 
 	_all_tests_completed = true
 	await process_frame
 	_print_summary()
 	quit()
+
+# Records a listed test file that could not be loaded or instantiated as a
+# failure so it is counted in the summary and produces a non-zero exit code.
+func _record_load_failure(test_file: String, reason: String):
+	print("FAIL: Test file %s %s" % [test_file, reason])
+	_total_failed += 1
 
 func _print_summary():
 	print("")

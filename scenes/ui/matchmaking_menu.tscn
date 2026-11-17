@@ -73,6 +73,12 @@ layout_mode = 2
 [node name="CreateVBox" type="VBoxContainer" parent="SafeAreaContainer/VBoxContainer/CreatePanel" unique_id=90970735]
 layout_mode = 2
 
+[node name="QuickJoinButton" type="Button" parent="SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox"]
+custom_minimum_size = Vector2(140, 48)
+layout_mode = 2
+text = "Quick Join"
+script = ExtResource("4_xv3gh")
+
 [node name="CreateRankedButton" type="Button" parent="SafeAreaContainer/VBoxContainer/CreatePanel/CreateVBox" unique_id=735004780]
 custom_minimum_size = Vector2(140, 48)
 layout_mode = 2

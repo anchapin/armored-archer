@@ -1,23 +1,23 @@
 extends Control
 
 # --- UI References ---
-@onready var season_label: Label = $VBoxContainer/SeasonPanel/SeasonLabel
-@onready var time_label: Label = $VBoxContainer/SeasonPanel/TimeLabel
-@onready var your_rank_label: Label = $VBoxContainer/YourRankPanel/RankLabel
-@onready var your_tier_label: Label = $VBoxContainer/YourRankPanel/TierLabel
-@onready var leaderboard_container: VBoxContainer = $VBoxContainer/ScrollContainer/LeaderboardContainer
-@onready var rewards_button: Button = $VBoxContainer/BottomPanel/RewardsButton
-@onready var back_button: Button = $VBoxContainer/BottomPanel/BackButton
-@onready var loading_label: Label = $VBoxContainer/LoadingLabel
+@onready var season_label: Label = $SafeAreaContainer/VBoxContainer/SeasonPanel/SeasonVBox/SeasonLabel
+@onready var time_label: Label = $SafeAreaContainer/VBoxContainer/SeasonPanel/SeasonVBox/TimeLabel
+@onready var your_rank_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/RankLabel
+@onready var your_tier_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierLabel
+@onready var leaderboard_container: VBoxContainer = $SafeAreaContainer/VBoxContainer/ScrollContainer/LeaderboardContainer
+@onready var rewards_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/RewardsButton
+@onready var back_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/BackButton
+@onready var loading_label: Label = $SafeAreaContainer/VBoxContainer/LoadingLabel
 
 # --- New UI References (added in enhanced scene) ---
-@onready var motivational_label: Label = $VBoxContainer/YourRankPanel/MotivationalLabel
-@onready var tier_progress_bar: ProgressBar = $VBoxContainer/YourRankPanel/TierProgressBar
-@onready var tier_progress_label: Label = $VBoxContainer/YourRankPanel/TierProgressLabel
-@onready var decay_warning_label: Label = $VBoxContainer/YourRankPanel/DecayWarningLabel
+@onready var motivational_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/MotivationalLabel
+@onready var tier_progress_bar: ProgressBar = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierProgressBar
+@onready var tier_progress_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierProgressLabel
+@onready var decay_warning_label: Label = $SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/DecayWarningLabel
 @onready var season_message_panel: Control = $SeasonMessagePanel
 @onready var reward_preview_panel: Control = $RewardPreviewPanel
-@onready var preview_rewards_button: Button = $VBoxContainer/BottomPanel/PreviewRewardsButton
+@onready var preview_rewards_button: Button = $SafeAreaContainer/VBoxContainer/BottomPanel/PreviewRewardsButton
 
 # --- Theme Manager Reference ---
 var theme_manager: Node
@@ -46,8 +46,35 @@ const TIER_BOUNDARIES: Dictionary = {
 	"Common": 99999,
 }
 
+## Hand-built scenes without the SafeAreaContainer wrapper leave every
+## SafeAreaContainer @onready ref null. Retry those refs against the same
+## path without the SafeAreaContainer/ prefix so the buttons and labels
+## still resolve; refs that stay null are guarded at their use sites.
+func _resolve_missing_refs() -> void:
+	var safe_area_paths: Dictionary = {
+		"season_label": "SafeAreaContainer/VBoxContainer/SeasonPanel/SeasonVBox/SeasonLabel",
+		"time_label": "SafeAreaContainer/VBoxContainer/SeasonPanel/SeasonVBox/TimeLabel",
+		"your_rank_label": "SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/RankLabel",
+		"your_tier_label": "SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierLabel",
+		"leaderboard_container": "SafeAreaContainer/VBoxContainer/ScrollContainer/LeaderboardContainer",
+		"rewards_button": "SafeAreaContainer/VBoxContainer/BottomPanel/RewardsButton",
+		"back_button": "SafeAreaContainer/VBoxContainer/BottomPanel/BackButton",
+		"loading_label": "SafeAreaContainer/VBoxContainer/LoadingLabel",
+		"motivational_label": "SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/MotivationalLabel",
+		"tier_progress_bar": "SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierProgressBar",
+		"tier_progress_label": "SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/TierProgressLabel",
+		"decay_warning_label": "SafeAreaContainer/VBoxContainer/YourRankPanel/YourRankVBox/DecayWarningLabel",
+		"preview_rewards_button": "SafeAreaContainer/VBoxContainer/BottomPanel/PreviewRewardsButton",
+	}
+	for slot in safe_area_paths:
+		if get(slot) == null:
+			var full_path: String = safe_area_paths[slot]
+			set(slot, get_node_or_null(full_path.trim_prefix("SafeAreaContainer/")))
+
 # --- Initialization ---
 func _ready() -> void:
+	_resolve_missing_refs()
+
 	theme_manager = get_node_or_null("/root/ThemeManager")
 	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
@@ -58,8 +85,10 @@ func _ready() -> void:
 	season_manager = get_node_or_null("/root/SeasonManager")
 	season_messenger = get_node_or_null("/root/SeasonMessenger")
 
-	rewards_button.pressed.connect(_on_rewards_pressed)
-	back_button.pressed.connect(_on_back_pressed)
+	if rewards_button:
+		rewards_button.pressed.connect(_on_rewards_pressed)
+	if back_button:
+		back_button.pressed.connect(_on_back_pressed)
 
 	if preview_rewards_button:
 		preview_rewards_button.pressed.connect(_on_preview_rewards_pressed)
@@ -86,7 +115,8 @@ func refresh_leaderboard() -> void:
 	if not season_manager:
 		return
 
-	loading_label.visible = true
+	if loading_label:
+		loading_label.visible = true
 	is_initialized = false
 
 	season_manager.get_season_info()
@@ -191,8 +221,12 @@ func _on_decay_info_updated(info: Dictionary) -> void:
 
 # --- Leaderboard Handler ---
 func _on_leaderboard_loaded(leaderboard: Array) -> void:
-	loading_label.visible = false
+	if loading_label:
+		loading_label.visible = false
 	is_initialized = true
+
+	if not leaderboard_container:
+		return
 
 	for child in leaderboard_container.get_children():
 		child.queue_free()
