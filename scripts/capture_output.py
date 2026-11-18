@@ -40,16 +40,40 @@ class OutputStage:
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
 
-    def install(self, slug):
+    def _checked_basename(self, slug):
+        """Express selected-root containment before any output mutation.
+
+        /proc/self/fd refers to the retained Linux directory descriptor, not
+        the caller's replaceable pathname. Keep fd-relative I/O after this
+        canonical check; canonicalization alone is not race protection.
+        """
         if not slug or "/" in slug or slug in (".", ".."):
             raise ValueError("output slug must be a single segment")
-        # Exclusive reservation refuses existing evidence, including empty dirs.
-        os.mkdir(slug, mode=0o700, dir_fd=self.root_fd)
-        reservation = os.stat(slug, dir_fd=self.root_fd, follow_symlinks=False)
         try:
-            os.rename(self.name, slug, src_dir_fd=self.root_fd, dst_dir_fd=self.root_fd)
+            os.stat(slug, dir_fd=self.root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
+            raise FileExistsError("existing evidence preserved; choose a new slug")
+        descriptor_root = f"/proc/self/fd/{self.root_fd}"
+        canonical_root = os.path.realpath(descriptor_root)
+        canonical_destination = os.path.realpath(os.path.join(descriptor_root, slug))
+        if os.path.dirname(canonical_destination) != canonical_root:
+            raise ValueError("output destination is outside the selected root")
+        checked_name = os.path.basename(canonical_destination)
+        if checked_name != slug:
+            raise ValueError("output basename changed during canonicalization")
+        return checked_name
+
+    def install(self, slug):
+        checked_name = self._checked_basename(slug)
+        # Exclusive reservation still rejects replacements after validation.
+        os.mkdir(checked_name, mode=0o700, dir_fd=self.root_fd)
+        reservation = os.stat(checked_name, dir_fd=self.root_fd, follow_symlinks=False)
+        try:
+            os.rename(self.name, checked_name, src_dir_fd=self.root_fd, dst_dir_fd=self.root_fd)
         except OSError:
-            self._remove_reservation(slug, reservation)
+            self._remove_reservation(checked_name, reservation)
             raise
         self.installed = True
 
