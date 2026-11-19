@@ -7,6 +7,15 @@ var _effects_manager: Node = null
 var _game_manager: Node = null
 
 
+## Records health_changed emissions (lambdas capture locals by value, so a
+## flag-flipping lambda never updates the outer variables).
+class HealthRecorder extends RefCounted:
+	var count: int = 0
+
+	func record(_new_health: int, _max_health: int) -> void:
+		count += 1
+
+
 func before_each() -> void:
 	# Load damage overlay scene
 	var overlay_scene := load("res://scenes/effects/damage_overlay.tscn")
@@ -52,10 +61,15 @@ func test_damage_overlay_hide_above_threshold() -> void:
 
 func test_damage_overlay_intensity_scales_with_health() -> void:
 	if _damage_overlay.has_method("set_health"):
-		# Test at different health levels
+		# Severity is computed when the overlay fades in (crossing below the
+		# 30% threshold); health changes inside the low zone do not re-fade.
+		# Sample each level through a fresh fade-in from full health.
 		_damage_overlay.set_health(10, 100)  # Very low health
 		await wait_frames(60)
 		var intensity_low = _damage_overlay.material.get_shader_parameter("intensity")
+
+		_damage_overlay.set_health(100, 100)  # Heal: fade back out
+		await wait_frames(60)
 
 		_damage_overlay.set_health(25, 100)  # Higher low health
 		await wait_frames(60)
@@ -98,11 +112,19 @@ func test_slow_motion_triggers() -> void:
 
 func test_game_manager_health_connection() -> void:
 	if _game_manager and _game_manager.has_signal("health_changed"):
-		var health_emitted := false
-		_game_manager.health_changed.connect(func(_new, _max): health_emitted = true)
+		var recorder = HealthRecorder.new()
+		_game_manager.health_changed.connect(recorder.record)
+		# take_player_damage is a no-op unless a game is active; activate,
+		# then restore the shared singleton's state for other suites.
+		var was_active: bool = _game_manager.is_game_active
+		var health_before: int = _game_manager.player_current_health
+		_game_manager.is_game_active = true
+		_game_manager.damage_cooldown = 0.0
 		_game_manager.take_player_damage(10)
 		await wait_frames(10)
-		assert_true(health_emitted, "GameManager should emit health_changed signal")
+		assert_gt(recorder.count, 0, "GameManager should emit health_changed signal")
+		_game_manager.is_game_active = was_active
+		_game_manager.player_current_health = health_before
 
 
 func test_vfx_manager_crit_slow_motion() -> void:
@@ -129,16 +151,29 @@ func test_damage_overlay_fades_smoothly() -> void:
 
 		await wait_frames(60)  # Full fade
 		var full_intensity = _damage_overlay.material.get_shader_parameter("intensity")
-		assert_gt(full_intensity, partial_intensity, "Should be more faded in")
+		# Severity target at 10% HP is 1 - 10/30 = 0.667. (Headless frame
+		# pacing can complete the fade before the partial sample, so compare
+		# against the target instead of the partial value.)
+		assert_almost_eq(full_intensity, 0.6667, 0.05, "Should fade in to the severity target")
 
 
 func test_damage_overlay_threshold() -> void:
 	if _damage_overlay.has_method("set_health"):
+		# Settle hidden first: the overlay syncs to the shared GameManager
+		# singleton's health in _ready, which other suites may have lowered.
+		# Fades run on real time (0.5s), so wait in seconds, not frames:
+		# headless frame pacing makes frame counts unreliable here.
+		_damage_overlay.set_health(100, 100)
+		await wait_seconds(0.7)
+
 		# Test exactly at threshold
 		_damage_overlay.set_health(30, 100)  # Exactly 30%
-		await wait_frames(60)
-		# At 30%, should not show (threshold is < 30%)
-		assert_false(_damage_overlay.visible or _damage_overlay.material.get_shader_parameter("intensity") > 0.01,
+		await wait_seconds(0.7)
+		# At 30%, should not show (threshold is < 30%). Assert on this
+		# instance's own state: the scene's ShaderMaterial is shared across
+		# overlay instances (not local-to-scene), so its intensity can be
+		# mid-fade from the EffectsManager-owned instance.
+		assert_false(_damage_overlay.visible or _damage_overlay.is_active(),
 			"Overlay should not show at exactly 30% HP")
 
 		# Test just below threshold

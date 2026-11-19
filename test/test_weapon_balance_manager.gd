@@ -180,15 +180,18 @@ func test_validate_weapon_damage():
 	# Test weapon damage validation
 	var tier = gear_enums.GearRarity.COMMON
 
-	# Valid damage should pass
-	assert_true(weapon_balance_manager.validate_weapon_damage(50.0, tier),
+	# Valid damage should pass: the cap is 200% of the tier average
+	# (7.5 for COMMON), so the tier average itself is valid. The old
+	# hard-coded 50.0 predates the tier-average data and exceeds the cap.
+	var tier_avg = weapon_balance_manager._get_tier_average_damage(tier)
+	assert_true(weapon_balance_manager.validate_weapon_damage(tier_avg, tier),
 		"Valid damage should pass validation")
 
-	# Overpowered damage should fail
-	var tier_avg = weapon_balance_manager._get_tier_average_damage(tier)
+	# Overpowered damage should fail (and log the rejection)
 	var excessive_damage = tier_avg * 3.0
 	assert_false(weapon_balance_manager.validate_weapon_damage(excessive_damage, tier),
 		"Excessive damage should fail validation")
+	assert_push_error("exceeds maximum allowed")
 
 
 func test_pvp_damage_reduction_constant():
@@ -210,7 +213,9 @@ func test_tier_multiplier_retrieval():
 
 func test_stats_bonus_to_damage():
 	# Test that weapon stats contribute to damage
-	var base_damage = 50.0
+	# Small base damage: at 50.0 both variants hit the tier damage cap
+	# (200% of the EPIC tier average) and the stat bonus is invisible.
+	var base_damage = 5.0
 	var tier = gear_enums.GearRarity.EPIC
 
 	# Without stats
@@ -230,6 +235,7 @@ func test_negative_multiplier_rejected():
 
 	# This should log an error and not apply the adjustment
 	weapon_balance_manager.apply_balance_adjustment(weapon_id, -0.5)
+	assert_push_error("Balance multiplier must be positive")
 
 	# Adjustment should NOT be stored (should still be default 1.0)
 	var multiplier = weapon_balance_manager.get_balance_adjustment(weapon_id)

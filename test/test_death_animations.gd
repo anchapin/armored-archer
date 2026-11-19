@@ -3,6 +3,25 @@ extends GutTest
 ## Unit tests for enemy death animations
 ## Tests fade out, ragdoll physics, and particle spawning
 
+const JuiceScript := preload("res://autoloads/CombatJuiceManager.gd")
+const EnemyScene := preload("res://scenes/enemies/base_enemy.tscn")
+
+## Records juice_effect_completed emissions.
+class CompletedRecorder extends RefCounted:
+	var calls: Array = []
+
+	func record(effect_type: String, data: Dictionary) -> void:
+		calls.append([effect_type, data])
+
+## A bare BaseEnemy.new() is not a valid fixture: its @onready children
+## (Sprite2D, CollisionShape2D, HurtArea) only exist in the scene, and
+## spawn_death_particles resolves /root/VFXManager, which requires the
+## enemy to be inside the tree. Instantiate the scene instead.
+func _make_enemy() -> Node:
+	var enemy = EnemyScene.instantiate()
+	add_child_autofree(enemy)
+	return enemy
+
 ## Test play_death_animation method exists on BaseEnemy
 func test_play_death_animation_method_exists():
 	# Create a mock BaseEnemy for testing
@@ -48,7 +67,7 @@ func test_ragdoll_random_effects():
 
 ## Test spawn_death_particles with different particle counts
 func test_death_particles_different_counts():
-	var enemy = BaseEnemy.new()
+	var enemy = _make_enemy()
 	assert_not_null(enemy, "BaseEnemy should be instantiable")
 
 	if enemy.has_method("spawn_death_particles"):
@@ -61,32 +80,33 @@ func test_death_particles_different_counts():
 
 		pass_test("spawn_death_particles callable with different particle counts")
 
-	enemy.free()
-
 ## Test CombatJuiceManager DEATH_ANIMATION routing
 func test_combat_juice_death_animation_routing():
-	var manager = get_node_or_null("/root/CombatJuiceManager")
-	assert_not_null(manager, "CombatJuiceManager required")
+	# Fresh instance: the shared singleton leaks effect state between tests.
+	var manager = JuiceScript.new()
+	add_child_autofree(manager)
 
-	# Create a mock enemy node
-	var enemy = BaseEnemy.new()
-	add_child(enemy)
+	var enemy = _make_enemy()
 
-	# Trigger death animation
-	var result = manager.trigger_combat_juice(
+	# trigger_combat_juice returns void and the death handler is async
+	# (~1s); the routed handler reports back through juice_effect_completed.
+	var recorder = CompletedRecorder.new()
+	manager.juice_effect_completed.connect(recorder.record)
+
+	manager.trigger_combat_juice(
 		CombatJuiceManager.EffectType.DEATH_ANIMATION,
 		{"enemy_node": enemy, "particle_count": 5}
 	)
 
-	assert_not_null(result, "Result should be returned")
+	await get_tree().create_timer(1.5).timeout
 
-	# Cleanup
-	await get_tree().process_frame
-	enemy.queue_free()
+	assert_eq(recorder.calls.size(), 1, "Death animation handler should run to completion")
+	assert_eq(recorder.calls[0][0], "death_animation", "Effect should route to the death animation handler")
+	assert_true(recorder.calls[0][1].get("success", false), "Death animation should succeed")
 
 ## Test death animation with zero particle count (edge case)
 func test_death_animation_zero_particles():
-	var enemy = BaseEnemy.new()
+	var enemy = _make_enemy()
 	assert_not_null(enemy, "BaseEnemy should be instantiable")
 
 	if enemy.has_method("spawn_death_particles"):
@@ -94,11 +114,9 @@ func test_death_animation_zero_particles():
 		enemy.spawn_death_particles(0)
 		pass_test("spawn_death_particles handles zero particle count")
 
-	enemy.free()
-
 ## Test death animation with high particle count (stress test)
 func test_death_animation_high_particle_count():
-	var enemy = BaseEnemy.new()
+	var enemy = _make_enemy()
 	assert_not_null(enemy, "BaseEnemy should be instantiable")
 
 	if enemy.has_method("spawn_death_particles"):
@@ -106,38 +124,30 @@ func test_death_animation_high_particle_count():
 		enemy.spawn_death_particles(100)
 		pass_test("spawn_death_particles handles high particle count")
 
-	enemy.free()
-
 ## Test BaseEnemy die() method triggers CombatJuiceManager
 func test_enemy_die_triggers_juice():
 	var manager = get_node_or_null("/root/CombatJuiceManager")
 	assert_not_null(manager, "CombatJuiceManager required")
 
-	var enemy = BaseEnemy.new()
-	add_child(enemy)
+	var enemy = _make_enemy()
 
 	# Mock death handling - in real scenario this triggers CombatJuiceManager
 	if enemy.has_method("die"):
 		# Method should not crash
 		pass_test("die method callable on BaseEnemy")
 
-	enemy.queue_free()
 	await get_tree().process_frame
 
 ## Test juice_effect_completed signal for death animations
 func test_death_animation_completion_signal():
-	var manager = get_node_or_null("/root/CombatJuiceManager")
-	assert_not_null(manager, "CombatJuiceManager required")
+	# Fresh instance: the shared singleton leaks effect state between tests.
+	var manager = JuiceScript.new()
+	add_child_autofree(manager)
 
-	var signal_emitted = false
+	var recorder = CompletedRecorder.new()
+	manager.juice_effect_completed.connect(recorder.record)
 
-	manager.juice_effect_completed.connect(func(effect_type: String, data: Dictionary):
-		if effect_type == "death_animation":
-			signal_emitted = true
-	)
-
-	var enemy = BaseEnemy.new()
-	add_child(enemy)
+	var enemy = _make_enemy()
 
 	manager.trigger_combat_juice(
 		CombatJuiceManager.EffectType.DEATH_ANIMATION,
@@ -147,6 +157,8 @@ func test_death_animation_completion_signal():
 	# Wait for animation to complete (approx 1.0s)
 	await get_tree().create_timer(1.5).timeout
 
-	assert_true(signal_emitted, "juice_effect_completed should be emitted for death animations")
-
-	enemy.queue_free()
+	var saw_death_animation = false
+	for call in recorder.calls:
+		if call[0] == "death_animation":
+			saw_death_animation = true
+	assert_true(saw_death_animation, "juice_effect_completed should be emitted for death animations")

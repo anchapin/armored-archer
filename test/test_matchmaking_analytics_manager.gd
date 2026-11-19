@@ -6,24 +6,45 @@ extends GutTest
 var analytics_manager: Node
 var _analytics_script
 
+## Offline NetworkManager stub: the manager only touches is_connected and
+## send_rpc_async on the paths these tests exercise.
+class StubNetworkManager extends Node:
+	var is_connected: bool = false
+
+	func send_rpc_async(_rpc_id: String, _payload: String, _timeout: float = 10.0) -> void:
+		pass
+
+## Records signal emissions (lambdas capture locals by value, so a
+## flag-flipping lambda never updates the outer variables).
+class AnalyticsRecorder extends RefCounted:
+	var match_ids: Array = []
+	var abandonment_ids: Array = []
+	var balance_issues: Array = []
+
+	func on_match_data_logged(match_id: String) -> void:
+		match_ids.append(match_id)
+
+	func on_abandonment_tracked(match_id: String) -> void:
+		abandonment_ids.append(match_id)
+
+	func on_balance_issue_detected(weapon_id: String, issue: String) -> void:
+		balance_issues.append([weapon_id, issue])
+
 func before_each():
 	# Load MatchmakingAnalyticsManager script
 	_analytics_script = preload("res://autoloads/MatchmakingAnalyticsManager.gd")
 
 	# Create MatchmakingAnalyticsManager instance
 	analytics_manager = _analytics_script.new()
-	# Set up as if it were autoload
 	analytics_manager.name = "MatchmakingAnalyticsManager"
-	# Set up mock network manager
-	var mock_network = Node.new()
-	mock_network.name = "NetworkManager"
-	analytics_manager._network_manager = mock_network
-	add_child(analytics_manager)
-	add_child(mock_network)
+	add_child_autofree(analytics_manager)
 
-func after_each():
-	if analytics_manager:
-		analytics_manager.queue_free()
+	# _ready() binds the real /root/NetworkManager; replace it with the
+	# offline stub so no telemetry RPCs leave the test.
+	var stub_network = StubNetworkManager.new()
+	stub_network.name = "NetworkManager"
+	add_child_autofree(stub_network)
+	analytics_manager._network_manager = stub_network
 
 ## Test constants are correct
 func test_target_constants():
@@ -44,7 +65,9 @@ func test_log_match_data():
 	# Verify match data was logged
 	var metrics = analytics_manager.get_match_quality_metrics()
 	assert_eq(metrics.total_matches, 1, "Should have 1 match logged")
-	assert_eq(metrics.completed_matches, 1, "Match should be marked as completed")
+	# The metrics dictionary reports rates, not raw completed/abandoned
+	# counts: 1 of 1 matches completed is a 100% completion rate.
+	assert_almost_eq(metrics.completion_rate, 1.0, 0.001, "Match should be marked as completed")
 
 ## Test match data logging generates ID
 func test_match_data_generates_id():
@@ -80,12 +103,19 @@ func test_track_abandonment():
 	analytics_manager.track_abandonment("match_1", "player_disconnected")
 
 	var metrics = analytics_manager.get_match_quality_metrics()
-	assert_eq(metrics.completed_matches, 0, "Abandoned match should not be counted as completed")
-	assert_eq(metrics.abandoned_matches, 1, "Abandoned match should be counted")
+	# Rates, not raw counts (see test_log_match_data): the single logged
+	# match was abandoned, so completion is 0% and abandonment is 100%.
+	assert_almost_eq(metrics.completion_rate, 0.0, 0.001, "Abandoned match should not be counted as completed")
+	assert_almost_eq(metrics.abandonment_rate, 1.0, 0.001, "Abandoned match should be counted")
 
 ## Test weapon result logging
 func test_log_weapon_result():
 	var weapon_id = "weapon_test"
+
+	# Weapon usage entries are created by log_match_data(); log_weapon_result
+	# only adds wins/losses to an already-registered weapon.
+	for i in range(4):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 
 	# Log multiple results for same weapon
 	analytics_manager.log_weapon_result(weapon_id, true)  # win
@@ -103,7 +133,10 @@ func test_log_weapon_result():
 func test_weapon_win_rate():
 	var weapon_id = "weapon_test"
 
-	# Log 10 matches: 6 wins, 4 losses
+	# Register the weapon in 10 matches first (see test_log_weapon_result),
+	# then log the results: 6 wins, 4 losses
+	for i in range(10):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 	for i in range(6):
 		analytics_manager.log_weapon_result(weapon_id, true)
 	for i in range(4):
@@ -178,6 +211,8 @@ func test_balance_issue_high_win_rate():
 	var weapon_id = "overpowered_weapon"
 
 	# Log 15 matches, 12 wins (80% win rate)
+	for i in range(15):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 	for i in range(12):
 		analytics_manager.log_weapon_result(weapon_id, true)
 	for i in range(3):
@@ -199,6 +234,8 @@ func test_balance_issue_low_win_rate():
 	var weapon_id = "underpowered_weapon"
 
 	# Log 15 matches, 2 wins (13% win rate)
+	for i in range(15):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 	for i in range(2):
 		analytics_manager.log_weapon_result(weapon_id, true)
 	for i in range(13):
@@ -220,6 +257,8 @@ func test_balance_issue_insufficient_data():
 	var weapon_id = "new_weapon"
 
 	# Log only 5 matches (below threshold)
+	for i in range(5):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 	for i in range(3):
 		analytics_manager.log_weapon_result(weapon_id, true)
 	for i in range(2):
@@ -290,30 +329,20 @@ func test_export_analytics_report():
 
 ## Test signal emission on match data logged
 func test_match_data_logged_signal():
-	var signal_emitted = false
-	var received_match_id = ""
-
-	analytics_manager.match_data_logged.connect(func(match_id: String):
-		signal_emitted = true
-		received_match_id = match_id
-	)
+	var recorder = AnalyticsRecorder.new()
+	analytics_manager.match_data_logged.connect(recorder.on_match_data_logged)
 
 	analytics_manager.log_match_data(50, ["weapon_1"], 300.0, "test_match")
 
 	await get_tree().process_frame
 
-	assert_true(signal_emitted, "match_data_logged signal should be emitted")
-	assert_eq(received_match_id, "test_match", "Match ID should be passed in signal")
+	assert_eq(recorder.match_ids.size(), 1, "match_data_logged signal should be emitted")
+	assert_eq(recorder.match_ids[0], "test_match", "Match ID should be passed in signal")
 
 ## Test signal emission on abandonment tracked
 func test_abandonment_tracked_signal():
-	var signal_emitted = false
-	var received_match_id = ""
-
-	analytics_manager.abandonment_tracked.connect(func(match_id: String):
-		signal_emitted = true
-		received_match_id = match_id
-	)
+	var recorder = AnalyticsRecorder.new()
+	analytics_manager.abandonment_tracked.connect(recorder.on_abandonment_tracked)
 
 	# First log a match
 	analytics_manager.log_match_data(50, ["weapon_1"], 300.0, "match_1")
@@ -322,29 +351,36 @@ func test_abandonment_tracked_signal():
 
 	await get_tree().process_frame
 
-	assert_true(signal_emitted, "abandonment_tracked signal should be emitted")
-	assert_eq(received_match_id, "match_1", "Match ID should be passed in signal")
+	assert_eq(recorder.abandonment_ids.size(), 1, "abandonment_tracked signal should be emitted")
+	assert_eq(recorder.abandonment_ids[0], "match_1", "Match ID should be passed in signal")
 
 ## Test signal emission on balance issue detected
 func test_balance_issue_detected_signal():
-	var signal_emitted = false
-	var received_weapon_id = ""
-	var received_issue = ""
-
-	analytics_manager.balance_issue_detected.connect(func(weapon_id: String, issue: String):
-		signal_emitted = true
-		received_weapon_id = weapon_id
-		received_issue = issue
-	)
+	var recorder = AnalyticsRecorder.new()
+	analytics_manager.balance_issue_detected.connect(recorder.on_balance_issue_detected)
 
 	var weapon_id = "test_weapon"
+	# Register the weapon in 15 matches, then log 12 wins / 3 losses:
+	# _check_weapon_balance fires once the win rate crosses 65% with
+	# 10+ registered matches.
+	for i in range(15):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 	for i in range(15):
 		analytics_manager.log_weapon_result(weapon_id, i < 12)  # 12 wins out of 15
 
 	await get_tree().process_frame
 
-	assert_true(signal_emitted, "balance_issue_detected signal should be emitted")
-	assert_eq(received_weapon_id, weapon_id, "Weapon ID should be passed in signal")
+	assert_true(recorder.balance_issues.size() > 0, "balance_issue_detected signal should be emitted")
+	# _check_weapon_balance runs after every result with all 15 matches as
+	# the denominator, so a low_win_rate fires first (1 win / 15 matches)
+	# before the rate climbs past 65%; assert the high_win_rate emission
+	# for this weapon is among them.
+	var saw_high_win_rate = false
+	for entry in recorder.balance_issues:
+		assert_eq(entry[0], weapon_id, "Weapon ID should be passed in signal")
+		if entry[1] == "high_win_rate":
+			saw_high_win_rate = true
+	assert_true(saw_high_win_rate, "high_win_rate issue should be passed in signal")
 
 ## Test clear local data
 func test_clear_local_data():
@@ -366,7 +402,13 @@ func test_multiple_weapon_stats():
 	var weapon1 = "weapon_1"
 	var weapon2 = "weapon_2"
 
-	# Log matches for both weapons
+	# Log matches for both weapons (usage entries come from log_match_data;
+	# results add wins/losses on top)
+	analytics_manager.log_match_data(50, [weapon1], 300.0, "match_w1_1")
+	analytics_manager.log_match_data(50, [weapon1], 300.0, "match_w1_2")
+	analytics_manager.log_match_data(50, [weapon2], 300.0, "match_w2_1")
+	analytics_manager.log_match_data(50, [weapon2], 300.0, "match_w2_2")
+	analytics_manager.log_match_data(50, [weapon2], 300.0, "match_w2_3")
 	analytics_manager.log_weapon_result(weapon1, true)
 	analytics_manager.log_weapon_result(weapon1, false)
 	analytics_manager.log_weapon_result(weapon2, true)
@@ -423,10 +465,13 @@ func test_get_target_functions():
 func test_balance_issue_severity():
 	var weapon_id = "test_weapon"
 
-	# Test high severity (> 80% win rate)
-	for i in range(13):
+	# Severity bands in detect_balance_issues(): >60% low, >70% medium,
+	# >80% high. 12/15 = 80% win rate lands in the medium band.
+	for i in range(15):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
+	for i in range(12):
 		analytics_manager.log_weapon_result(weapon_id, true)
-	for i in range(2):
+	for i in range(3):
 		analytics_manager.log_weapon_result(weapon_id, false)
 
 	var issues_high = analytics_manager.detect_balance_issues()
@@ -439,8 +484,10 @@ func test_balance_issue_severity():
 	assert_not_null(high_issue, "Should detect high severity issue")
 	assert_eq(high_issue.severity, "medium", "80% win rate should be medium severity")
 
-	# Clear and test very high severity
+	# Clear and test very high severity: 14/15 = 93% win rate is >80%, so high.
 	analytics_manager.clear_local_data()
+	for i in range(15):
+		analytics_manager.log_match_data(50, [weapon_id], 300.0, "match_%d" % i)
 	for i in range(14):
 		analytics_manager.log_weapon_result(weapon_id, true)
 	for i in range(1):
