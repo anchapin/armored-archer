@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bx7xv9k3m4lpr"]
 
-[ext_resource type="Script" uid="uid://bx7xv9k3m4lps" path="res://scenes/enemies/flying_enemy.gd" id="1_flying_script"]
+[ext_resource type="Script" uid="uid://byur0kycniou0" path="res://scenes/enemies/flying_enemy.gd" id="1_flying_script"]
 [ext_resource type="Texture2D" path="res://assets/sprites/enemy.tres" id="2_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_collision"]
