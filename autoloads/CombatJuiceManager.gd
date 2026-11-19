@@ -6,14 +6,14 @@
 ##
 ## Signals:
 ## - juice_effect_queued(effect_type: String, data: Dictionary): Emitted when juice effect is queued
-## - juice_effect_started(effect_type: String): Emitted when juice effect starts
+## - juice_effect_started(effect_type: String, data: Dictionary): Emitted when juice effect starts
 ## - juice_effect_completed(effect_type: String, data: Dictionary): Emitted when juice effect finishes
 
 extends Node
 
 # --- Signals ---
 signal juice_effect_queued(effect_type: String, data: Dictionary)
-signal juice_effect_started(effect_type: String)
+signal juice_effect_started(effect_type: String, data: Dictionary)
 signal juice_effect_completed(effect_type: String, data: Dictionary)
 signal shake_started()
 signal shake_completed()

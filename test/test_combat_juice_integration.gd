@@ -40,12 +40,14 @@ func test_juice_effect_started_signal():
 	var manager = get_node_or_null("/root/CombatJuiceManager")
 	assert_not_null(manager, "CombatJuiceManager required")
 
-	var signal_emitted = false
-	var received_type = ""
+	# Array-based tracking: GDScript lambdas capture locals by value, so a
+	# plain bool assigned inside the lambda would not be observable here.
+	var signal_emitted := [false]
+	var received_type := [""]
 
-	manager.juice_effect_started.connect(func(effect_type: String):
-		signal_emitted = true
-		received_type = effect_type
+	manager.juice_effect_started.connect(func(effect_type: String, _data: Dictionary):
+		signal_emitted[0] = true
+		received_type[0] = effect_type
 	)
 
 	manager.trigger_combat_juice(
@@ -56,7 +58,7 @@ func test_juice_effect_started_signal():
 	# Wait a frame for signal processing
 	await get_tree().process_frame
 
-	assert_true(signal_emitted, "juice_effect_started should be emitted")
+	assert_true(signal_emitted[0], "juice_effect_started should be emitted")
 
 ## Test is_effect_active method
 func test_is_effect_active():
