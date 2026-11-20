@@ -29,6 +29,13 @@ var rarity_colors: Dictionary = {
 	"legendary": Color("#F59E0B")  # ArcherDesignTokens.COLOR_RARITY_LEGENDARY
 }
 
+# --- Difference rows ---
+# The comparison result is rendered with plain Labels (no BBCode): the result
+# label carries the headline and every stat difference is its own row of plain
+# Labels. The rows live in their own container, inserted right below the
+# result label, so each row can carry its own font colour (issue #1836).
+var _difference_rows: VBoxContainer = null
+
 func _ready() -> void:
 	# Get ThemeManager reference
 	theme_manager = get_node_or_null("/root/ThemeManager")
@@ -88,46 +95,110 @@ func _clear_container(container: VBoxContainer) -> void:
 func _display_comparison_result(comparison: Dictionary) -> void:
 	var better: String = comparison.get("better", "equal")
 
-	# Get DesignTokens colors
-	var success_color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
-	var error_color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
-	var warning_color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
-	var text_color = Color.WHITE
-	
-	if theme_manager:
-		text_color = theme_manager.get_text_color()
+	# Semantic colors. The result is a plain Label, so the colors are applied
+	# through theme font color overrides instead of BBCode markup that a plain
+	# Label would print verbatim (issue #1836). The colors are the same ones
+	# the old markup used (success green, error red, warning yellow, white).
+	var success_color: Color = ArcherDesignTokens.COLOR_SUCCESS if design_tokens else Color.GREEN
+	var error_color: Color = ArcherDesignTokens.COLOR_ERROR if design_tokens else Color.RED
+	var warning_color: Color = ArcherDesignTokens.COLOR_WARNING if design_tokens else Color.YELLOW
 
-	# Build result text with stat differences
-	var result_text: String = ""
-	var differences: Array = comparison.get("differences", [])
+	_clear_difference_rows()
 
+	# Result headline (plain text, colored through the theme font color).
+	var headline: String = ""
+	var headline_color: Color = success_color
 	match better:
 		"gear1":
-			result_text = "[color=#22C55E]Left gear is better[/color]\n"  # Green
+			headline = "Left gear is better"
 		"gear2":
-			result_text = "[color=#22C55E]Right gear is better[/color]\n"  # Green
+			headline = "Right gear is better"
 		"equal":
-			result_text = "[color=#F59E0B]Both gear are equal[/color]\n"  # Yellow
+			headline = "Both gear are equal"
+			headline_color = warning_color
 
-	# Add stat differences to the result
-	if differences.size() > 0:
-		result_text += "\n[color=#FFFFFF]Stat Differences:[/color]\n"  # White
-		for diff in differences:
-			var stat: String = diff.get("stat", "")
-			var gear1_val: int = diff.get("gear1_value", 0)
-			var gear2_val: int = diff.get("gear2_value", 0)
-			var diff_val: int = diff.get("difference", 0)
-			var diff_better: String = diff.get("better", "equal")
+	result_label.text = headline
+	# The font color override carries the semantic color, so the label must
+	# not be tinted by a modulate any more.
+	result_label.modulate = Color.WHITE
+	result_label.add_theme_color_override("font_color", headline_color)
 
-			var diff_text: String = "%s: %d vs %d" % [stat, gear1_val, gear2_val]
-			if diff_better == "gear1":
-				diff_text += " [color=#22C55E](+%d)[/color]" % diff_val  # Green
-			elif diff_better == "gear2":
-				diff_text += " [color=#EF4444](%d)[/color]" % diff_val  # Red
+	# Stat differences, one plain row per difference.
+	var differences: Array = comparison.get("differences", [])
+	if differences.is_empty():
+		return
 
-			result_text += diff_text + "\n"
+	_difference_rows = _create_difference_rows()
+	_difference_rows.add_child(_make_difference_heading())
 
-	result_label.text = result_text
+	for diff in differences:
+		_difference_rows.add_child(_make_difference_row(diff, success_color, error_color))
+
+func _create_difference_rows() -> VBoxContainer:
+	## Creates the container that holds the stat difference rows and places it
+	## right below the result label.
+	var container: VBoxContainer = VBoxContainer.new()
+	container.name = "DifferenceRows"
+
+	var parent: Node = result_label.get_parent()
+	if parent == null:
+		return container
+
+	parent.add_child(container)
+	parent.move_child(container, result_label.get_index() + 1)
+	return container
+
+func _make_difference_heading() -> Label:
+	## The "Stat Differences:" header, white like the old markup.
+	var heading: Label = Label.new()
+	heading.text = "Stat Differences:"
+	heading.horizontal_alignment = result_label.horizontal_alignment
+	heading.add_theme_color_override("font_color", Color.WHITE)
+	return heading
+
+func _make_difference_row(diff: Dictionary, success_color: Color, error_color: Color) -> HBoxContainer:
+	## One stat difference: the values in the default label color and the
+	## difference itself in the color of the gear that wins the stat.
+	var stat: String = diff.get("stat", "")
+	var gear1_val: int = diff.get("gear1_value", 0)
+	var gear2_val: int = diff.get("gear2_value", 0)
+	var diff_val: int = diff.get("difference", 0)
+	var diff_better: String = diff.get("better", "equal")
+
+	var row: HBoxContainer = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	var stat_label: Label = Label.new()
+	stat_label.text = "%s: %d vs %d" % [stat, gear1_val, gear2_val]
+	row.add_child(stat_label)
+
+	var delta_label: Label = null
+	if diff_better == "gear1":
+		delta_label = Label.new()
+		delta_label.text = " (+%d)" % diff_val
+		delta_label.add_theme_color_override("font_color", success_color)
+	elif diff_better == "gear2":
+		delta_label = Label.new()
+		delta_label.text = " (%d)" % diff_val
+		delta_label.add_theme_color_override("font_color", error_color)
+
+	if delta_label != null:
+		row.add_child(delta_label)
+
+	return row
+
+func _clear_difference_rows() -> void:
+	## Removes the stat difference rows of a previous comparison.
+	if _difference_rows == null:
+		return
+
+	if is_instance_valid(_difference_rows):
+		var parent: Node = _difference_rows.get_parent()
+		if parent != null:
+			parent.remove_child(_difference_rows)
+		_difference_rows.queue_free()
+
+	_difference_rows = null
 
 func _on_close_button_pressed() -> void:
 	comparison_closed.emit()
@@ -149,7 +220,9 @@ func _apply_theme() -> void:
 	if gear2_name:
 		gear2_name.modulate = colors["on_surface"]
 	if result_label:
-		result_label.modulate = colors["on_surface"]
+		# The comparison result carries its own semantic font colors, so it must
+		# not be tinted by the theme modulate (issue #1836).
+		result_label.modulate = Color.WHITE
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
