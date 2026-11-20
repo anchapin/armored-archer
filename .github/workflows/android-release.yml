@@ -1,0 +1,94 @@
+name: Android Release (AAB)
+
+# Issue #1725: build the signed Play Store AAB. Manual only (workflow_dispatch),
+# never on push or pull_request. Nothing is published to Google Play: download
+# the artifact and upload it in Play Console yourself.
+#
+# mode=dry-run  signs with a throwaway keystore generated inside the job. No
+#               secrets, no approval. Proves the pipeline end to end (Gradle
+#               build, SDK 36, 16 KB alignment, signature verification).
+# mode=release  needs the "release" GitHub Environment (required reviewer) and
+#               its secrets (see docs/APP_STORE_ANDROID.md). Signs with the real
+#               upload keystore.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: dry-run (throwaway keystore) or release (real upload keystore, needs approval)
+        type: choice
+        options:
+          - dry-run
+          - release
+        default: dry-run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    if: inputs.mode == 'dry-run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Generate throwaway keystore (not a real key)
+        id: ks
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/dryrun.keystore" -alias dryrun -keyalg RSA -keysize 2048 \
+            -validity 30 -storepass dryrun-pass -keypass dryrun-pass -dname "CN=Dry Run,O=Dry Run,C=US"
+          echo "path=$RUNNER_TEMP/dryrun.keystore" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/android-release-build
+        with:
+          keystore-path: ${{ steps.ks.outputs.path }}
+          keystore-alias: dryrun
+          keystore-password: dryrun-pass
+
+      - name: Upload dry-run AAB (signed with a throwaway key; do not publish)
+        uses: actions/upload-artifact@v6
+        with:
+          name: armored-archer-DRYRUN-aab
+          path: export/android/armored-archer-release.aab
+          retention-days: 3
+          if-no-files-found: error
+
+  release:
+    if: inputs.mode == 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: release
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Decode upload keystore
+        id: ks
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_B64 }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "::error::Environment secret ANDROID_RELEASE_KEYSTORE_B64 is not set"; exit 1; }
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          echo "path=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/android-release-build
+        with:
+          keystore-path: ${{ steps.ks.outputs.path }}
+          keystore-alias: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          keystore-password: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v6
+        with:
+          name: armored-archer-release-aab
+          path: export/android/armored-archer-release.aab
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.keystore"
