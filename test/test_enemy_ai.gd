@@ -49,7 +49,8 @@ func test_elemental_attacks() -> void:
 
 		var fire_data = elemental.get_elemental_data()
 		assert_true(fire_data.has("name"), "Elemental should have name")
-		assert_true(fire_data.has("attack_damage"), "Elemental should have attack_damage")
+		# The production data key is "attackdamage" (see elemental_enemy.gd).
+		assert_true(fire_data.has("attackdamage"), "Elemental should have attackdamage")
 		assert_true(fire_data.has("status_effect"), "Elemental should have status_effect")
 
 		elemental.queue_free()
@@ -64,10 +65,12 @@ func test_elemental_weakness() -> void:
 
 		var base_damage = 20
 
-		var weak_damage = elemental.get_elemental_damage(base_damage, 1)
+		# Production API is get_elementaldamage (elemental_enemy.gd). The
+		# default FIRE enemy is weak to ICE (1) and resists FIRE (0).
+		var weak_damage = elemental.get_elementaldamage(base_damage, 1)
 		assert_eq(weak_damage, 40, "Fire element should deal 2x damage to Ice enemy")
 
-		var resist_damage = elemental.get_elemental_damage(base_damage, 0)
+		var resist_damage = elemental.get_elementaldamage(base_damage, 0)
 		assert_eq(resist_damage, 10, "Fire element should deal 0.5x damage to Fire enemy")
 
 		elemental.queue_free()
@@ -82,11 +85,13 @@ func test_flying_dive_attack() -> void:
 	if flying:
 		get_tree().root.add_child(flying)
 
-		var dive_multiplier = flying.dive_damage_multiplier
+		# Production property is divedamage_multiplier (flying_enemy.gd).
+		var dive_multiplier = flying.divedamage_multiplier
 		assert_eq(dive_multiplier, 1.5, "Dive attack should have 1.5x damage")
 
 		assert_true(flying.has_method("dive_attack"), "Flying enemy should have dive_attack method")
-		assert_true(flying.has_method("escape_when_damaged"), "Flying enemy should have escape method")
+		# Production method is escape_whendamaged (flying_enemy.gd).
+		assert_true(flying.has_method("escape_whendamaged"), "Flying enemy should have escape method")
 
 		flying.queue_free()
 

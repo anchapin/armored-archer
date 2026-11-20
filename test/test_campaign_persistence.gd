@@ -10,6 +10,47 @@
 
 extends GutTest
 
+## CampaignManager is an autoload name, so `CampaignManager.new()` resolves
+## to the singleton instance and fails; fresh instances come from the script
+## preload (same pattern as test/suites/autoloads/test_campaign_manager.gd).
+const CampaignManagerScript := preload("res://autoloads/CampaignManager.gd")
+
+## Records one-String-arg signal emissions. GDScript lambdas capture locals
+## by value (a flag-flipping lambda never updates the outer variables) and
+## GUT's watch_signals trips engine errors on this manager, so record through
+## a RefCounted object instead.
+class SignalRecorder extends RefCounted:
+	var args: Array = []
+
+	func record(value: String) -> void:
+		args.append(value)
+
+## Minimal NetworkManager stub: records RPC calls, answers
+## get_campaign_progress with `progress_response`, everything else succeeds.
+class StubNetworkManager extends Node:
+	signal connection_status_changed(is_online: bool)
+	var session_valid: bool = false
+	var progress_response: Dictionary = {"success": true}
+	var calls: Array = []
+
+	func is_session_valid() -> bool:
+		return session_valid
+
+	func send_rpc(rpc_id: String, payload: String, _timeout: float = 30.0) -> Dictionary:
+		calls.append({"rpc_id": rpc_id, "payload": payload})
+		if rpc_id == "armored_archer/get_campaign_progress":
+			return progress_response
+		return {"success": true}
+
+	func send_rpc_async(_rpc_id: String, _payload: String, _timeout: float = 10.0) -> void:
+		pass
+
+	func rpc_ids() -> Array:
+		var ids: Array = []
+		for c in calls:
+			ids.append(c["rpc_id"])
+		return ids
+
 ## Test path for save file
 const SAVE_FILE_PATH = "user://campaign_progress.json"
 
@@ -40,10 +81,11 @@ func _remove_test_save_file() -> void:
 			DirAccess.remove_absolute(SAVE_FILE_PATH + suffix)
 
 ## Helper: Create CampaignManager test instance
-func _create_campaign_manager() -> CampaignManager:
-	var manager = CampaignManager.new()
-	add_child(manager)
-	manager._ready()
+## add_child() runs _ready() (loads data + progress, seeds first stage/chapter
+## on a fresh install per issue #965); do not call _ready() again by hand.
+func _create_campaign_manager():
+	var manager = CampaignManagerScript.new()
+	add_child_autofree(manager)
 	return manager
 
 ## Helper: Write test save file
@@ -135,9 +177,12 @@ func test_load_progress_handles_missing_file() -> void:
 	# Should not crash
 	manager.load_progress()
 
-	# Arrays should be empty
-	assert_eq(manager.unlocked_chapters.size(), 0, "Unlocked chapters should be empty when file missing")
-	assert_eq(manager.unlocked_stages.size(), 0, "Unlocked stages should be empty when file missing")
+	# Fresh-install seeding (issue #965): first chapter/stage are unlocked by
+	# default so the game is playable with no save file; everything else empty.
+	assert_eq(manager.unlocked_chapters.size(), 1, "First chapter should be seeded when file missing")
+	assert_true("chapter_1" in manager.unlocked_chapters, "chapter_1 should be seeded when file missing")
+	assert_eq(manager.unlocked_stages.size(), 1, "First stage should be seeded when file missing")
+	assert_true("1_1" in manager.unlocked_stages, "Stage 1_1 should be seeded when file missing")
 	assert_eq(manager.completed_stages.size(), 0, "Completed stages should be empty when file missing")
 	assert_eq(manager.unlocked_modifier_pools.size(), 0, "Unlocked modifier pools should be empty when file missing")
 	assert_eq(manager.bosses_defeated.size(), 0, "Bosses defeated should be empty when file missing")
@@ -152,8 +197,11 @@ func test_load_progress_handles_corrupted_file() -> void:
 	# Should not crash
 	manager.load_progress()
 
-	# Arrays should be empty (safe defaults)
-	assert_eq(manager.unlocked_chapters.size(), 0, "Unloaded chapters should be empty with corrupted file")
+	# Corrupt data falls back to the fresh-install seed (issue #965): the
+	# seeded chapter is unlocked, nothing else leaks through.
+	assert_eq(manager.unlocked_chapters.size(), 1, "Seeded chapter should be unlocked with corrupted file")
+	assert_true("chapter_1" in manager.unlocked_chapters, "chapter_1 should be seeded with corrupted file")
+	assert_eq(manager.completed_stages.size(), 0, "Completed stages should be empty with corrupted file")
 
 func test_multiple_saves_overwrite_correctly() -> void:
 	"""Verify that multiple saves correctly overwrite previous data."""
@@ -199,23 +247,25 @@ func test_complete_stage_sends_to_server() -> void:
 	"""Verify that complete_stage() notifies server (if online)."""
 	var manager = _create_campaign_manager()
 
-	# Mock network manager
-	var mock_network = Node.new()
-	mock_network.set_script(preload("res://test/mocks/mock_network_manager.gd"))
-	manager.network_manager = mock_network
-	add_child(mock_network)
+	var stub_network = StubNetworkManager.new()
+	stub_network.session_valid = true
+	add_child_autofree(stub_network)
+	manager.network_manager = stub_network
 
 	manager.complete_stage("1_1")
+	# _notify_server_stage_complete is async; let the RPC round-trip settle.
+	await get_tree().process_frame
+	await get_tree().process_frame
 
-	# Verify RPC was called (would need to check mock state)
-	# This test would be enhanced with proper mocking
+	assert_true("armored_archer/stage_complete" in stub_network.rpc_ids(), "stage_complete RPC should be sent when online")
+	assert_eq(manager.last_stage_sync.get("state"), "confirmed", "Stage sync should be confirmed after a successful RPC")
 
 func test_complete_stage_handles_boss_defeat() -> void:
 	"""Verify that boss defeat is tracked and saves correctly."""
 	var manager = _create_campaign_manager()
 
 	manager.bosses_defeated = []
-	manager.complete_stage("1_1")  # Assuming stage 1_1 has boss_basic
+	manager.complete_stage("1_3")  # Stage 1_3 carries boss_basic in data/campaigns.json
 
 	assert_true(manager.has_defeated_boss("boss_basic"), "Boss should be marked as defeated")
 
@@ -229,8 +279,7 @@ func test_complete_stage_handles_boss_defeat() -> void:
 
 func test_sync_campaign_progress_merges_with_server() -> void:
 	"""Verify that sync_campaign_progress() merges server data with local."""
-	# This test would require mocking NetworkManager
-	# The key behavior is union merge for:
+	# The merge is a union for:
 	# - unlocked_chapters
 	# - completed_stages
 	# - unlocked_stages
@@ -240,20 +289,51 @@ func test_sync_campaign_progress_merges_with_server() -> void:
 	manager.unlocked_stages = ["1_1", "1_2"]
 	manager.completed_stages = ["1_1"]
 
-	# Simulate server response with additional data
-	var mock_server_data = {
+	var stub_network = StubNetworkManager.new()
+	stub_network.session_valid = true
+	stub_network.progress_response = {
+		"success": true,
+		"unlocked_chapters": ["chapter_1", "chapter_2"],
 		"unlocked_stages": ["1_1", "1_2", "1_3"],
 		"completed_stages": ["1_1", "1_2"],
 		"bosses_defeated": ["boss_basic"]
 	}
+	add_child_autofree(stub_network)
+	manager.network_manager = stub_network
 
-	# After sync, should have union of both data
-	# Test implementation would mock the RPC call
+	await manager.sync_campaign_progress()
+
+	assert_true("armored_archer/get_campaign_progress" in stub_network.rpc_ids(), "Sync should fetch server campaign progress")
+	assert_eq(manager.unlocked_stages.size(), 3, "Unlocked stages should be the union of local and server")
+	assert_true("1_3" in manager.unlocked_stages, "Server-only stage should be merged in")
+	assert_eq(manager.completed_stages.size(), 2, "Completed stages should be the union of local and server")
+	assert_true("boss_basic" in manager.bosses_defeated, "Server boss defeats should be merged in")
+	assert_true("chapter_2" in manager.unlocked_chapters, "Server chapter unlocks should be merged in")
 
 func test_sync_campaign_progress_saves_after_merge() -> void:
 	"""Verify that synced data is saved locally."""
-	# After sync_campaign_progress(), save_progress() should be called
-	# to persist the merged state
+	var manager = _create_campaign_manager()
+	manager.unlocked_stages = ["1_1"]
+	manager.completed_stages = []
+
+	var stub_network = StubNetworkManager.new()
+	stub_network.session_valid = true
+	stub_network.progress_response = {
+		"success": true,
+		"unlocked_stages": ["1_1", "1_2"],
+		"completed_stages": ["1_1"],
+		"bosses_defeated": []
+	}
+	add_child_autofree(stub_network)
+	manager.network_manager = stub_network
+
+	await manager.sync_campaign_progress()
+
+	# sync_campaign_progress() calls save_progress() after merging, so the
+	# merged state should be on disk without any further save call.
+	var saved_data = _read_save_file()
+	assert_true("1_2" in saved_data["unlocked_stages"], "Merged stage unlock should be persisted")
+	assert_true("1_1" in saved_data["completed_stages"], "Merged completion should be persisted")
 
 ## ============================================================================
 ## TEST CATEGORY: Progress Across App Restarts
@@ -358,31 +438,52 @@ func test_boss_defeats_persist_across_restart() -> void:
 
 func test_session_reconnect_syncs_with_server() -> void:
 	"""Verify that reconnecting to server syncs campaign progress."""
-	# This would test:
-	# 1. Player completes stages offline
+	# 1. Player completes a stage offline (no valid session)
 	# 2. Player reconnects
-	# 3. sync_campaign_progress() is called
+	# 3. The connection-status handler calls sync_campaign_progress()
 	# 4. Local and server data are merged
+	var manager = _create_campaign_manager()
 
-	# Requires NetworkManager mocking
+	var stub_network = StubNetworkManager.new()
+	stub_network.session_valid = false
+	add_child_autofree(stub_network)
+	manager.network_manager = stub_network
+
+	manager.complete_stage("1_1")
+	assert_eq(manager.last_stage_sync.get("state"), "offline", "Offline completion should stay local")
+
+	# Reconnect: session becomes valid and the server holds extra progress.
+	stub_network.session_valid = true
+	stub_network.progress_response = {
+		"success": true,
+		"unlocked_stages": ["1_1", "1_2", "1_3"],
+		"completed_stages": ["1_1", "1_2"],
+		"bosses_defeated": []
+	}
+	await manager._on_connection_status_changed(true)
+
+	assert_true("armored_archer/get_campaign_progress" in stub_network.rpc_ids(), "Reconnect should trigger a progress sync")
+	assert_true("1_3" in manager.unlocked_stages, "Server progress should merge in after reconnect")
+	assert_true("1_2" in manager.completed_stages, "Server completions should merge in after reconnect")
 
 func test_connection_status_change_triggers_sync() -> void:
 	"""Verify that connection status changed signal triggers sync."""
 	var manager = _create_campaign_manager()
 
-	# Mock network manager that emits signal
-	var mock_network = Node.new()
-	var signal_emitted = false
+	var stub_network = StubNetworkManager.new()
+	stub_network.session_valid = true
+	stub_network.progress_response = {"success": true}
+	add_child_autofree(stub_network)
+	manager.network_manager = stub_network
 
-	mock_network.connect("connection_status_changed", func(_is_online):
-		signal_emitted = true
-	)
+	# CampaignManager wires the connection_status_changed signal in
+	# initialize_for_testing(); emitting it online should sync progress.
+	manager.initialize_for_testing()
+	stub_network.connection_status_changed.emit(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
 
-	manager.network_manager = mock_network
-	add_child(mock_network)
-
-	# The CampaignManager connects to this signal in _ready()
-	# When online, it should call sync_campaign_progress()
+	assert_true("armored_archer/get_campaign_progress" in stub_network.rpc_ids(), "Going online should trigger sync_campaign_progress()")
 
 ## ============================================================================
 ## TEST CATEGORY: Data Loss Prevention
@@ -391,6 +492,10 @@ func test_connection_status_change_triggers_sync() -> void:
 func test_no_data_loss_on_concurrent_saves() -> void:
 	"""Verify that concurrent save operations don't cause data loss."""
 	var manager = _create_campaign_manager()
+
+	# Start from an empty list so the count below is exactly the loop's data
+	# (a fresh manager carries the seeded "1_1" unlock).
+	manager.unlocked_stages = []
 
 	# Simulate rapid saves
 	for i in range(10):
@@ -469,6 +574,11 @@ func test_large_data_sets_handled() -> void:
 	"""Verify that large data sets are handled without issues."""
 	var manager = _create_campaign_manager()
 
+	# Start from empty lists so the counts below are exactly the loop's data
+	# (a fresh manager carries the seeded "1_1" unlock).
+	manager.unlocked_stages = []
+	manager.completed_stages = []
+
 	# Add many stages
 	for i in range(100):
 		manager.unlocked_stages.append("1_%d" % i)
@@ -536,70 +646,42 @@ func test_stage_completed_signal_emitted() -> void:
 	"""Verify that stage_completed signal is emitted when stage is completed."""
 	var manager = _create_campaign_manager()
 
-	var signal_received = false
-	var stage_id_received = ""
-
-	manager.stage_completed.connect(func(stage_id: String):
-		signal_received = true
-		stage_id_received = stage_id
-	)
-
+	var recorder = SignalRecorder.new()
+	manager.stage_completed.connect(recorder.record)
 	manager.complete_stage("1_1")
 
-	assert_true(signal_received, "stage_completed signal should be emitted")
-	assert_eq(stage_id_received, "1_1", "Signal should pass correct stage_id")
+	assert_eq(recorder.args, ["1_1"], "stage_completed signal should be emitted with the stage_id")
 
 func test_stage_unlocked_signal_emitted() -> void:
 	"""Verify that stage_unlocked signal is emitted when stage is unlocked."""
 	var manager = _create_campaign_manager()
 	manager.unlocked_stages = ["1_1"]
 
-	var signal_received = false
-	var stage_id_received = ""
-
-	manager.stage_unlocked.connect(func(stage_id: String):
-		signal_received = true
-		stage_id_received = stage_id
-	)
-
+	var recorder = SignalRecorder.new()
+	manager.stage_unlocked.connect(recorder.record)
 	manager.complete_stage("1_1")
 
-	assert_true(signal_received, "stage_unlocked signal should be emitted")
-	assert_eq(stage_id_received, "1_2", "Signal should pass next stage_id")
+	assert_eq(recorder.args, ["1_2"], "stage_unlocked signal should be emitted with the next stage_id")
 
 func test_chapter_unlocked_signal_emitted() -> void:
 	"""Verify that chapter_unlocked signal is emitted when chapter is unlocked."""
 	var manager = _create_campaign_manager()
 
-	var signal_received = false
-	var chapter_id_received = ""
-
-	manager.chapter_unlocked.connect(func(chapter_id: String):
-		signal_received = true
-		chapter_id_received = chapter_id
-	)
-
+	var recorder = SignalRecorder.new()
+	manager.chapter_unlocked.connect(recorder.record)
 	manager.unlock_chapter("chapter_2")
 
-	assert_true(signal_received, "chapter_unlocked signal should be emitted")
-	assert_eq(chapter_id_received, "chapter_2", "Signal should pass correct chapter_id")
+	assert_eq(recorder.args, ["chapter_2"], "chapter_unlocked signal should be emitted with the chapter_id")
 
 func test_modifier_pool_unlocked_signal_emitted() -> void:
 	"""Verify that modifier_pool_unlocked signal is emitted when pool is unlocked."""
 	var manager = _create_campaign_manager()
 
-	var signal_received = false
-	var modifier_id_received = ""
-
-	manager.modifier_pool_unlocked.connect(func(modifier_id: String):
-		signal_received = true
-		modifier_id_received = modifier_id
-	)
-
+	var recorder = SignalRecorder.new()
+	manager.modifier_pool_unlocked.connect(recorder.record)
 	manager.unlock_modifier_pool("heavy_impact")
 
-	assert_true(signal_received, "modifier_pool_unlocked signal should be emitted")
-	assert_eq(modifier_id_received, "heavy_impact", "Signal should pass correct modifier_id")
+	assert_eq(recorder.args, ["heavy_impact"], "modifier_pool_unlocked signal should be emitted with the modifier_id")
 
 ## ============================================================================
 ## TEST CATEGORY: Initialization Defaults
