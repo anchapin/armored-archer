@@ -16,6 +16,7 @@ import { performance } from 'perf_hooks';
 import { Pool } from 'pg';
 import { testHelper, TestAccount } from './helpers';
 import { parseRpcPayload } from './rpc_payload';
+import { describeSustainedLoad, SustainedLoadSample } from './sustained_load_diagnostics';
 
 // Performance thresholds
 const PERFORMANCE_THRESHOLDS = {
@@ -478,10 +479,12 @@ describe('Performance Smoke Tests', () => {
     test('should maintain performance under sustained load', async () => {
       const iterations = 50;
       const times: number[] = [];
+      const samples: SustainedLoadSample[] = [];
 
       for (let i = 0; i < iterations; i++) {
-        const { duration } = await measureRpcTime(player, 'armored_archer/get_player_rank', {});
+        const { duration, success } = await measureRpcTime(player, 'armored_archer/get_player_rank', {});
         times.push(duration);
+        samples.push({ durationMs: duration, success });
       }
 
       const average = times.reduce((a, b) => a + b, 0) / iterations;
@@ -496,6 +499,10 @@ describe('Performance Smoke Tests', () => {
       console.log(
         `Sustained load: first_half=${firstHalfAvg.toFixed(2)}ms, second_half=${secondHalfAvg.toFixed(2)}ms, degradation=${degradation.toFixed(2)}%`
       );
+
+      // Emit after measurement and before assertions so failed runs retain evidence.
+      // Only timing and boolean outcome are logged, never RPC payloads or error text.
+      console.log(`Sustained load diagnostics: ${JSON.stringify(describeSustainedLoad(samples))}`);
 
       // Performance should not degrade more than 50%
       expect(degradation).toBeLessThan(50);
