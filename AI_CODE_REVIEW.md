@@ -15,6 +15,7 @@ Use this as a rapid validation before integrating AI-generated code:
 □ Type Safety & Error Handling
 □ Security & Input Validation
 □ Test Coverage
+□ Visual-Change Evidence (frames attached, or the opt-out sentence present)
 ```
 
 ## Detailed Review Criteria
