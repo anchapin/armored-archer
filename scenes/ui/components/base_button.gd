@@ -8,6 +8,11 @@ extends Button
 # Use as base for all buttons or extend for specialized variants.
 # =============================================================================
 
+## Issue #1831: the shared button must honour the global UI animation switch.
+## The optimizer flag is read through UIAutomation's shipped static API
+## (same pattern as PRs #1825/#1833) so no /root look-up is needed here.
+const UIAutomationAPI := preload("res://autoloads/UIAutomation.gd")
+
 ## Emitted when button state changes
 signal state_changed(button_state: String)
 
@@ -27,11 +32,22 @@ var _current_state: ButtonState = ButtonState.NORMAL
 var _is_toggled: bool = false
 var _base_scale: float = 1.0
 
+# --- Animation ownership (issue #1831) ---
+# The transform (scale/rotation) is owned by exactly ONE tween so a hover and a
+# press can never fight over the same property. The glow has its own single
+# owner because it animates a different target (the style box shadow).
+var _transform_tween: Tween = null
+var _glow_tween: Tween = null
+## Shadow size the current style was built with; used as the neutral glow.
+var _base_shadow_size: int = 0
+
 # --- Lifecycle ---
 func _ready() -> void:
 	_setup_button()
 	_connect_signals()
 	_base_scale = scale.x
+	# Only poll the animation switch while something is actually animating.
+	set_process(false)
 
 func _setup_button() -> void:
 	# Apply default styling
@@ -94,7 +110,18 @@ func _set_state(new_state: ButtonState) -> void:
 
 # --- Visual Animations ---
 func _animate_hover(is_hovering: bool) -> void:
+	# Issue #1831: respect the global UI animation switch. When animations are
+	# off no tween is created and the button stays at its neutral transform.
+	if not _animations_enabled():
+		_stop_animations()
+		_apply_neutral_state()
+		return
+
+	# One owner for the transform: a new hover replaces the previous one.
+	_kill_tween(_transform_tween)
 	var tween := create_tween()
+	_transform_tween = tween
+	_track_transform_tween(tween)
 	if is_hovering:
 		tween.tween_property(self, "scale", Vector2(_base_scale * 1.05, _base_scale * 1.05), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		# Add subtle glow pulse on hover
@@ -102,9 +129,20 @@ func _animate_hover(is_hovering: bool) -> void:
 	else:
 		tween.tween_property(self, "scale", Vector2(_base_scale, _base_scale), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 		_animate_glow(false)
+	set_process(true)
 
 func _animate_press(is_pressed: bool) -> void:
+	# Issue #1831: respect the global UI animation switch.
+	if not _animations_enabled():
+		_stop_animations()
+		_apply_neutral_state()
+		return
+
+	# One owner for the transform: a press replaces any running hover tween.
+	_kill_tween(_transform_tween)
 	var tween := create_tween()
+	_transform_tween = tween
+	_track_transform_tween(tween)
 	if is_pressed:
 		# Tactile press with scale and slight rotation for physical feel
 		tween.tween_property(self, "scale", Vector2(_base_scale * 0.92, _base_scale * 0.92), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -112,18 +150,103 @@ func _animate_press(is_pressed: bool) -> void:
 	else:
 		tween.tween_property(self, "scale", Vector2(_base_scale, _base_scale), 0.1).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 		tween.parallel().tween_property(self, "rotation", 0, 0.1).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	set_process(true)
 
 func _animate_glow(enabled: bool) -> void:
 	# Add pulsing glow effect for hover state
 	var style := get_theme_stylebox("normal") as StyleBoxFlat
 	if not style:
 		return
-	
+
+	# Issue #1831: respect the global UI animation switch.
+	if not _animations_enabled():
+		_stop_animations()
+		_apply_neutral_state()
+		return
+
+	# One owner for the glow.
+	_kill_tween(_glow_tween)
 	var tween := create_tween()
+	_glow_tween = tween
+	_track_glow_tween(tween)
 	if enabled:
 		tween.tween_property(style, "shadow_size", 12, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	else:
 		tween.tween_property(style, "shadow_size", ArcherDesignTokens.RA_AMBIENT_SHADOW_BLUR, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	set_process(true)
+
+# --- Animation helpers (issue #1831) ---
+func _animations_enabled() -> bool:
+	## Global UI animation switch, read through UIAutomation's static API.
+	return UIAutomationAPI.are_animations_enabled()
+
+func _kill_tween(tween: Tween) -> void:
+	if tween != null and tween.is_valid():
+		tween.kill()
+
+func _track_transform_tween(tween: Tween) -> void:
+	## Drop the ownership reference as soon as the tween finishes so a settled
+	## button stops polling the animation switch.
+	tween.finished.connect(_on_transform_tween_finished)
+
+func _track_glow_tween(tween: Tween) -> void:
+	## Drop the ownership reference as soon as the glow tween finishes.
+	tween.finished.connect(_on_glow_tween_finished)
+
+func _on_transform_tween_finished() -> void:
+	_transform_tween = null
+
+func _on_glow_tween_finished() -> void:
+	_glow_tween = null
+
+func _stop_animations() -> void:
+	## Stop every tween this button owns.
+	_kill_tween(_transform_tween)
+	_kill_tween(_glow_tween)
+	_transform_tween = null
+	_glow_tween = null
+
+func _has_active_tween() -> bool:
+	return _is_tween_active(_transform_tween) or _is_tween_active(_glow_tween)
+
+func _is_tween_active(tween: Tween) -> bool:
+	## A tween reference is dropped when it finishes (`_on_tween_finished`) or
+	## when it is killed (`_stop_animations`), so a non-null reference means the
+	## tween still owns the animation.
+	return tween != null
+
+func _apply_neutral_state() -> void:
+	## Reset the visual state to the button's neutral (un-animated) look.
+	scale = Vector2(_base_scale, _base_scale)
+	rotation = 0.0
+	var style := get_theme_stylebox("normal") as StyleBoxFlat
+	if style:
+		style.shadow_size = _base_shadow_size
+
+func _is_neutral_transform() -> bool:
+	return is_equal_approx(scale.x, _base_scale) \
+		and is_equal_approx(scale.y, _base_scale) \
+		and is_equal_approx(rotation, 0.0)
+
+func _process(_delta: float) -> void:
+	# Issue #1831: if the animation switch is turned off while a tween is
+	# running, stop it and restore the neutral transform so the button is
+	# never left stuck scaled/rotated/glowing.
+	if not _animations_enabled():
+		if _has_active_tween() or not _is_neutral_transform():
+			_stop_animations()
+			_apply_neutral_state()
+		if not _has_active_tween() and _is_neutral_transform():
+			set_process(false)
+		return
+
+	# Nothing left to animate: sleep until the next interaction.
+	if not _has_active_tween() and _is_neutral_transform():
+		set_process(false)
+
+## True while this button owns a running animation tween.
+func has_active_animation() -> bool:
+	return _has_active_tween()
 
 # --- Style Updates ---
 func _update_button_style() -> void:
@@ -274,6 +397,10 @@ func _apply_style(colors: Dictionary, radius: int) -> void:
 		style_normal.shadow_color = ArcherDesignTokens.RA_AMBIENT_SHADOW_COLOR
 		style_normal.shadow_size = ArcherDesignTokens.RA_AMBIENT_SHADOW_BLUR
 		style_normal.shadow_offset = Vector2(0, 0)
+
+	# Remember the neutral shadow size so animations can be reset to it
+	# when the global UI animation switch is off (issue #1831).
+	_base_shadow_size = style_normal.shadow_size
 
 	# Set the style
 	add_theme_stylebox_override("normal", style_normal)

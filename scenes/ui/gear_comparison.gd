@@ -2,18 +2,18 @@ extends Control
 
 signal comparison_closed()
 
-@onready var gear1_name: Label = $VBoxContainer/Container/Gear1Container/Gear1Name
-@onready var gear1_rarity: Label = $VBoxContainer/Container/Gear1Container/Gear1Rarity
-@onready var gear1_stats: VBoxContainer = $VBoxContainer/Container/Gear1Container/Gear1Stats
-@onready var gear1_modifiers: VBoxContainer = $VBoxContainer/Container/Gear1Container/Gear1Modifiers
+@onready var gear1_name: Label = $SafeAreaContainer/VBoxContainer/Container/Gear1Container/Gear1Name
+@onready var gear1_rarity: Label = $SafeAreaContainer/VBoxContainer/Container/Gear1Container/Gear1Rarity
+@onready var gear1_stats: VBoxContainer = $SafeAreaContainer/VBoxContainer/Container/Gear1Container/Gear1Stats
+@onready var gear1_modifiers: VBoxContainer = $SafeAreaContainer/VBoxContainer/Container/Gear1Container/Gear1Modifiers
 
-@onready var gear2_name: Label = $VBoxContainer/Container/Gear2Container/Gear2Name
-@onready var gear2_rarity: Label = $VBoxContainer/Container/Gear2Container/Gear2Rarity
-@onready var gear2_stats: VBoxContainer = $VBoxContainer/Container/Gear2Container/Gear2Stats
-@onready var gear2_modifiers: VBoxContainer = $VBoxContainer/Container/Gear2Container/Gear2Modifiers
+@onready var gear2_name: Label = $SafeAreaContainer/VBoxContainer/Container/Gear2Container/Gear2Name
+@onready var gear2_rarity: Label = $SafeAreaContainer/VBoxContainer/Container/Gear2Container/Gear2Rarity
+@onready var gear2_stats: VBoxContainer = $SafeAreaContainer/VBoxContainer/Container/Gear2Container/Gear2Stats
+@onready var gear2_modifiers: VBoxContainer = $SafeAreaContainer/VBoxContainer/Container/Gear2Container/Gear2Modifiers
 
-@onready var result_label: Label = $VBoxContainer/ResultLabel
-@onready var close_button: Button = $VBoxContainer/CloseButton
+@onready var result_label: Label = $SafeAreaContainer/VBoxContainer/ResultLabel
+@onready var close_button: Button = $SafeAreaContainer/VBoxContainer/CloseButton
 
 # --- Theme Manager Reference ---
 var theme_manager: Node
@@ -34,7 +34,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 	
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 	
 	# Apply theme if available
 	if theme_manager:

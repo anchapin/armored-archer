@@ -83,9 +83,9 @@ The Godot client uses autoloads for global managers. Key autoloads (defined in `
 | `TransmogManager` | Cosmetic skin system |
 | `GemManager` | Gem/socket system |
 | `CampaignManager` | Campaign progression |
-| `AutoAimManager` | Auto-aim assistance |
+| `ShootingManager` | Shooting and auto-aim targeting |
 | `ObjectPool` | Object pooling for performance |
-| `DesignTokens` | Design system constants (spacing, colors, typography) |
+| `ArcherDesignTokens` | Design system constants (spacing, colors, typography) |
 | `ThemeManager` | UI theme management (light/dark modes) |
 
 ### Design System (UI)
@@ -99,7 +99,7 @@ The project has a design system for UI components located in `scenes/ui/componen
 - `loading_indicator.gd` - Loading states
 - `theme_toggle.gd` - Light/dark theme switcher
 
-Design tokens are defined in `autoloads/design_tokens.gd` and include spacing, colors, typography, and other UI constants.
+Design tokens are defined in `autoloads/ArcherDesignTokens.gd` and include spacing, colors, typography, and other UI constants.
 
 ### Backend Structure
 ```

@@ -70,6 +70,10 @@ func after_each():
 	# or subsequent runs (issue #969).
 	_remove_persisted_session()
 
+	# Close the loopback stub endpoint (issue #1796) so no listening
+	# socket survives the test.
+	_stop_loopback_stub()
+
 	# Drop the mock reference before teardown so _exit_tree() does not
 	# queue_free() a node GUT's autofree already owns (double-free once
 	# the before_each swap actually takes effect, issue #1026).
@@ -282,37 +286,204 @@ func test_send_rpc_not_authenticated():
 	assert_eq(result.has("is_auth_error"), true, "Should include is_auth_error flag")
 	assert_eq(result.is_auth_error, false, "is_auth_error should be false for unauthenticated (not 401/403)")
 
+# ==================== ISSUE #1796: LOOPBACK STUB ENDPOINT ====================
+#
+# The two RPC tests below used to be GUT pending() stubs because the
+# transport could not be steered from the test side (no Timer injection, no
+# HTTPRequest response_code injection — see #1082). Instead of touching
+# production code, the suite now runs its own loopback-only stub endpoint:
+# a TCPServer bound to 127.0.0.1 on an ephemeral port which the test polls
+# while the RPC is in flight. Two modes exist:
+#   STUB_MODE_SILENT     — accept the connection and never answer.
+#   STUB_MODE_AUTH_ERROR — answer with a raw HTTP/1.1 401 response carrying
+#                          a JSON error body.
+# No traffic ever leaves the machine: the stub binds the loopback interface
+# explicitly and the suite never talks to a live Nakama.
+
+const STUB_MODE_SILENT := "silent"
+const STUB_MODE_AUTH_ERROR := "auth_error"
+
+# Bound loopback stub endpoint (null when no stub is running).
+var _stub_server: TCPServer = null
+# Accepted connections, kept alive so the peer never sees a FIN.
+var _stub_connections: Array[StreamPeerTCP] = []
+# Connections accepted but not answered yet (one frame of grace so the
+# client has finished sending its request before the response arrives).
+var _stub_pending_responses: Array[StreamPeerTCP] = []
+# Mode of the running stub (STUB_MODE_SILENT / STUB_MODE_AUTH_ERROR).
+var _stub_mode: String = STUB_MODE_SILENT
+# Number of stub responses successfully handed to the socket.
+var _stub_responses_sent: int = 0
+
+## Starts the loopback stub endpoint and returns the port it listens on
+## (0 means "could not listen"). Binds 127.0.0.1 explicitly; the port is
+## picked by the OS (ephemeral) and only falls back to a fixed range if the
+## OS-assigned port is unavailable.
+func _start_loopback_stub(mode: String) -> int:
+	_stub_mode = mode
+	_stub_connections.clear()
+	_stub_pending_responses.clear()
+	_stub_responses_sent = 0
+
+	# Candidate 0 asks the OS for an ephemeral port; the rest are a
+	# deterministic fallback range in case the OS-assigned port is unusable.
+	var candidates: Array[int] = [0]
+	for offset in range(40):
+		candidates.append(38000 + offset)
+
+	for candidate in candidates:
+		var server: TCPServer = TCPServer.new()
+		var listen_err: Error = server.listen(candidate, "127.0.0.1")
+		if listen_err != OK:
+			server.stop()
+			continue
+		var bound_port: int = 0
+		if server.has_method("get_local_port"):
+			bound_port = server.get_local_port()
+		if bound_port <= 0 and candidate > 0:
+			# The requested port is the bound port when the server cannot
+			# report it back.
+			bound_port = candidate
+		if bound_port > 0:
+			_stub_server = server
+			return bound_port
+		server.stop()
+	return 0
+
+## Accepts a pending connection and answers it according to the stub mode.
+## Called once per frame while the RPC under test is in flight.
+func _poll_loopback_stub() -> void:
+	if _stub_server == null:
+		return
+	# Answer the connections accepted on an EARLIER frame first, so the
+	# client has finished sending its request before the response arrives.
+	if _stub_mode == STUB_MODE_AUTH_ERROR:
+		var undelivered: Array[StreamPeerTCP] = []
+		for pending_conn in _stub_pending_responses:
+			if not _stub_write_auth_error(pending_conn):
+				# Retry on the next frame instead of losing the answer.
+				undelivered.append(pending_conn)
+		_stub_pending_responses = undelivered
+	var conn: StreamPeerTCP = _stub_server.take_connection()
+	if conn != null:
+		# Keep the connection alive: closing it early would surface as a
+		# transport error instead of the response/timeout under test.
+		_stub_connections.append(conn)
+		if _stub_mode == STUB_MODE_AUTH_ERROR:
+			_stub_pending_responses.append(conn)
+
+## Writes a raw HTTP/1.1 401 response with a JSON error body to the peer.
+## Returns true when the response was handed to the socket.
+func _stub_write_auth_error(conn: StreamPeerTCP) -> bool:
+	var body: String = "{\"error\":\"Invalid session token\"}"
+	var body_bytes: PackedByteArray = body.to_utf8_buffer()
+	var response: String = "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s" % [body_bytes.size(), body]
+	var write_err: Error = conn.put_data(response.to_utf8_buffer())
+	if write_err != OK:
+		return false
+	_stub_responses_sent += 1
+	return true
+
+## Tears the loopback stub down (no connection may survive the test).
+func _stop_loopback_stub() -> void:
+	for conn in _stub_connections:
+		if conn != null:
+			conn.disconnect_from_host()
+	_stub_connections.clear()
+	_stub_pending_responses.clear()
+	if _stub_server != null:
+		_stub_server.stop()
+		_stub_server = null
+
 func test_send_rpc_timeout():
-	# Test RPC timeout handling (simulated via state)
-	# Setup authenticated state
+	# Issue #1796: the RPC timeout path is exercised against the loopback
+	# stub, which accepts the connection and NEVER answers. The only
+	# wall-clock dependency is the RPC's own 0.2s timeout, so the outcome is
+	# deterministic — no live Nakama and no production Timer injection.
+	var port: int = _start_loopback_stub(STUB_MODE_SILENT)
+	assert_gt(port, 0, "Loopback stub must listen on 127.0.0.1")
+	if port <= 0:
+		return
+
+	_network.base_url = "http://127.0.0.1:%d" % port
 	_network.session_token = "test_token"
 	_network.is_connected = true
 
-	# Note: Actual timeout testing requires async setup with Timer
-	# This test verifies the error path exists
-	# For full timeout testing, we'd need to mock Timer and simulate timeout
-	# Actual timeout testing requires async setup with Timer
-	# Marked pending (issue #1361) — body has no assertions; GUT reports
-	# "Risky: Did not assert". Real timeout test requires Timer injection
-	# into send_rpc() — see #1082.
-	pending("Stub: needs Timer injection into send_rpc() — issue #1082")
-	return
+	# The RPC runs in its own coroutine so the test can keep polling the
+	# stub endpoint while the request is in flight (the #1147 pattern).
+	var results: Array = []
+	var waiter: Callable = func():
+		var response: Dictionary = await _network.send_rpc("test_rpc", "{}", 0.2)
+		results.append(response)
+	waiter.call()
+
+	var deadline_ms: int = Time.get_ticks_msec() + 10000
+	while results.is_empty() and Time.get_ticks_msec() < deadline_ms:
+		_poll_loopback_stub()
+		await get_tree().process_frame
+
+	assert_eq(results.size(), 1, "The RPC must resolve against the loopback stub")
+	if results.is_empty():
+		return
+	# The request must really have reached the loopback endpoint (otherwise
+	# the "timeout" could be a transport failure instead).
+	assert_gt(_stub_connections.size(), 0,
+		"The RPC request must have reached the loopback stub")
+	var result: Dictionary = results[0]
+	assert_true(result.has("error"), "A timed-out RPC must report an error")
+	var error_text: String = str(result.get("error", ""))
+	assert_true(error_text.contains("Request timed out"),
+		"The timeout error must name the timeout, got '%s'" % error_text)
+	# The timeout path is NOT an auth error. Production's timeout response
+	# carries no is_auth_error key at all, so the flag is read with a
+	# false default: the RPC must not be flagged as an authentication
+	# failure (neither by an absent nor by a true flag).
+	assert_false(result.get("is_auth_error", false),
+		"A timeout must not be reported as an auth error")
 
 func test_send_rpc_auth_error():
-	# Test 401/403 response handling
-	# Setup authenticated state
+	# Issue #1796: the 401 path is exercised against the loopback stub,
+	# which answers with a raw HTTP/1.1 401 response carrying a JSON error
+	# body. The flag (not the message) is the contract under test.
+	var port: int = _start_loopback_stub(STUB_MODE_AUTH_ERROR)
+	assert_gt(port, 0, "Loopback stub must listen on 127.0.0.1")
+	if port <= 0:
+		return
+
+	_network.base_url = "http://127.0.0.1:%d" % port
 	_network.session_token = "test_token"
 	_network.is_connected = true
 
-	# Note: Auth error testing requires simulating HTTP 401/403 response
-	# This test verifies the error path exists in send_rpc()
-	# For full auth error testing, we'd need to mock HTTPRequest with response_code parameter
-	# Auth error testing requires HTTPRequest response mocking
-	# Marked pending (issue #1361) — body has no assertions; GUT reports
-	# "Risky: Did not assert". Real auth-error test needs HTTPRequest
-	# response_code injection — see #1082.
-	pending("Stub: needs HTTPRequest response_code injection — issue #1082")
-	return
+	# The doomed session refresh must fail FAST: with an empty refresh
+	# token the refresh falls back to authenticate_device(), which the
+	# suite's offline flag turns into a synchronous session_created(false)
+	# — session_refreshed never fires, so the recovery wait ends at the
+	# (now tiny) watchdog deadline instead of MAX_AUTH_DURATION_SEC
+	# (the suite's #1147 watchdog pattern).
+	_network.refresh_token = ""
+	_network._refresh_watchdog_ms = 300
+	_network._refresh_watchdog_max_frames = 120
+
+	var results: Array = []
+	var waiter: Callable = func():
+		var response: Dictionary = await _network.send_rpc("test_rpc", "{}")
+		results.append(response)
+	waiter.call()
+
+	var deadline_ms: int = Time.get_ticks_msec() + 10000
+	while results.is_empty() and Time.get_ticks_msec() < deadline_ms:
+		_poll_loopback_stub()
+		await get_tree().process_frame
+
+	assert_eq(results.size(), 1, "The RPC must resolve against the loopback stub")
+	if results.is_empty():
+		return
+	assert_gt(_stub_responses_sent, 0, "The stub must have delivered its 401 response")
+	var result: Dictionary = results[0]
+	assert_true(result.has("is_auth_error"),
+		"The 401 response must carry the is_auth_error flag")
+	assert_eq(result.get("is_auth_error", false), true,
+		"A 401 response must be reported as an auth error")
 
 func test_send_rpc_async_fire_and_forget():
 	# Test async RPC doesn't wait for response

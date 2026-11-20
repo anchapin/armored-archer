@@ -91,19 +91,32 @@ func test_is_shake_active():
 	var manager = get_node_or_null("/root/CombatJuiceManager")
 	assert_not_null(manager, "CombatJuiceManager required")
 
-	# Should be inactive initially
-	var is_active = manager.is_shake_active()
-	assert_false(is_active, "Shake should not be active initially")
+	# The manager is a shared autoload and the tests above start shakes that
+	# stay active for their requested duration, so wait for the manager to go
+	# idle before asserting the inactive state (issue #1878).
+	await _wait_until_shake_idle(manager)
+
+	# Should be inactive when no shake is running
+	assert_false(manager.is_shake_active(), "Shake should not be active initially")
+
+## Wait (bounded) until the manager reports no active shake.
+func _wait_until_shake_idle(manager: Node) -> void:
+	var waited := 0.0
+	while manager.is_shake_active() and waited < 3.0:
+		await get_tree().create_timer(0.05).timeout
+		waited += 0.05
 
 ## Test shake_started signal
 func test_shake_started_signal():
 	var manager = get_node_or_null("/root/CombatJuiceManager")
 	assert_not_null(manager, "CombatJuiceManager required")
 
-	var signal_emitted = false
+	# Array-based tracking: GDScript lambdas capture locals by value, so a
+	# plain bool assigned inside the lambda would not be observable here.
+	var signal_emitted := [false]
 
 	manager.shake_started.connect(func():
-		signal_emitted = true
+		signal_emitted[0] = true
 	)
 
 	manager.shake_screen("light", 0.2, true)
@@ -111,17 +124,21 @@ func test_shake_started_signal():
 	# Wait for signal processing
 	await get_tree().process_frame
 
-	assert_true(signal_emitted, "shake_started signal should be emitted")
+	assert_true(signal_emitted[0], "shake_started signal should be emitted")
 
 ## Test shake_completed signal
 func test_shake_completed_signal():
 	var manager = get_node_or_null("/root/CombatJuiceManager")
 	assert_not_null(manager, "CombatJuiceManager required")
 
-	var signal_emitted = false
+	# Array-based tracking: GDScript lambdas capture locals by value, so a
+	# plain bool assigned inside the lambda would not be observable here.
+	# The shake_completed signal carries no payload (issue #1878), so the
+	# handler takes no arguments.
+	var signal_emitted := [false]
 
-	manager.shake_completed.connect(func(data: Dictionary):
-		signal_emitted = true
+	manager.shake_completed.connect(func():
+		signal_emitted[0] = true
 	)
 
 	manager.shake_screen("light", 0.2, true)
@@ -129,7 +146,30 @@ func test_shake_completed_signal():
 	# Wait for shake to complete (duration + buffer)
 	await get_tree().create_timer(0.5).timeout
 
-	assert_true(signal_emitted, "shake_completed signal should be emitted")
+	assert_true(signal_emitted[0], "shake_completed signal should be emitted")
+
+## Test shake_completed is emitted exactly once per shake
+func test_shake_completed_emitted_once():
+	var manager = get_node_or_null("/root/CombatJuiceManager")
+	assert_not_null(manager, "CombatJuiceManager required")
+
+	# Make sure no shake from an earlier test is still in flight, otherwise
+	# its completion would be counted here as well.
+	await _wait_until_shake_idle(manager)
+
+	# Array-based tracking: GDScript lambdas capture locals by value.
+	var emit_count := [0]
+
+	manager.shake_completed.connect(func():
+		emit_count[0] += 1
+	)
+
+	manager.shake_screen("light", 0.2, true)
+
+	# Wait for the shake (duration + decay steps) to complete
+	await get_tree().create_timer(0.6).timeout
+
+	assert_eq(emit_count[0], 1, "shake_completed should be emitted exactly once per shake")
 
 ## Test rapid shake triggering (stress test)
 func test_rapid_shake_triggering():

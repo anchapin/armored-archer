@@ -6,16 +6,20 @@
 ##
 ## Signals:
 ## - juice_effect_queued(effect_type: String, data: Dictionary): Emitted when juice effect is queued
-## - juice_effect_started(effect_type: String): Emitted when juice effect starts
+## - juice_effect_started(effect_type: String, data: Dictionary): Emitted when juice effect starts
 ## - juice_effect_completed(effect_type: String, data: Dictionary): Emitted when juice effect finishes
 
 extends Node
 
 # --- Signals ---
 signal juice_effect_queued(effect_type: String, data: Dictionary)
-signal juice_effect_started(effect_type: String)
+signal juice_effect_started(effect_type: String, data: Dictionary)
 signal juice_effect_completed(effect_type: String, data: Dictionary)
 signal shake_started()
+## Emitted exactly once when a screen shake finishes. The signal carries no
+## payload (its public arity is unchanged); the shake result payload that used
+## to be passed to emit() was never deliverable through a 0-argument signal
+## and made Godot log a runtime error (issue #1878).
 signal shake_completed()
 
 # --- Effect Types ---
@@ -50,6 +54,11 @@ var _current_shake: Dictionary = {}
 var _is_shaking: bool = false
 var _active_shake_duration: float = 0.0
 var _shake_timer: float = 0.0
+# Monotonic token identifying the shake currently in flight (issue #1878).
+# A newer shake supersedes an older one, so a stale worker can never clear
+# the active shake state or complete it a second time.
+var _shake_token: int = 0
+var _active_shake_token: int = -1
 
 # --- Configuration ---
 var _max_concurrent_effects: int = 5
@@ -229,15 +238,24 @@ func _trigger_damage_number(data: Dictionary) -> Dictionary:
 ##
 ##   reaction_type: "flinch" or "stutter"
 ##   source: Source of damage (melee, ranged, etc.)
+##
+## Issue #1823: this used to look up "/root/PlayerCharacter", a node that
+## never existed in the project, so HIT_REACTION juice was always dropped.
+## The real player is scenes/player.tscn (scripts/character_body_2d.gd),
+## which joins the "Player" group in its _ready().
 func _trigger_hit_reaction(data: Dictionary) -> Dictionary:
-	# Route to player character
-	var player = get_node_or_null("/root/PlayerCharacter")
+	# Route to the player character (the only node in the "Player" group).
+	var player = get_tree().get_first_node_in_group("Player")
 	if not player or not player.has_method("on_damage_taken"):
 		return {"success": false, "error": "Player or method not found"}
 
 	juice_effect_started.emit("hit_reaction", data)
 
-	var result = player.on_damage_taken(data.damage, data.source)
+	var damage: float = float(data.get("damage", 0.0))
+	var source: String = str(data.get("source", ""))
+	var reaction_type: String = str(data.get("reaction_type", ""))
+	var raw_result = player.on_damage_taken(int(damage), source, reaction_type)
+	var result: Dictionary = raw_result if raw_result is Dictionary else {"success": true}
 
 	juice_effect_completed.emit("hit_reaction", result)
 	return result
@@ -445,32 +463,61 @@ func shake_screen(intensity: String, duration: float, decay: bool) -> Dictionary
 	# coroutine must be awaited (parse error), so the timed portion lives
 	# in _run_shake_async and this method returns its result immediately.
 	_is_shaking = true
-	_current_shake = shake_config[intensity]
+	# Duplicate the preset: the decay loop mutates the shake intensity, and
+	# mutating the shared shake_config entry would permanently corrupt the
+	# preset for every later shake (issue #1878).
+	var preset: Dictionary = shake_config[intensity]
+	_current_shake = preset.duplicate()
 	_active_shake_duration = duration
+	# Track the shake countdown from the requested duration. Previously the
+	# timer stayed at 0.0, so _process completed (and cleared) the shake on
+	# the very first frame, before the decay worker had run (issue #1878).
+	_shake_timer = maxf(duration, 0.0)
+	# A new shake supersedes any shake still in flight.
+	_shake_token += 1
+	_active_shake_token = _shake_token
 
 	shake_started.emit()
 
-	_run_shake_async.call_deferred(duration, decay)
+	_run_shake_async.call_deferred(duration, decay, _shake_token)
 	return {"success": true}
 
 ## Coroutine worker for the timed shake + decay (see shake_screen).
-func _run_shake_async(duration: float, decay: bool) -> void:
+##
+## The worker owns the whole shake lifecycle: it waits for the shake
+## duration, plays the decay animation and performs the single completion
+## that emits shake_completed (issue #1878).
+##
+## Parameters:
+##   duration: Shake duration in seconds
+##   decay: Whether to decay smoothly
+##   shake_token: Token of the shake this worker owns
+func _run_shake_async(duration: float, decay: bool, shake_token: int) -> void:
 	# Wait for shake duration
 	await get_tree().create_timer(duration).timeout
+
+	# A newer shake superseded this one: stop working on it.
+	if shake_token != _active_shake_token:
+		return
 
 	# Decay shake smoothly
 	if decay:
 		for i in range(10):
+			# Guard every access to _current_shake: the shake may have been
+			# completed (and cleared) while we were awaiting a frame.
+			if shake_token != _active_shake_token or _current_shake.is_empty():
+				return
 			var progress = float(i) / 10.0
 			_apply_shake_progress(progress)
 			await get_tree().process_frame
-			_current_shake.intensity = _current_shake.intensity * (1.0 - progress)
-		_is_shaking = true
-		_shake_timer += get_process_delta_time() * _current_shake.duration
-		_is_shaking = false
-		_current_shake = {}
-		_active_shake_duration = 0.0
-		shake_completed.emit({"success": true})
+			if shake_token != _active_shake_token or _current_shake.is_empty():
+				return
+			_current_shake["intensity"] = float(_current_shake.get("intensity", 0.0)) * (1.0 - progress)
+
+	# Single completion path: the worker that ran the shake completes it, so
+	# shake_completed is emitted exactly once per shake (issue #1878).
+	if shake_token == _active_shake_token:
+		_complete_shake()
 
 ## Apply shake progress
 ##
@@ -478,13 +525,15 @@ func _run_shake_async(duration: float, decay: bool) -> void:
 ##   progress: Progress value (0.0 to 1.0)
 func _apply_shake_progress(progress: float) -> void:
 	# Apply camera offset based on shake intensity
-	if _camera and _current_shake:
-		var intensity = _current_shake.intensity * progress
-		var offset_range = _current_shake.intensity * 5.0
-		var offset_x = (randf() - 0.5) * offset_range
-		var offset_y = (randf() - 0.5) * offset_range
+	if not _camera or _current_shake.is_empty():
+		return
+	var shake_intensity := float(_current_shake.get("intensity", 0.0))
+	var intensity = shake_intensity * progress
+	var offset_range = shake_intensity * 5.0
+	var offset_x = (randf() - 0.5) * offset_range
+	var offset_y = (randf() - 0.5) * offset_range
 
-		_camera.offset = Vector2(offset_x, offset_y)
+	_camera.offset = Vector2(offset_x, offset_y)
 
 ## Get current shake state
 ##
@@ -505,16 +554,24 @@ func is_shake_active() -> bool:
 
 func _process(delta: float) -> void:
 	if _is_shaking:
-		_shake_timer -= delta
-		if _shake_timer <= 0:
-			_complete_shake()
+		# Countdown only. Completing the shake here used to clear
+		# _current_shake on the first frame (the timer was never initialized),
+		# which left the decay worker dereferencing an empty Dictionary
+		# (issue #1878). Completion is owned by _run_shake_async.
+		_shake_timer = maxf(_shake_timer - delta, 0.0)
 
-## Complete current shake
+## Complete the active shake.
+##
+## Emits shake_completed exactly once per shake: the guard makes the call
+## idempotent, so a shake can never be completed twice (issue #1878).
 func _complete_shake() -> void:
+	if not _is_shaking:
+		return
 	_is_shaking = false
 	_current_shake = {}
 	_active_shake_duration = 0.0
-	shake_completed.emit({"success": true})
+	_shake_timer = 0.0
+	shake_completed.emit()
 
 ## Flash the screen with a color for power-up effects
 ##

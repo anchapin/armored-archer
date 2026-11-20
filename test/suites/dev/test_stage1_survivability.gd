@@ -10,7 +10,7 @@ class FakePlayer:
 	func take_damage(_amount: int) -> void:
 		hits += 1
 
-var _enemy_script: GDScript = load("res://scenes/enemies/base_enemy.gd")
+var _enemy_scene: PackedScene = load("res://scenes/enemies/base_enemy.tscn")
 var _old_tutorial_active: bool
 var _old_tutorial_id: String
 
@@ -57,9 +57,12 @@ func test_invulnerability_window_meets_stage1_acceptance() -> void:
 # --- #1446: per-enemy contact cooldown ---
 
 func test_enemy_contact_damage_respects_cooldown() -> void:
-	# Not added to the tree: base_enemy._ready expects scene children the bare
-	# script instance does not have. The handler itself is tree-independent.
-	var enemy: Node = _enemy_script.new()
+	# Contact damage resolves scaling autoloads through the active tree. Use
+	# the real scene so _ready also receives its required children, while
+	# keeping physics from generating contacts outside these explicit calls.
+	var enemy: BaseEnemy = _enemy_scene.instantiate()
+	enemy.process_mode = Node.PROCESS_MODE_DISABLED
+	add_child_autofree(enemy)
 	var player: CharacterBody2D = FakePlayer.new()
 	player.add_to_group("Player")
 	add_child_autofree(player)
@@ -71,6 +74,7 @@ func test_enemy_contact_damage_respects_cooldown() -> void:
 	enemy._last_contact_damage_msec -= int(enemy.CONTACT_DAMAGE_COOLDOWN * 1000.0) + 50
 	enemy._on_hurt_area_body_entered(player)
 	assert_eq(player.hits, 2, "hit lands after cooldown expires")
+	# Free immediately so ShootingManager unregisters it before the next test.
 	enemy.free()
 
 # --- #1446: wave-1 grace period ---

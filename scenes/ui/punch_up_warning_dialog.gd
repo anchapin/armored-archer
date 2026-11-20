@@ -54,7 +54,7 @@ func _ready() -> void:
 	theme_manager = get_node_or_null("/root/ThemeManager")
 
 	# Get DesignTokens reference
-	design_tokens = get_node_or_null("/root/DesignTokens")
+	design_tokens = get_node_or_null("/root/ArcherDesignTokens")
 
 	# Apply theme if available
 	if theme_manager:

@@ -1070,22 +1070,41 @@ func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Di
 	timer.one_shot = true
 	add_child(timer)
 
-	var timed_out: bool = false
-	var request_result: Array = []
-	var response_received: bool = false
-
+	# Lambdas capture local values by value. Mutate one shared per-attempt
+	# outcome instead of rebinding callback-local booleans/arrays, or the
+	# coroutine never observes completion (including a fired timeout).
+	var outcome: Dictionary = {}
+	var transport: HTTPRequest = _rpc_http_request
 	var on_timeout: Callable = func():
-		timed_out = true
-		_rpc_http_request.cancel_request()
+		if not outcome.is_empty():
+			return
+		outcome["timed_out"] = true
+		if is_instance_valid(transport):
+			transport.cancel_request()
 
-	var on_request_completed: Callable = func(_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray):
-		request_result = [_result, _response_code, _headers, body, this_rpc_id]
-		response_received = true
+	var on_request_completed: Callable = func(
+		_result: int, _response_code: int, _headers: PackedStringArray, body: PackedByteArray
+	):
+		if not outcome.is_empty():
+			return
+		outcome["result"] = [_result, _response_code, _headers, body, this_rpc_id]
 		if is_instance_valid(timer):
 			timer.stop()
 
 	var _err1 = timer.timeout.connect(on_timeout, CONNECT_ONE_SHOT)
-	var _err2 = _rpc_http_request.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
+	var _err2 = transport.request_completed.connect(on_request_completed, CONNECT_ONE_SHOT)
+	# A cancelled request emits no completion. Remove its unused listener
+	# before the next attempt can use the same transport (also on dispatch
+	# error). Never leave a callback pointing at a freed attempt timer.
+	var cleanup: Callable = func():
+		if is_instance_valid(timer):
+			timer.stop()
+			if timer.timeout.is_connected(on_timeout):
+				timer.timeout.disconnect(on_timeout)
+			timer.queue_free()
+		if (is_instance_valid(transport)
+			and transport.request_completed.is_connected(on_request_completed)):
+			transport.request_completed.disconnect(on_request_completed)
 
 	timer.start()
 
@@ -1093,11 +1112,11 @@ func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Di
 	# processing, so a 401/403 cannot be misrouted into the startup
 	# auth-error UI path (see the _rpc_request_active note above).
 	_rpc_request_active = true
-	var error_code: Error = _rpc_http_request.request(url, headers, HTTPClient.METHOD_POST, json_body)
+	var error_code: Error = transport.request(url, headers, HTTPClient.METHOD_POST, json_body)
 
 	if error_code != OK:
 		_rpc_request_active = false
-		timer.queue_free()
+		cleanup.call()
 		return {
 			"response": {"error": "Failed to send RPC request"},
 			"is_auth_error": false,
@@ -1105,15 +1124,13 @@ func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Di
 			"failed": true
 		}
 
-	# Wait for response with timeout protection
-	while not response_received and not timed_out:
+	while outcome.is_empty():
 		await get_tree().process_frame
 
 	_rpc_request_active = false
-	timer.queue_free()
+	cleanup.call()
 
-	# Check if request timed out
-	if timed_out:
+	if outcome.get("timed_out", false):
 		return {
 			"response": {"error": "Request timed out after %.1f seconds" % timeout},
 			"is_auth_error": false,
@@ -1124,11 +1141,14 @@ func _perform_rpc_attempt(rpc_id: String, payload: String, timeout: float) -> Di
 	# Process the successful response
 	var response_data: Dictionary = {}
 	var is_auth_error: bool = false
-	var result = request_result
+	var result: Array = outcome.get("result", [])
 
 	# Validate that request_result has enough elements (should have 5: result, code, headers, body, rpc_id)
 	if result.size() < 4:
-		push_error("Request result incomplete: got %d elements, expected 5. Response received: %s" % [result.size(), response_received])
+		push_error(
+			"Request result incomplete: got %d elements, expected 5. Response received: %s"
+			% [result.size(), outcome.has("result")]
+		)
 		return {
 			"response": {"error": "Invalid response: request_result is incomplete", "is_auth_error": false},
 			"is_auth_error": false,

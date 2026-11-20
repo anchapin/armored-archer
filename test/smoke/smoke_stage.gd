@@ -1,8 +1,12 @@
 ## Configured campaign 1_1 smoke. Control teaching must work before combat.
 extends SceneTree
 
+const DemoSeedScript = preload("res://test/smoke/demo_seed.gd")
+
 var _seconds: float = 60.0
 var _min_alive: float = 10.0
+var _seed_request: int = DemoSeedScript.NO_OVERRIDE
+var _seed: int = 0
 var _elapsed: float = 0.0
 var _died_at: float = -1.0
 var _won: bool = false
@@ -17,6 +21,12 @@ func _initialize() -> void:
 			_seconds = float(arg.get_slice("=", 1))
 		elif arg.begins_with("--min-alive="):
 			_min_alive = float(arg.get_slice("=", 1))
+		elif arg.begins_with("--seed="):
+			_seed_request = int(arg.get_slice("=", 1))
+	# Pin the RNG before anything else runs so the replay is reproducible
+	# (issue #1861). The pinned default lives in test/smoke/demo_seed.gd.
+	_seed = DemoSeedScript.apply(_seed_request)
+	print("SMOKE SEED: %d" % _seed)
 	call_deferred("_start_configured_stage")
 
 func _fail(reason: String) -> void:
@@ -133,7 +143,7 @@ func _process(delta: float) -> bool:
 	return false
 
 func _finish() -> void:
-	print("SMOKE RESULT: stage=1_1 combat=%.1fs won=%s died_at=%.1f max_enemies=%d" % [_elapsed, _won, _died_at, _max_enemies])
+	print("SMOKE RESULT: stage=1_1 combat=%.1fs won=%s died_at=%.1f max_enemies=%d seed=%d" % [_elapsed, _won, _died_at, _max_enemies, _seed])
 	if _died_at >= 0.0 and _died_at < _min_alive:
 		_fail("player died before minimum combat duration")
 		return

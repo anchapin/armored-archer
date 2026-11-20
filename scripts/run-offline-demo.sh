@@ -36,6 +36,10 @@ STAGE_ID="1_1"
 TIMEOUT_SECONDS="${OFFLINE_DEMO_TIMEOUT:-60}"   # bounded in-game play time
 MIN_ALIVE_SECONDS="${OFFLINE_DEMO_MIN_ALIVE:-10}" # early-death window
 GODOT_BIN="${GODOT_BINARY:-}"
+# Seed override (issue #1861). Empty means "use the pinned default seed",
+# which lives in exactly one place: test/smoke/demo_seed.gd (DEFAULT_SEED).
+SEED_OVERRIDE="${OFFLINE_DEMO_SEED:-}"
+EFFECTIVE_SEED="unknown"
 KEEP_LOG=false
 LOG_FILE=""
 SAVE_DIR=""
@@ -82,6 +86,10 @@ Options:
   --min-alive SECONDS Early-death window. If the player dies within the first
                       SECONDS of combat the run is a failure (default: ${MIN_ALIVE_SECONDS}).
   --godot PATH        Godot 4.6+ binary to use. Overrides \$GODOT_BINARY.
+  --seed N            Override the RNG seed of the run (issue #1861). Without
+                      it the pinned default seed is used; the default lives in
+                      exactly one place: test/smoke/demo_seed.gd (DEFAULT_SEED).
+                      Use it to debug a replay, not to change the baseline.
   --keep-log          Keep the Godot log file and print its path.
   --help, -h          Show this help.
 
@@ -89,6 +97,7 @@ Environment:
   GODOT_BINARY        Godot binary used when --godot is not given.
   OFFLINE_DEMO_TIMEOUT / OFFLINE_DEMO_MIN_ALIVE
                       Defaults for --timeout / --min-alive.
+  OFFLINE_DEMO_SEED   Default for --seed (same pinned seed as above).
   OFFLINE_DEMO_WALL_TIMEOUT
                       Wall-clock safety net in seconds (default: 4x --timeout
                       + 90). When it is reached Godot is terminated and the
@@ -104,7 +113,13 @@ Exit codes:
 Examples:
   $0                    # 60s offline demo with the default summary
   $0 --timeout 120      # longer offline run
+  $0 --seed 4242        # replay the demo with a different (debug) seed
   $0 --godot /opt/godot # use a specific Godot binary
+
+Seeded replay (issue #1861):
+  Two runs with the same seed produce the same structured summary. The
+  workflow (run before/after a gameplay change, diff the summaries) is
+  documented in docs/dev-offline-demo-seeded-replay.md.
 EOF
 }
 
@@ -144,6 +159,11 @@ while [ $# -gt 0 ]; do
             MIN_ALIVE_SECONDS="$2"; shift 2 ;;
         --min-alive=*)
             MIN_ALIVE_SECONDS="${1#*=}"; shift ;;
+        --seed)
+            [ $# -ge 2 ] || { log_error "--seed needs a value"; exit 2; }
+            SEED_OVERRIDE="$2"; shift 2 ;;
+        --seed=*)
+            SEED_OVERRIDE="${1#*=}"; shift ;;
         --godot)
             [ $# -ge 2 ] || { log_error "--godot needs a value"; exit 2; }
             GODOT_BIN="$2"; shift 2 ;;
@@ -168,6 +188,11 @@ case "$MIN_ALIVE_SECONDS" in
 esac
 if [ "$TIMEOUT_SECONDS" -le 0 ]; then
     log_error "--timeout must be greater than 0"; exit 2
+fi
+if [ -n "$SEED_OVERRIDE" ]; then
+    case "$SEED_OVERRIDE" in
+        ''|*[!0-9]*) log_error "--seed must be a non-negative integer"; exit 2 ;;
+    esac
 fi
 
 # --- godot binary ----------------------------------------------------------
@@ -235,6 +260,7 @@ print_summary() {
     echo "result              : $([ -z "$FAIL_REASON" ] && echo PASS || echo FAIL)"
     echo "stage               : $STAGE"
     echo "mode                : offline (MVP_PVE_ONLY=true, no login/server)"
+    echo "seed                : ${EFFECTIVE_SEED:-unknown}"
     echo "play_time_seconds   : ${PLAY_SECONDS:-unknown}"
     echo "wall_time_seconds   : $waited"
     echo "victory             : ${WON:-unknown}"
@@ -251,6 +277,21 @@ print_summary() {
     fi
     echo "backend_services    : none started"
     echo "====================================================="
+    # Diffable replay block (issue #1861): the deterministic part of the
+    # summary. It carries no wall-clock value, so two runs with the same seed
+    # produce byte-identical text and `diff` shows only real gameplay changes.
+    # See docs/dev-offline-demo-seeded-replay.md.
+    echo "============ OFFLINE DEMO REPLAY SUMMARY (seeded) ============"
+    echo "seed                : ${EFFECTIVE_SEED:-unknown}"
+    echo "result              : $([ -z "$FAIL_REASON" ] && echo PASS || echo FAIL)"
+    echo "stage               : $STAGE"
+    echo "victory             : ${WON:-unknown}"
+    echo "wave                : ${WAVE} of ${MAX_WAVES}"
+    echo "enemies_spawned_peak: ${MAX_ENEMIES:-unknown} (max concurrent)"
+    echo "enemies_killed      : $KILLS"
+    echo "boss                : $BOSS_STATE"
+    echo "script_parse_errors : $SCRIPT_ERRORS"
+    echo "==============================================================="
 }
 
 # --- step 1: headless asset import (fresh-checkout safe, #991 pattern) ------
@@ -285,8 +326,16 @@ export XDG_DATA_HOME="$SAVE_DIR"
 # advances much faster than real time (same budget as scripts/smoke_stage.sh).
 WALL_TIMEOUT="${OFFLINE_DEMO_WALL_TIMEOUT:-$((TIMEOUT_SECONDS * 4 + 90))}"
 
+# The harness arguments. The seed override is only forwarded when the caller
+# supplied one; otherwise the harness uses the pinned default seed from
+# test/smoke/demo_seed.gd (the single named place for it).
+HARNESS_ARGS=("--seconds=$TIMEOUT_SECONDS" "--min-alive=$MIN_ALIVE_SECONDS")
+if [ -n "$SEED_OVERRIDE" ]; then
+    HARNESS_ARGS+=("--seed=$SEED_OVERRIDE")
+fi
+
 "$GODOT_BIN" --headless --fixed-fps 60 -s "$HARNESS_SCENE" -- \
-    "--seconds=$TIMEOUT_SECONDS" "--min-alive=$MIN_ALIVE_SECONDS" >"$LOG_FILE" 2>&1 &
+    "${HARNESS_ARGS[@]}" >"$LOG_FILE" 2>&1 &
 GODOT_PID=$!
 
 waited=0
@@ -321,6 +370,8 @@ PLAY_SECONDS="$(field "$RESULT_LINE" 'combat')"
 WON="$(field "$RESULT_LINE" 'won')"
 DIED_AT="$(field "$RESULT_LINE" 'died_at')"
 MAX_ENEMIES="$(field "$RESULT_LINE" 'max_enemies')"
+EFFECTIVE_SEED="$(field "$RESULT_LINE" 'seed')"
+[ -n "$EFFECTIVE_SEED" ] || EFFECTIVE_SEED="unknown"
 STAGE="$(field "$RESULT_LINE" 'stage')"
 [ -n "$STAGE" ] || STAGE="$STAGE_ID"
 
