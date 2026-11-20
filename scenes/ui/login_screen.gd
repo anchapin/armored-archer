@@ -30,11 +30,17 @@ var theme_manager: Node
 # --- State ---
 var is_connecting: bool = false
 
+# Temporary diagnostics: bounded fixed-field output on Android debug builds only.
+# Draw counts show engine progress, not successful GPU presentation.
+var _android_diagnostic_enabled: bool = OS.is_debug_build() and OS.has_feature("android")
+var _android_diagnostic_frames: int = 0
+
 # --- Signals ---
 signal login_complete(success: bool)
 
 # --- Initialization ---
 func _ready() -> void:
+	_android_startup_snapshot("ready_enter")
 	# Issue #913 — fade in from black so menu transitions feel seamless.
 	_play_fade_in()
 
@@ -86,6 +92,7 @@ func _ready() -> void:
 		var _err4 = test_connection_button.pressed.connect(_on_test_connection_pressed)
 		test_connection_button.hide()
 
+	_android_startup_snapshot("ready_ui_connected")
 	_start_authentication()
 
 func _start_authentication() -> void:
@@ -214,6 +221,7 @@ var _fade_rect: ColorRect = null
 ## Fade-out current screen, swap scene, fade-in the next. Used for all menu
 ## transitions (login → main menu → campaign map at minimum).
 func _transition_to_scene(scene_path: String) -> void:
+	_android_startup_snapshot("transition_requested")
 	if not UIAutomationAPI.are_animations_enabled():
 		get_tree().change_scene_to_file(scene_path)
 		return
@@ -248,15 +256,23 @@ func _play_fade_in() -> void:
 	fade_rect.color = Color(0, 0, 0, 1.0)
 	var tween := create_tween()
 	tween.tween_property(fade_rect, "color:a", 0.0, FADE_IN_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_android_startup_snapshot("fade_in_started")
+	if _android_diagnostic_enabled:
+		tween.finished.connect(_android_startup_snapshot.bind("fade_in_finished"), CONNECT_ONE_SHOT)
 
 # --- Progress Bar Animation ---
 func _process(delta: float) -> void:
+	if _android_diagnostic_enabled:
+		_android_diagnostic_frames += 1
+		if _android_diagnostic_frames == 1 or _android_diagnostic_frames == 60:
+			_android_startup_snapshot("process_%d" % _android_diagnostic_frames)
 	if is_connecting:
 		progress_bar.value += delta * 10
 		if progress_bar.value > 50.0:
 			progress_bar.value = 50.0
 
 func _exit_tree() -> void:
+	_android_startup_snapshot("exit_tree")
 	# Disconnect signals to prevent memory leaks
 	if NetworkManager:
 		if NetworkManager.session_created.is_connected(_on_session_created):
@@ -282,3 +298,14 @@ func _apply_theme() -> void:
 
 func _on_theme_changed(is_dark: bool) -> void:
 	_apply_theme()
+
+func _android_startup_snapshot(stage: String) -> void:
+	if not _android_diagnostic_enabled:
+		return
+	var fade_alpha: float = -1.0
+	if is_instance_valid(_fade_rect):
+		fade_alpha = _fade_rect.color.a
+	print("AA_STARTUP stage=%s scene=%s visible=%s viewport=%s alpha=%s fade_alpha=%s process_frames=%s drawn_frames=%s" % [
+		stage, scene_file_path, is_visible_in_tree(), get_viewport_rect().size,
+		modulate.a, fade_alpha, Engine.get_process_frames(), Engine.get_frames_drawn()
+	])
