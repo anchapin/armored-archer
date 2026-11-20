@@ -5,6 +5,45 @@ extends GutTest
 
 var season_manager: Node
 var _season_script
+var _stub_network: StubNetworkManager
+
+## In-memory storage double matching the NetworkManager storage surface
+## SeasonManager uses (get/put via get_storage_sync()).
+class StubStorage extends RefCounted:
+	var data: Dictionary = {}
+
+	func get(key: String) -> Variant:
+		return data.get(key)
+
+	func put(key: String, value: Variant) -> void:
+		data[key] = value
+
+## Minimal NetworkManager stub (same pattern as
+## test/suites/autoloads/test_season_manager_coverage.gd): SeasonManager
+## checks `network_manager.is_connected`, awaits send_rpc, and reads storage
+## through get_storage_sync().
+class StubNetworkManager extends Node:
+	var is_connected: bool = true
+	var rpc_response: Dictionary = {"success": true}
+	var storage: StubStorage = StubStorage.new()
+
+	func send_rpc(_rpc_id: String, _payload: String, _timeout: float = 30.0) -> Dictionary:
+		return rpc_response
+
+	func get_storage_sync() -> Variant:
+		return storage
+
+## Records season_transitioned emissions (lambdas capture locals by value,
+## so a flag-flipping lambda never updates the outer variables).
+class TransitionRecorder extends RefCounted:
+	var old_season: Dictionary = {}
+	var new_season: Dictionary = {}
+	var count: int = 0
+
+	func record(o: Dictionary, n: Dictionary) -> void:
+		count += 1
+		old_season = o
+		new_season = n
 
 func before_each():
 	# Load SeasonManager script
@@ -12,19 +51,16 @@ func before_each():
 
 	# Create SeasonManager instance
 	season_manager = _season_script.new()
-	# Set up as if it were autoload
 	season_manager.name = "SeasonManager"
-	# Set up mock network manager
-	var mock_network = Node.new()
-	mock_network.name = "NetworkManager"
-	mock_network.user_id = "test_user_123"
-	season_manager.network_manager = mock_network
-	add_child(season_manager)
-	add_child(mock_network)
+	add_child_autofree(season_manager)
 
-func after_each():
-	if season_manager:
-		season_manager.queue_free()
+	# network_manager is @onready on SeasonManager, so assign the stub AFTER
+	# the instance enters the tree or _ready overwrites it with the real
+	# /root/NetworkManager autoload.
+	_stub_network = StubNetworkManager.new()
+	_stub_network.name = "NetworkManager"
+	add_child_autofree(_stub_network)
+	season_manager.network_manager = _stub_network
 
 ## Test leaderboard top 100 retrieval
 func test_leaderboard_top_100():
@@ -45,20 +81,24 @@ func test_leaderboard_top_100():
 	assert_eq(retrieved.size(), 100, "Leaderboard should have 100 entries")
 	assert_eq(retrieved[0].rating, 2000, "Top player should have highest rating")
 
-## Test leaderboard sorting by rating
+## Test leaderboard ordering
 func test_leaderboard_sorting():
-	var unsorted_leaderboard = [
+	var stored_leaderboard = [
 		{"player_id": "player_1", "rating": 1500, "rank": 1},
 		{"player_id": "player_2", "rating": 1800, "rank": 2},
 		{"player_id": "player_3", "rating": 1200, "rank": 3},
 		{"player_id": "player_4", "rating": 2000, "rank": 4}
 	]
 
-	season_manager.leaderboard = unsorted_leaderboard
+	season_manager.leaderboard = stored_leaderboard
 	var retrieved = season_manager.get_leaderboard_sync()
 
-	# Top player should be player_4 with rating 2000
-	assert_eq(retrieved[0].player_id, "player_4", "Leaderboard should be sorted by rating descending")
+	# Ordering is server-owned (server-authoritative Elo, ADR-0002):
+	# get_leaderboard_sync() returns the cached entries in the order the
+	# server sent them; the client does not re-sort by rating.
+	assert_eq(retrieved.size(), 4, "All cached entries should be returned")
+	assert_eq(retrieved[0].player_id, "player_1", "Cached order should be preserved (server-provided)")
+	assert_eq(retrieved[3].player_id, "player_4", "Cached order should be preserved (server-provided)")
 
 ## Test rating decay application
 func test_rating_decay_applied():
@@ -204,25 +244,18 @@ func test_decay_info_active_player():
 
 ## Test decay info for inactive player
 func test_decay_info_inactive_player():
-	# Simulate 14 days inactive
-	var now = Time.get_unix_time_from_system() * 1000
-	var fourteen_days_ago_ms = now - (14 * 24 * 60 * 60 * 1000)
+	# Simulate 14 days inactive: _update_decay_info() reads the last-active
+	# timestamp through network_manager.get_storage_sync(), so seed the stub
+	# storage with a 14-day-old timestamp.
+	var now_ms = int(Time.get_unix_time_from_system() * 1000)
+	var fourteen_days_ago_ms = now_ms - (14 * 24 * 60 * 60 * 1000)
 
 	season_manager.current_season = {
 		"id": "season_1",
-		"start_time": now * 1000
+		"start_time": now_ms
 	}
 	season_manager.player_score = 1500
-
-	# Mock storage to return inactive timestamp
-	# NOTE: set_script() expects a Script resource, not a Node instance.
-	# Earlier revisions called `.new()` on the preload — that produces a
-	# Node and Godot 4.6 rejects it at script-assign time. See #894.
-	var mock_storage = Node.new()
-	mock_storage.name = "MockStorage"
-	mock_storage.set_script(preload("res://test/mocks/mock_storage.gd"))
-	season_manager.network_manager.add_child(mock_storage)
-	season_manager.network_manager._storage_sync = mock_storage
+	_stub_network.storage.put("player_last_active", {"timestamp": fourteen_days_ago_ms})
 
 	season_manager._update_decay_info()
 
@@ -333,26 +366,19 @@ func test_format_time_remaining():
 
 ## Test season transition signals
 func test_season_transition_signal():
-	var transition_emitted = false
-	var old_season_data = {}
-	var new_season_data = {}
-
-	season_manager.season_transitioned.connect(func(old, new):
-		transition_emitted = true
-		old_season_data = old
-		new_season_data = new
-	)
+	var recorder = TransitionRecorder.new()
+	season_manager.season_transitioned.connect(recorder.record)
 
 	var old_season = {"id": "season_1", "start_time": 0}
-	var new_season = {"id": "season_2", "start_time": Time.get_unix_time_from_system() * 1000}
+	var new_season = {"id": "season_2", "start_time": int(Time.get_unix_time_from_system() * 1000)}
 
 	season_manager.on_season_transition(old_season, new_season)
 
 	await get_tree().process_frame
 
-	assert_true(transition_emitted, "Season transitioned signal should be emitted")
-	assert_eq(old_season_data.id, "season_1", "Old season should be passed")
-	assert_eq(new_season_data.id, "season_2", "New season should be passed")
+	assert_eq(recorder.count, 1, "Season transitioned signal should be emitted")
+	assert_eq(recorder.old_season.id, "season_1", "Old season should be passed")
+	assert_eq(recorder.new_season.id, "season_2", "New season should be passed")
 
 ## Test RPC constants
 func test_rpc_constants():

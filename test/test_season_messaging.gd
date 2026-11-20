@@ -6,6 +6,18 @@ extends GutTest
 var season_messenger: Node
 var season_manager: Node
 
+## Records signal emissions. GDScript lambdas capture locals by value, so a
+## lambda writing into a local Dictionary never updates the outer variable.
+class MessageRecorder extends RefCounted:
+	var message: Dictionary = {}
+	var milestone: Dictionary = {}
+
+	func on_season_message(msg: Dictionary) -> void:
+		message = msg
+
+	func on_tier_milestone(tier: String, rank: int) -> void:
+		milestone = {"tier": tier, "rank": rank}
+
 func before_each():
 	season_messenger = preload("res://autoloads/SeasonMessenger.gd").new()
 	season_messenger.name = "SeasonMessenger"
@@ -37,35 +49,35 @@ func test_motivational_message_unranked():
 
 func test_motivational_message_top_10():
 	var msg = season_messenger.get_motivational_message(5)
-	assert_has(msg, "Top 10", "Top 10 message should mention position")
+	assert_true("Top 10" in msg, "Top 10 message should mention position")
 
 func test_motivational_message_epic_range():
 	var msg = season_messenger.get_motivational_message(25)
-	assert_has(msg, "Legendary", "Rank 25 should push toward Legendary")
+	assert_true("Legendary" in msg, "Rank 25 should push toward Legendary")
 
 func test_motivational_message_rare_range():
 	var msg = season_messenger.get_motivational_message(75)
-	assert_has(msg, "Epic", "Rank 75 should push toward Epic")
+	assert_true("Epic" in msg, "Rank 75 should push toward Epic")
 
 func test_motivational_message_uncommon_range():
 	var msg = season_messenger.get_motivational_message(200)
-	assert_has(msg, "Rare", "Rank 200 should push toward Rare")
+	assert_true("Rare" in msg, "Rank 200 should push toward Rare")
 
 func test_motivational_message_common_range():
 	var msg = season_messenger.get_motivational_message(600)
-	assert_has(msg, "climb", "Rank 600 should encourage climbing")
+	assert_true("climb" in msg, "Rank 600 should encourage climbing")
 
 # --- Next Tier Info ---
 
 func test_next_tier_info_unranked():
 	var info = season_messenger.get_next_tier_info(0)
 	assert_eq(info.tier, "Common", "Unranked next tier should be Common")
-	assert_has(info.message, "Start playing", "Unranked should suggest starting")
+	assert_true("Start playing" in info.message, "Unranked should suggest starting")
 
 func test_next_tier_info_legendary():
 	var info = season_messenger.get_next_tier_info(5)
-	assert_has(info.tier, "Legendary (max)", "Legendary should show max tier")
-	assert_has(info.message, "top", "Legendary message should reference top position")
+	assert_eq(info.tier, "Legendary (max)", "Legendary should show max tier")
+	assert_true("top" in info.message, "Legendary message should reference top position")
 
 func test_next_tier_info_epic():
 	var info = season_messenger.get_next_tier_info(25)
@@ -137,7 +149,7 @@ func test_rewards_increase_with_tier():
 # --- Season End Warning Thresholds ---
 
 func test_warning_thresholds_defined():
-	assert_has(season_messenger.WARNING_THRESHOLDS, "Should define warning thresholds")
+	assert_false(season_messenger.WARNING_THRESHOLDS.is_empty(), "Should define warning thresholds")
 	assert_eq(season_messenger.WARNING_THRESHOLDS.size(), 4, "Should have 4 warning levels")
 	assert_has(season_messenger.WARNING_THRESHOLDS, 168, "Should warn at 168 hours (7d)")
 	assert_has(season_messenger.WARNING_THRESHOLDS, 72, "Should warn at 72 hours (3d)")
@@ -165,20 +177,21 @@ func test_tier_messages_defined():
 # --- Signal Emission ---
 
 func test_season_message_signal():
-	var message_received: Dictionary = {}
-	season_messenger.season_message.connect(func(msg): message_received = msg)
+	var recorder = MessageRecorder.new()
+	season_messenger.season_message.connect(recorder.on_season_message)
 
 	# Simulate season transition
 	season_messenger._on_season_transitioned({}, {})
 
+	var message_received: Dictionary = recorder.message
 	assert_has(message_received, "type", "Message should have type field")
 	assert_has(message_received, "text", "Message should have text field")
 	assert_has(message_received, "priority", "Message should have priority field")
 	assert_eq(message_received.type, "season_start", "Transition should emit season_start type")
 
 func test_tier_milestone_signal():
-	var milestone_received: Dictionary = {}
-	season_messenger.tier_milestone_reached.connect(func(tier, rank): milestone_received = {"tier": tier, "rank": rank})
+	var recorder = MessageRecorder.new()
+	season_messenger.tier_milestone_reached.connect(recorder.on_tier_milestone)
 
 	# Simulate tier change via season info
 	season_messenger._last_known_tier = "Common"
@@ -188,12 +201,13 @@ func test_tier_milestone_signal():
 		"player_score": 1500,
 	})
 
+	var milestone_received: Dictionary = recorder.milestone
 	assert_eq(milestone_received.get("tier", ""), "Epic", "Should emit Epic milestone")
 	assert_eq(milestone_received.get("rank", 0), 30, "Should emit correct rank")
 
 func test_no_milestone_for_same_tier():
-	var milestone_received: Dictionary = {}
-	season_messenger.tier_milestone_reached.connect(func(tier, rank): milestone_received = {"tier": tier, "rank": rank})
+	var recorder = MessageRecorder.new()
+	season_messenger.tier_milestone_reached.connect(recorder.on_tier_milestone)
 
 	# Same tier should not emit
 	season_messenger._last_known_tier = "Common"
@@ -203,32 +217,33 @@ func test_no_milestone_for_same_tier():
 		"player_score": 1100,
 	})
 
-	assert_eq(milestone_received.size(), 0, "Same tier should not emit milestone")
+	assert_eq(recorder.milestone.size(), 0, "Same tier should not emit milestone")
 
 # --- Decay Warning Message ---
 
 func test_decay_warning_emitted():
-	var message_received: Dictionary = {}
-	season_messenger.season_message.connect(func(msg): message_received = msg)
+	var recorder = MessageRecorder.new()
+	season_messenger.season_message.connect(recorder.on_season_message)
 
 	season_messenger._on_decay_info_updated({
 		"can_decay": true,
 		"points_at_risk": 50,
 	})
 
+	var message_received: Dictionary = recorder.message
 	assert_eq(message_received.get("type", ""), "decay_warning", "Should emit decay warning")
-	assert_has(message_received.get("text", ""), "50", "Should mention points at risk")
+	assert_true("50" in message_received.get("text", ""), "Should mention points at risk")
 
 func test_no_decay_warning_when_active():
-	var message_received: Dictionary = {}
-	season_messenger.season_message.connect(func(msg): message_received = msg)
+	var recorder = MessageRecorder.new()
+	season_messenger.season_message.connect(recorder.on_season_message)
 
 	season_messenger._on_decay_info_updated({
 		"can_decay": false,
 		"points_at_risk": 0,
 	})
 
-	assert_eq(message_received.size(), 0, "Active player should not get decay warning")
+	assert_eq(recorder.message.size(), 0, "Active player should not get decay warning")
 
 # --- Message Queue ---
 
@@ -248,13 +263,13 @@ func test_message_queue():
 
 func test_format_hours_days():
 	var result = season_messenger._format_hours(200.0)
-	assert_has(result, "d", "Should format as days")
+	assert_true("d" in result, "Should format as days")
 
 func test_format_hours_hours():
 	var result = season_messenger._format_hours(5.0)
-	assert_has(result, "h", "Should format as hours")
+	assert_true("h" in result, "Should format as hours")
 	assert_false("d" in result, "Should not contain days")
 
 func test_format_hours_minutes():
 	var result = season_messenger._format_hours(0.5)
-	assert_has(result, "m", "Should format as minutes")
+	assert_true("m" in result, "Should format as minutes")
