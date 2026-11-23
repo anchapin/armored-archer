@@ -99,7 +99,7 @@
     "jest": "^30.5.2",
     "jest-junit": "^17.0.0",
     "jscpd": "^5.4.3",
-    "lint-staged": "^17.6.0",
+    "lint-staged": "^17.6.1",
     "prettier": "^3.9.10",
     "ts-jest": "^29.4.15",
     "ts-loader": "^9.6.2",
